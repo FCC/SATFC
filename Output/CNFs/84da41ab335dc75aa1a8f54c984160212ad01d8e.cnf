@@ -1,0 +1,3 @@
+c tautological CNF file corresponding to a (partial) station packing problem with a single station 60795.
+p cnf 1 1
+1 0
