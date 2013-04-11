@@ -32,7 +32,28 @@ public class Constraint {
 	@Override
 	public String toString()
 	{
-		return fProtected.toString()+" "+fInterfering;
+		return "{"+fProtected.toString()+" "+fInterfering.toString()+"}";
+	}
+	
+	@Override
+	public int hashCode(){
+    	int aConstraint1Hash = fProtected != null ? fProtected.hashCode() : 0;
+    	int aConstraint2Hash = fInterfering != null ? fInterfering.hashCode() : 0;
+    	return aConstraint1Hash+aConstraint2Hash;
+	}
+	
+	public boolean equals(Object o)
+	{
+		if (!(o instanceof Constraint))
+		{
+			return false;
+		}
+		else
+		{
+			Constraint a = (Constraint) o;
+			return 	(fProtected.equals(a.getProtectedPair())&&fInterfering.equals(a.getInterferingPair()))||
+					(fInterfering.equals(a.getProtectedPair())&&fProtected.equals(a.getInterferingPair()));
+		}
 	}
 
 }
