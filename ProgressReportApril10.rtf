@@ -1,0 +1,132 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1138\cocoasubrtf470
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fnil\fcharset0 Monaco;}
+{\colortbl;\red255\green255\blue255;\red127\green0\blue85;}
+\margl1440\margr1440\vieww18600\viewh9540\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+
+\f0\fs24 \cf0 /*NA \
+ *ConstraintManager Updates, April 10 2013\
+ */\
+\
+\ul I've added to the following methods to the IConstraintManager interface:\ulnone \
+1. 
+\f1\fs22 	\cf2 public\cf0  Set<Station> getCOInterferingStations(Station aStation);\
+\pard\pardeftab720
+\cf0 	//Returns the set of stations that cannot share a channel with aStation\
+2.	\cf2 public\cf0  Set<Station> getADJplusInterferingStations(Station aStation);\
+	//Returns the set of stations that cannot occupy a channel one above aStation\
+3.	\cf2 public\cf0  Set<Station> getADJminusInterferingStations(Station aStation);\
+	//Returns the set of stations that cannot occupy a channel one below aStation\
+
+\f0\fs24 4. 
+\f1\fs22 	\cf2 public\cf0  \cf2 boolean\cf0  matchesConstraints(IConstraintManager aOtherManager);\
+	//Return this.getPairwiseConstraints().equals(aOtherManager.getPairwiseConstraints());\
+5.	\cf2 public\cf0  \cf2 boolean\cf0  matchesDomains(IConstraintManager aOtherManager);\
+\pard\pardeftab720
+\cf0 	//Return this.getStationDomains().equals(aOtherManager.getStationDomains());\
+\pard\pardeftab720
+
+\f0\fs24 \cf0 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 The first three just seemed like useful ways to access constraints. I've included stubs for these methods in Alex's ConstraintManager implementations, but haven't implemented them.\
+\
+I've implemented 4 and 5 in both of Alex's ConstraintManager implementations. In order to do this, I modified .equals() and .hashCode() in StationChannelPair.java and in Constraint.java.\
+\
+\ul I've written DACConstraintManager. This class has two constructors:\ulnone \
+1. Read information from a DAC domain file and DAC constraint file\
+2. Receive a set of station domains and a set of pairwise constraints, and copy these to its internal structure.\
+\
+The second constructor is useful because it means that I can ask anything that implements IConstraintManager to getStationDomains and getPairwiseConstraints, and use these to get a new DACConstraintManager with corresponding constraints. \
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 IMPORTANT: the DACConstraintManager assumes that interference constraints apply to all channels, so for example,  if two stations have co-channel interference on Channel X, then they would interfere if co-located on 
+\b any 
+\b0 channel.\
+\
+When invoking the second constructor for DACConstraintManager, these assumptions are used, i.e. if 
+\b any
+\b0  constraint of the form \{(Station A, Channel X) (Station B, Channel X)\} exists in the given set of pairwise constraints, then the resulting DACConstraintManager will have a version of this constraint 
+\b for each
+\b0  possible Channel, and similarly for constraints of the form \{(Station A, Channel X) (Station B, Channel X+1)\}.\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 \
+\
+\ul DACConstraintManager implements the following public methods:\ulnone \
+	The five listed above. I've made it so that the matchesConstraints and matchesDomains functions print some basic information when there is not a match.\
+\
+\pard\pardeftab720
+
+\f1\fs22 \cf0 	\cf2 public\cf0  Set<Constraint> getPairwiseConstraints();\
+	//
+\f0\fs24 Runs somewhat slowly in my implementation (since I construct these constraints on-demand), but not prohibitively so.
+\f1\fs22 \
+	\cf2 public\cf0  Map<Station,Set<Integer>> getStationDomains();\
+\
+\pard\pardeftab720
+\cf0 	\cf2 public\cf0  \cf2 boolean\cf0  writeConstraints(String fileName);\
+	/*Attempts to write its constraints in a DAC file format to fileName.\
+	 *Returns true upon success.\
+	 */\
+	\cf2 public\cf0  \cf2 boolean\cf0  writeDomains(String fileName);\
+	/*Attempts to write its station domains in a DAC file format to fileName. \
+	 *Returns true upon success.\
+	 */\
+\pard\pardeftab720
+\cf2 	public\cf0  \cf2 boolean\cf0  writePairwiseConstraints(String fileName);\
+\pard\pardeftab720
+\cf0 	/*Attempts to write its constraints to fileName in a simple file format - \
+	 *each line starts with either "CO" or "ADJ", followed by two station IDs. \
+	 *Returns true upon success. Used to create the maps I showed you.\
+	 */\
+\
+\
+
+\f0\fs24 \ul I performed a few tests of these methods. \
+One example (leaving out assignment of String literals):
+\f1\fs22 \ulnone \
+\
+\pard\pardeftab720
+\cf0 IStationManager aStationManager = \cf2 new\cf0  HRStationManager(stationsFile);\
+IConstraintManager aCM = \cf2 new\cf0  NoFixedHRConstraintManager(channelsFile,constraintsFile ,aStationManager.getFixedStations());\
+        		\
+DACConstraintManager dCM = \cf2 new\cf0  DACConstraintManager(dacDomainsFile,dacConstraintFile);\
+DACConstraintManager dCM2 = \cf2 new\cf0  DACConstraintManager(aCM.getStationDomains(),aCM.getPairwiseConstraints());\
+DACConstraintManager dCM3 = \cf2 new\cf0  DACConstraintManager(dCM.getStationDomains(),dCM.getPairwiseConstraints());\
+dCM.writeConstraints(newConstraintsFile);\
+dCM.writeDomains(newDomainsFile);\
+DACConstraintManager dCM4 = \cf2 new\cf0  DACConstraintManager(newDomainsFile,newConstraintsFile);\
+\
+\pard\pardeftab720
+\cf0 dCM2.matchesDomains(aCM); //Returns true;\
+\pard\pardeftab720
+\cf0 dCM2.matchesConstraints(aCM);\
+//Returns false; indicates that there are 972737 pairwise constraints in dCM2, 802700 in aCM, and 802700 in the intersection\
+\pard\pardeftab720
+\cf0 dCM.matchesDomains(dCM2);\
+//Returns false; indicates that there are 1751 stations listed for both, but that the domains match for 1466 of these\
+\pard\pardeftab720
+\cf0 dCM.matchesConstraints(dCM2);\
+\pard\pardeftab720
+\cf0 //Returns false; indicates that there are 10002824 pairwise constraints in dCM, 972737 in aCM, and 972737 in the intersection\
+\pard\pardeftab720
+\cf0 dCM.matchesConstraints(dCM3); //Returns true\
+dCM.matchesDomains(dCM3); //Returns true\
+dCM.matchesConstraints(dCM4); //Returns true\
+dCM.matchesDomains(dCM4); //Returns true\
+\
+
+\f0\fs24 \ul What I take from this (and the few other tests of this nature that I've run)\ulnone \
+1. My writeDomains,  writeConstraints, matchesDomains, matchesConstraints functions seem to be working correctly.\
+2. The set of stations that Alex has been using matches those in Domains.csv (the DAC file), but the domains are not exact matches.\
+\pard\pardeftab720
+\cf0 3. The constraints that Alex has been using (in PairwiseConstraints.csv) do 
+\b not 
+\b0 have the symmetry across channels that a DACConstraintManager assumes. I haven't looked into this much - Alex, any ideas? I don't know how you generated PairwiseConstraints.csv.\
+\pard\pardeftab720
+\cf0 4. The constraints in Interferences-please-read-note.csv are a strict superset of those in PairwiseConstraints.csv (and even a superset of the station constraints implied by PairwiseConstraints.csv).\
+\
+
+\b \
+
+\b0 \
+}

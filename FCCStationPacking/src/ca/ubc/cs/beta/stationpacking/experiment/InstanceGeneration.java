@@ -37,9 +37,16 @@ public class InstanceGeneration {
 		fExperimentReporter = aExperimentReporter;
 	}
 	
-	public void run(Set<Station> aStartingStations, Iterator<Station> aStationIterator, double aCutoff)
+	public void run(Set<Station> aStartingStations, Iterator<Station> aStationIterator, double aCutoff, Integer ... aRange)
 	{
-		
+		Integer[] fRange;
+		if(aRange.length > 0){
+			fRange = aRange;
+		} else {
+			fRange = new Integer[2];
+			fRange[0] = 30;
+			fRange[1] = 14;
+		}
 		HashSet<Station> aCurrentStations = new HashSet<Station>(aStartingStations);
 		
 		while(aStationIterator.hasNext())
@@ -54,7 +61,7 @@ public class InstanceGeneration {
 			try 
 			{
 				log.info("Getting problem instance.");
-				IInstance aInstance = fInstanceEncoder.getProblemInstance(aCurrentStations);
+				IInstance aInstance = fInstanceEncoder.getProblemInstance(aCurrentStations,fRange);
 				
 				
 				log.info("Solving instance of size {}.",aInstance.getNumberofStations());
