@@ -1,0 +1,20 @@
+!SESSION 2013-04-03 13:59:31.232 -----------------------------------------------
+eclipse.buildId=M20080221-1800
+java.version=1.6.0_31
+java.vendor=Apple Inc.
+BootLoader constants: OS=macosx, ARCH=x86, WS=carbon, NL=en_US
+Framework arguments:  -keyring /Users/narnosti/.eclipse_keyring -showlocation
+Command-line arguments:  -os macosx -ws carbon -arch x86 -data /Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/src/ca/ubc/cs/beta/stationpacking/execution -keyring /Users/narnosti/.eclipse_keyring -consoleLog -showlocation
+
+!ENTRY org.eclipse.core.net 1 0 2013-04-03 13:59:38.171
+!MESSAGE System property http.nonProxyHosts has been set to local|*.local|169.254/16|*.169.254/16 by an external source. This value will be overwritten using the values from the preferences
+!SESSION 2013-04-03 14:48:27.940 -----------------------------------------------
+eclipse.buildId=M20080221-1800
+java.version=1.6.0_31
+java.vendor=Apple Inc.
+BootLoader constants: OS=macosx, ARCH=x86, WS=carbon, NL=en_US
+Framework arguments:  -keyring /Users/narnosti/.eclipse_keyring -showlocation
+Command-line arguments:  -os macosx -ws carbon -arch x86 -data /Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/src/ca/ubc/cs/beta/stationpacking/execution -keyring /Users/narnosti/.eclipse_keyring -consoleLog -showlocation
+
+!ENTRY org.eclipse.core.net 1 0 2013-04-03 14:48:33.970
+!MESSAGE System property http.nonProxyHosts has been set to local|*.local|169.254/16|*.169.254/16 by an external source. This value will be overwritten using the values from the preferences
