@@ -21,6 +21,6 @@ public interface IInstanceEncoder {
 	 * @return A problem instance corresponding to a station packing problem induced by the input station set.
 	 * @throws Exception
 	 */
-	public IInstance getProblemInstance(Set<Station> aStations) throws Exception;
+	public IInstance getProblemInstance(Set<Station> aStations,Integer ... aRange) throws Exception;
 	
 }

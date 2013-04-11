@@ -41,12 +41,12 @@ public class CachedCNFLookup implements ICNFLookup{
 	}
 	
 	@Override
-	public boolean hasCNFfor(Set<Station> aStations) {
+	public boolean hasCNFfor(Set<Station> aStations, Integer ... aRange) {
 		return fStationsHashtoCNFName.containsKey(aStations);
 	}
 
 	@Override
-	public String getCNFfor(Set<Station> aStations) throws Exception{
+	public String getCNFfor(Set<Station> aStations, Integer ... aRange) throws Exception{
 		
 		if(!hasCNFfor(aStations))
 		{
@@ -75,13 +75,12 @@ public class CachedCNFLookup implements ICNFLookup{
 		}
 	}
 
-	@Override
-	public String getCNFNamefor(Set<Station> aStations) {
+	private String getCNFNamefor(Set<Station> aStations, Integer ... aRange) {
 		return hashforFilename(Station.hashStationSet(aStations))+".cnf";
 	}
 
 	@Override
-	public String addCNFfor(Set<Station> aStations) throws Exception {
+	public String addCNFfor(Set<Station> aStations, Integer ...aRange) throws Exception {
 		if(fStationsHashtoCNFName.containsKey(aStations)){
 			throw new Exception("Tried to update a CNF for a set of stations that is already present.");
 		}

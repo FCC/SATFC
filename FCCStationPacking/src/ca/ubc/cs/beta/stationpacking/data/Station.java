@@ -14,15 +14,26 @@ import java.util.Set;
 public class Station {
 	
 	private Integer fID;
+	private Integer fPop; //NA - added optional population field
 	
 	public Station(Integer aID)
 	{
 		fID = aID;
+		fPop = -1;
+	}
+	
+	public Station(Integer aID,Integer aPop){
+		fID = aID;
+		fPop = aPop;
 	}
 	
 	public int getID()
 	{
 		return fID;
+	}
+	
+	public int getPop(){
+		return fPop;
 	}
 	
 	@Override
