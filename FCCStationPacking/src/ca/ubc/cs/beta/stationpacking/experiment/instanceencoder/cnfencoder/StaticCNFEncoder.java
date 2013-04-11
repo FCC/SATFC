@@ -1,5 +1,7 @@
 package ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -189,5 +191,18 @@ public class StaticCNFEncoder implements ICNFEncoder{
 		}
 		
 	}
-
+	
+	//NA - writes CNF clause to a file
+	public boolean write(Set<Station> aStations,String aFileName){
+		try{
+			FileWriter writer = new FileWriter(aFileName);
+			writer.write(this.encode(aStations));
+			writer.close();
+			return true;
+		} catch(IOException e){
+			e.printStackTrace();
+			return false;
+		}
+	}
 }
+

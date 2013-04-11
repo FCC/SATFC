@@ -67,6 +67,7 @@ public class HRConstraintManager implements IConstraintManager{
 		
 	}
 	
+	
 	@Override
 	public Set<Constraint> getPairwiseConstraints() {
 		return fPairwiseConstraints;
@@ -75,6 +76,27 @@ public class HRConstraintManager implements IConstraintManager{
 	@Override
 	public Map<Station, Set<Integer>> getStationDomains() {
 		return fStationDomains;
+	}
+	
+	//NA - stubs to implement the new IConstraintManager interface
+	public Set<Station> getCOInterferingStations(Station aStation){
+		return null;
+	}
+	
+	public Set<Station> getADJplusInterferingStations(Station aStation){
+		return null;
+	}
+	
+	public Set<Station> getADJminusInterferingStations(Station aStation){
+		return null;
+	}
+	
+	public boolean matchesDomains(IConstraintManager aOtherManager){
+		return this.getStationDomains().equals(aOtherManager.getStationDomains());
+	}
+	
+	public boolean matchesConstraints(IConstraintManager aOtherManager){
+		return this.getPairwiseConstraints().equals(aOtherManager.getPairwiseConstraints());
 	}
 
 }

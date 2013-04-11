@@ -1,0 +1,5 @@
+station_id,current_channel,country,tower_id,population
+1,14,USA,21,200
+2,15,USA,22,300
+3,15,USA,23,250
+4,17,USA,24,290

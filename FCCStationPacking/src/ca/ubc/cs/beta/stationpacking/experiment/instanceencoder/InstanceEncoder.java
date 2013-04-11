@@ -46,42 +46,27 @@ public class InstanceEncoder implements IInstanceEncoder {
 	}
 	
 	@Override
-	public IInstance getProblemInstance(Set<Station> aStations) throws Exception {
-		
+	public IInstance getProblemInstance(Set<Station> aStations, Integer ... aRange) throws Exception {
 		Map<Set<Station>,String> aStationComponenttoCNF = new HashMap<Set<Station>,String>();
 		
 		log.info("Grouping stations.");
 		ArrayList<HashSet<Station>> aComponentGroups = fComponentGrouper.group(aStations);
 		log.info("There are {} groups.",aComponentGroups.size());
-	
-	
+
 		for(HashSet<Station> aStationComponent : aComponentGroups)
 		{
-
-			String aCNFFileName;
-			if(fCNFLookup.hasCNFfor(aStationComponent))
-			{
-				aCNFFileName = fCNFDirectory + File.separatorChar + fCNFLookup.getCNFfor(aStationComponent);
-			}
-			else
-			{
+			String aCNFFileName; //NA if we already have computed the result, just reuse it
+			if(fCNFLookup.hasCNFfor(aStationComponent, aRange)) {
+				aCNFFileName = fCNFDirectory + File.separatorChar + fCNFLookup.getCNFfor(aStationComponent,aRange);
+			} else {
 				log.info("Encoding stations and finding new CNF...");
 				String aCNF = fCNFEncoder.encode(aStationComponent);
-				
-				String aCNFName = fCNFLookup.addCNFfor(aStationComponent);
-				
+				String aCNFName = fCNFLookup.addCNFfor(aStationComponent,aRange);
 				aCNFFileName = fCNFDirectory + File.separatorChar + aCNFName;
-				
 				FileUtils.writeStringToFile(new File(aCNFFileName), aCNF);
-		
 			}
-			
 			aStationComponenttoCNF.put(aStationComponent, aCNFFileName);	
-		
 		}
-
-		
-		return new Instance(aStationComponenttoCNF);
+		return new Instance(aStationComponenttoCNF,aRange);
 	}
-
 }
