@@ -10,14 +10,18 @@ import ca.ubc.cs.beta.stationpacking.data.Station;
 
 
 public class Instance implements IInstance{
+	
+	private Integer fLow = 14,fHigh = 30; //NA - currently used only in toString() method
 
 	private HashMap<HashSet<Station>,String> fStationComponentstoCNF;
 	
-	public Instance(Map<Set<Station>,String> aStationComponentstoCNF)
+	//NA - think about structure of this; in particular, Instance, InstanceEncoder, CNFLookup; can it be simplifies?
+	public Instance(Map<Set<Station>,String> aStationComponentstoCNF, Integer ... aRange)
 	{
+		if(aRange.length>0){ fHigh = aRange[0]; }
+		if(aRange.length>1){ fLow = aRange[1]; }
 		fStationComponentstoCNF = new HashMap<HashSet<Station>,String>();
-		for(Set<Station> aStationComponent : aStationComponentstoCNF.keySet())
-		{
+		for(Set<Station> aStationComponent : aStationComponentstoCNF.keySet()) {
 			fStationComponentstoCNF.put(new HashSet<Station>(aStationComponent), aStationComponentstoCNF.get(aStationComponent));
 		}
 	}
@@ -35,7 +39,7 @@ public class Instance implements IInstance{
 		{
 			aStations.addAll(aStationComponent);
 		}
-		return Station.hashStationSet(aStations);
+		return fLow.toString()+"_"+fHigh+"_"+Station.hashStationSet(aStations);
 	}
 
 	@Override

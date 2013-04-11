@@ -13,4 +13,14 @@ public interface IConstraintManager {
 	
 	public Map<Station,Set<Integer>> getStationDomains();
 	
+	public Set<Station> getCOInterferingStations(Station aStation);
+	
+	public Set<Station> getADJplusInterferingStations(Station aStation);
+	
+	public Set<Station> getADJminusInterferingStations(Station aStation);
+	
+	public boolean matchesDomains(IConstraintManager aOtherManager);
+	
+	public boolean matchesConstraints(IConstraintManager aOtherManager);
+	
 }

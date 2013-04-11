@@ -20,4 +20,6 @@ public interface ICNFEncoder {
 	 */
 	public String encode(Set<Station> aStations);
 	
+	public boolean write(Set<Station> aStations,String aFileName);
+	
 }

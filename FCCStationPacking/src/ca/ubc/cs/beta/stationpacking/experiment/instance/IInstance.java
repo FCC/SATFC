@@ -9,6 +9,7 @@ import java.util.ArrayList;
  */
 public interface IInstance {
 	
+	
 	@Override
 	public String toString();
 	
