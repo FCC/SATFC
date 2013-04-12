@@ -26,7 +26,7 @@ public class Instance implements IInstance{
 		}
 	}
 	
-	@Override
+	/*
 	public ArrayList<String> getCNFs() {
 		return new ArrayList<String>(fStationComponentstoCNF.values());
 	}
@@ -41,6 +41,7 @@ public class Instance implements IInstance{
 		}
 		return fLow.toString()+"_"+fHigh+"_"+Station.hashStationSet(aStations);
 	}
+	*/
 
 	@Override
 	public int getNumberofStations() {
@@ -52,4 +53,39 @@ public class Instance implements IInstance{
 		return aNumberofStations;
 	}
 
+	
+	public boolean addStation(Station aStation){
+		try{
+			throw new Exception("Method addStation not implemented for class Instance.");
+		} catch(Exception e){
+			System.out.println(e.getMessage());
+		}
+		return false;
+	}
+	
+	public boolean removeStation(Station aStation){
+		try{
+			throw new Exception("Method removeStation not implemented for class Instance.");
+		} catch(Exception e){
+			System.out.println(e.getMessage());
+		}
+		return false;
+	}
+	
+	public void setChannelRange(Set<Integer> aChannels){
+		try{
+			throw new Exception("Method setChannelRange not implemented for class Instance.");
+		} catch(Exception e){
+			System.out.println(e.getMessage());
+		}
+	}
+	
+	public Set<Integer> getChannelRange(){
+		try{
+			throw new Exception("Method getChannelRange not implemented for class Instance.");
+		} catch(Exception e){
+			System.out.println(e.getMessage());
+		}
+		return null;
+	}
 }
