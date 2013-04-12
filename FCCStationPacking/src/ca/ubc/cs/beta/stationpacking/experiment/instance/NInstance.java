@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import ca.ubc.cs.beta.stationpacking.data.Station;
 import ca.ubc.cs.beta.stationpacking.execution.Main;
@@ -12,18 +14,18 @@ import ca.ubc.cs.beta.stationpacking.execution.Main;
 
 public class NInstance implements IInstance{
 	
-	private Integer fMinChannel,fMaxChannel;
-	private Set<Station> fStations; 
+	private SortedSet<Integer> fChannels = new TreeSet<Integer>();
+	private SortedSet<Station> fStations = new TreeSet<Station>(); 
 	
 	//NA - think about structure of this; in particular, Instance, InstanceEncoder, CNFLookup; can it be simplifies?
-	public NInstance(Set<Station> aStations, Integer ... aChannelRange){
-		setChannelRange(aChannelRange);
-		fStations = aStations;
+	public NInstance(Set<Station> aStations, Set<Integer> aChannels){
+		for(Integer aChannel : aChannels) fChannels.add(aChannel);
+		for(Station aStation : aStations) fStations.add(aStation);
 	}
 	
 	@Override
 	public String toString() {
-		return fMinChannel.toString()+"_"+fMaxChannel+"_"+Station.hashStationSet(fStations);
+		return fChannels.toString()+"_"+Station.hashStationSet(fStations);
 	}
 
 	@Override
@@ -37,35 +39,20 @@ public class NInstance implements IInstance{
 	
 	public boolean removeStation(Station aStation){
 		return fStations.remove(aStation);
-		
 	}
 	
 	public Set<Station> getStations(){
 		return fStations;
 	}
 	
-	public void setChannelRange(Integer ...aChannelRange){
-		if(aChannelRange.length>1){ 
-			fMinChannel = aChannelRange[1]; 
-			fMaxChannel = aChannelRange[0];
-		} else if(aChannelRange.length==1){ 
-			fMaxChannel = aChannelRange[0]; 
-			fMinChannel = Main.defaultMinChannel;
-		} else {
-			fMinChannel = Main.defaultMinChannel;
-			fMaxChannel = Main.defaultMaxChannel;
-		}
+	public void setChannelRange(Set<Integer> aChannels){
+		fChannels.clear();
+		for(Integer aChannel : aChannels) fChannels.add(aChannel);
 	}
 	
-	public Integer[] getChannelRange(){
-		Integer[] aRange = new Integer[2];
-		aRange[0] = fMaxChannel;
-		aRange[1] = fMinChannel;
-		return aRange;
+	public Set<Integer> getChannelRange(){
+		return fChannels;
 	}
 
-	public Set<String> getCNFs(){
-		return new HashSet<String>();
-	}
-	
+
 }
