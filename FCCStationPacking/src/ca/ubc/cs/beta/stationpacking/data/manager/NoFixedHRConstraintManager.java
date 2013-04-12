@@ -106,7 +106,12 @@ public class NoFixedHRConstraintManager implements IConstraintManager{
 	
 	
 	@Override
-	public Set<Constraint> getPairwiseConstraints() {
+	public Set<Constraint> getPairwiseConstraints(Set<Integer> aChannels) {
+		try{
+			if(!aChannels.isEmpty()) throw new Exception("Method getPairwiseConstraints only partially implemented for class NoFixedHRConstraintManager.");
+		} catch(Exception e){
+			System.out.println(e.getMessage());
+		}
 		return fPairwiseConstraints;
 	}
 
@@ -117,17 +122,33 @@ public class NoFixedHRConstraintManager implements IConstraintManager{
 	
 	//NA - stubs to implement the new IConstraintManager interface
 	public Set<Station> getCOInterferingStations(Station aStation){
+		try{
+			throw new Exception("Method getCOInterferingStations not implemented for class NoFixedHRConstraintManager.");
+		} catch(Exception e){
+			System.out.println(e.getMessage());
+		}
 		return null;
 	}
 	
 	public Set<Station> getADJplusInterferingStations(Station aStation){
+		try{
+			throw new Exception("Method getADJplusInterferingStations not implemented for class NoFixedHRConstraintManager.");
+		} catch(Exception e){
+			System.out.println(e.getMessage());
+		}
 		return null;
 	}
 	
 	public Set<Station> getADJminusInterferingStations(Station aStation){
+		try{
+			throw new Exception("Method getADJminusInterferingStations not implemented for class NoFixedHRConstraintManager.");
+		} catch(Exception e){
+			System.out.println(e.getMessage());
+		}
 		return null;
 	}
 	
+	/*
 	public boolean matchesDomains(IConstraintManager aOtherManager){
 		return this.getStationDomains().equals(aOtherManager.getStationDomains());
 	}
@@ -135,4 +156,5 @@ public class NoFixedHRConstraintManager implements IConstraintManager{
 	public boolean matchesConstraints(IConstraintManager aOtherManager){
 		return this.getPairwiseConstraints().equals(aOtherManager.getPairwiseConstraints());
 	}
+	*/
 }
