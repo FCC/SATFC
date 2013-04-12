@@ -126,4 +126,4 @@ else:
     output_runtime = str(time.time()-clock)
 
 print 'Result for ParamILS: '+output_solved+', '+output_runtime+', '+output_runlength+', '+output_quality+', '+output_seed
- 
+
