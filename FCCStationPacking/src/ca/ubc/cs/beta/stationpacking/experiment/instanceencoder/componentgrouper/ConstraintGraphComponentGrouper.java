@@ -64,7 +64,7 @@ public class ConstraintGraphComponentGrouper implements IComponentGrouper{
 	}
 	
 	@Override
-	public ArrayList<HashSet<Station>> group(Set<Station> aStations) {
+	public HashSet<Set<Station>> group(Set<Station> aStations) {
 		
 		ArrayList<HashSet<Station>> aGroups = new ArrayList<HashSet<Station>>(fComponents.size());
 		for(int i=0;i<fComponents.size();i++)
@@ -82,16 +82,16 @@ public class ConstraintGraphComponentGrouper implements IComponentGrouper{
 				}
 			}
 		}
+		HashSet<Set<Station>> aStationSet = new HashSet<Set<Station>>();
 		Iterator<HashSet<Station>> aGroupsIterator = aGroups.iterator();
-		while(aGroupsIterator.hasNext())
-		{
-			if(aGroupsIterator.next().isEmpty())
-			{
+		while(aGroupsIterator.hasNext()){
+			if((aStations = aGroupsIterator.next()).isEmpty()){
 				aGroupsIterator.remove();
+			} else {
+				aStationSet.add(aStations);
 			}
 		}
-	
-		return aGroups;
+		return aStationSet;
 		
 	}
 	

@@ -50,10 +50,10 @@ public class InstanceEncoder implements IInstanceEncoder {
 		Map<Set<Station>,String> aStationComponenttoCNF = new HashMap<Set<Station>,String>();
 		
 		log.info("Grouping stations.");
-		ArrayList<HashSet<Station>> aComponentGroups = fComponentGrouper.group(aStations);
+		Set<Set<Station>> aComponentGroups = fComponentGrouper.group(aStations);
 		log.info("There are {} groups.",aComponentGroups.size());
 
-		for(HashSet<Station> aStationComponent : aComponentGroups)
+		for(Set<Station> aStationComponent : aComponentGroups)
 		{
 			String aCNFFileName; //NA if we already have computed the result, just reuse it
 			if(fCNFLookup.hasCNFfor(aStationComponent, aRange)) {
