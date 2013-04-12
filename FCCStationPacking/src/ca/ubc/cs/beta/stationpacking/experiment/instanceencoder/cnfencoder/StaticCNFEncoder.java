@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.util.Pair;
@@ -15,6 +16,8 @@ import org.apache.commons.math3.util.Pair;
 import ca.ubc.cs.beta.stationpacking.data.Constraint;
 import ca.ubc.cs.beta.stationpacking.data.Station;
 import ca.ubc.cs.beta.stationpacking.data.StationChannelPair;
+import ca.ubc.cs.beta.stationpacking.data.manager.IConstraintManager;
+import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
 
 
 /**
@@ -114,8 +117,9 @@ public class StaticCNFEncoder implements ICNFEncoder{
 	}
 	
 	@Override
-	public String encode(Set<Station> aStations) {
-		
+	public String encode(IInstance aInstance, IConstraintManager aConstraintManager) {
+		Set<Integer> aChannels = aInstance.getChannelRange();
+		Set<Station> aStations = aInstance.getStations();
 		//Check if there is a degenerate station, i.e. station with empty channel domain.
 		for(Station aStation : aStations)
 		{
@@ -192,17 +196,16 @@ public class StaticCNFEncoder implements ICNFEncoder{
 		
 	}
 	
-	//NA - writes CNF clause to a file
-	public boolean write(Set<Station> aStations,String aFileName){
+	public Map<Station,Integer> decode(IInstance aInstance, String aCNFAssignment){
 		try{
-			FileWriter writer = new FileWriter(aFileName);
-			writer.write(this.encode(aStations));
-			writer.close();
-			return true;
-		} catch(IOException e){
+			throw new Exception("Method decode not implemented for class StaticCNFEncoder.");
+		} catch(Exception e){
+			System.out.println(e.getMessage());
 			e.printStackTrace();
-			return false;
 		}
+		return new HashMap<Station,Integer>();
 	}
+	
+
 }
 
