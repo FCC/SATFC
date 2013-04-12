@@ -104,9 +104,9 @@ public class Main {
 		IConstraintManager aConstraintManager = new NoFixedHRConstraintManager(s2, s3 ,aStationManager.getFixedStations());
 		
 		log.info("Encoding data...");
-		ICNFEncoder aCNFEncoder = new StaticCNFEncoder(aConstraintManager.getStationDomains(), aConstraintManager.getPairwiseConstraints());
+		ICNFEncoder aCNFEncoder = new StaticCNFEncoder(aConstraintManager.getStationDomains(), aConstraintManager.getPairwiseConstraints(new HashSet<Integer>()));
 		log.info("Making station groups...");
-		IComponentGrouper aComponentGrouper = new ConstraintGraphComponentGrouper(aStationManager.getUnfixedStations(),aConstraintManager.getPairwiseConstraints());
+		IComponentGrouper aComponentGrouper = new ConstraintGraphComponentGrouper(aStationManager.getUnfixedStations(),aConstraintManager.getPairwiseConstraints(new HashSet<Integer>()));
 		log.info("Creating cnf lookup...");
  
 		//String aCNFDir = "/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/CNFs";
