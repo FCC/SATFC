@@ -47,11 +47,14 @@ public class Main {
         */
 		
 		//String s1 = "/Users/narnosti/Documents/fcc-station-packing/Output/toy_stations.txt";
+        String s1 = "/Users/narnosti/Documents/fcc-station-packing/Output/stations.csv";
+        String s2 = "/Users/narnosti/Documents/fcc-station-packing/Input/AllowedChannels.csv";
+        String s3 = "/Users/narnosti/Documents/fcc-station-packing/Output/PairwiseConstraints.csv";
 		//String dacDomainsFile = "/Users/narnosti/Documents/fcc-station-packing/Output/toy_domains.txt";
 		//String dacConstraintFile = "/Users/narnosti/Documents/fcc-station-packing/Output/toy_constraints.txt";
 		//String pairwiseConstraintsFile = "/Users/narnosti/Documents/fcc-station-packing/Output/Alex_pairwise_constraints.txt";
 
-		
+		/*
         String stationsFile = "/Users/narnosti/Documents/fcc-station-packing/Output/stations.csv";
         String channelsFile = "/Users/narnosti/Documents/fcc-station-packing/Input/AllowedChannels.csv";
         String constraintsFile = "/Users/narnosti/Documents/fcc-station-packing/Output/PairwiseConstraints.csv";
@@ -80,7 +83,7 @@ public class Main {
 		System.out.println(dCM.matchesDomains(dCM3));
 		System.out.println(dCM.matchesConstraints(dCM4));
 		System.out.println(dCM.matchesDomains(dCM4));
-
+		 */
 		//dCM2.writePairwiseConstraints(pairwiseConstraintsFile);
 		/*
 
@@ -92,7 +95,7 @@ public class Main {
 
         
 
-        /*
+        
         
 		Random aRandomizer = new Random(2);
 
@@ -138,7 +141,7 @@ public class Main {
 		double aCutoff = 1800;
 		
 		aInstanceGeneration.run(aStartingStations, aStationIterator,aCutoff);	
-		*/
+		
 		
 	}
 
