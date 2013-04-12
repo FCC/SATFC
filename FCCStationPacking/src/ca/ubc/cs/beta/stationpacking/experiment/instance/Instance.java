@@ -52,6 +52,14 @@ public class Instance implements IInstance{
 		}
 		return aNumberofStations;
 	}
+	
+	public Set<Station> getStations(){
+		Set<Station> aStationSet = new HashSet<Station>();
+		for(Set<Station> aStations : fStationComponentstoCNF.keySet()){
+			aStationSet.addAll(aStations);
+		}
+		return aStationSet;
+	}
 
 	
 	public boolean addStation(Station aStation){
