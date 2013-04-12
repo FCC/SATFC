@@ -26,6 +26,8 @@ public interface IInstance {
 	 */
 	public int getNumberofStations();
 	
+	public Set<Station> getStations();
+	
 	public boolean addStation(Station aStation);
 	
 	public boolean removeStation(Station aStation);
