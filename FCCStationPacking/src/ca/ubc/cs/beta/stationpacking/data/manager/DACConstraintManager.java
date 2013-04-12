@@ -43,25 +43,30 @@ public class DACConstraintManager implements IConstraintManager{
 		 *If two stations have ANY adjacent-channel constraints, add them to corresponding fADJ constraint
 		 *Could insert code to check whether the constraint set actually has one constraint for EACH channel
 		 */
-		for(Constraint aConstraint : aPairwiseConstraints){
-			StationChannelPair aPair1 = aConstraint.getProtectedPair();
-			Station aStation1 = aPair1.getStation();
-			StationChannelPair aPair2 = aConstraint.getInterferingPair();
-			Station aStation2 = aPair2.getStation();
-			if(fStations.get(aStation1.getID())!=null && fStations.get(aStation2.getID())!=null){
-				Integer aDifference = aPair1.getChannel()-aPair2.getChannel();
-				if(aDifference == 0){
-					fCOConstraints.get(aStation1).add(aStation2);
-					fCOConstraints.get(aStation2).add(aStation1);
-				} else if(aDifference == -1){
-					fADJplusConstraints.get(aStation1).add(aStation2);
-					fADJminusConstraints.get(aStation2).add(aStation1);
-				} else if(aDifference == 1){
-					fADJplusConstraints.get(aStation2).add(aStation1);
-					fADJminusConstraints.get(aStation1).add(aStation2);
-				} else System.out.println("Constraint involves a channel difference of "+ aDifference);
+		try{
+			for(Constraint aConstraint : aPairwiseConstraints){
+				StationChannelPair aPair1 = aConstraint.getProtectedPair();
+				Station aStation1 = aPair1.getStation();
+				StationChannelPair aPair2 = aConstraint.getInterferingPair();
+				Station aStation2 = aPair2.getStation();
+				if(fStations.get(aStation1.getID())!=null && fStations.get(aStation2.getID())!=null){
+					Integer aDifference = aPair1.getChannel()-aPair2.getChannel();
+					if(aDifference == 0){
+						fCOConstraints.get(aStation1).add(aStation2);
+						fCOConstraints.get(aStation2).add(aStation1);
+					} else if(aDifference == -1){
+						fADJplusConstraints.get(aStation1).add(aStation2);
+						fADJminusConstraints.get(aStation2).add(aStation1);
+					} else if(aDifference == 1){
+						fADJplusConstraints.get(aStation2).add(aStation1);
+						fADJminusConstraints.get(aStation1).add(aStation2);
+					} else throw new Exception("Constraint involves a channel difference of "+ aDifference);
 
-			} else System.out.println("One of stations "+aStation1.getID()+" and "+aStation2.getID()+" are not in fStations.");
+				} else throw new Exception("One of stations "+aStation1.getID()+" and "+aStation2.getID()+" are not in fStations.");
+			}
+		}	catch(Exception e) {
+			System.out.println("Exception in DAC Constructor: "+e.getMessage());
+			e.printStackTrace();
 		}
 	}
 	
@@ -108,8 +113,9 @@ public class DACConstraintManager implements IConstraintManager{
 				if(aStation != null){
 					Integer aChannelLower = Integer.valueOf(removeSpaces(aLine[1]));
 					Integer aChannelUpper = Integer.valueOf(removeSpaces(aLine[2]));
-					if(aChannelLower!=fminChannel || aChannelUpper!=fmaxChannel) 
-						System.out.println("Constraint other than "+fminChannel+"-"+fmaxChannel+" found for Station "+aID+".");
+					if(aChannelLower!=fminChannel || aChannelUpper!=fmaxChannel){ 
+						throw new Exception("Constraint other than "+fminChannel+"-"+fmaxChannel+" found for Station "+aID+".");
+					}
 					if(removeSpaces(aLine[0]).equals("CO")){ //NA - handle CO constraints
 						for(int i = 4; i < aLine.length; i++){
 							aString = removeSpaces(aLine[i]);
@@ -118,7 +124,7 @@ public class DACConstraintManager implements IConstraintManager{
 								if(fStations.containsKey(aID2)){ //NA - CO constraints are symmetric
 									fCOConstraints.get(aStation).add(fStations.get(aID2)); 
 									fCOConstraints.get(fStations.get(aID2)).add(aStation);
-								} else System.out.println("Station "+aID2+" not fount in fStations.");
+								} else throw new Exception("Station "+aID2+" not fount in fStations.");
 							}
 						}
 					} else if(removeSpaces(aLine[0]).equals("ADJ+1")){ //NA - handle ADJ constraints
@@ -131,15 +137,15 @@ public class DACConstraintManager implements IConstraintManager{
 									//fADJminusConstraints.get(fStations.get(aID2)).add(aStation);
 									fADJminusConstraints.get(aStation).add(fStations.get(aID2)); 
 									fADJplusConstraints.get(fStations.get(aID2)).add(aStation);
-								} else System.out.println("Station "+aID2+" not fount in fStations.");
+								} else throw new Exception("Station "+aID2+" not fount in fStations.");
 							}
 						}
-					} else System.out.println("ERROR reading constraint file: constraint type could not be determined.");	
-				} else System.out.println("Station "+aID+" not found in fStations.");
+					} else throw new Exception("ERROR reading constraint file: constraint type could not be determined.");	
+				} else throw new Exception("Station "+aID+" not found in fStations.");
 			}
 			aReader.close();
-		} catch(IOException e){
-			System.out.println("IOException in DACConstraintManager constructor.");
+		} catch(Exception e){
+			System.out.println("Exception in DACConstraintManager constructor: "+e.getMessage());
 			e.printStackTrace();
 		}
 
@@ -162,19 +168,25 @@ public class DACConstraintManager implements IConstraintManager{
 		return fStationDomains;
 	}
 	
-	public boolean writeConstraints(String fileName){
+	public boolean writeConstraints(String fileName, Set<Integer> aChannels){
 		try{
+			Integer aMinChannel = Integer.MAX_VALUE;
+			Integer aMaxChannel = 0;
+			for(Integer aChannel : aChannels){
+				if(aChannel < aMinChannel) aMinChannel = aChannel;
+				if(aChannel > aMaxChannel) aMaxChannel = aChannel;
+			}
 			BufferedWriter writer = new BufferedWriter(new FileWriter(fileName));
 			Station aStation;
 			for(Integer aID : fStations.keySet()){
-				writer.write("CO,"+fminChannel+","+fmaxChannel+","+aID+",");
+				writer.write("CO,"+aMinChannel+","+aMaxChannel+","+aID+",");
 				aStation = fStations.get(aID);
 				for(Station aStation2 : fCOConstraints.get(aStation)){
 					Integer aID2 = aStation2.getID();
 					if(aID<aID2) writer.write(aID2+",");
 				}
 				writer.write("\n");
-				writer.write("ADJ+1,"+fminChannel+","+fmaxChannel+","+aID+",");
+				writer.write("ADJ+1,"+aMinChannel+","+aMaxChannel+","+aID+",");
 				for(Station aStation2 : fADJminusConstraints.get(aStation)){
 					writer.write(aStation2.getID()+",");
 				}	
@@ -198,11 +210,12 @@ public class DACConstraintManager implements IConstraintManager{
 					String aChannelList = aChannels.toString();
 					aChannelList = aChannelList.substring(aChannelList.indexOf('[')+1,aChannelList.indexOf(']'));
 					writer.write("DOMAIN,"+aID+","+aChannelList+",\n");
-				} else System.out.println("fStationDomains does not have entry for "+aID);
+				} else throw new Exception("fStationDomains does not have entry for "+aID);
 			}
 			writer.close();
 			return true;
-		} catch(IOException e) {
+		} catch(Exception e) {
+			System.out.println("Exception in writeDomains: "+e.getMessage());
 			e.printStackTrace();
 			return false;
 		}
@@ -228,22 +241,22 @@ public class DACConstraintManager implements IConstraintManager{
 		}
 	}
 
-	public Set<Constraint> getPairwiseConstraints() {
+	public Set<Constraint> getPairwiseConstraints(Set<Integer> aChannels) {
 		Set<Constraint> pairwiseConstraints = new HashSet<Constraint>();
 		Station aStation;
 		for(Integer aID : fStations.keySet()){
 			aStation = fStations.get(aID);
 			for(Station aStation2 : fCOConstraints.get(aStation)){
 				if(aID<aStation2.getID()) 
-					for(int channel = fminChannel; channel<=fmaxChannel; channel++){
-						pairwiseConstraints.add(new Constraint(	new StationChannelPair(aStation,channel),
-																new StationChannelPair(aStation2,channel)));
+					for(Integer aChannel : aChannels){
+						pairwiseConstraints.add(new Constraint(	new StationChannelPair(aStation,aChannel),
+																new StationChannelPair(aStation2,aChannel)));
 					}
 			}
 			for(Station aStation2 : fADJplusConstraints.get(aStation)){
-				for(int channel = fminChannel; channel<fmaxChannel; channel++){
-					pairwiseConstraints.add(new Constraint(	new StationChannelPair(aStation,channel),
-															new StationChannelPair(aStation2,channel+1)));
+				for(Integer aChannel : aChannels){
+					pairwiseConstraints.add(new Constraint(	new StationChannelPair(aStation,aChannel),
+															new StationChannelPair(aStation2,aChannel+1)));
 				}	
 			}
 			
@@ -251,6 +264,7 @@ public class DACConstraintManager implements IConstraintManager{
 		return(pairwiseConstraints);
 	}
 	
+	/*
 	//Determines whether the pairwise constraints of two ConstraintManagers are identical
 	public boolean matchesConstraints(IConstraintManager aOtherManager){
 		//return this.getPairwiseConstraints().equals(aOtherManager.getPairwiseConstraints());
@@ -279,6 +293,7 @@ public class DACConstraintManager implements IConstraintManager{
 			return false;
 		}
 	}
+	*/
 	
 
 	
