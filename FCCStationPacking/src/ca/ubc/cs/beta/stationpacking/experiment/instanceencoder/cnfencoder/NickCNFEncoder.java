@@ -1,133 +1,121 @@
 package ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.TreeSet;
 import java.io.*;
 
 //import ca.ubc.cs.beta.stationpacking.data.Constraint;
 import ca.ubc.cs.beta.stationpacking.data.Station;
+import ca.ubc.cs.beta.stationpacking.data.manager.IConstraintManager;
+import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.ICNFEncoder;
 
 
 public class NickCNFEncoder implements ICNFEncoder {
 	
-	/*NA - currently all code is in constructor. Should change to put code in encode, write, but I 
-	 *haven't dedicated much time to thinking about this.
-	 */
-	
-	private Map<Station,Integer> fInternalID = new HashMap<Station,Integer>();
-	private final int fmin_Channel = 14,fmax_Channel =30;
-	private final String tempFileName = "/Users/narnosti/Documents/fcc-station-packing/Output/CNF_temp.txt";
-	private int fnum_Clauses = 0;
+	String fUNSAT_CNF = "p cnf 1 1\n 1 -1 0\n";
 
-	public NickCNFEncoder(	Map<Station,Set<Integer>> aStationDomains, 
-							Map<Station,Set<Station>> aCOConstraints,
-							Map<Station,Set<Station>> aADJplusConstraints)
-	{
-
-		String writeFileName = "/Users/narnosti/Documents/fcc-station-packing/Output/CNF_file.txt";
-		
-		try{
-			BufferedWriter writer = new BufferedWriter(new FileWriter(tempFileName));
-		
-			//NA - could try to run connected components (i.e. use a component grouper)
-
-			//NA - Generate internal ID numbers for variable assignment
-			int aID = 1;
-			HashSet<Integer> aEmpty = new HashSet<Integer>();
-			HashSet<Integer> aNegatedVars = new HashSet<Integer>();
-			for(Station aStation : aStationDomains.keySet()){
-				fInternalID.put(aStation, aID++);					
-				//NA - write BASE clauses (at least one channel, at most one channel per station)
-				//NA - could try to be clever and only look at pairs in domain of aStation
-				for(int i = fmin_Channel; i < fmax_Channel; i++){
-					for(int j = i+1; j <= fmax_Channel; j++){
-						aNegatedVars.clear(); 
-						aNegatedVars.add(get_variable(aStation,i));
-						aNegatedVars.add(get_variable(aStation,j));
-						writeClause(aEmpty,aNegatedVars,writer);
-					}
-				}
-				//NA - write DOMAIN constraints to file
-				writeClause(aStationDomains.get(aStation),aEmpty,writer);
-			}
-		
-			
-			//NA - write CO constraints
-			for(Station aStation : aCOConstraints.keySet()){
-				Set<Station> aInterferingStations = aCOConstraints.get(aStation);
-				for(Station aStation2 : aInterferingStations){
-					//NA - avoid writing constraints twice
-					if(aStation.getID()<aStation2.getID()){ 
-						for(int i = fmin_Channel; i<=fmax_Channel; i++){
-							aNegatedVars.clear();
-							aNegatedVars.add(get_variable(aStation,i));
-							aNegatedVars.add(get_variable(aStation2,i));
-							writeClause(aEmpty,aNegatedVars,writer);
-						}
-					}
-				}
-			}
-		
-			//NA - write ADJ constraints
-			for(Station aStation : aADJplusConstraints.keySet()){
-				Set<Station> aInterferingStations = aADJplusConstraints.get(aStation);
-				for(Station aStation2 : aInterferingStations){
-					//NA - TODO check ADJ constraint direction
-					for(int i = fmin_Channel; i<fmax_Channel; i++){ 
-						aNegatedVars.clear();
-						aNegatedVars.add(get_variable(aStation,i));
-						aNegatedVars.add(get_variable(aStation2,i+1));
-						writeClause(aEmpty,aNegatedVars,writer);
-					}
-				}	
-			}
-			
-			writer.close();
-			writer = new BufferedWriter(new FileWriter(writeFileName));
-			int numVars = (fmax_Channel-fmin_Channel+1)*fInternalID.keySet().size();
-			writer.write("p cnf "+numVars+" "+fnum_Clauses+"\n");
-			BufferedReader reader = new BufferedReader(new FileReader(tempFileName));
-			while(reader.ready()){
-				writer.write(reader.readLine()+"\n");
-			}
-			writer.close();
-			reader.close();
-		} catch(IOException e){
-			System.out.println("IOException in NickCNFEncoder\n"+e);
-		}
-	}
-	
-	//NA - Currently assigns each station a variable for each channel fmax:fmin
-	private Integer get_variable(Station aStation, int aChannel){
-		return((fInternalID.get(aStation)-1)*(fmax_Channel-fmin_Channel+1)+aChannel-fmin_Channel+1);
-	}
-	
-	//NA - Write a clause using aWriter
-	private boolean writeClause(Set<Integer> aVars,Set<Integer> aNegatedVars, BufferedWriter aWriter){
-		try{
-			for(Integer aVar : aVars){ aWriter.write(aVar+" "); }
-			for(Integer aVar : aNegatedVars){ aWriter.write("-"+aVar+" "); }
-			aWriter.write("0\n");
-			fnum_Clauses++;
-			return(true);
-		} catch(IOException e) {
-			return(false);
-		}
-		
-	}
-	
 	@Override
-	public String encode(Set<Station> aStations) {
-		// TODO Auto-generated method stub
-		return null;
+	public String encode(IInstance aInstance, IConstraintManager aConstraintManager) {
+		Set<Integer> aChannels = aInstance.getChannelRange();
+		Set<Station> aStations = aInstance.getStations();
+		int numClauses = 0;
+		int numChannels = aChannels.size();
+		StringBuilder aBuilder = new StringBuilder();
+		//Sort the stations
+		TreeSet<Station> Stations = new TreeSet<Station>();
+		for(Station aStation : aStations) Stations.add(aStation);
+		//Sort the channels
+		TreeSet<Integer> Channels = new TreeSet<Integer>();
+		for(Integer aChannel : aChannels) Channels.add(aChannel);
+		//For each station, add corresponding constraints to string
+		Set<Station> aInterferingStations;
+		final Set<Integer> aEmpty = new HashSet<Integer>();
+		Set<Integer> aNegatedVars = new HashSet<Integer>();
+		for(Station aStation : Stations){
+			//Write BASE clauses corresponding to the station domain
+			for(int j = 0; j < numChannels; j++){
+				for(int k = j+1; k < numChannels; k++){
+					aNegatedVars.clear();
+					aNegatedVars.add(get_variable(Stations.headSet(aStation).size(),j,numChannels));
+					aNegatedVars.add(get_variable(Stations.headSet(aStation).size(),k,numChannels));
+					numClauses += writeClause(aEmpty, aNegatedVars,aBuilder);
+				}
+			}
+			//get domain of aStation, write corresponding base clause
+			Set<Integer> aVars = new HashSet<Integer>();
+			Set<Integer> aChannelDomain = aStation.getDomain();
+			for(Integer aChannel : aChannelDomain){
+				if(Channels.contains(aChannel)) {
+					aVars.add(get_variable(Stations.headSet(aStation).size(),Channels.headSet(aChannel).size(),numChannels));
+				}
+				if(aVars.isEmpty()) return fUNSAT_CNF;
+				else numClauses += writeClause(aVars,aEmpty,aBuilder);
+			}
+			//get COInterferingStations, write a clause for each one in Stations (don't duplicate)
+			aInterferingStations = aConstraintManager.getCOInterferingStations(aStation); //NA
+			for(Station aStation2 : aInterferingStations){
+				if(aStation.getID()<aStation2.getID() && Stations.contains(aStation2)){
+					for(int j = 0; j < numChannels; j++){
+						aNegatedVars.clear();
+						aNegatedVars.add(get_variable(Stations.headSet(aStation).size(),j,numChannels));
+						aNegatedVars.add(get_variable(Stations.headSet(aStation2).size(),j,numChannels));
+						numClauses += writeClause(aEmpty, aNegatedVars,aBuilder);
+					}
+				}
+			}
+			//get ADJplusInterferingStations, write a clause for each one in Stations
+			aInterferingStations = aConstraintManager.getADJplusInterferingStations(aStation); //NA
+			for(Station aStation2 : aInterferingStations){
+				if(Stations.contains(aStation2)){
+					for(int j = 0; j < numChannels-1; j++){
+						aNegatedVars.clear();
+						aNegatedVars.add(get_variable(Stations.headSet(aStation).size(),j,numChannels));
+						aNegatedVars.add(get_variable(Stations.headSet(aStation2).size(),j+1,numChannels));
+						numClauses += writeClause(aEmpty, aNegatedVars,aBuilder);
+					}
+				}
+			}	
+		}
+		return "p cnf "+Stations.size()*Channels.size()+" "+numClauses+"\n"+aBuilder.toString();
 	}
 	
-	public boolean write(Set<Station> aStations, String aFileName){
-		// TODO Auto-generated method stub
-		return true;
+	//NA - Currently assigns each station a variable for each channel
+	private Integer get_variable(int aStationNumber, int aChannelNumber, int numChannels){
+		return aStationNumber*numChannels+aChannelNumber+1;
 	}
+	
+	private int writeClause(Set<Integer> aVars, Set<Integer> aNegatedVars, StringBuilder aBuilder){
+		for(Integer aVar : aVars){ aBuilder.append(aVar+" "); }
+		for(Integer aVar : aNegatedVars){ aBuilder.append("-"+aVar+" "); }
+		aBuilder.append("0\n");
+		return 1;
+	}
+	
+	public Map<Station,Integer> decode(IInstance aInstance, String aCNFAssignment){
+		Set<Integer> aChannels = aInstance.getChannelRange();
+		Set<Station> aStations = aInstance.getStations();
+		int numChannels = aChannels.size();
+		//Sort the stations
+		TreeSet<Station> Stations = new TreeSet<Station>();
+		for(Station aStation : aStations) Stations.add(aStation);
+		//Sort the channels
+		TreeSet<Integer> Channels = new TreeSet<Integer>();
+		for(Integer aChannel : aChannels) Channels.add(aChannel);
+		
+		//Figure out variable assignment and ensure that no constraints are violated
+		try{
+			throw new Exception("Method decode not implemented for class NickCNFEncoder.");
+		} catch(Exception e){
+			System.out.println(e.getMessage());
+			e.printStackTrace();
+		}
+		return new HashMap<Station,Integer>();
+	}
+
 
 }
