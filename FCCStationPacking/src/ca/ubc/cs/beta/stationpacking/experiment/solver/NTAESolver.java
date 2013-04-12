@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import ca.ubc.cs.beta.aclib.algorithmrun.AlgorithmRun;
 import ca.ubc.cs.beta.aclib.algorithmrun.RunResult;
@@ -118,7 +119,7 @@ public class NTAESolver implements ISolver{
 		//Create runs for TAE.
 		List<RunConfig> aRunConfigList = new ArrayList<RunConfig>();
 		//NA - group the Instance stations
-		ArrayList<HashSet<Station>> aInstanceGroups = fGrouper.group(aInstance.getStations());
+		Set<Set<Station>> aInstanceGroups = fGrouper.group(aInstance.getStations());
 		//NA get a set of strings from these instances (use CNFLookup and aInstance.getChannelRange())
 		//When do we check to see if we've already solved each instance?
 		for(String aCNFFilename : aInstance.getCNFs())
