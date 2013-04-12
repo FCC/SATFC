@@ -33,7 +33,7 @@ public class NInstanceGeneration {
 		fExperimentReporter = aExperimentReporter;
 	}
 	
-	public void run(Set<Station> aStartingStations, Iterator<Station> aStationIterator, double aCutoff,Integer ... aChannelRange){
+	public void run(Set<Station> aStartingStations, Iterator<Station> aStationIterator, double aCutoff,Set<Integer> aChannelRange){
 		//HashSet<Station> aCurrentStations = new HashSet<Station>(aStartingStations);
 		IInstance aInstance = new NInstance(aStartingStations,aChannelRange);
 		while(aStationIterator.hasNext()) {
