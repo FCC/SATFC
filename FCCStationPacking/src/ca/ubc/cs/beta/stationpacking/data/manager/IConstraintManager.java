@@ -9,7 +9,7 @@ import ca.ubc.cs.beta.stationpacking.data.Station;
 
 public interface IConstraintManager {
 	
-	public Set<Constraint> getPairwiseConstraints();
+	public Set<Constraint> getPairwiseConstraints(Set<Integer> aChannels);
 	
 	public Map<Station,Set<Integer>> getStationDomains();
 	
@@ -19,8 +19,8 @@ public interface IConstraintManager {
 	
 	public Set<Station> getADJminusInterferingStations(Station aStation);
 	
-	public boolean matchesDomains(IConstraintManager aOtherManager);
+	//public boolean matchesDomains(IConstraintManager aOtherManager);
 	
-	public boolean matchesConstraints(IConstraintManager aOtherManager);
+	//public boolean matchesConstraints(IConstraintManager aOtherManager);
 	
 }
