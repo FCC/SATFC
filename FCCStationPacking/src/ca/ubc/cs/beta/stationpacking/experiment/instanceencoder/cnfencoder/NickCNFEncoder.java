@@ -69,14 +69,16 @@ public class NickCNFEncoder implements ICNFEncoder {
 				}
 			}
 			//get ADJplusInterferingStations, write a clause for each one in Stations
-			aInterferingStations = aConstraintManager.getADJplusInterferingStations(aStation); //NA
+			aInterferingStations = aConstraintManager.getADJplusInterferingStations(aStation);
 			for(Station aStation2 : aInterferingStations){
 				if(Stations.contains(aStation2)){
-					for(int j = 0; j < numChannels-1; j++){
-						aNegatedVars.clear();
-						aNegatedVars.add(get_variable(Stations.headSet(aStation).size(),j,numChannels));
-						aNegatedVars.add(get_variable(Stations.headSet(aStation2).size(),j+1,numChannels));
-						numClauses += writeClause(aEmpty, aNegatedVars,aBuilder);
+					for(Integer aChannel : Channels){
+						if(Channels.higher(aChannel)==aChannel+1){
+							aNegatedVars.clear();
+							aNegatedVars.add(get_variable(Stations.headSet(aStation).size(),Channels.headSet(aChannel).size(),numChannels));
+							aNegatedVars.add(get_variable(Stations.headSet(aStation2).size(),Channels.headSet(aChannel).size()+1,numChannels));
+							numClauses += writeClause(aEmpty, aNegatedVars,aBuilder);
+						}
 					}
 				}
 			}	
