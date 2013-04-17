@@ -1,40 +1,39 @@
 package ca.ubc.cs.beta.stationpacking.experiment.instance;
 
-import java.util.ArrayList;
 import java.util.Set;
 
 import ca.ubc.cs.beta.stationpacking.data.Station;
 
 /**
  * A station packing problem instance container object.
- * @author afrechet
+ * @author afrechet, narnosti
  *
  */
 public interface IInstance {
 	
+	/* Returns the set of stations associated with the instance.
+	 * Never null, though it may be empty.
+	 */
+	public Set<Station> getStations();
+	
+	/* Adds aStation to the set of stations.
+	 * Returns true if the set did not previously contain aStation.
+	 */
+	public boolean addStation(Station aStation);
+	
+	/* Adds aStation to the set of stations.
+	 * Returns true if the set previously contained aStation.
+	 */
+	public boolean removeStation(Station aStation);
+	
+	/* Returns the set of channels associated with the instance.
+	 */
+	public Set<Integer> getChannelRange();
 	
 	@Override
 	public String toString();
-	
-	/**
-	 * @return The CNF file names associated with the problem instance.
-	 */
-	//public ArrayList<String> getCNFs();
-	
-	/**
-	 * @return Return the number of stations represented by instance.
-	 */
+
 	public int getNumberofStations();
-	
-	public Set<Station> getStations();
-	
-	public boolean addStation(Station aStation);
-	
-	public boolean removeStation(Station aStation);
-	
-	public void setChannelRange(Set<Integer> aChannels);
-	
-	public Set<Integer> getChannelRange();
 	
 	
 }

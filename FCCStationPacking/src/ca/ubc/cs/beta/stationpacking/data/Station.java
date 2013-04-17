@@ -1,7 +1,6 @@
 package ca.ubc.cs.beta.stationpacking.data;
 
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Set;
@@ -18,6 +17,7 @@ public class Station implements Comparable<Station>{
 	private final Integer fPop;
 	private final Set<Integer> fDomain;
 	
+	/*
 	public Station(Integer aID)
 	{
 		fID = aID;
@@ -42,15 +42,21 @@ public class Station implements Comparable<Station>{
 			e.printStackTrace();
 		}
 	}
+	*/
 	
-	public Station(Integer aID,Integer aPop, Set<Integer> aDomain){
+	public Station(Integer aID, Set<Integer> aDomain, Integer aPop){
 		fID = aID;
 		fPop = aPop;
 		fDomain = aDomain;
 	}
+	/*
+	public Station(Integer aID, Set<Integer> aDomain){
+		fID = aID;
+		fDomain = aDomain;
+	}
+	*/
 	
-	public int getID()
-	{
+	public int getID(){
 		return fID;
 	}
 	
@@ -58,14 +64,27 @@ public class Station implements Comparable<Station>{
 		return fPop;
 	}
 	
+	/*
+	public void setPop(Integer aPop){
+		if(fPop==null) fPop = aPop;
+		else{
+			try{ throw new Exception("Cannot modify population of Station "+fID+", which has population "+fPop); }
+			catch(Exception e){ e.printStackTrace(); }
+		}  
+	}
+	*/
+	
 	@Override
-	public String toString()
-	{
+	public String toString(){
 		return "Station "+fID;
 	}
 	
 	public Set<Integer> getDomain(){
 		return fDomain;
+	}
+	
+	public boolean removeFromDomain(Integer aChannel){
+		return fDomain.remove(aChannel);
 	}
 	
 	@Override

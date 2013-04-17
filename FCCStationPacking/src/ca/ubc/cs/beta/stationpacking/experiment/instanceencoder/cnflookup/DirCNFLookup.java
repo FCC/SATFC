@@ -1,9 +1,9 @@
 package ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
-import java.util.Set;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.stationpacking.data.Station;
 import ca.ubc.cs.beta.stationpacking.experiment.InstanceGeneration;
+import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
+import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SATResult;
 
 /**
  * CNF lookup that searches a particular directory for CNFs.
@@ -42,44 +44,84 @@ public class DirCNFLookup implements ICNFLookup{
 		}
 	}
 	
-	@Override
-	public boolean hasCNFfor(Set<Station> aStations, Integer ... aRange) {
-		String aCNFFilename = fCNFDirectory+File.separatorChar+getCNFNamefor(aStations,aRange);
+	public boolean hasCNFfor(IInstance aInstance) {
+		String aCNFFilename = fCNFDirectory+File.separatorChar+getCNFNamefor(aInstance);
 		File aCNFFile = new File(aCNFFilename);
 		return aCNFFile.exists();
 	}
 
-	@Override
-	public String getCNFfor(Set<Station> aStations,Integer ... aRange) throws Exception {
-		String aCNFName = getCNFNamefor(aStations);
-		String aCNFFilename = fCNFDirectory+File.separatorChar+getCNFNamefor(aStations,aRange);
+	public String getCNFfor(IInstance aInstance) {
+		String aCNFName = getCNFNamefor(aInstance);
+		String aCNFFilename = fCNFDirectory+File.separatorChar+getCNFNamefor(aInstance);
 		File aCNFFile = new File(aCNFFilename);
 		if(!aCNFFile.exists()) {
-			throw new Exception("Tried to lookup a CNF for a set of stations that is unavailable.");
+			try{
+				throw new Exception("Tried to lookup a CNF for a set of stations that is unavailable.");
+			} catch(Exception e){
+				e.printStackTrace();
+			}
 		}
-		else{
-			return aCNFName;
-		}
+		return aCNFName;
 	}
 
 	//NA - modified to include channel range
-	private String getCNFNamefor(Set<Station> aStations,Integer ... aRange) {
-		Integer aLow = 14;
-		Integer aHigh = 30;
-		if(aRange.length>0){
-			aHigh = aRange[0];
-		}
-		if(aRange.length>1){
-			aLow = aRange[1];
-		}
-		return hashforFilename(Station.hashStationSet(aStations))+"_"+aLow+"_"+aHigh+".cnf";
+	private String getCNFNamefor(IInstance aInstance) {
+		return hashforFilename(Station.hashStationSet(aInstance.getStations()))+aInstance.getChannelRange().hashCode()+".cnf";
 	}
 	
 	
-	@Override
-	public String addCNFfor(Set<Station> aStations, Integer ... aRange) throws Exception {
+	public String addCNFfor(IInstance aInstance){
 		log.warn("Not assigning station set to any CNF - CNF must be put with the right name in the right directory.");
-		return getCNFNamefor(aStations,aRange);
+		return getCNFNamefor(aInstance);
+	}
+
+	@Override
+	public boolean hasSATResult(IInstance aInstance) {
+		try{
+			throw new Exception("Method hasSATResult is not implemented in class DirCNFLookup.");
+		} catch(Exception e){
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	@Override
+	public SATResult getSATResult(IInstance aInstance) {
+		try{
+			throw new Exception("Method getSATResult is not implemented in class DirCNFLookup.");
+		} catch(Exception e){
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	@Override
+	public boolean putSATResult(IInstance aInstance, SATResult aResult) {
+		try{
+			throw new Exception("Method putSATResult is not implemented in class DirCNFLookup.");
+		} catch(Exception e){
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	@Override
+	public String getNameFor(IInstance aInstance) {
+		try{
+			throw new Exception("Method getNameFor is not implemented in class DirCNFLookup.");
+		} catch(Exception e){
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	@Override
+	public void writeToFile() throws IOException {
+		try{
+			throw new Exception("Method writeToFile is not implemented in class DirCNFLookup.");
+		} catch(Exception e){
+			e.printStackTrace();
+		}		
 	}
 
 }

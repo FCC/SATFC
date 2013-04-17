@@ -31,7 +31,7 @@ public class NoFixedHRConstraintManager implements IConstraintManager{
 			while((aLine = aReader.readNext())!=null)
 			{
 				Integer aID = Integer.valueOf(aLine[1]);
-				Station aStation = new Station(aID);
+				Station aStation = new Station(aID, new HashSet<Integer>(),-1);
 				
 				if(!aFixedStations.contains(aStation))
 				{
@@ -57,11 +57,11 @@ public class NoFixedHRConstraintManager implements IConstraintManager{
 			while((aLine = aReader.readNext())!=null)
 			{
 				Integer aID1 = Integer.valueOf(aLine[0]);
-				Station aStation1 = new Station(aID1);
+				Station aStation1 = new Station(aID1, new HashSet<Integer>(),-1);
 				Integer aChannel1 = Integer.valueOf(aLine[1]);
 				
 				Integer aID2 = Integer.valueOf(aLine[2]);
-				Station aStation2 = new Station(aID2);
+				Station aStation2 = new Station(aID2, new HashSet<Integer>(),-1);
 				Integer aChannel2 = Integer.valueOf(aLine[3]);
 				
 				if(aFixedStations.contains(aStation1))
@@ -115,7 +115,7 @@ public class NoFixedHRConstraintManager implements IConstraintManager{
 		return fPairwiseConstraints;
 	}
 
-	@Override
+	//@Override
 	public Map<Station, Set<Integer>> getStationDomains() {
 		return fStationDomains;
 	}
@@ -144,6 +144,24 @@ public class NoFixedHRConstraintManager implements IConstraintManager{
 			throw new Exception("Method getADJminusInterferingStations not implemented for class NoFixedHRConstraintManager.");
 		} catch(Exception e){
 			System.out.println(e.getMessage());
+		}
+		return null;
+	}
+	
+	public Boolean isSatisfyingAssignment(Map<Integer, Set<Station>> aAssignment) {
+		try{
+			throw new Exception("Method isSatisfyingAssignment not implemented for class NoFixedHRConstraintManager.");			
+		} catch(Exception e){
+			e.printStackTrace();
+		}	
+		return null;
+	}
+	
+	public Set<Set<Station>> group(Set<Station> aStations){
+		try{
+			throw new Exception("Method 'group' not implemented for class HRConstraintManager");
+		} catch(Exception e){
+			e.printStackTrace();
 		}
 		return null;
 	}

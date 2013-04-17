@@ -12,9 +12,6 @@ import org.jgrapht.alg.ConnectivityInspector;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 
-//import org.apache.commons.math.util.MultidimensionalCounter.Iterator;
-//import org.apache.commons.math3.util.Pair;
-
 import ca.ubc.cs.beta.stationpacking.data.Constraint;
 import ca.ubc.cs.beta.stationpacking.data.Station;
 import ca.ubc.cs.beta.stationpacking.data.StationChannelPair;
@@ -25,18 +22,16 @@ import au.com.bytecode.opencsv.CSVReader;
 /* NA - Code to read the new DAC file format
  * 
  */
-public class DACConstraintManager implements IConstraintManager{
+public class DACConstraintManager2 implements IConstraintManager{
 	
 	final int fminChannel = 14, fmaxChannel=30; //Used only to check input file
 	Map<Integer,Station> fStations = new HashMap<Integer,Station>();
-	Map<Station,Set<Integer>> fStationDomains = new HashMap<Station,Set<Integer>>();
 	Map<Station,Set<Station>> fCOConstraints = new HashMap<Station,Set<Station>>();
 	Map<Station,Set<Station>> fADJplusConstraints = new HashMap<Station,Set<Station>>();
 	Map<Station,Set<Station>> fADJminusConstraints = new HashMap<Station,Set<Station>>();
 	
-	public DACConstraintManager(Map<Station,Set<Integer>> aStationDomains,Set<Constraint> aPairwiseConstraints){
-		fStationDomains = aStationDomains;
-		for(Station aStation : fStationDomains.keySet()){
+	public DACConstraintManager2(Set<Station> aStations,Set<Constraint> aPairwiseConstraints){
+		for(Station aStation : aStations){
 			fStations.put(aStation.getID(), aStation);
 			fCOConstraints.put(aStation,new HashSet<Station>());
 			fADJplusConstraints.put(aStation,new HashSet<Station>());
@@ -53,7 +48,7 @@ public class DACConstraintManager implements IConstraintManager{
 				Station aStation1 = aPair1.getStation();
 				StationChannelPair aPair2 = aConstraint.getInterferingPair();
 				Station aStation2 = aPair2.getStation();
-				if(fStations.get(aStation1.getID())!=null && fStations.get(aStation2.getID())!=null){
+				if(aStations.contains(aStation1) && aStations.contains(aStation2)){
 					Integer aDifference = aPair1.getChannel()-aPair2.getChannel();
 					if(aDifference == 0){
 						fCOConstraints.get(aStation1).add(aStation2);
@@ -74,47 +69,25 @@ public class DACConstraintManager implements IConstraintManager{
 		}
 	}
 	
-	public DACConstraintManager(String aAllowedChannelsFilename, String aPairwiseConstraintsFilename)
-	{
-
-		CSVReader aReader;
+	public DACConstraintManager2(Set<Station> aStations, String aPairwiseConstraintsFilename){
+		for(Station aStation : aStations){
+			fStations.put(aStation.getID(), aStation);
+			fCOConstraints.put(aStation,new HashSet<Station>());
+			fADJplusConstraints.put(aStation,new HashSet<Station>());
+			fADJminusConstraints.put(aStation,new HashSet<Station>());
+		}
+		
 
 		try{
-			//NA - reading channel domains
-			aReader = new CSVReader(new FileReader(aAllowedChannelsFilename),',');
 			String[] aLine;
-			Station aStation;
-			Integer aID,aChannel;
 			String aString;
-			HashSet<Integer> aChannelDomain;
-			while((aLine = aReader.readNext())!=null)
-			{	
-				aID = Integer.valueOf(aLine[1].replaceAll("\\s", ""));
-				aStation = new Station(aID, new HashSet<Integer>(),-1);
-				aChannelDomain = new HashSet<Integer>();
-				for(int i=2;i<aLine.length;i++)
-				{ 	//NA - Ideally would have a more robust check here
-					aString = aLine[i].replaceAll("\\s", "");
-					if(aString.length()>0){
-						aChannel = Integer.valueOf(aString); 
-						aChannelDomain.add(aChannel);
-					}
-				}
-				fStationDomains.put(aStation, aChannelDomain);
-				fStations.put(aID, aStation);
-				fCOConstraints.put(aStation,new HashSet<Station>());
-				fADJplusConstraints.put(aStation,new HashSet<Station>());
-				fADJminusConstraints.put(aStation,new HashSet<Station>());
-			}
-			aReader.close();
-			
+			Integer aID;
+			Station aStation;
 			//NA - reading interference constraints
-			aReader = new CSVReader(new FileReader(aPairwiseConstraintsFilename),',');
-			while((aLine = aReader.readNext())!=null)
-			{	//NA - perform some sanity checks
+			CSVReader aReader = new CSVReader(new FileReader(aPairwiseConstraintsFilename),',');
+			while((aLine = aReader.readNext())!=null){	//NA - perform some sanity checks
 				aID = Integer.valueOf(aLine[3].replaceAll("\\s", ""));
-				aStation = fStations.get(aID);
-				if(aStation != null){
+				if((aStation=fStations.get(aID)) != null){
 					Integer aChannelLower = Integer.valueOf(aLine[1].replaceAll("\\s", ""));
 					Integer aChannelUpper = Integer.valueOf(aLine[2].replaceAll("\\s", ""));
 					if(aChannelLower!=fminChannel || aChannelUpper!=fmaxChannel){ 
@@ -141,8 +114,6 @@ public class DACConstraintManager implements IConstraintManager{
 							if(aString.length()>0){
 								Integer aID2 = Integer.valueOf(aString);
 								if(fStations.containsKey(aID2)){ //NA - ADJ+1 constraints are asymmetric
-									//fADJplusConstraints.get(aStation).add(fStations.get(aID2)); 
-									//fADJminusConstraints.get(fStations.get(aID2)).add(aStation);
 									fADJminusConstraints.get(aStation).add(fStations.get(aID2)); 
 									fADJplusConstraints.get(fStations.get(aID2)).add(aStation);
 								} else {
@@ -170,20 +141,45 @@ public class DACConstraintManager implements IConstraintManager{
 
 
 	public Set<Station> getCOInterferingStations(Station aStation) {
-		return fCOConstraints.get(aStation);
+		Set<Station> aInterfering = fCOConstraints.get(aStation);
+		if(aInterfering==null) aInterfering = new HashSet<Station>();
+		return aInterfering;
 	}
 	
 	public Set<Station> getADJplusInterferingStations(Station aStation) {
-		return fADJplusConstraints.get(aStation);
+		Set<Station> aInterfering = fADJplusConstraints.get(aStation);
+		if(aInterfering==null) aInterfering = new HashSet<Station>();
+		return aInterfering;
 	}
 	
 	public Set<Station> getADJminusInterferingStations(Station aStation) {
-		return fADJminusConstraints.get(aStation);
+		Set<Station> aInterfering = fADJminusConstraints.get(aStation);
+		if(aInterfering==null) aInterfering = new HashSet<Station>();
+		return aInterfering;	
 	}
 	
-	public Map<Station,Set<Integer>> getStationDomains(){
-		return fStationDomains;
+	//NA - just assume that at least two feasible channels are adjacent (so that ADJ constraints are relevant).
+	public Set<Set<Station>> group(Set<Station> aStations){
+		SimpleGraph<Station,DefaultEdge> aConstraintGraph = new SimpleGraph<Station,DefaultEdge>(DefaultEdge.class);
+		for(Station aStation : aStations){
+			aConstraintGraph.addVertex(aStation);
+		}
+		for(Station aStation1 : aStations){
+			for(Station aStation2 : getCOInterferingStations(aStation1)){
+				if(aConstraintGraph.containsVertex(aStation2)){
+					aConstraintGraph.addEdge(aStation1, aStation2);
+				}
+			}
+			for(Station aStation2 : getADJplusInterferingStations(aStation1)){
+				if(aConstraintGraph.containsVertex(aStation2)){
+					aConstraintGraph.addEdge(aStation1, aStation2);
+				}
+			}
+		}
+		ConnectivityInspector<Station, DefaultEdge> aConnectivityInspector = new ConnectivityInspector<Station,DefaultEdge>(aConstraintGraph);
+		return(new HashSet<Set<Station>>(aConnectivityInspector.connectedSets()));
 	}
+	
 	
 	public boolean writeConstraints(String fileName, Set<Integer> aChannels){
 		try{
@@ -217,29 +213,6 @@ public class DACConstraintManager implements IConstraintManager{
 		}
 	}
 	
-	public boolean writeDomains(String fileName){
-		try{
-			BufferedWriter writer = new BufferedWriter(new FileWriter(fileName));
-			for( Integer aID : fStations.keySet()){
-				Set<Integer> aChannels = fStationDomains.get(fStations.get(aID));
-				if(aChannels != null){
-					String aChannelList = aChannels.toString();
-					aChannelList = aChannelList.substring(aChannelList.indexOf('[')+1,aChannelList.indexOf(']'));
-					writer.write("DOMAIN,"+aID+","+aChannelList+",\n");
-				} else {
-					writer.close();
-					throw new Exception("fStationDomains does not have entry for "+aID);
-				}
-			}
-			writer.close();
-			return true;
-		} catch(Exception e) {
-			System.out.println("Exception in writeDomains: "+e.getMessage());
-			e.printStackTrace();
-			return false;
-		}
-	}
-	
 	public boolean writePairwiseConstraints(String fileName){
 		try{
 			BufferedWriter writer = new BufferedWriter(new FileWriter(fileName));
@@ -259,41 +232,20 @@ public class DACConstraintManager implements IConstraintManager{
 			return false;
 		}
 	}
-	
-	public Set<Set<Station>> group(Set<Station> aStations){
-		SimpleGraph<Station,DefaultEdge> aConstraintGraph = new SimpleGraph<Station,DefaultEdge>(DefaultEdge.class);
-		for(Station aStation : aStations){
-			aConstraintGraph.addVertex(aStation);
-		}
-		for(Station aStation1 : aStations){
-			for(Station aStation2 : getCOInterferingStations(aStation1)){
-				if(aConstraintGraph.containsVertex(aStation2)){
-					aConstraintGraph.addEdge(aStation1, aStation2);
-				}
-			}
-			for(Station aStation2 : getADJplusInterferingStations(aStation1)){
-				if(aConstraintGraph.containsVertex(aStation2)){
-					aConstraintGraph.addEdge(aStation1, aStation2);
-				}
-			}
-		}
-		ConnectivityInspector<Station, DefaultEdge> aConnectivityInspector = new ConnectivityInspector<Station,DefaultEdge>(aConstraintGraph);
-		return(new HashSet<Set<Station>>(aConnectivityInspector.connectedSets()));
-	}
 
 	public Set<Constraint> getPairwiseConstraints(Set<Integer> aChannels) {
 		Set<Constraint> pairwiseConstraints = new HashSet<Constraint>();
 		Station aStation;
 		for(Integer aID : fStations.keySet()){
 			aStation = fStations.get(aID);
-			for(Station aStation2 : fCOConstraints.get(aStation)){
+			for(Station aStation2 : getCOInterferingStations(aStation)){
 				if(aID<aStation2.getID()) 
 					for(Integer aChannel : aChannels){
 						pairwiseConstraints.add(new Constraint(	new StationChannelPair(aStation,aChannel),
 																new StationChannelPair(aStation2,aChannel)));
 					}
 			}
-			for(Station aStation2 : fADJplusConstraints.get(aStation)){
+			for(Station aStation2 : getADJplusInterferingStations(aStation)){
 				for(Integer aChannel : aChannels){
 					pairwiseConstraints.add(new Constraint(	new StationChannelPair(aStation,aChannel),
 															new StationChannelPair(aStation2,aChannel+1)));
@@ -321,13 +273,12 @@ public class DACConstraintManager implements IConstraintManager{
 		}
 		return true;
 	}
+
 	
-	/*
-	//Determines whether the pairwise constraints of two ConstraintManagers are identical
-	public boolean matchesConstraints(IConstraintManager aOtherManager){
+	public boolean matchesConstraints(IConstraintManager aOtherManager, Set<Integer> aChannels){
 		//return this.getPairwiseConstraints().equals(aOtherManager.getPairwiseConstraints());
-		Set<Constraint> myConstraints = this.getPairwiseConstraints();
-		Set<Constraint> theirConstraints = aOtherManager.getPairwiseConstraints();
+		Set<Constraint> myConstraints = this.getPairwiseConstraints(aChannels);
+		Set<Constraint> theirConstraints = aOtherManager.getPairwiseConstraints(aChannels);
 		if( myConstraints.equals(theirConstraints) ){
 			return true;
 		} else {
@@ -337,20 +288,4 @@ public class DACConstraintManager implements IConstraintManager{
 			return false;
 		}
 	}
-	
-	public boolean matchesDomains(IConstraintManager aOtherManager){
-		//return fStationDomains.equals(aOtherManager.getStationDomains());
-		Set<Map.Entry<Station,Set<Integer>>> theirDomains = aOtherManager.getStationDomains().entrySet();
-		Set<Map.Entry<Station,Set<Integer>>> myDomains = fStationDomains.entrySet();
-		int theirNumStations = theirDomains.size();
-		if(theirDomains.equals(myDomains)){
-			return true;
-		} else {
-			theirDomains.retainAll(fStationDomains.entrySet());
-			System.out.println("I had "+myDomains.size()+" stations, they had "+theirNumStations+" stations, there are "+theirDomains.size()+" stations with common domain.");
-			return false;
-		}
-	}
-	*/
-
 }
