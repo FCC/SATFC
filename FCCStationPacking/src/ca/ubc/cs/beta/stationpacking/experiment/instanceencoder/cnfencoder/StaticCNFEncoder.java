@@ -1,14 +1,12 @@
 package ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder;
 
-import java.io.FileWriter;
-import java.io.IOException;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.util.Pair;
@@ -118,7 +116,6 @@ public class StaticCNFEncoder implements ICNFEncoder{
 	
 	@Override
 	public String encode(IInstance aInstance, IConstraintManager aConstraintManager) {
-		Set<Integer> aChannels = aInstance.getChannelRange();
 		Set<Station> aStations = aInstance.getStations();
 		//Check if there is a degenerate station, i.e. station with empty channel domain.
 		for(Station aStation : aStations)
@@ -196,14 +193,14 @@ public class StaticCNFEncoder implements ICNFEncoder{
 		
 	}
 	
-	public Map<Station,Integer> decode(IInstance aInstance, String aCNFAssignment){
+	public Map<Integer,Set<Station>> decode(IInstance aInstance, String aCNFAssignment){
 		try{
 			throw new Exception("Method decode not implemented for class StaticCNFEncoder.");
 		} catch(Exception e){
 			System.out.println(e.getMessage());
 			e.printStackTrace();
 		}
-		return new HashMap<Station,Integer>();
+		return null;
 	}
 	
 

@@ -9,7 +9,6 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.List;
 
-//import ca.ubc.cs.beta.stationpacking.data.Constraint;
 import ca.ubc.cs.beta.stationpacking.data.Station;
 import ca.ubc.cs.beta.stationpacking.data.manager.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
@@ -19,7 +18,7 @@ import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.ICNFE
 public class NickCNFEncoder implements ICNFEncoder {
 	
 	//Whenever a trivially UNSAT problem is detected, return this string
-	String fUNSAT_CNF = "p cnf 1 1\n 1 -1 0\n";
+	String fUNSAT_CNF = "p cnf 1 2\n 1 0\n -1 0\n";
 
 	@Override
 	/* NA - takes an Instance and a set of Constraints, and returns
@@ -29,6 +28,15 @@ public class NickCNFEncoder implements ICNFEncoder {
 		Map<Station,Integer> aInternalStationIDs = getInternalIDs(aInstance.getStations());
 		Map<Integer,Integer> aInternalChannelIDs = getInternalIDs(aInstance.getChannelRange());	
 		StringBuilder aBuilder = new StringBuilder();
+		aBuilder.append("c Stations: ");
+		for(Station aStation : aInternalStationIDs.keySet()){
+			aBuilder.append(aStation.getID()+" ");
+		}
+		aBuilder.append("\nc Channels: ");
+		for(Integer aChannel : aInternalChannelIDs.keySet()){
+			aBuilder.append(aChannel+" ");
+		}
+		aBuilder.append("\n");
 		int aNumClauses = 0;
 		Set<Integer> aDomainInternal;
 		Set<Integer> aCOInterferingInternal;
@@ -56,12 +64,13 @@ public class NickCNFEncoder implements ICNFEncoder {
 	
 	/* NA - takes an Instance and a string corresponding to a satisfying variable assignment.
 	 * Checks that each station is assigned exactly one channel, and that this channel is in its domain.
-	 * If these conditions are not met, it throws and catches an exception describing the problem.
+	 * If these conditions are not met, it throws and catches an exception describing the problem, and
+	 * returns an empty Map.
 	 */
-	public Map<Station,Integer> decode(IInstance aInstance, String aCNFAssignment){
+	public Map<Integer,Set<Station>> decode(IInstance aInstance, String aCNFAssignment){
 		Map<Station,Integer> aInternalStationIDs = getInternalIDs(aInstance.getStations());
 		Map<Integer,Integer> aInternalChannelIDs = getInternalIDs(aInstance.getChannelRange());
-		Map<Station,Integer> aStationAssignment = new HashMap<Station,Integer>();
+		Map<Integer,Set<Station>> aStationAssignment = new HashMap<Integer,Set<Station>>();
 		try{
 			Map<Integer,Boolean> aCNFdecoding = stringToAssignment(aCNFAssignment);
 			int aNumCNFVars = aCNFdecoding.size();
@@ -69,20 +78,24 @@ public class NickCNFEncoder implements ICNFEncoder {
 			int aExpectedNumCNFVars = aInternalStationIDs.size()*aNumChannels;
 			if(aNumCNFVars == aExpectedNumCNFVars){
 				for(Station aStation : aInternalStationIDs.keySet()){
+					Integer aChannelAssignment = null;
 					for(Integer aChannel : aInternalChannelIDs.keySet()){
 						Integer aVar = get_variable(aInternalStationIDs.get(aStation),aInternalChannelIDs.get(aChannel),aNumChannels);
 						if(aCNFdecoding.get(aVar)) {
-							if(aStationAssignment.put(aStation,aChannel)!=null){
-								throw new Exception(aStation+" assigned to multiple channels.");
+							if(aStationAssignment.containsKey(aChannel)){
+								aStationAssignment.get(aChannel).add(aStation);
+							} else {
+								Set<Station> aSet = new HashSet<Station>();
+								aSet.add(aStation);
+								aStationAssignment.put(aChannel,aSet);
 							}
+							if(aChannelAssignment != null) throw new Exception(aStation+" assigned to multiple channels.");
+							aChannelAssignment = aChannel;
 						}	
 					}
-					Integer aChannel = aStationAssignment.get(aStation);
-					if(aChannel==null) {
-						throw new Exception(aStation+" not assigned to a channel.");
-					}
-					else if(! aStation.getDomain().contains(aChannel)){
-						throw new Exception(aStation+"assigned channel "+aChannel+", which is not in its domain.");
+					if(aChannelAssignment == null) throw new Exception(aStation+" not assigned to a channel.");
+					else if(! aStation.getDomain().contains(aChannelAssignment)){
+						throw new Exception(aStation+"assigned channel "+aChannelAssignment+", which is not in its domain.");
 					}
 				}
 			} else throw new Exception(	"CNF Assignment includes "+aNumCNFVars+" variables, but encoding this instance requires "

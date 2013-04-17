@@ -7,8 +7,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.math3.util.Pair;
-
 import ca.ubc.cs.beta.stationpacking.data.Constraint;
 import ca.ubc.cs.beta.stationpacking.data.Station;
 import ca.ubc.cs.beta.stationpacking.data.StationChannelPair;
@@ -34,7 +32,7 @@ public class HRConstraintManager implements IConstraintManager{
 			while((aLine = aReader.readNext())!=null)
 			{
 				Integer aID = Integer.valueOf(aLine[1]);
-				Station aStation = new Station(aID);
+				Station aStation = new Station(aID, new HashSet<Integer>(),-1);
 				HashSet<Integer> aChannelDomain = new HashSet<Integer>();
 				for(int i=2;i<aLine.length;i++)
 				{
@@ -60,7 +58,7 @@ public class HRConstraintManager implements IConstraintManager{
 				Integer aID2 = Integer.valueOf(aLine[2]);
 				Integer aChannel2 = Integer.valueOf(aLine[3]);
 				
-				fPairwiseConstraints.add(new Constraint(new StationChannelPair(new Station(aID1),aChannel1),new StationChannelPair(new Station(aID2),aChannel2)));
+				fPairwiseConstraints.add(new Constraint(new StationChannelPair(new Station(aID1, new HashSet<Integer>(),-1),aChannel1),new StationChannelPair(new Station(aID2, new HashSet<Integer>(),-1),aChannel2)));
 				
 			}
 		}
@@ -78,7 +76,7 @@ public class HRConstraintManager implements IConstraintManager{
 		return fPairwiseConstraints;
 	}
 
-	@Override
+	//@Override
 	public Map<Station, Set<Integer>> getStationDomains() {
 		return fStationDomains;
 	}
@@ -107,6 +105,26 @@ public class HRConstraintManager implements IConstraintManager{
 			throw new Exception("Method getADJminusInterferingStations not implemented for class HRConstraintManager.");
 		} catch(Exception e){
 			System.out.println(e.getMessage());
+		}
+		return null;
+	}
+
+
+	@Override
+	public Boolean isSatisfyingAssignment(Map<Integer, Set<Station>> aAssignment) {
+		try{
+			throw new Exception("Method isSatisfyingAssignment not implemented for class HRConstraintManager.");			
+		} catch(Exception e){
+			e.printStackTrace();
+		}	
+		return null;
+	}
+	
+	public Set<Set<Station>> group(Set<Station> aStations){
+		try{
+			throw new Exception("Method 'group' not implemented for class HRConstraintManager");
+		} catch(Exception e){
+			e.printStackTrace();
 		}
 		return null;
 	}
