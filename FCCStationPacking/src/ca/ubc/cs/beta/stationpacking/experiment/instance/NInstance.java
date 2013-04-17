@@ -1,23 +1,17 @@
 package ca.ubc.cs.beta.stationpacking.experiment.instance;
 
-import java.util.ArrayList;
-import java.util.HashMap;
+
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
 
 import ca.ubc.cs.beta.stationpacking.data.Station;
-import ca.ubc.cs.beta.stationpacking.execution.Main;
 
 
 public class NInstance implements IInstance{
 	
-	private SortedSet<Integer> fChannels = new TreeSet<Integer>();
-	private SortedSet<Station> fStations = new TreeSet<Station>(); 
+	private final Set<Integer> fChannels = new HashSet<Integer>();
+	private final Set<Station> fStations = new HashSet<Station>(); 
 	
-	//NA - think about structure of this; in particular, Instance, InstanceEncoder, CNFLookup; can it be simplifies?
 	public NInstance(Set<Station> aStations, Set<Integer> aChannels){
 		for(Integer aChannel : aChannels) fChannels.add(aChannel);
 		for(Station aStation : aStations) fStations.add(aStation);
@@ -33,23 +27,22 @@ public class NInstance implements IInstance{
 		return fStations.size();
 	}
 	
+	@Override
 	public boolean addStation(Station aStation){
 		return fStations.add(aStation);
 	}
 	
+	@Override
 	public boolean removeStation(Station aStation){
 		return fStations.remove(aStation);
 	}
 	
+	@Override
 	public Set<Station> getStations(){
 		return fStations;
 	}
 	
-	public void setChannelRange(Set<Integer> aChannels){
-		fChannels.clear();
-		for(Integer aChannel : aChannels) fChannels.add(aChannel);
-	}
-	
+	@Override
 	public Set<Integer> getChannelRange(){
 		return fChannels;
 	}
