@@ -20,7 +20,7 @@ public class THRConstraintManager extends TestCase {
 		HashSet<Station> aStations = new HashSet<Station>();
 		HashSet<Integer> aStationIDs = new HashSet<Integer>();
 	
-		for(Constraint aConstraint : aConstraintManager.getPairwiseConstraints())
+		for(Constraint aConstraint : aConstraintManager.getPairwiseConstraints(new HashSet<Integer>()))
 		{
 			
 			aStations.add(aConstraint.getInterferingPair().getStation());

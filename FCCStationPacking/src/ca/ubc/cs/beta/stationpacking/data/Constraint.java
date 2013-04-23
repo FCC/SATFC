@@ -1,6 +1,5 @@
 package ca.ubc.cs.beta.stationpacking.data;
 
-import org.apache.commons.math3.util.Pair;
 
 /**
  * Container class for a pairwise station packing constraint. 

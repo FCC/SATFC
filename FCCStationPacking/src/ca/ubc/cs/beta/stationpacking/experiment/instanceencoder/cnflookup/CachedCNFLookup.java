@@ -1,5 +1,6 @@
 package ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.util.HashMap;
@@ -9,6 +10,8 @@ import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 
 import ca.ubc.cs.beta.stationpacking.data.Station;
+import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
+import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SATResult;
 
 /**
  * CNF lookup that keeps a cached map of CNF identifier to CNF name.
@@ -40,12 +43,10 @@ public class CachedCNFLookup implements ICNFLookup{
 		}
 	}
 	
-	@Override
 	public boolean hasCNFfor(Set<Station> aStations, Integer ... aRange) {
 		return fStationsHashtoCNFName.containsKey(aStations);
 	}
 
-	@Override
 	public String getCNFfor(Set<Station> aStations, Integer ... aRange) throws Exception{
 		
 		if(!hasCNFfor(aStations))
@@ -79,7 +80,6 @@ public class CachedCNFLookup implements ICNFLookup{
 		return hashforFilename(Station.hashStationSet(aStations))+".cnf";
 	}
 
-	@Override
 	public String addCNFfor(Set<Station> aStations, Integer ...aRange) throws Exception {
 		if(fStationsHashtoCNFName.containsKey(aStations)){
 			throw new Exception("Tried to update a CNF for a set of stations that is already present.");
@@ -90,6 +90,55 @@ public class CachedCNFLookup implements ICNFLookup{
 			fStationsHashtoCNFName.put(aStations, aCNFFileName);
 			return aCNFFileName;
 		}
+	}
+
+	@Override
+	public boolean hasSATResult(IInstance aInstance) {
+		try{
+			throw new Exception("Method hasSATResult is not implemented in class CachedCNFLookup.");
+		} catch(Exception e){
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	@Override
+	public SATResult getSATResult(IInstance aInstance) {
+		try{
+			throw new Exception("Method getSATResult is not implemented in class CachedCNFLookup.");
+		} catch(Exception e){
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	@Override
+	public boolean putSATResult(IInstance aInstance, SATResult aResult) {
+		try{
+			throw new Exception("Method putSATResult is not implemented in class CachedCNFLookup.");
+		} catch(Exception e){
+			e.printStackTrace();
+		}		
+		return false;
+	}
+
+	@Override
+	public String getNameFor(IInstance aInstance) {
+		try{
+			throw new Exception("Method getNameFor is not implemented in class CachedCNFLookup.");
+		} catch(Exception e){
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	@Override
+	public void writeToFile() throws IOException {
+		try{
+			throw new Exception("Method writeToFile is not implemented in class CachedCNFLookup.");
+		} catch(Exception e){
+			e.printStackTrace();
+		}		
 	}
 	
 	
