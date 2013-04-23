@@ -11,24 +11,52 @@ import java.util.Set;
  * @author afrechet
  *
  */
-public class Station {
+public class Station implements Comparable<Station>{
 	
-	private Integer fID;
-	private Integer fPop; //NA - added optional population field
+	private final Integer fID;
+	private final Integer fPop;
+	private final Set<Integer> fDomain;
 	
+	/*
 	public Station(Integer aID)
 	{
 		fID = aID;
 		fPop = -1;
+		fDomain = new HashSet<Integer>();
+		try{ 
+			throw new Exception("No Domain given for station "+fID);
+		} catch(Exception e){
+			System.out.println(e.getMessage());
+			e.printStackTrace();
+		}
 	}
 	
 	public Station(Integer aID,Integer aPop){
 		fID = aID;
 		fPop = aPop;
+		fDomain = new HashSet<Integer>();
+		try{ 
+			throw new Exception("No Domain given for station "+fID);
+		} catch(Exception e){
+			System.out.println(e.getMessage());
+			e.printStackTrace();
+		}
 	}
+	*/
 	
-	public int getID()
-	{
+	public Station(Integer aID, Set<Integer> aDomain, Integer aPop){
+		fID = aID;
+		fPop = aPop;
+		fDomain = aDomain;
+	}
+	/*
+	public Station(Integer aID, Set<Integer> aDomain){
+		fID = aID;
+		fDomain = aDomain;
+	}
+	*/
+	
+	public int getID(){
 		return fID;
 	}
 	
@@ -36,10 +64,27 @@ public class Station {
 		return fPop;
 	}
 	
+	/*
+	public void setPop(Integer aPop){
+		if(fPop==null) fPop = aPop;
+		else{
+			try{ throw new Exception("Cannot modify population of Station "+fID+", which has population "+fPop); }
+			catch(Exception e){ e.printStackTrace(); }
+		}  
+	}
+	*/
+	
 	@Override
-	public String toString()
-	{
+	public String toString(){
 		return "Station "+fID;
+	}
+	
+	public Set<Integer> getDomain(){
+		return fDomain;
+	}
+	
+	public boolean removeFromDomain(Integer aChannel){
+		return fDomain.remove(aChannel);
 	}
 	
 	@Override
@@ -77,6 +122,11 @@ public class Station {
 			}
 		}
 		return aResult;	
+	}
+
+	@Override
+	public int compareTo(Station o) {
+		return fID - o.getID();
 	}
 
 }

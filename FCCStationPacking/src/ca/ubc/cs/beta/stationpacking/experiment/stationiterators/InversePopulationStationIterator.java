@@ -2,6 +2,7 @@ package ca.ubc.cs.beta.stationpacking.experiment.stationiterators;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
@@ -34,20 +35,19 @@ public class InversePopulationStationIterator implements Iterator<Station>{
 			throw new Exception("Given populations for station iterator do not cover all given stations.");
 		}
 		
-		aStations = new LinkedList<Station>(aStations);
 		
-		int aPopulationSum = 0;
+		long aPopulationSum = 0;
 		for(Station aStation : aStations)
 		{
 			aPopulationSum += aStationPopulation.get(aStation);
 		}
-		
+		LinkedList<Station> aStations1 = new LinkedList<Station>(aStations);
 		ArrayList<Station> aOrderedStations = new ArrayList<Station>();
-		while(!aStations.isEmpty())
+		while(!aStations1.isEmpty())
 		{
+			Collections.shuffle(aStations1,aRandomizer);
 			double aCandidateAggregatePopulation = aRandomizer.nextDouble()*aPopulationSum;
-			
-			Iterator<Station> aStationIterator = aStations.iterator();
+			Iterator<Station> aStationIterator = aStations1.iterator();
 			while(aStationIterator.hasNext())
 			{
 				Station aCandidateStation = aStationIterator.next();
@@ -61,7 +61,6 @@ public class InversePopulationStationIterator implements Iterator<Station>{
 				aCandidateAggregatePopulation -= aStationPopulation.get(aCandidateStation);
 			}		
 		}
-		
 		fOrderedStationsIterator = aOrderedStations.iterator();
 		
 	}
