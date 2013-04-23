@@ -9,7 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.stationpacking.data.Station;
-import ca.ubc.cs.beta.stationpacking.data.manager.HRConstraintManager;
 import ca.ubc.cs.beta.stationpacking.data.manager.HRStationManager;
 import ca.ubc.cs.beta.stationpacking.data.manager.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.data.manager.IStationManager;
@@ -21,7 +20,6 @@ import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.IInstanceEncoder
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.InstanceEncoder;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.StaticCNFEncoder;
-import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.CachedCNFLookup;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.DirCNFLookup;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ICNFLookup;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.componentgrouper.ConstraintGraphComponentGrouper;

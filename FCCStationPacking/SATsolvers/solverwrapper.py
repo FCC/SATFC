@@ -23,6 +23,9 @@ picosatx64osx_path = picosat_dir + 'picosatx64osx/picosat'
 clasp_dir = solver_dir + 'clasp/'
 claspx64_path = clasp_dir + 'claspx64/build/release/bin/clasp'
 claspx32_path = clasp_dir + 'claspx32/build/release/bin/clasp'
+claspx64osx_path = clasp_dir + 'claspx64osx/build/release/bin/clasp'
+tunedclasp_path = clasp_dir + 'tunedclasp/claspCMarch13'
+
 
 runsolver_dir = solver_dir + 'runsolver/'
 runsolverx64_path = runsolver_dir+'runsolverx64/runsolver'
@@ -63,9 +66,14 @@ elif solvername == 'clasp':
     if '32' in bits:
         solver_path = claspx32_path
     elif '64' in bits:
-        solver_path = claspx64_path
+        if _platform == "linux" or _platform == "linux2":
+            solver_path = claspx64_path
+        elif _platform == "darwin":
+            solver_path = claspx64osx_path
     else:
         print 'UNRECOGNIZED ARCHITECTURE IN SETTING SOLVER PATH!'
+elif solvername == 'tunedclasp':
+    solver_path = tunedclasp_path
 elif solvername == 'plingeling':
     if '32' in bits:
         solver_path = plingelingx32_path
@@ -85,6 +93,8 @@ elif solvername == 'picosat':
         print 'UNRECOGNIZED ARCHITECTURE IN SETTING SOLVER PATH!'
 else:
     print 'ERROR, invalid solver name ',solvername
+
+
 
 #Run solver
 mem_limit = str(1000)    
