@@ -2,7 +2,6 @@ package ca.ubc.cs.beta.stationpacking.data.manager;
 
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -37,11 +36,11 @@ public class HRStationManager implements IStationManager{
 				
 				if(aLine[2].compareTo("USA")!=0 || aLine[4].trim().isEmpty())
 				{
-					fFixedStations.add(new Station(Integer.valueOf(aLine[0])));
+					fFixedStations.add(new Station(Integer.valueOf(aLine[0]), new HashSet<Integer>(),-1));
 				}
 				else
 				{
-					Station aUnfixedStation = new Station(Integer.valueOf(aLine[0]));
+					Station aUnfixedStation = new Station(Integer.valueOf(aLine[0]), new HashSet<Integer>(),-1);
 					fUnfixedStations.add(aUnfixedStation);
 					
 					fPopulation.put(aUnfixedStation, Integer.valueOf(aLine[4]));
@@ -57,23 +56,23 @@ public class HRStationManager implements IStationManager{
 	
 	
 	@Override
-	public HashSet<Station> getStations() {
+	public Set<Station> getStations() {
 		return fStations;
 	}
 
 	@Override
-	public HashSet<Station> getFixedStations() {
+	public Set<Station> getFixedStations() {
 		
 		return fFixedStations;
 	}
 
 	@Override
-	public HashSet<Station> getUnfixedStations() {
+	public Set<Station> getUnfixedStations() {
 		return fUnfixedStations;
 	}
 
 
-	@Override
+	//@Override
 	public HashMap<Station, Integer> getStationPopulation() {
 		return fPopulation;
 	}
