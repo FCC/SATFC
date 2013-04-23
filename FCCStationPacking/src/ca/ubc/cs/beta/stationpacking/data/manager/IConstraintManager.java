@@ -10,14 +10,18 @@ import ca.ubc.cs.beta.stationpacking.data.Station;
 public interface IConstraintManager {
 	
 	public Set<Constraint> getPairwiseConstraints(Set<Integer> aChannels);
-	
-	public Map<Station,Set<Integer>> getStationDomains();
-	
+		
 	public Set<Station> getCOInterferingStations(Station aStation);
 	
 	public Set<Station> getADJplusInterferingStations(Station aStation);
 	
 	public Set<Station> getADJminusInterferingStations(Station aStation);
+	
+	public Boolean isSatisfyingAssignment(Map<Integer,Set<Station>> aAssignment);
+	
+	public Set<Set<Station>> group(Set<Station> aStations);
+	
+	//public Map<Station,Set<Integer>> getStationDomains();
 	
 	//public boolean matchesDomains(IConstraintManager aOtherManager);
 	

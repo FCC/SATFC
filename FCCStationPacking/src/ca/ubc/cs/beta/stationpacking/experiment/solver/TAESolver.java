@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import ca.ubc.cs.beta.aclib.algorithmrun.AlgorithmRun;
 import ca.ubc.cs.beta.aclib.algorithmrun.RunResult;
@@ -21,7 +22,11 @@ import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluatorBui
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.cli.CommandLineTargetAlgorithmEvaluatorOptions;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.currentstatus.CurrentRunStatusObserver;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.loader.TargetAlgorithmEvaluatorLoader;
+import ca.ubc.cs.beta.stationpacking.data.Station;
+import ca.ubc.cs.beta.stationpacking.data.manager.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
+import ca.ubc.cs.beta.stationpacking.experiment.instance.NInstance;
+import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ICNFLookup;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SATResult;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SolverResult;
 
@@ -38,6 +43,8 @@ public class TAESolver implements ISolver{
 	private TargetAlgorithmEvaluator fTargetAlgorithmEvaluator;
 	private int fSeed;
 	
+	private IConstraintManager fManager; 
+	private ICNFLookup fLookup; 
 	/**
 	 * Construct a solver wrapper around a target algorithm evaluator.
 	 * @param aParamConfigurationSpaceFile - the location of the ParamILS formatted parameter configuration space file.
@@ -45,8 +52,10 @@ public class TAESolver implements ISolver{
 	 * @param aExecDir - the directory in which to execute the algorithm (<i> e.g. </i> "[...]/SolverWrapper/").
 	 * @param aTargetAlgorithmEvaluatorExecutionEnvironment (<i> e.g. </i> "CLI" command-line on system, "MYSQLDBTAE" plug-in for mySQL workers, ...). 
 	 */
-	public TAESolver(String aParamConfigurationSpaceFile, String aAlgorithmExecutable, String aExecDir, String aTargetAlgorithmEvaluatorExecutionEnvironment, int aMaximumConcurrentExecutions)
+	public TAESolver(IConstraintManager aManager, ICNFLookup aLookup, String aParamConfigurationSpaceFile, String aAlgorithmExecutable, String aExecDir, String aTargetAlgorithmEvaluatorExecutionEnvironment, int aMaximumConcurrentExecutions)
 	{
+		fManager = aManager;
+		fLookup = aLookup;
 		//Parameter configuration space
 		fParamConfigurationSpace  = new ParamConfigurationSpace(new File(aParamConfigurationSpaceFile));
 		
@@ -109,7 +118,14 @@ public class TAESolver implements ISolver{
 		
 		//Create runs for TAE.
 		List<RunConfig> aRunConfigList = new ArrayList<RunConfig>();
-		for(String aCNFFilename : aInstance.getCNFs())
+		Set<String> aCNFFilenames = new HashSet<String>();
+		IInstance aComponentInstance;
+		for(Set<Station> aGroup : fManager.group(aInstance.getStations())){
+			aComponentInstance = new NInstance(aGroup,aInstance.getChannelRange());
+			aCNFFilenames.add(fLookup.getNameFor(aComponentInstance));
+		}
+		
+		for(String aCNFFilename : aCNFFilenames)
 		{
 			ProblemInstance aProblemInstance = new ProblemInstance(aCNFFilename);
 			ProblemInstanceSeedPair aProblemInstanceSeedPair = new ProblemInstanceSeedPair(aProblemInstance,fSeed);

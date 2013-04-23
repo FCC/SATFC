@@ -1,6 +1,5 @@
 package ca.ubc.cs.beta.stationpacking.experiment;
 
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -10,21 +9,21 @@ import org.slf4j.LoggerFactory;
 import ca.ubc.cs.beta.stationpacking.data.Station;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.experiment.instance.*;
-import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.IInstanceEncoder;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SATResult;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SolverResult;
 
 
 /**
- * Experiment to generate largest satisfiable station packing instance.
- * @author afrechet
- *
+ * Experiment to greedily generate a large station packing assignment in SAT.
+ * Constructor takes a Solver and an ExperimentReporter.
+ * Run method starts with a working set of stations and iteratively adds to it,
+ * ensuring that the packing problem remains satisfiable.
+ * @author afrechet, narnosti
  */
 public class NInstanceGeneration {
 
-	private static Logger log = LoggerFactory.getLogger(InstanceGeneration.class);
-	
+	private static Logger log = LoggerFactory.getLogger(InstanceGeneration.class);	
 	private ISolver fSolver;
 	private IExperimentReporter fExperimentReporter;
 	
@@ -33,9 +32,14 @@ public class NInstanceGeneration {
 		fExperimentReporter = aExperimentReporter;
 	}
 	
-	public void run(Set<Station> aStartingStations, Iterator<Station> aStationIterator, double aCutoff,Set<Integer> aChannelRange){
-		//HashSet<Station> aCurrentStations = new HashSet<Station>(aStartingStations);
+	/*@param aStartingStations - the initial set of stations (may be empty)
+	 *@param aStationIterator - an iterator that specifies the order in which stations are considered
+	 *@param aChannelRange - the set of channels into which the stations should be packed
+	 *@param aCutoff - the maximum time to consider any individual SAT solver run
+	 */
+	public void run(Set<Station> aStartingStations, Iterator<Station> aStationIterator, Set<Integer> aChannelRange,double aCutoff){
 		IInstance aInstance = new NInstance(aStartingStations,aChannelRange);
+		System.out.println(aStationIterator.hasNext());
 		while(aStationIterator.hasNext()) {
 			Station aStation = aStationIterator.next();
 			log.info("Trying to add {} to current set.",aStation);

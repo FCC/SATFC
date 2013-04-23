@@ -13,6 +13,7 @@ public class THRStationManager extends TestCase {
 		try 
 		{
 			HRStationManager aStationManager = new HRStationManager("/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPacking/experiment_dir/stations.csv");
+			aStationManager.getClass();
 		} 
 		catch (IOException e) 
 		{

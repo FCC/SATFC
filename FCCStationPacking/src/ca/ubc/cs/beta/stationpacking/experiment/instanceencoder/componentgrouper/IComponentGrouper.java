@@ -1,7 +1,5 @@
 package ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.componentgrouper;
 
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Set;
 
 import ca.ubc.cs.beta.stationpacking.data.Station;
