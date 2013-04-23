@@ -15,6 +15,7 @@ from tempfile import NamedTemporaryFile
 from subprocess import Popen
 import traceback
 import platform
+from sys import platform as _platform
 
 class ClaspWrapper(object):
     
@@ -32,9 +33,12 @@ class ClaspWrapper(object):
 
         (bits,linkage) = platform.architecture()
         if '32' in bits:
-            self._runsolver = "/ubc/cs/home/a/afrechet/arrow-space/workspace/StationPackingConfiguration/runsolverx32/runsolver" # EDIT HERE PATH TO RUNSOLVER
+            self._runsolver = "../../../runsolver/runsolverx32/runsolver" 
         elif '64' in bits:
-            self._runsolver = "/ubc/cs/home/a/afrechet/arrow-space/workspace/StationPackingConfiguration/runsolverx64/runsolver" # EDIT HERE PATH TO RUNSOLVER
+            if _platform == "linux" or _platform == "linux2":
+                self._runsolver = "../../../runsolver/runsolverx64/runsolver"
+            elif _platform == "darwin":
+                self._runsolver = "../../../runsolver/runsolverx64osx/runsolver" 
         else:
             print 'Unrecognized architecture, cannot instantiate runsolver path!'
 
