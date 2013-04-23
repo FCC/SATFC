@@ -5,23 +5,39 @@ import subprocess
 import time
 import os
 
-#Read in some args...
-timeLimit = float(sys.argv[4])
-memLimit = sys.argv[2]
-otherArgs = sys.argv[5:]
+runsolver_arguments = dict()
+for i in range(1,len(sys.argv),2):
+	if '-' in sys.argv[i]:
+		runsolver_arguments[sys.argv[i].replace('-','')] = sys.argv[i+1]
+	else:
+		break	
+solver_callstring = sys.argv[i:]
 
-#Make a process
-startTime = time.time()
-proc = subprocess.Popen(otherArgs)
+print 'Dummy RunSolver for OS X'
+print 'The arguments RunSolver would have received:'
+print runsolver_arguments
+print 'The callstring for the target solver:'
+print solver_callstring
+print ' '.join(solver_callstring)
 
-def killer():
-    time.sleep(timeLimit)
-    proc.kill()
-    #Print any termination crap
-    print "Maximum CPU time exceeded"
-
-thread.start_new_thread(killer, ())
-proc.wait()
-stopTime = time.time()
-
-print "CPU time (s): %s" % (stopTime - startTime)
+if 'C' not in runsolver_arguments.keys():
+	subprocess.Popen(solver_callstring)	
+else:
+	#Read in some args...
+	timeLimit = runsolver_arguments['C']
+	
+	#Make a process
+	startTime = time.time()
+	proc = subprocess.Popen(solver_callstring)
+	
+	def killer():
+		time.sleep(timeLimit)
+		proc.kill()
+		#Print any termination crap
+		print "Maximum CPU time exceeded"
+	
+	thread.start_new_thread(killer, ())
+	proc.wait()
+	stopTime = time.time()
+	
+	print "CPU time (s): %s" % (stopTime - startTime)
