@@ -1,10 +1,14 @@
 package ca.ubc.cs.beta.stationpacking.experiment.instance;
 
 
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Set;
 
 import ca.ubc.cs.beta.stationpacking.data.Station;
+import ca.ubc.cs.beta.stationpacking.data.StationComparator;
 
 
 public class NInstance implements IInstance{
@@ -17,9 +21,28 @@ public class NInstance implements IInstance{
 		for(Station aStation : aStations) fStations.add(aStation);
 	}
 	
+	//AF - Added a different way to print set of channels so that an Instance.toString() is easier to read in CSV.
+	private String hashChannelSet(Set<Integer> aChannels)
+	{
+		LinkedList<Integer> aChannelList = new LinkedList<Integer>(aChannels);
+		Collections.sort(aChannelList);
+		
+		String aResult = "";
+		Iterator<Integer> aChannelIterator = aChannelList.iterator();
+		while(aChannelIterator.hasNext()){
+			Integer aChannel = aChannelIterator.next();
+			aResult += aChannel.toString();
+			if(aChannelIterator.hasNext())
+			{
+				aResult+="-";
+			}
+		}
+		return aResult;	
+	}
+	
 	@Override
 	public String toString() {
-		return fChannels.toString()+"_"+Station.hashStationSet(fStations);
+		return hashChannelSet(fChannels)+"_"+Station.hashStationSet(fStations);
 	}
 
 	@Override
