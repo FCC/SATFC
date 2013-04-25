@@ -1,0 +1,27 @@
+#!/usr/bin/env python
+import thread
+import sys
+import subprocess
+import time
+import os
+
+#Read in some args...
+timeLimit = float(sys.argv[4])
+memLimit = sys.argv[2]
+otherArgs = sys.argv[5:]
+
+#Make a process
+startTime = time.time()
+proc = subprocess.Popen(otherArgs)
+
+def killer():
+    time.sleep(timeLimit)
+    proc.kill()
+    #Print any termination crap
+    print "Maximum CPU time exceeded"
+
+thread.start_new_thread(killer, ())
+proc.wait()
+stopTime = time.time()
+
+print "CPU time (s): %s" % (stopTime - startTime)

@@ -29,7 +29,7 @@ public class NDirCNFLookup implements ICNFLookup{
 	private final String fOutputName = "CNFOutput";
 	private String fCNFDirectory;
 	private Map<String,SATResult> fResultLookup = new HashMap<String,SATResult>();
-
+	
 	public NDirCNFLookup(String aCNFDirectory){
 		fCNFDirectory = aCNFDirectory;
 		try{
