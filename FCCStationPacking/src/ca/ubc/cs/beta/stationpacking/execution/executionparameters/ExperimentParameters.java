@@ -14,7 +14,7 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
 
 /**
- * Parser for main parameters related to executing an (intance generation) experiment.
+ * Parser for main parameters related to executing an (instance generation) experiment.
  * @author afrechet
  *
  */
