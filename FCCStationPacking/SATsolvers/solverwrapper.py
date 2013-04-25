@@ -97,8 +97,9 @@ else:
 
 
 #Run solver
-mem_limit = str(1000)    
-(a,b,c) = os.popen3(runsolver_path+' -M '+mem_limit+' -C '+cutoff_time+' '+solver_path+' '+instance_name)
+mem_limit = str(1000)
+callstring = runsolver_path+' -M '+mem_limit+' -C '+cutoff_time+' '+solver_path+' '+instance_name    
+(a,b,c) = os.popen3(callstring)
 
 clock = time.time()
 #Get output        
@@ -116,7 +117,7 @@ TIMEOUTre = re.compile('Maximum CPU time exceeded')
 SATre = re.compile('\\bSATISFIABLE\\b')
 UNSATre = re.compile('\\bUNSATISFIABLE\\b')
 
-TIMEre = re.compile('CPU time \(s\)\: \d+\.\d+')
+TIMEre = re.compile('CPU time \(s\)\: \d+\.*\d*')
 
 if re.search(TIMEOUTre,std_out):
     output_solved = 'TIMEOUT'
