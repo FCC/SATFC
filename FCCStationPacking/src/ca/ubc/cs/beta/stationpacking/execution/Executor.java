@@ -30,7 +30,27 @@ public class Executor {
 	private static Logger log = LoggerFactory.getLogger(Executor.class);
 
 	public static void main(String[] args) throws Exception {
-				
+		
+		/**
+		 * Test arguments to used instead of compiling and using command line.
+		String[] testargs = {"-STATIONS_FILE",
+				"/Users/MightyByte/Documents/data/FCCStationPackingData/ProblemData/stations.csv",
+				"-DOMAINS_FILE",
+				"/Users/MightyByte/Documents/data/FCCStationPackingData/ProblemData/Domains.csv",
+				"-CONSTRAINTS_FILE",
+				"/Users/MightyByte/Documents/data/FCCStationPackingData/ProblemData/Interferences.csv",
+				"-CNF_DIR",
+				"/Users/MightyByte/Documents/data/FCCStationPackingData/CNFs",
+				"-SOLVER",
+				"tunedclasp",
+				"-EXPERIMENT_NAME",
+				"TestExperiment",
+				"-EXPERIMENT_DIR",
+				"/Users/MightyByte/Documents/data/FCCStationPackingData/TestExperiment"
+				};
+		args = testargs;
+		**/
+		
 		ExperimentParameters aExecParameters = new ExperimentParameters();
 		JCommander aParameterParser = new JCommander(aExecParameters);
 		try
@@ -51,7 +71,6 @@ public class Executor {
 		ICNFEncoder aCNFEncoder = new NickCNFEncoder();
 		
 		log.info("Creating cnf lookup...");
-	
 		ICNFLookup aCNFLookup = new NDirCNFLookup(aExecParameters.getCNFDirectory());
 				
 		log.info("Creating solver...");
