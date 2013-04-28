@@ -2,6 +2,7 @@ package experiment.stationiterators;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Random;
 
@@ -28,7 +29,7 @@ public class TInversePopulationStationIterator extends TestCase {
 		for(int j=0;j<aSize;j++)
 		{
 			int aPopulation = aRandomizer.nextInt(aMaxPopulation);
-			Station aStation = new Station(j);
+			Station aStation = new Station(j, new HashSet<Integer>(),-1);
 			aStations.add(aStation);
 			aStationPopulation.put(aStation, aPopulation);
 		}
@@ -66,7 +67,7 @@ public class TInversePopulationStationIterator extends TestCase {
 			for(int j=0;j<aSize;j++)
 			{
 				int aPopulation = aRandomizer.nextInt(aMaxPopulation);
-				Station aStation = new Station(j);
+				Station aStation = new Station(j, new HashSet<Integer>(),-1);
 				aStations.add(aStation);
 				aStationPopulation.put(aStation, aPopulation);
 			}
