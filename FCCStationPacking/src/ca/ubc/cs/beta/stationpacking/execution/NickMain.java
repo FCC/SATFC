@@ -24,12 +24,12 @@ import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.NDirCN
 import ca.ubc.cs.beta.stationpacking.experiment.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.NTAESolver;
 
-import ca.ubc.cs.beta.stationpacking.experiment.stationiterators.NInversePopulationStationIterator;
+import ca.ubc.cs.beta.stationpacking.experiment.*;
 
 public class NickMain {
 
 	//NA - TODO set random seed to get reproducible results.
-	private static Logger log = LoggerFactory.getLogger(Main.class);
+	private static Logger log = LoggerFactory.getLogger(NickMain.class);
 	private static final long fSeed = 12345;
 	
 	public static void main(String[] args) throws Exception {

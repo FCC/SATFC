@@ -14,7 +14,7 @@ import ca.ubc.cs.beta.stationpacking.data.Station;
 import ca.ubc.cs.beta.stationpacking.data.manager.DACConstraintManager2;
 import ca.ubc.cs.beta.stationpacking.data.manager.DACStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.executionparameters.ExperimentParameters;
-import ca.ubc.cs.beta.stationpacking.experiment.NInstanceGeneration;
+import ca.ubc.cs.beta.stationpacking.experiment.*;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.LocalExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.ICNFEncoder;
@@ -23,7 +23,6 @@ import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ICNFLo
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.NDirCNFLookup;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.NTAESolver;
-import ca.ubc.cs.beta.stationpacking.experiment.stationiterators.NInversePopulationStationIterator;
 
 public class Executor {
 	

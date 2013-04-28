@@ -27,6 +27,8 @@ import ca.ubc.cs.beta.stationpacking.data.manager.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
 import ca.ubc.cs.beta.stationpacking.experiment.instance.NInstance;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ICNFLookup;
+import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.componentgrouper.ConstraintGrouper;
+import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SATResult;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SolverResult;
 
@@ -45,6 +47,7 @@ public class TAESolver implements ISolver{
 	
 	private IConstraintManager fManager; 
 	private ICNFLookup fLookup; 
+	private IComponentGrouper fGrouper;
 	/**
 	 * Construct a solver wrapper around a target algorithm evaluator.
 	 * @param aParamConfigurationSpaceFile - the location of the ParamILS formatted parameter configuration space file.
@@ -56,6 +59,7 @@ public class TAESolver implements ISolver{
 	{
 		fManager = aManager;
 		fLookup = aLookup;
+		fGrouper = new ConstraintGrouper(fManager);
 		//Parameter configuration space
 		fParamConfigurationSpace  = new ParamConfigurationSpace(new File(aParamConfigurationSpaceFile));
 		
@@ -120,7 +124,7 @@ public class TAESolver implements ISolver{
 		List<RunConfig> aRunConfigList = new ArrayList<RunConfig>();
 		Set<String> aCNFFilenames = new HashSet<String>();
 		IInstance aComponentInstance;
-		for(Set<Station> aGroup : fManager.group(aInstance.getStations())){
+		for(Set<Station> aGroup : fGrouper.group(aInstance.getStations())){
 			aComponentInstance = new NInstance(aGroup,aInstance.getChannelRange());
 			aCNFFilenames.add(fLookup.getNameFor(aComponentInstance));
 		}
