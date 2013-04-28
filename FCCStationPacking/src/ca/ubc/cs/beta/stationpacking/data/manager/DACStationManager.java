@@ -71,7 +71,7 @@ public class DACStationManager implements IStationManager{
 			} catch(Exception e){
 				e.printStackTrace();
 				for(Integer aID1 : aStationLookup.keySet()){
-					fStations.add(new Station(aID1,aStationLookup.get(aID1),-1));
+					fStations.add(new Station(aID1,aStationLookup.get(aID1),0));
 				}
 			}
 		}
