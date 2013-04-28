@@ -2,6 +2,7 @@ package ca.ubc.cs.beta.stationpacking.data.manager;
 
 import java.io.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -17,11 +18,11 @@ import au.com.bytecode.opencsv.CSVReader;
  */
 public class DACConstraintManager2 implements IConstraintManager{
 	
-	final int fminChannel = 14, fmaxChannel=30; //Used only to check input file
 	Map<Integer,Station> fStations = new HashMap<Integer,Station>();
-	Map<Station,Set<Station>> fCOConstraints = new HashMap<Station,Set<Station>>();
-	Map<Station,Set<Station>> fADJplusConstraints = new HashMap<Station,Set<Station>>();
-	Map<Station,Set<Station>> fADJminusConstraints = new HashMap<Station,Set<Station>>();
+	ArrayList<HashMap<Station,Set<Station>>> fCOConstraints = new ArrayList<HashMap<Station,Set<Station>>>(3);
+	ArrayList<HashMap<Station,Set<Station>>> fADJplusConstraints = new ArrayList<HashMap<Station,Set<Station>>>(3);
+	ArrayList<HashMap<Station,Set<Station>>> fADJminusConstraints = new ArrayList<HashMap<Station,Set<Station>>>(3);
+
 	
 	
 	/*
@@ -67,16 +68,24 @@ public class DACConstraintManager2 implements IConstraintManager{
 	*/
 	
 	
-	public DACConstraintManager2(Set<Station> aStations, String aPairwiseConstraintsFilename){
+	public DACConstraintManager2(Set<Station> aStations, String aPairwiseConstraintsFilename){	
+		for(int j = 0; j < 3; j++){
+			fCOConstraints.add(new HashMap<Station,Set<Station>>());
+			fADJplusConstraints.add(new HashMap<Station,Set<Station>>());
+			fADJminusConstraints.add(new HashMap<Station,Set<Station>>());	
+		}
 		for(Station aStation : aStations){
-			fStations.put(aStation.getID(), aStation);
-			fCOConstraints.put(aStation,new HashSet<Station>());
-			fADJplusConstraints.put(aStation,new HashSet<Station>());
-			fADJminusConstraints.put(aStation,new HashSet<Station>());
+			for(int j = 0; j < 3; j++){
+				fStations.put(aStation.getID(), aStation);
+				fCOConstraints.get(j).put(aStation,new HashSet<Station>());
+				fADJplusConstraints.get(j).put(aStation,new HashSet<Station>());
+				fADJminusConstraints.get(j).put(aStation,new HashSet<Station>());
+			}
 		}
 		
 
 		try{
+			int aChannelType;
 			String[] aLine;
 			String aString;
 			Integer aID;
@@ -88,18 +97,24 @@ public class DACConstraintManager2 implements IConstraintManager{
 				if((aStation=fStations.get(aID)) != null){
 					Integer aChannelLower = Integer.valueOf(aLine[1].replaceAll("\\s", ""));
 					Integer aChannelUpper = Integer.valueOf(aLine[2].replaceAll("\\s", ""));
-					if(aChannelLower!=fminChannel || aChannelUpper!=fmaxChannel){ 
+					//NA - check to see if CO constraints are symmetric, if channel range matters
+					if(aChannelLower==2 && aChannelUpper==6){ 
+						aChannelType = 0;
+					} else if(aChannelLower==7 && aChannelUpper==13){
+						aChannelType = 1;
+					} else if(aChannelLower==14 && aChannelUpper==51){
+						aChannelType = 2;
+					} else {
 						aReader.close();
-						throw new Exception("Constraint other than "+fminChannel+"-"+fmaxChannel+" found for Station "+aID+".");
-					}
+						throw new Exception("Unexpected channel range "+aChannelLower+"-"+aChannelUpper+" found for Station "+aID+".");
+					} 
 					if(aLine[0].replaceAll("\\s", "").equals("CO")){ //NA - handle CO constraints
 						for(int i = 4; i < aLine.length; i++){
 							aString = aLine[i].replaceAll("\\s", "");
 							if(aString.length()>0){
 								Integer aID2 = Integer.valueOf(aString);
-								if(fStations.containsKey(aID2)){ //NA - CO constraints are symmetric
-									fCOConstraints.get(aStation).add(fStations.get(aID2)); 
-									fCOConstraints.get(fStations.get(aID2)).add(aStation);
+								if(fStations.containsKey(aID2)){ //NA - don't assume that CO constraints are symmetric
+									fCOConstraints.get(aChannelType).get(aStation).add(fStations.get(aID2)); 
 								} else {
 									aReader.close();
 									throw new Exception("Station "+aID2+" not fount in fStations.");
@@ -112,8 +127,8 @@ public class DACConstraintManager2 implements IConstraintManager{
 							if(aString.length()>0){
 								Integer aID2 = Integer.valueOf(aString);
 								if(fStations.containsKey(aID2)){ //NA - ADJ+1 constraints are asymmetric
-									fADJminusConstraints.get(aStation).add(fStations.get(aID2)); 
-									fADJplusConstraints.get(fStations.get(aID2)).add(aStation);
+									fADJminusConstraints.get(aChannelType).get(aStation).add(fStations.get(aID2)); 
+									fADJplusConstraints.get(aChannelType).get(fStations.get(aID2)).add(aStation);
 								} else {
 									aReader.close();
 									throw new Exception("Station "+aID2+" not fount in fStations.");
@@ -134,24 +149,35 @@ public class DACConstraintManager2 implements IConstraintManager{
 			System.out.println("Exception in DACConstraintManager constructor: "+e.getMessage());
 			e.printStackTrace();
 		}
-
+		
+		/*
+		int aCount = 0;
+		for(int j = 0; j < 3; j++){
+			for(Station aStation1 : fCOConstraints.get(j).keySet()){
+				for(Station aStation2 : fCOConstraints.get(j).get(aStation1)){
+					if(! fCOConstraints.get(j).get(aStation2).contains(aStation1)) aCount++;
+				}
+			}
+		}
+		System.out.println("Number of asymmetric CO-channel constraints: "+aCount);	
+		*/
 	}
 
 
 	public Set<Station> getCOInterferingStations(Station aStation) {
-		Set<Station> aInterfering = fCOConstraints.get(aStation);
+		Set<Station> aInterfering = fCOConstraints.get(3).get(aStation);
 		if(aInterfering==null) aInterfering = new HashSet<Station>();
 		return aInterfering;
 	}
 	
 	public Set<Station> getADJplusInterferingStations(Station aStation) {
-		Set<Station> aInterfering = fADJplusConstraints.get(aStation);
+		Set<Station> aInterfering = fADJplusConstraints.get(3).get(aStation);
 		if(aInterfering==null) aInterfering = new HashSet<Station>();
 		return aInterfering;
 	}
 	
 	public Set<Station> getADJminusInterferingStations(Station aStation) {
-		Set<Station> aInterfering = fADJminusConstraints.get(aStation);
+		Set<Station> aInterfering = fADJminusConstraints.get(3).get(aStation);
 		if(aInterfering==null) aInterfering = new HashSet<Station>();
 		return aInterfering;	
 	}
@@ -170,13 +196,13 @@ public class DACConstraintManager2 implements IConstraintManager{
 			for(Integer aID : fStations.keySet()){
 				writer.write("CO,"+aMinChannel+","+aMaxChannel+","+aID+",");
 				aStation = fStations.get(aID);
-				for(Station aStation2 : fCOConstraints.get(aStation)){
+				for(Station aStation2 : getCOInterferingStations(aStation)){
 					Integer aID2 = aStation2.getID();
 					if(aID<aID2) writer.write(aID2+",");
 				}
 				writer.write("\n");
 				writer.write("ADJ+1,"+aMinChannel+","+aMaxChannel+","+aID+",");
-				for(Station aStation2 : fADJminusConstraints.get(aStation)){
+				for(Station aStation2 : getADJminusInterferingStations(aStation)){
 					writer.write(aStation2.getID()+",");
 				}	
 				writer.write("\n");

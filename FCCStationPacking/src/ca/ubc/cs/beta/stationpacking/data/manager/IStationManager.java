@@ -9,9 +9,9 @@ public interface IStationManager {
 
 	public Set<Station> getStations();
 	
-	public Set<Station> getFixedStations();
+	//public Set<Station> getFixedStations();
 	
-	public Set<Station> getUnfixedStations();
+	//public Set<Station> getUnfixedStations();
 	
 	//public HashMap<Station,Integer> getStationPopulation();
 }
