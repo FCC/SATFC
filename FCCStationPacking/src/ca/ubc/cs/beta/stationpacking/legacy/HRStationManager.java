@@ -61,13 +61,11 @@ public class HRStationManager implements IStationManager{
 		return fStations;
 	}
 
-	@Override
 	public Set<Station> getFixedStations() {
 		
 		return fFixedStations;
 	}
 
-	@Override
 	public Set<Station> getUnfixedStations() {
 		return fUnfixedStations;
 	}

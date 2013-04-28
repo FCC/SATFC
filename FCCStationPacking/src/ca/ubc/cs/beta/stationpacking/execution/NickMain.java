@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
 import ca.ubc.cs.beta.stationpacking.data.*;
 import ca.ubc.cs.beta.stationpacking.data.manager.DACConstraintManager2;
 import ca.ubc.cs.beta.stationpacking.data.manager.DACStationManager;
+import ca.ubc.cs.beta.stationpacking.data.manager.IConstraintManager;
+import ca.ubc.cs.beta.stationpacking.data.manager.IStationManager;
 
 import ca.ubc.cs.beta.stationpacking.experiment.NInstanceGeneration;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentReporter;
@@ -41,7 +43,14 @@ public class NickMain {
 		String newDomainsFile = "/Users/narnosti/Documents/fcc-station-packing/Output/DAC_domains.txt";
 		String newConstraintsFile = "/Users/narnosti/Documents/fcc-station-packing/Output/DAC_constraints.txt";
         */
+		String StationsFile = "/Users/narnosti/Documents/FCCOutput/stations.csv";
+		String DomainsFile = "/Users/narnosti/Dropbox/Alex/2013 04 New Data/Domain 041813.csv";
+		String ConstraintsFile = "/Users/narnosti/Dropbox/Alex/2013 04 New Data/Interferences 041813.csv";
 		
+		IStationManager aSM = new DACStationManager(StationsFile,DomainsFile);
+		IConstraintManager aCM = new DACConstraintManager2(aSM.getStations(),ConstraintsFile);
+		
+		/*
 		
 		Set<Integer> aChannels = new HashSet<Integer>();
 		for(int i = 14; i <=30; i++) aChannels.add(i);
@@ -82,6 +91,6 @@ public class NickMain {
 		aInstanceGeneration.run(aStartingStations, aStationIterator,aChannels,aCutoff);	
 		aCNFLookup.writeToFile();
 
-		
+		*/
 	}
 }

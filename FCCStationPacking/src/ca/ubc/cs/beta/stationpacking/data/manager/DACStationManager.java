@@ -9,15 +9,15 @@ import java.util.Set;
 import ca.ubc.cs.beta.stationpacking.data.Station;
 
 import au.com.bytecode.opencsv.CSVReader;
-/* NA - TODO right now this class populates fStations, fUnfixedStations, fFixedStations separately;
- * fStations is populated from aStationDomainsFilename, the others from aStationFilename.
+/* NA - fStations is populated from aStationDomainsFilename, with population info from aStationFilename.
+ * 
  */
 
 
 public class DACStationManager implements IStationManager{
 	
-	private Set<Station> fUnfixedStations = new HashSet<Station>();
-	private Set<Station> fFixedStations = new HashSet<Station>();
+	//private Set<Station> fUnfixedStations = new HashSet<Station>();
+	//private Set<Station> fFixedStations = new HashSet<Station>();
 	private Set<Station> fStations = new HashSet<Station>();
 	
 	public DACStationManager(String aStationFilename, String aStationDomainsFilename) throws Exception{
@@ -49,7 +49,8 @@ public class DACStationManager implements IStationManager{
 			}
 			aStationLookup.put(aID, aChannelDomain);
 		}
-		aReader.close();		
+		aReader.close();	
+		System.out.println("aStationLookup is of size "+aStationLookup.size());
 
 		Set<Integer> aChannels;
 		Integer aStationPop;
@@ -64,7 +65,16 @@ public class DACStationManager implements IStationManager{
 			}
 		}
 		aReader.close();
-		if(!aStationLookup.isEmpty()) throw new Exception("No station population given for some stations.");
+		if(!aStationLookup.isEmpty()){
+			try{ 
+				throw new Exception("Missing station population for "+aStationLookup.size()+" stations.");
+			} catch(Exception e){
+				e.printStackTrace();
+				for(Integer aID1 : aStationLookup.keySet()){
+					fStations.add(new Station(aID1,aStationLookup.get(aID1),-1));
+				}
+			}
+		}
 
 		/*
 		aReader = new CSVReader(new FileReader(aStationFilename));
@@ -82,6 +92,7 @@ public class DACStationManager implements IStationManager{
 		*/
 	}
 	
+	/*
 	public Map<Station,Integer> getStationPopulation(){
 		Map<Station,Integer> aPopulationMap = new HashMap<Station,Integer>();
 		for(Station aStation : fStations){
@@ -89,6 +100,7 @@ public class DACStationManager implements IStationManager{
 		}
 		return aPopulationMap;
 	}
+	*/
 	
 	
 	@Override
@@ -96,15 +108,5 @@ public class DACStationManager implements IStationManager{
 		return fStations;
 	}
 
-	@Override
-	public Set<Station> getFixedStations() {
-		
-		return fFixedStations;
-	}
-
-	@Override
-	public Set<Station> getUnfixedStations() {
-		return fUnfixedStations;
-	}
 
 }
