@@ -3,13 +3,12 @@ package ca.ubc.cs.beta.stationpacking.data.manager;
 import java.util.Map;
 import java.util.Set;
 
-import ca.ubc.cs.beta.stationpacking.data.Constraint;
 import ca.ubc.cs.beta.stationpacking.data.Station;
 
 
 public interface IConstraintManager {
 	
-	public Set<Constraint> getPairwiseConstraints(Set<Integer> aChannels);
+	//public Set<Constraint> getPairwiseConstraints(Set<Integer> aChannels);
 		
 	public Set<Station> getCOInterferingStations(Station aStation);
 	
@@ -19,7 +18,7 @@ public interface IConstraintManager {
 	
 	public Boolean isSatisfyingAssignment(Map<Integer,Set<Station>> aAssignment);
 	
-	public Set<Set<Station>> group(Set<Station> aStations);
+	//public Set<Set<Station>> group(Set<Station> aStations);
 	
 	//public Map<Station,Set<Integer>> getStationDomains();
 	
