@@ -52,6 +52,7 @@ public class DACStationManager implements IStationManager{
 		aReader.close();	
 		System.out.println("aStationLookup is of size "+aStationLookup.size());
 
+		int aUnfixedStationCount = 0;
 		Set<Integer> aChannels;
 		Integer aStationPop;
 		aReader = new CSVReader(new FileReader(aStationFilename));
@@ -62,6 +63,7 @@ public class DACStationManager implements IStationManager{
 				aStationPop = Integer.valueOf(aLine[4]);
 				fStations.add(new Station(aID,aChannels,aStationPop));
 				aStationLookup.remove(aID);
+				if(aChannels.size()>1) aUnfixedStationCount++;
 			}
 		}
 		aReader.close();
@@ -71,10 +73,13 @@ public class DACStationManager implements IStationManager{
 			} catch(Exception e){
 				e.printStackTrace();
 				for(Integer aID1 : aStationLookup.keySet()){
-					fStations.add(new Station(aID1,aStationLookup.get(aID1),0));
+					aChannels = aStationLookup.get(aID1);
+					if(aChannels.size()>1) aUnfixedStationCount++;
+					fStations.add(new Station(aID1,aChannels,0));
 				}
 			}
 		}
+		System.out.println("Number of stations with domains of size at least 2: "+aUnfixedStationCount);
 
 		/*
 		aReader = new CSVReader(new FileReader(aStationFilename));
