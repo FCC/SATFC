@@ -153,4 +153,10 @@ public class ExperimentParameters {
 		return fSolverCutoff;
 	}
 
+	@Parameter(names = "-CNFLOOKUP_OUTPUT_FILE", description = "File to store CNF results.")
+	private String fCNFOutputName = "CNFOutput";
+	public String getCNFOutputName()
+	{
+		return fCNFOutputName;
+	}
 }
