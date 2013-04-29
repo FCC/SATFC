@@ -21,7 +21,6 @@ import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.ICNFE
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.NickCNFEncoder;
 
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ICNFLookup;
-import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.NDirCNFLookup;
 
 import ca.ubc.cs.beta.stationpacking.experiment.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.NTAESolver;
