@@ -14,16 +14,15 @@ import ca.ubc.cs.beta.stationpacking.data.Station;
 import ca.ubc.cs.beta.stationpacking.data.manager.DACConstraintManager2;
 import ca.ubc.cs.beta.stationpacking.data.manager.DACStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.executionparameters.ExperimentParameters;
-import ca.ubc.cs.beta.stationpacking.experiment.NInstanceGeneration;
+import ca.ubc.cs.beta.stationpacking.experiment.*;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.LocalExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.NickCNFEncoder;
+import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.HybridCNFLookup;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ICNFLookup;
-import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.NDirCNFLookup;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.NTAESolver;
-import ca.ubc.cs.beta.stationpacking.experiment.stationiterators.NInversePopulationStationIterator;
 
 public class Executor {
 	
@@ -73,7 +72,7 @@ public class Executor {
 		ICNFEncoder aCNFEncoder = new NickCNFEncoder();
 		
 		log.info("Creating cnf lookup...");
-		ICNFLookup aCNFLookup = new NDirCNFLookup(aExecParameters.getCNFDirectory());
+		ICNFLookup aCNFLookup = new HybridCNFLookup(aExecParameters.getCNFDirectory(), aExecParameters.getCNFOutputName());
 				
 		log.info("Creating solver...");
 		ISolver aSolver = new NTAESolver(dCM, aCNFLookup, aCNFEncoder, aExecParameters.getTAEParamConfigSpace(), aExecParameters.getTAEExecutable(), aExecParameters.getTAEExecDirectory(), aExecParameters.getTAEType(),aExecParameters.getTAEMaxConcurrentExec());

@@ -31,6 +31,8 @@ import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
 import ca.ubc.cs.beta.stationpacking.experiment.instance.NInstance;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ICNFLookup;
+import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.componentgrouper.ConstraintGrouper;
+import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SATResult;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SolverResult;
 
@@ -46,6 +48,7 @@ public class NTAESolver implements ISolver{
 	private ParamConfigurationSpace fParamConfigurationSpace;
 	private TargetAlgorithmEvaluator fTargetAlgorithmEvaluator;
 	private int fSeed;
+	private IComponentGrouper fGrouper;
 	private IConstraintManager fManager;
 	private ICNFLookup fLookup;
 	private ICNFEncoder fEncoder;
@@ -62,6 +65,7 @@ public class NTAESolver implements ISolver{
 	{
 		fEncoder = aEncoder;
 		fManager = aManager;
+		fGrouper = new ConstraintGrouper(fManager);
 		fLookup = aLookup;
 		//Parameter configuration space
 		fParamConfigurationSpace  = new ParamConfigurationSpace(new File(aParamConfigurationSpaceFile));
@@ -129,7 +133,7 @@ public class NTAESolver implements ISolver{
 	@Override
 	public SolverResult solve(IInstance aInstance, double aCutoff) {
 		Map<RunConfig,IInstance> aRunConfigMap = new HashMap<RunConfig,IInstance>();
-		Set<Set<Station>> aInstanceGroups = fManager.group(aInstance.getStations());
+		Set<Set<Station>> aInstanceGroups = fGrouper.group(aInstance.getStations());
 		Set<Integer> aChannelRange = aInstance.getChannelRange();
 		SATResult aSATResult;		
 		for(Set<Station> aStationComponent : aInstanceGroups){

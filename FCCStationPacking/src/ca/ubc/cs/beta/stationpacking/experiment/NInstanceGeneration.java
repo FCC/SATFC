@@ -23,7 +23,7 @@ import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SolverResult;
  */
 public class NInstanceGeneration {
 
-	private static Logger log = LoggerFactory.getLogger(InstanceGeneration.class);	
+	private static Logger log = LoggerFactory.getLogger(NInstanceGeneration.class);	
 	private ISolver fSolver;
 	private IExperimentReporter fExperimentReporter;
 	
