@@ -32,7 +32,11 @@ public class Executor {
 		
 		/**
 		 * Test arguments to used instead of compiling and using command line.
-		String[] testargs = {"-STATIONS_FILE",
+		 * 
+		 * 
+		**/
+		
+		String[] Alextestargs = {"-STATIONS_FILE",
 				"/Users/MightyByte/Documents/data/FCCStationPackingData/ProblemData/stations.csv",
 				"-DOMAINS_FILE",
 				"/Users/MightyByte/Documents/data/FCCStationPackingData/ProblemData/Domains.csv",
@@ -47,8 +51,8 @@ public class Executor {
 				"-EXPERIMENT_DIR",
 				"/Users/MightyByte/Documents/data/FCCStationPackingData/TestExperiment"
 				};
-		args = testargs;
-		**/
+		args = Alextestargs;
+		
 		
 		//Parse the command line arguments in a parameter object.
 		ExperimentParameters aExecParameters = new ExperimentParameters();
