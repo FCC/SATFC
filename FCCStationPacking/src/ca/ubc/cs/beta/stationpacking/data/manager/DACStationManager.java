@@ -9,15 +9,15 @@ import java.util.Set;
 import ca.ubc.cs.beta.stationpacking.data.Station;
 
 import au.com.bytecode.opencsv.CSVReader;
-/* NA - TODO right now this class populates fStations, fUnfixedStations, fFixedStations separately;
- * fStations is populated from aStationDomainsFilename, the others from aStationFilename.
+/* NA - fStations is populated from aStationDomainsFilename, with population info from aStationFilename.
+ * 
  */
 
 
 public class DACStationManager implements IStationManager{
 	
-	private Set<Station> fUnfixedStations = new HashSet<Station>();
-	private Set<Station> fFixedStations = new HashSet<Station>();
+	//private Set<Station> fUnfixedStations = new HashSet<Station>();
+	//private Set<Station> fFixedStations = new HashSet<Station>();
 	private Set<Station> fStations = new HashSet<Station>();
 	
 	public DACStationManager(String aStationFilename, String aStationDomainsFilename) throws Exception{
@@ -49,8 +49,10 @@ public class DACStationManager implements IStationManager{
 			}
 			aStationLookup.put(aID, aChannelDomain);
 		}
-		aReader.close();		
+		aReader.close();	
+		System.out.println("aStationLookup is of size "+aStationLookup.size());
 
+		int aUnfixedStationCount = 0;
 		Set<Integer> aChannels;
 		Integer aStationPop;
 		aReader = new CSVReader(new FileReader(aStationFilename));
@@ -61,10 +63,23 @@ public class DACStationManager implements IStationManager{
 				aStationPop = Integer.valueOf(aLine[4]);
 				fStations.add(new Station(aID,aChannels,aStationPop));
 				aStationLookup.remove(aID);
+				if(aChannels.size()>1) aUnfixedStationCount++;
 			}
 		}
 		aReader.close();
-		if(!aStationLookup.isEmpty()) throw new Exception("No station population given for some stations.");
+		if(!aStationLookup.isEmpty()){
+			try{ 
+				throw new Exception("Missing station population for "+aStationLookup.size()+" stations.");
+			} catch(Exception e){
+				e.printStackTrace();
+				for(Integer aID1 : aStationLookup.keySet()){
+					aChannels = aStationLookup.get(aID1);
+					if(aChannels.size()>1) aUnfixedStationCount++;
+					fStations.add(new Station(aID1,aChannels,0));
+				}
+			}
+		}
+		System.out.println("Number of stations with domains of size at least 2: "+aUnfixedStationCount);
 
 		/*
 		aReader = new CSVReader(new FileReader(aStationFilename));
@@ -82,6 +97,7 @@ public class DACStationManager implements IStationManager{
 		*/
 	}
 	
+	/*
 	public Map<Station,Integer> getStationPopulation(){
 		Map<Station,Integer> aPopulationMap = new HashMap<Station,Integer>();
 		for(Station aStation : fStations){
@@ -89,6 +105,7 @@ public class DACStationManager implements IStationManager{
 		}
 		return aPopulationMap;
 	}
+	*/
 	
 	
 	@Override
@@ -96,15 +113,5 @@ public class DACStationManager implements IStationManager{
 		return fStations;
 	}
 
-	@Override
-	public Set<Station> getFixedStations() {
-		
-		return fFixedStations;
-	}
-
-	@Override
-	public Set<Station> getUnfixedStations() {
-		return fUnfixedStations;
-	}
 
 }
