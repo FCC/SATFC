@@ -8,7 +8,7 @@ import java.util.LinkedList;
 import java.util.Set;
 
 import ca.ubc.cs.beta.stationpacking.data.Station;
-import ca.ubc.cs.beta.stationpacking.data.StationComparator;
+//import ca.ubc.cs.beta.stationpacking.data.StationComparator;
 
 
 public class NInstance implements IInstance{

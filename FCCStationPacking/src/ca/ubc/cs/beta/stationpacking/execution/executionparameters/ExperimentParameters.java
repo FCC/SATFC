@@ -1,17 +1,19 @@
 package ca.ubc.cs.beta.stationpacking.execution.executionparameters;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+/*
+import java.lang.reflect.Array;
 import java.util.Set;
 
 import ca.ubc.cs.beta.stationpacking.data.Station;
 
 import com.beust.jcommander.IParameterValidator;
 import com.beust.jcommander.JCommander;
-import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
+*/
+import com.beust.jcommander.Parameter;
 
 /**
  * Parser for main parameters related to executing an (instance generation) experiment.
@@ -151,4 +153,10 @@ public class ExperimentParameters {
 		return fSolverCutoff;
 	}
 
+	@Parameter(names = "-CNFLOOKUP_OUTPUT_FILE", description = "File to store CNF results.")
+	private String fCNFOutputName = "CNFOutput";
+	public String getCNFOutputName()
+	{
+		return fCNFOutputName;
+	}
 }
