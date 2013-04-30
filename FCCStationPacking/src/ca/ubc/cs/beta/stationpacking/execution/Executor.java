@@ -51,6 +51,7 @@ public class Executor {
 		args = testargs;
 		**/
 		
+		//Parse the command line arguments in a parameter object.
 		ExperimentParameters aExecParameters = new ExperimentParameters();
 		JCommander aParameterParser = new JCommander(aExecParameters);
 		try
@@ -63,6 +64,7 @@ public class Executor {
 			aParameterParser.usage();
 		}
 	    
+		//Use the parameters to instantiate the experiment.
 		log.info("Getting data...");
 		DACStationManager aStationManager = new DACStationManager(aExecParameters.getStationFilename(),aExecParameters.getDomainFilename());
 	    Set<Station> aStations = aStationManager.getStations();
