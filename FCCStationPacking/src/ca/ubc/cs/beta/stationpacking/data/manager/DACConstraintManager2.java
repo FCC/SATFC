@@ -23,8 +23,6 @@ public class DACConstraintManager2 implements IConstraintManager{
 	ArrayList<HashMap<Station,Set<Station>>> fADJplusConstraints = new ArrayList<HashMap<Station,Set<Station>>>(3);
 	ArrayList<HashMap<Station,Set<Station>>> fADJminusConstraints = new ArrayList<HashMap<Station,Set<Station>>>(3);
 
-	
-	
 	/*
 	public DACConstraintManager2(Set<Station> aStations,Set<Constraint> aPairwiseConstraints){
 		for(Station aStation : aStations){
