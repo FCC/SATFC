@@ -163,19 +163,19 @@ public class DACConstraintManager2 implements IConstraintManager{
 
 
 	public Set<Station> getCOInterferingStations(Station aStation) {
-		Set<Station> aInterfering = fCOConstraints.get(3).get(aStation);
+		Set<Station> aInterfering = fCOConstraints.get(2).get(aStation);
 		if(aInterfering==null) aInterfering = new HashSet<Station>();
 		return aInterfering;
 	}
 	
 	public Set<Station> getADJplusInterferingStations(Station aStation) {
-		Set<Station> aInterfering = fADJplusConstraints.get(3).get(aStation);
+		Set<Station> aInterfering = fADJplusConstraints.get(2).get(aStation);
 		if(aInterfering==null) aInterfering = new HashSet<Station>();
 		return aInterfering;
 	}
 	
 	public Set<Station> getADJminusInterferingStations(Station aStation) {
-		Set<Station> aInterfering = fADJminusConstraints.get(3).get(aStation);
+		Set<Station> aInterfering = fADJminusConstraints.get(2).get(aStation);
 		if(aInterfering==null) aInterfering = new HashSet<Station>();
 		return aInterfering;	
 	}
