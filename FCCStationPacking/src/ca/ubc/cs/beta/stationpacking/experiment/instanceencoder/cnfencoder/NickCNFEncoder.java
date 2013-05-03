@@ -48,7 +48,7 @@ public class NickCNFEncoder implements ICNFEncoder {
 			aNumClauses += writeBaseClauses(aInternalID,aInternalChannelIDs.values(),aBuilder);
 			//Encode that aStation must be assigned to at least one channel
 			aDomainInternal = mapSet(aInternalChannelIDs,aStation.getDomain());
-			if(aDomainInternal.isEmpty()) return fUNSAT_CNF;
+			if(aDomainInternal.isEmpty()) return aBuilder.toString()+fUNSAT_CNF;
 			else aNumClauses += writeDomainClauses(aInternalID,aDomainInternal,aInternalChannelIDs.size(),aBuilder);
 			//Encode that aStation cannot share a channel with any station in aConstraintManager.getCOInterferingStations(aStation)
 			aCOInterferingInternal = mapSet(aInternalStationIDs,aConstraintManager.getCOInterferingStations(aStation));
