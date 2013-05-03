@@ -5,6 +5,7 @@ import time
 import platform
 import re
 
+
 #Paths
 solver_dir = './'
 glucose_dir = solver_dir+'glucose/'
@@ -40,7 +41,7 @@ instance_specific_information = sys.argv[2]
 cutoff_time = sys.argv[3]
 cutoff_length = sys.argv[4]
 seed = sys.argv[5]
-
+output_suffix = 'output'
 solvername = sys.argv[7].replace(' ','').replace("'",'')
 
 (bits,linkage) = platform.architecture()
@@ -130,11 +131,14 @@ elif re.search(SATre,std_out):
     output_solved = 'SAT'
     TIMEre.findall(std_out)
     output_runtime = str(float(TIMEre.findall(std_out)[0].split(':')[1].replace(' ','')))
+    output_file = open(instance_name+output_suffix, "w")
+    output_file.write(std_out)
+    output_file.close()
 else:
     output_solved = 'CRASHED'
     print std_out
     print std_err
     output_runtime = str(time.time()-clock)
 
-print 'Result for ParamILS: '+output_solved+', '+output_runtime+', '+output_runlength+', '+output_quality+', '+output_seed+'\n'+std_out
+print 'Result for ParamILS: '+output_solved+', '+output_runtime+', '+output_runlength+', '+output_quality+', '+output_seed+'\n'
 
