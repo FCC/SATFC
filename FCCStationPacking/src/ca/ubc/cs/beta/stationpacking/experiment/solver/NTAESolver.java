@@ -134,6 +134,7 @@ public class NTAESolver implements ISolver{
 	public SolverResult solve(IInstance aInstance, double aCutoff) {
 		Map<RunConfig,IInstance> aRunConfigMap = new HashMap<RunConfig,IInstance>();
 		Set<Set<Station>> aInstanceGroups = fGrouper.group(aInstance.getStations());
+		//System.out.println("\n"+aInstanceGroups.size()+" distinct groups: "+aInstanceGroups+"\n");
 		Set<Integer> aChannelRange = aInstance.getChannelRange();
 		SATResult aSATResult;		
 		for(Set<Station> aStationComponent : aInstanceGroups){
@@ -142,6 +143,7 @@ public class NTAESolver implements ISolver{
 			if((aSATResult = fLookup.getSATResult(aComponentInstance))!=null) {
 				if(aSATResult.equals(SATResult.UNSAT)) return new SolverResult(SATResult.UNSAT,0.0);
 			} else {
+				//System.out.println("\n WRITING NEW SAT INSTANCE\n");
 				String aCNF = fEncoder.encode(aComponentInstance,fManager);
 				try {
 					FileUtils.writeStringToFile(new File(aCNFFileName), aCNF);

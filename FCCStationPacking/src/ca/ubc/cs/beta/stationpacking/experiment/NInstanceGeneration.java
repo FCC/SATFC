@@ -52,7 +52,9 @@ public class NInstanceGeneration {
 				if(!aRunResult.getResult().equals(SATResult.SAT)){
 					log.info("Instance was UNSAT, removing station.");
 					aInstance.removeStation(aStation);
-				}			
+				} else {
+					
+				}
 			} 
 			catch (Exception e){ 
 				e.printStackTrace();
