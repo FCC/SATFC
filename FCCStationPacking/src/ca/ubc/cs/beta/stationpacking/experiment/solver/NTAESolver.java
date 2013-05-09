@@ -175,16 +175,16 @@ public class NTAESolver implements ISolver{
 			//NA - we should save the station assignments
 			switch(aRun.getRunResult()){
 				case SAT:
-					fLookup.putSATResult(aRunConfigMap.get(aConfig),SATResult.SAT);
+					fLookup.putSATResult(aRunConfigMap.get(aConfig),new SolverResult(SATResult.SAT,aRun.getRuntime()));
 					break;
 				case UNSAT:
-					fLookup.putSATResult(aRunConfigMap.get(aConfig),SATResult.UNSAT);
+					fLookup.putSATResult(aRunConfigMap.get(aConfig), new SolverResult(SATResult.UNSAT,aRun.getRuntime()));
 					return new SolverResult(SATResult.UNSAT,aRuntime);
 				case TIMEOUT:
-					fLookup.putSATResult(aRunConfigMap.get(aConfig),SATResult.TIMEOUT);
+					fLookup.putSATResult(aRunConfigMap.get(aConfig),new SolverResult(SATResult.TIMEOUT,aRun.getRuntime()));
 					return new SolverResult(SATResult.TIMEOUT,aRuntime);
 				default:
-					fLookup.putSATResult(aRunConfigMap.get(aConfig),SATResult.CRASHED);
+					fLookup.putSATResult(aRunConfigMap.get(aConfig),new SolverResult(SATResult.CRASHED,aRun.getRuntime()));
 					return new SolverResult(SATResult.CRASHED,aRuntime);
 			}
 		}
