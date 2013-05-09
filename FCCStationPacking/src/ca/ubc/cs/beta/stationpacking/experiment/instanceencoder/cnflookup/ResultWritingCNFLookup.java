@@ -41,7 +41,7 @@ public class ResultWritingCNFLookup implements ICNFLookup{
 			if(aOutputFile.exists()){
 				CSVReader aReader = new CSVReader(new FileReader(aOutputFile),',');
 				while((aLine = aReader.readNext())!=null){	//NA - perform some sanity checks
-					if(aLine.length != 2) {
+					if(aLine.length != 3) {
 						aReader.close();
 						throw new Exception("Output file exists but is not in the correct format. Continuing without reading past results.");
 					}
