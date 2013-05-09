@@ -1,0 +1,9 @@
+Dummy RunSolver for OS X
+ The arguments RunSolver would have received:
+ {'C': '1800.0', 'M': '1000'}
+ The callstring for the target solver:
+ ['./picosat/picosatx64osx/picosat', '/Users/narnosti/Documents/fcc-station-packing/CNFs/04dfc6c2492c258efad0bfa77ab3e4b291970c9845.cnf']
+ ./picosat/picosatx64osx/picosat /Users/narnosti/Documents/fcc-station-packing/CNFs/04dfc6c2492c258efad0bfa77ab3e4b291970c9845.cnf
+ s SATISFIABLE
+ v -1 2 -3 -4 -5 6 7 -8 -9 -10 -11 12 0
+ CPU time (s): 0.00482201576233
