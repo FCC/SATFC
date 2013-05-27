@@ -1,11 +1,16 @@
 package ca.ubc.cs.beta.stationpacking.experiment.solver;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.apache.commons.io.FileUtils;
 
 import ca.ubc.cs.beta.aclib.algorithmrun.AlgorithmRun;
 import ca.ubc.cs.beta.aclib.algorithmrun.RunResult;
@@ -25,8 +30,9 @@ import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.loader.TargetAlgorithmEvalu
 import ca.ubc.cs.beta.stationpacking.data.Station;
 import ca.ubc.cs.beta.stationpacking.data.manager.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
-import ca.ubc.cs.beta.stationpacking.experiment.instance.NInstance;
-import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ICNFLookup;
+import ca.ubc.cs.beta.stationpacking.experiment.instance.Instance;
+import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.ICNFEncoder;
+import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ICNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.componentgrouper.ConstraintGrouper;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SATResult;
@@ -34,7 +40,7 @@ import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SolverResult;
 
 /**
  * SAT solver wrapper that uses Steve Ramage's AClib Target Algorithm Evaluators for execution.
- * @author afrechet
+ * @author afrechet, narnosti
  *
  */
 public class TAESolver implements ISolver{
@@ -44,10 +50,12 @@ public class TAESolver implements ISolver{
 	private ParamConfigurationSpace fParamConfigurationSpace;
 	private TargetAlgorithmEvaluator fTargetAlgorithmEvaluator;
 	private int fSeed;
-	
-	private IConstraintManager fManager; 
-	private ICNFLookup fLookup; 
 	private IComponentGrouper fGrouper;
+	private IConstraintManager fManager;
+	private ICNFResultLookup fLookup;
+	private ICNFEncoder fEncoder;
+	
+	
 	/**
 	 * Construct a solver wrapper around a target algorithm evaluator.
 	 * @param aParamConfigurationSpaceFile - the location of the ParamILS formatted parameter configuration space file.
@@ -55,11 +63,12 @@ public class TAESolver implements ISolver{
 	 * @param aExecDir - the directory in which to execute the algorithm (<i> e.g. </i> "[...]/SolverWrapper/").
 	 * @param aTargetAlgorithmEvaluatorExecutionEnvironment (<i> e.g. </i> "CLI" command-line on system, "MYSQLDBTAE" plug-in for mySQL workers, ...). 
 	 */
-	public TAESolver(IConstraintManager aManager, ICNFLookup aLookup, String aParamConfigurationSpaceFile, String aAlgorithmExecutable, String aExecDir, String aTargetAlgorithmEvaluatorExecutionEnvironment, int aMaximumConcurrentExecutions)
+	public TAESolver(IConstraintManager aManager, ICNFResultLookup aLookup, ICNFEncoder aEncoder, String aParamConfigurationSpaceFile, String aAlgorithmExecutable, String aExecDir, String aTargetAlgorithmEvaluatorExecutionEnvironment, int aMaximumConcurrentExecutions)
 	{
+		fEncoder = aEncoder;
 		fManager = aManager;
-		fLookup = aLookup;
 		fGrouper = new ConstraintGrouper(fManager);
+		fLookup = aLookup;
 		//Parameter configuration space
 		fParamConfigurationSpace  = new ParamConfigurationSpace(new File(aParamConfigurationSpaceFile));
 		
@@ -90,8 +99,7 @@ public class TAESolver implements ISolver{
 	 */
 	private CurrentRunStatusObserver getPreemptingObserver()
 	{
-		return new CurrentRunStatusObserver(){
-		
+		return new CurrentRunStatusObserver(){		
 			@Override
 			public void currentStatus(List<? extends KillableAlgorithmRun> runs) {
 				boolean aKill = false;
@@ -110,60 +118,119 @@ public class TAESolver implements ISolver{
 						aRun.kill();
 					}
 				}
-					
-			}
-			
+			}	
 		};
 	}
 	
+	/* NA - Returns a SolverResult corresponding to packing stations aInstance.getStations()
+	 * into channels aInstance.getChannelRange() given constraints imposed by fManager.
+	 * 
+	 * Optimized in the following ways:
+	 * 1. Clusters the Instance into disjoint connected components
+	 * 2. Checks with fLookup to see whether each component has been solved.
+	 *    If any component has been determined to be UNSAT, the method returns.
+	 * 3. Sequentially solves each new component, returning if any of them are not in SAT.
+	 * 
+	 */
 	@Override
-	public SolverResult solve(IInstance aInstance, double aCutoff) {
+	public SolverResult solve(IInstance aInstance, double aCutoff) throws Exception{
 		
+		Set<Integer> aChannelRange = aInstance.getChannelRange();
 		
-		//Create runs for TAE.
-		List<RunConfig> aRunConfigList = new ArrayList<RunConfig>();
-		Set<String> aCNFFilenames = new HashSet<String>();
-		IInstance aComponentInstance;
-		for(Set<Station> aGroup : fGrouper.group(aInstance.getStations())){
-			aComponentInstance = new NInstance(aGroup,aInstance.getChannelRange());
-			aCNFFilenames.add(fLookup.getNameFor(aComponentInstance));
-		}
+		//Group stations
+		Set<Set<Station>> aInstanceGroups = fGrouper.group(aInstance.getStations());
 		
-		for(String aCNFFilename : aCNFFilenames)
-		{
-			ProblemInstance aProblemInstance = new ProblemInstance(aCNFFilename);
-			ProblemInstanceSeedPair aProblemInstanceSeedPair = new ProblemInstanceSeedPair(aProblemInstance,fSeed);
-			RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aCutoff, fParamConfigurationSpace.getDefaultConfiguration());
-			aRunConfigList.add(aRunConfig);
-		}
+		ArrayList<SolverResult> aComponentResults = new ArrayList<SolverResult>();
 		
-		List<AlgorithmRun> aRuns = fTargetAlgorithmEvaluator.evaluateRun(aRunConfigList, getPreemptingObserver());
-		
-		HashSet<SATResult> aSATResults = new HashSet<SATResult>();
-		double aRuntime = 0.0;
-		
-		for(AlgorithmRun aRun : aRuns)
-		{
-			aRuntime += aRun.getRuntime();
+		HashMap<RunConfig,IInstance> aToSolveInstances = new HashMap<RunConfig,IInstance>();
+	
+		for(Set<Station> aStationComponent : aInstanceGroups){
+			//Create the component group instance.
+			Instance aComponentInstance = new Instance(aStationComponent,aChannelRange);
 			
-			switch(aRun.getRunResult())
+			//Check if present
+			if(fLookup.hasSolverResult(aInstance))
 			{
-			case SAT:
-				aSATResults.add(SATResult.SAT);
-				break;
-			case UNSAT:
-				aSATResults.add(SATResult.UNSAT);
-				break;
-			case TIMEOUT:
-				aSATResults.add(SATResult.TIMEOUT);
-				break;
-			default:
-				aSATResults.add(SATResult.CRASHED);
-				break;
+				SolverResult aSolverResult = fLookup.getSolverResult(aInstance);
+				//Early preemption if component is UNSAT,
+				if (aSolverResult.getResult().equals(SATResult.UNSAT))
+				{
+					return new SolverResult(SATResult.UNSAT,0.0);
+				}
+				aComponentResults.add(aSolverResult);
+			}
+			else
+			{
+				//Not present, CNF must be written to file and solved.
+				//Name the instance
+				String aCNFFileName = fLookup.getCNFNameFor(aComponentInstance);
+				//Encode the instance
+				String aCNF = fEncoder.encode(aComponentInstance,fManager);
+				try 
+				{
+					FileUtils.writeStringToFile(new File(aCNFFileName), aCNF);
+				} 
+				catch (IOException e) 
+				{
+					e.printStackTrace();
+				}
+				//Create the run config and add it to the to-do list.
+				ProblemInstance aProblemInstance = new ProblemInstance(aCNFFileName);
+				ProblemInstanceSeedPair aProblemInstanceSeedPair = new ProblemInstanceSeedPair(aProblemInstance,fSeed);
+				RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aCutoff, fParamConfigurationSpace.getDefaultConfiguration());
+				
+				aToSolveInstances.put(aRunConfig,aInstance);
 			}
 		}
 		
+		List<RunConfig> aRunConfigs = new ArrayList<RunConfig>(aToSolveInstances.keySet());
+		List<AlgorithmRun> aRuns = fTargetAlgorithmEvaluator.evaluateRun(aRunConfigs,getPreemptingObserver());
+		
+		for(AlgorithmRun aRun : aRuns)
+		{
+			if(!aRun.getRunResult().equals(RunResult.KILLED))
+			{
+				double aRuntime = aRun.getRuntime();				
+				SATResult aResult;
+				switch (aRun.getRunResult()){
+					case SAT:
+						aResult = SATResult.SAT;
+						break;
+					case UNSAT:
+						aResult = SATResult.UNSAT;
+						break;
+					case TIMEOUT:
+						aResult = SATResult.TIMEOUT;
+					default:
+						aResult = SATResult.CRASHED;
+				}
+				
+				SolverResult aSolverResult = new SolverResult(aResult,aRuntime);
+				
+				//Save result if successfully computed
+				fLookup.putSolverResult(aToSolveInstances.get(aRun.getRunConfig()),aSolverResult);
+
+				
+				//Add result to component results
+				aComponentResults.add(aSolverResult);
+			}	
+		}
+		return mergeComponentResults(aComponentResults);
+
+	}
+	
+	private SolverResult mergeComponentResults(Collection<SolverResult> aComponentResults){
+		double aRuntime = 0.0;
+		
+		HashSet<SATResult> aSATResults = new HashSet<SATResult>();
+		for(SolverResult aSolverResult : aComponentResults)
+		{
+			aRuntime += aSolverResult.getRuntime();
+			aSATResults.add(aSolverResult.getResult());
+		}
+		
 		SATResult aSATResult = SATResult.SAT;
+		
 		if(aSATResults.contains(SATResult.UNSAT))
 		{
 			aSATResult = SATResult.UNSAT;
@@ -179,5 +246,7 @@ public class TAESolver implements ISolver{
 		
 		return new SolverResult(aSATResult,aRuntime);
 	}
-
+	
+	
+	
 }

@@ -23,15 +23,15 @@ import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentRepo
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.LocalExperimentReporter;
 
 import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
-import ca.ubc.cs.beta.stationpacking.experiment.instance.NInstance;
+import ca.ubc.cs.beta.stationpacking.experiment.instance.Instance;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.NickCNFEncoder;
 
-import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ICNFLookup;
-import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ResultWritingCNFLookup;
+import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ICNFResultLookup;
+import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.HybridCNFResultLookup;
 
 import ca.ubc.cs.beta.stationpacking.experiment.solver.ISolver;
-import ca.ubc.cs.beta.stationpacking.experiment.solver.NTAESolver;
+import ca.ubc.cs.beta.stationpacking.experiment.solver.TAESolver;
 
 import ca.ubc.cs.beta.stationpacking.experiment.*;
 
@@ -90,14 +90,14 @@ public class NickMain {
 		log.info("Creating cnf lookup...");
  
 		String aCNFDir = "/Users/narnosti/Documents/fcc-station-packing/CNFs";
-		ICNFLookup aCNFLookup = new ResultWritingCNFLookup(aCNFDir,"CNFOutput");
+		ICNFResultLookup aCNFLookup = new HybridCNFResultLookup(aCNFDir,"CNFOutput");
 				
 		log.info("Creating solver...");
         String aParamConfigurationSpaceLocation = "/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/SATsolvers/sw_parameterspaces/sw_picosat.txt";
 		String aAlgorithmExecutable = "python solverwrapper.py";
         String aExecDir = "/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/SATsolvers/";
 		int aMaximumConcurrentExecution = 4;
-		ISolver aSolver = new NTAESolver(aCM, aCNFLookup, aCNFEncoder, aParamConfigurationSpaceLocation, aAlgorithmExecutable, aExecDir, "CLI",aMaximumConcurrentExecution);
+		ISolver aSolver = new TAESolver(aCM, aCNFLookup, aCNFEncoder, aParamConfigurationSpaceLocation, aAlgorithmExecutable, aExecDir, "CLI",aMaximumConcurrentExecution);
 		
 		log.info("Creating experiment reporter...");
         String testFolder = "/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/ExperimentDir";
@@ -159,7 +159,7 @@ private static IInstance readInstanceFromCNFFile(String aFileName, Set<Station> 
 		}
 	}
 	aReader.close();
-	IInstance aInstance = new NInstance(aStationSet,aChannels);
+	IInstance aInstance = new Instance(aStationSet,aChannels);
 	return aInstance;
 }
 }

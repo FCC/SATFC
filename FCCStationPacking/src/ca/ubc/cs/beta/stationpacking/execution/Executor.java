@@ -19,10 +19,10 @@ import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentRepo
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.LocalExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.NickCNFEncoder;
-import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ICNFLookup;
-import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ResultWritingCNFLookup;
+import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ICNFResultLookup;
+import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.HybridCNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.ISolver;
-import ca.ubc.cs.beta.stationpacking.experiment.solver.NTAESolver;
+import ca.ubc.cs.beta.stationpacking.experiment.solver.TAESolver;
 
 public class Executor {
 	
@@ -31,28 +31,34 @@ public class Executor {
 	public static void main(String[] args) throws Exception {
 		
 		/**
-		 * Test arguments to used instead of compiling and using command line.
+		 * Test arguments to use, instead of compiling and using command line.
 		 * 
 		 * 
 		**/
-		
-		String[] Alextestargs = {"-STATIONS_FILE",
-				"/Users/MightyByte/Documents/data/FCCStationPackingData/ProblemData/stations.csv",
+		String[] aPaxosTargetArgs = {"-STATIONS_FILE",
+				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/stations.csv",
 				"-DOMAINS_FILE",
-				"/Users/MightyByte/Documents/data/FCCStationPackingData/ProblemData/Domains.csv",
+				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/Domains.csv",
 				"-CONSTRAINTS_FILE",
-				"/Users/MightyByte/Documents/data/FCCStationPackingData/ProblemData/Interferences.csv",
+				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/Interferences.csv",
 				"-CNF_DIR",
-				"/Users/MightyByte/Documents/data/FCCStationPackingData/CNFs",
+				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/CNFs",
 				"-SOLVER",
 				"tunedclasp",
 				"-EXPERIMENT_NAME",
 				"TestExperiment",
 				"-EXPERIMENT_DIR",
-				"/Users/MightyByte/Documents/data/FCCStationPackingData/TestExperiment"
+				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Results/TestExperiment",
+				"-TAE_CONC_EXEC_NUM",
+				"4"
 				};
-		args = Alextestargs;
 		
+		
+		args = aPaxosTargetArgs;
+		
+		/**
+		 * 
+		**/
 		
 		//Parse the command line arguments in a parameter object.
 		ExperimentParameters aExecParameters = new ExperimentParameters();
@@ -76,10 +82,10 @@ public class Executor {
 		ICNFEncoder aCNFEncoder = new NickCNFEncoder();
 		
 		log.info("Creating cnf lookup...");
-		ICNFLookup aCNFLookup = new ResultWritingCNFLookup(aExecParameters.getCNFDirectory(), aExecParameters.getCNFOutputName());
+		ICNFResultLookup aCNFLookup = new HybridCNFResultLookup(aExecParameters.getCNFDirectory(), aExecParameters.getCNFOutputName());
 				
 		log.info("Creating solver...");
-		ISolver aSolver = new NTAESolver(dCM, aCNFLookup, aCNFEncoder, aExecParameters.getTAEParamConfigSpace(), aExecParameters.getTAEExecutable(), aExecParameters.getTAEExecDirectory(), aExecParameters.getTAEType(),aExecParameters.getTAEMaxConcurrentExec());
+		ISolver aSolver = new TAESolver(dCM, aCNFLookup, aCNFEncoder, aExecParameters.getTAEParamConfigSpace(), aExecParameters.getTAEExecutable(), aExecParameters.getTAEExecDirectory(), aExecParameters.getTAEType(),aExecParameters.getTAEMaxConcurrentExec());
 		
 		log.info("Creating experiment reporter...");
 		IExperimentReporter aExperimentReporter = new LocalExperimentReporter(aExecParameters.getExperimentDir(), aExecParameters.getExperimentName());

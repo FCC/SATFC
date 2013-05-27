@@ -32,13 +32,15 @@ public class NInstanceGeneration {
 		fExperimentReporter = aExperimentReporter;
 	}
 	
-	/*@param aStartingStations - the initial set of stations (may be empty)
-	 *@param aStationIterator - an iterator that specifies the order in which stations are considered
-	 *@param aChannelRange - the set of channels into which the stations should be packed
-	 *@param aCutoff - the maximum time to consider any individual SAT solver run
-	 */
+	/**
+	 * @param aStartingStations - the initial set of stations (may be empty)
+	 * @param aStationIterator - an iterator that specifies the order in which stations are considered
+	 * @param aChannelRange - the set of channels into which the stations should be packed
+	 * @param aCutoff - the maximum time to consider any individual SAT solver run
+	 *
+	**/
 	public void run(Set<Station> aStartingStations, Iterator<Station> aStationIterator, Set<Integer> aChannelRange,double aCutoff){
-		IInstance aInstance = new NInstance(aStartingStations,aChannelRange);
+		IInstance aInstance = new Instance(aStartingStations,aChannelRange);
 		System.out.println(aStationIterator.hasNext());
 		while(aStationIterator.hasNext()) {
 			Station aStation = aStationIterator.next();
