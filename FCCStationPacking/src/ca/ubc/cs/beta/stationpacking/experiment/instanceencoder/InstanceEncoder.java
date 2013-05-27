@@ -17,7 +17,7 @@ import ca.ubc.cs.beta.stationpacking.experiment.instance.Instance;
 import ca.ubc.cs.beta.stationpacking.data.Station;
 import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.ICNFEncoder;
-import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ICNFLookup;
+import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ICNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.componentgrouper.IComponentGrouper;
 
 
@@ -39,7 +39,7 @@ public class InstanceEncoder implements IInstanceEncoder {
 	 * @param aComponentGrouper
 	 * @param aCNFDirectory
 	 */
-	public InstanceEncoder(ICNFEncoder aCNFEncoder, ICNFLookup aCNFLookup, IComponentGrouper aComponentGrouper, String aCNFDirectory)
+	public InstanceEncoder(ICNFEncoder aCNFEncoder, ICNFResultLookup aCNFLookup, IComponentGrouper aComponentGrouper, String aCNFDirectory)
 	{
 		/*
 		fCNFLookup = aCNFLookup;

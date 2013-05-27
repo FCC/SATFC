@@ -8,15 +8,13 @@ import java.util.LinkedList;
 import java.util.Set;
 
 import ca.ubc.cs.beta.stationpacking.data.Station;
-//import ca.ubc.cs.beta.stationpacking.data.StationComparator;
 
-
-public class NInstance implements IInstance{
+public class Instance implements IInstance{
 	
 	private final Set<Integer> fChannels = new HashSet<Integer>();
 	private final Set<Station> fStations = new HashSet<Station>(); 
 	
-	public NInstance(Set<Station> aStations, Set<Integer> aChannels){
+	public Instance(Set<Station> aStations, Set<Integer> aChannels){
 		for(Integer aChannel : aChannels) fChannels.add(aChannel);
 		for(Station aStation : aStations) fStations.add(aStation);
 	}
