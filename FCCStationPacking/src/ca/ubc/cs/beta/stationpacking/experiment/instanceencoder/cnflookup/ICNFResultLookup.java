@@ -4,7 +4,6 @@ package ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup;
 import java.io.IOException;
 
 import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
-import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SATResult;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SolverResult;
 
 
@@ -15,7 +14,7 @@ import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SolverResult;
  * @author afrechet, narnosti
  *
  */
-public interface ICNFLookup {
+public interface ICNFResultLookup {
 	
 	//NA - why are these all public? Which ones are actually called?
 	
@@ -23,35 +22,32 @@ public interface ICNFLookup {
 	 * @param aStations - a set of stations.
 	 * @return True if it contains a CNF for given station set.
 	 */
-	public boolean hasSATResult(IInstance aInstance);
+	public boolean hasSolverResult(IInstance aInstance);
 	
-	public SATResult getSATResult(IInstance aInstance);
+	/**
+	 * Get solver result for a given problem instance.
+	 * @param aInstance - a problem instance.
+	 * @return The solver result recorded for the problem instance.  
+	 * @throws Exception Throws exception if instance not recorded.
+	 */
+	public SolverResult getSolverResult(IInstance aInstance) throws Exception;
 
-	public boolean putSATResult(IInstance aInstance, SolverResult aResult);
+	/**
+	 * Save solver result for a given problem instance.
+	 * @param aInstance - a problem instance.
+	 * @param aResult - a solver result.
+	 * @return true if already present, false otherwise.
+	 */
+	public boolean putSolverResult(IInstance aInstance, SolverResult aResult);
 	
 	/**
 	 * @param aStations - a set of stations.
 	 * @return CNF instance file name corresponding to input station set, if any.
 	 * @throws Exception - if input station set has no corresponding CNF name.
 	 */
-	public String getNameFor(IInstance aInstance);
+	public String getCNFNameFor(IInstance aInstance);
 	
 	public void writeToFile() throws IOException;
 
-	//public boolean writeResult(IInstance aInstance, SATResult aResult);
-	
-	/**
-	 * @param aStations - a set of stations.
-	 * @return The name it would attribute to a CNF corresponding to input station set.
-	 */
-	//NA - commented out because it's only called internally
-	//public String getCNFNamefor(Set<Station> aStations,Integer ... aRange);
-	/**
-	 * Associates input set of stations to automatically generated CNF file name (see getCNFNamefor() method).
-	 * @param aStations - a set of stations.
-	 * @return The CNF name attributed to input station set.
-	 * @throws Exception
-	 */
-	//public String addCNFfor(IInstance aInstance) throws Exception;
 
 }

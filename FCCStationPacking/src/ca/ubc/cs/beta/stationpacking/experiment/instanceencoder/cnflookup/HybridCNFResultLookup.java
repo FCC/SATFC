@@ -22,19 +22,21 @@ import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SATResult;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SolverResult;
 
 /**
- * CNF lookup that searches a particular directory for CNFs.
+ * CNF lookup that searches a particular directory for CNFs, and keeps a cached map around for solver results.
  * @author afrechet, narnosti
  *
  */
-public class ResultWritingCNFLookup implements ICNFLookup{
+public class HybridCNFResultLookup implements ICNFResultLookup{
 	
 	private final String fOutputName;
 	private String fCNFDirectory;
 	private Map<String,SolverResult> fResultLookup = new HashMap<String,SolverResult>();
 	
-	public ResultWritingCNFLookup(String aCNFDirectory, String aOutputName){
+	public HybridCNFResultLookup(String aCNFDirectory, String aOutputName){
+		
 		fOutputName = aOutputName;
 		fCNFDirectory = aCNFDirectory;
+		
 		try{
 			File aOutputFile = new File(fCNFDirectory+File.separatorChar+fOutputName);
 			String[] aLine;
@@ -45,7 +47,7 @@ public class ResultWritingCNFLookup implements ICNFLookup{
 						aReader.close();
 						throw new Exception("Output file exists but is not in the correct format. Continuing without reading past results.");
 					}
-					else fResultLookup.put(aLine[0], new SolverResult(stringToSATResult(aLine[1]),Double.parseDouble(aLine[2])));
+					else fResultLookup.put(aLine[0], new SolverResult(SATResult.valueOf(aLine[1]),Double.parseDouble(aLine[2])));
 				}
 				aReader.close();
 			}		
@@ -55,51 +57,62 @@ public class ResultWritingCNFLookup implements ICNFLookup{
 	}
 	
 	@Override
-	public boolean hasSATResult(IInstance aInstance) {
-		return (getSATResult(aInstance)!=null);
+	public boolean hasSolverResult(IInstance aInstance) {
+		String aInstanceHash = getCNFName(aInstance);
+		return fResultLookup.containsKey(aInstanceHash);
 	}
 
 	@Override
-	public String getNameFor(IInstance aInstance){
+	public String getCNFNameFor(IInstance aInstance){
 		return 	fCNFDirectory+File.separatorChar+getCNFName(aInstance)+".cnf";
 	}
 
 	
-	//NA - returns the saved SATResult value corresponding to aInstance, returns null if it has no record
+	//NA - returns the saved SATResult value corresponding to aInstance, 
 	@Override
-	public SATResult getSATResult(IInstance aInstance){
-		String aInstanceHash = getCNFName(aInstance);
-		SolverResult aResult = fResultLookup.get(aInstanceHash);
-		if(aResult != null) return aResult.getResult();
-		else return null;
+	public SolverResult getSolverResult(IInstance aInstance) throws Exception{
+		if(hasSolverResult(aInstance))
+		{
+			String aInstanceHash = getCNFName(aInstance);
+			SolverResult aResult = fResultLookup.get(aInstanceHash);
+			return aResult;
+		}
+		else
+		{
+			throw new Exception("Required a solver result for an instance that was not previously recorded.");
+		}
+		
+	
 	}
 	
 	//NA - returns true if the entry already existed
 	@Override
-	public boolean putSATResult(IInstance aInstance, SolverResult aResult){
-		SATResult aExistingResult = getSATResult(aInstance);
-		if(aExistingResult!=null){
-			try{
-				switch(aExistingResult){
-				case SAT:
-					if(aResult.getResult()==SATResult.UNSAT) 
-						throw new Exception("Instance previously determined to be in SAT, now declared to be in UNSAT.");
-					break;
-				case UNSAT:
-					if(aResult.getResult()==SATResult.SAT) 
-						throw new Exception("Instance previously determined to be in SAT, now declared to be in UNSAT.");
-					break;
-				default: 
+	public boolean putSolverResult(IInstance aInstance, SolverResult aResult){
+		
+		if(hasSolverResult(aInstance))
+		{
+			SolverResult aExistingResult;
+			try {
+				aExistingResult = getSolverResult(aInstance);
+				if(aExistingResult.getResult() != aResult.getResult())
+				{
+					throw new Exception("Instance previously determined "+aExistingResult.getResult()+", now declared to be "+aResult.getResult());
+				}
+				else
+				{
 					fResultLookup.put(getCNFName(aInstance), aResult);
 				}
-			} catch(Exception e){
+			}
+			catch (Exception e) {
 				e.printStackTrace();
 			}
 			return true;
-		} else {
+		}
+		else
+		{
 			fResultLookup.put(getCNFName(aInstance), aResult);
 			return false;
-		}
+		} 
 	}
 	
 	@Override
@@ -129,25 +142,5 @@ public class ResultWritingCNFLookup implements ICNFLookup{
 		}
 	}
 	
-	private SATResult stringToSATResult(String aStringResult) throws Exception{
-		SATResult aResult;
-		switch(aStringResult){
-		case "SAT":
-			aResult = SATResult.SAT;
-			break;
-		case "UNSAT":
-			aResult = SATResult.UNSAT;
-			break;
-		case "TIMEOUT":
-			aResult = SATResult.TIMEOUT;
-			break;
-		case "CRASHED":
-			aResult = SATResult.CRASHED;
-			break;
-		default : 
-			throw new Exception("Input to stringToSATResult could not be interpreted as a SATResult.");
-		}
-		return aResult;
-	}
 	
 }

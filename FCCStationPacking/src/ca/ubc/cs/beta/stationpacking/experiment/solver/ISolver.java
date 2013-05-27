@@ -11,6 +11,6 @@ import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SolverResult;
  */
 public interface ISolver {
 	
-	public SolverResult solve(IInstance aInstance, double aCutoff);
+	public SolverResult solve(IInstance aInstance, double aCutoff) throws Exception;
 		
 }
