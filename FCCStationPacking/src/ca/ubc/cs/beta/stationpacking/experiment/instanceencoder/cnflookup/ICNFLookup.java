@@ -28,6 +28,7 @@ public interface ICNFLookup {
 	public SATResult getSATResult(IInstance aInstance);
 
 	public boolean putSATResult(IInstance aInstance, SolverResult aResult);
+	
 	/**
 	 * @param aStations - a set of stations.
 	 * @return CNF instance file name corresponding to input station set, if any.
