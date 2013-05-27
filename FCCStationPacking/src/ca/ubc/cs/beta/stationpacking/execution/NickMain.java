@@ -27,8 +27,8 @@ import ca.ubc.cs.beta.stationpacking.experiment.instance.NInstance;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.NickCNFEncoder;
 
-import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.HybridCNFLookup;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ICNFLookup;
+import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ResultWritingCNFLookup;
 
 import ca.ubc.cs.beta.stationpacking.experiment.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.NTAESolver;
@@ -64,15 +64,14 @@ public class NickMain {
 		IConstraintManager aCM = new DACConstraintManager2(aSM.getStations(),ConstraintsFile);
 		
 
-		
 		//Set<Station> aStationSet = new HashSet<Station>();
+		
 		Set<Integer> aChannels = new HashSet<Integer>();
-		aChannels.add(15);
-		//aStationSet.add(new Station(2,aChannels,0));
-		aChannels.add(14);
-		aChannels.add(16);
-		//aStationSet.add(new Station(3,aChannels,0));
-		//aStationSet.add(new Station(5,aChannels,0));
+		for(int i = 14; i <=16; i++){
+			aChannels.add(i);
+		}
+		
+
 
 		/*
 		log.info("Getting data...");
@@ -83,7 +82,7 @@ public class NickMain {
 		String dacConstraintFile = "/Users/narnosti/Documents/fcc-station-packing/Input/Interferences-read-note-please.csv";
 		DACConstraintManager2 dCM = new DACConstraintManager2(aStations,dacConstraintFile);
 		*/
-
+		
 		ICNFEncoder aCNFEncoder = new NickCNFEncoder();
 		//System.out.println(aCNFEncoder.decode(new NInstance(aStationSet,aChannels),FileUtils.readFileToString(new File("/Users/narnosti/Documents/fcc-station-packing/CNFs/7ff9afd8a241da50dd85dc361ab701183c18e66445.out"))));
 		
@@ -91,7 +90,7 @@ public class NickMain {
 		log.info("Creating cnf lookup...");
  
 		String aCNFDir = "/Users/narnosti/Documents/fcc-station-packing/CNFs";
-		ICNFLookup aCNFLookup = new HybridCNFLookup(aCNFDir,"CNFOutput");
+		ICNFLookup aCNFLookup = new ResultWritingCNFLookup(aCNFDir,"CNFOutput");
 				
 		log.info("Creating solver...");
         String aParamConfigurationSpaceLocation = "/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/SATsolvers/sw_parameterspaces/sw_picosat.txt";
@@ -117,6 +116,7 @@ public class NickMain {
 		for(int i = 0; i < aCNFFiles.length; i++){
 			String aFileName = aCNFFiles[i].getName();
 			if(aFileName.endsWith("cnfoutput")){
+				System.out.println(aFileName);
 				IInstance aInstance = readInstanceFromCNFFile(aCNFDir+"/"+aFileName.substring(0,aFileName.indexOf("output")),new HashSet<Station>(aSM.getStations()));
 				Map<Integer,Set<Station>> aStationAssignment = aCNFEncoder.decode(aInstance, FileUtils.readFileToString(aCNFFiles[i]));
 				System.out.println(aStationAssignment);
@@ -125,6 +125,7 @@ public class NickMain {
 				}
 			}
 		}
+		
 	}
 
 
@@ -144,6 +145,10 @@ private static IInstance readInstanceFromCNFFile(String aFileName, Set<Station> 
 				}
 			}
 			aStationSet.retainAll(aStations);
+			if(aStationSet.size()!=aStations.size()){
+				aReader.close();
+				throw new Exception("When decoding: some stations not found in stations file");
+			}
 		} else if(aLine.startsWith("c Channels: ")){
 			String[] aSplitString = aLine.substring(aLine.indexOf(":")+1).split(" ");
 			for(int i = 0; i < aSplitString.length; i++){
