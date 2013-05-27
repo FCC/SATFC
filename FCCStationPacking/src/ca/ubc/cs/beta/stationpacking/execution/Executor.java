@@ -19,8 +19,8 @@ import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentRepo
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.LocalExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.NickCNFEncoder;
-import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.HybridCNFLookup;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ICNFLookup;
+import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ResultWritingCNFLookup;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.NTAESolver;
 
@@ -76,7 +76,7 @@ public class Executor {
 		ICNFEncoder aCNFEncoder = new NickCNFEncoder();
 		
 		log.info("Creating cnf lookup...");
-		ICNFLookup aCNFLookup = new HybridCNFLookup(aExecParameters.getCNFDirectory(), aExecParameters.getCNFOutputName());
+		ICNFLookup aCNFLookup = new ResultWritingCNFLookup(aExecParameters.getCNFDirectory(), aExecParameters.getCNFOutputName());
 				
 		log.info("Creating solver...");
 		ISolver aSolver = new NTAESolver(dCM, aCNFLookup, aCNFEncoder, aExecParameters.getTAEParamConfigSpace(), aExecParameters.getTAEExecutable(), aExecParameters.getTAEExecDirectory(), aExecParameters.getTAEType(),aExecParameters.getTAEMaxConcurrentExec());
