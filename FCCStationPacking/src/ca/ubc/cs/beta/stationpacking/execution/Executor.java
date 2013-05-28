@@ -35,12 +35,14 @@ public class Executor {
 		 * 
 		 * 
 		**/
+		
+		
 		String[] aPaxosTargetArgs = {"-STATIONS_FILE",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/stations.csv",
+				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/stations2.csv",
 				"-DOMAINS_FILE",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/Domains.csv",
+				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/NewDACData/Domain-041813.csv",
 				"-CONSTRAINTS_FILE",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/Interferences.csv",
+				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/NewDACData/Interferences-041813.csv",
 				"-CNF_DIR",
 				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/CNFs",
 				"-SOLVER",
@@ -50,11 +52,12 @@ public class Executor {
 				"-EXPERIMENT_DIR",
 				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Results/TestExperiment",
 				"-TAE_CONC_EXEC_NUM",
-				"4"
+				"1"
 				};
 		
 		
 		args = aPaxosTargetArgs;
+		
 		
 		/**
 		 * 
