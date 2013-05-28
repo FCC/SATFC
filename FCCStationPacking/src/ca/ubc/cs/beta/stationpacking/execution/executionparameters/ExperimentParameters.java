@@ -157,6 +157,14 @@ public class ExperimentParameters {
 	private String fCNFOutputName = "CNFOutput";
 	public String getCNFOutputName()
 	{
-		return fCNFOutputName;
+		if(fExperimentNumRun!=-1)
+		{
+			return fCNFOutputName+Integer.toString(fExperimentNumRun);
+		}
+		else
+		{
+			return fCNFOutputName;
+		}
+		
 	}
 }
