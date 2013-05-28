@@ -1,14 +1,16 @@
 package ca.ubc.cs.beta.stationpacking.data.manager;
 
 import java.io.FileReader;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
 import ca.ubc.cs.beta.stationpacking.data.Station;
 
 import au.com.bytecode.opencsv.CSVReader;
+
 /* NA - fStations is populated from aStationDomainsFilename, with population info from aStationFilename.
  * 
  */
@@ -61,6 +63,7 @@ public class DACStationManager implements IStationManager{
 			aID = Integer.valueOf(aLine[0]);
 			if((aChannels = aStationLookup.get(aID))!=null){
 				aStationPop = Integer.valueOf(aLine[4]);
+				
 				fStations.add(new Station(aID,aChannels,aStationPop));
 				aStationLookup.remove(aID);
 				if(aChannels.size()>1) aUnfixedStationCount++;
@@ -68,7 +71,16 @@ public class DACStationManager implements IStationManager{
 		}
 		aReader.close();
 		if(!aStationLookup.isEmpty()){
-			try{ 
+			try{
+				//AF - print out stations with no populations;
+				/*
+				ArrayList<Integer> aNoPopStations = new ArrayList<Integer>(aStationLookup.keySet());
+				Collections.sort(aNoPopStations);
+				for(Integer aNoPopStation : aNoPopStations)
+				{
+					System.out.println(aNoPopStation);
+				}
+				*/
 				throw new Exception("Missing station population for "+aStationLookup.size()+" stations.");
 			} catch(Exception e){
 				e.printStackTrace();
