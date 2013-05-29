@@ -21,13 +21,13 @@ import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SolverResult;
  * ensuring that the packing problem remains satisfiable.
  * @author afrechet, narnosti
  */
-public class NInstanceGeneration {
+public class InstanceGeneration {
 
-	private static Logger log = LoggerFactory.getLogger(NInstanceGeneration.class);	
+	private static Logger log = LoggerFactory.getLogger(InstanceGeneration.class);	
 	private ISolver fSolver;
 	private IExperimentReporter fExperimentReporter;
 	
-	public NInstanceGeneration(ISolver aSolver, IExperimentReporter aExperimentReporter){
+	public InstanceGeneration(ISolver aSolver, IExperimentReporter aExperimentReporter){
 		fSolver = aSolver;
 		fExperimentReporter = aExperimentReporter;
 	}
