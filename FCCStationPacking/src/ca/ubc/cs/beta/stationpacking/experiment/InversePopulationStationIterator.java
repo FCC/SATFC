@@ -8,7 +8,7 @@ import java.util.Random;
 
 import ca.ubc.cs.beta.stationpacking.data.Station;
 
-public class NInversePopulationStationIterator implements Iterator<Station>{
+public class InversePopulationStationIterator implements Iterator<Station>{
 
 	private Iterator<Station> fOrderedStationsIterator;
 	
@@ -18,7 +18,7 @@ public class NInversePopulationStationIterator implements Iterator<Station>{
 	 * @param aRandomizer - random to use for sampling.
 	 * @throws Exception 
 	 */
-	public NInversePopulationStationIterator(Collection<Station> aStationsCollection, long aSeed) throws Exception
+	public InversePopulationStationIterator(Collection<Station> aStationsCollection, long aSeed) throws Exception
 	{
 		ArrayList<Station> aStations = new ArrayList<Station>(aStationsCollection);
 		Random aRandomizer = new Random(aSeed);		

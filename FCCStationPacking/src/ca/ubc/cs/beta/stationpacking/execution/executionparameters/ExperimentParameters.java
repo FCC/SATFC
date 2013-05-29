@@ -13,6 +13,8 @@ import com.beust.jcommander.IParameterValidator;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;
 */
+import ca.ubc.cs.beta.stationpacking.execution.executionparameters.parameterparser.ReportParser;
+
 import com.beust.jcommander.Parameter;
 
 /**
@@ -114,31 +116,61 @@ public class ExperimentParameters {
 	{
 		return fExperimentDirectory;
 	}
+	@Parameter(names = "-REPORT_FILE", description = "Report file of a previously executed experiment to be continued. STARTING_STATIONS, PACKING_CHANNELS and remaining stations to consider are extracted from it. Overrides other parmeters.")
+	private String fReportFile;
+	public HashSet<Integer> getConsideredStationsIDs()
+	{
+		if(fReportFile == null)
+		{
+			return getStartingStationsIDs();
+		}
+		else
+		{
+			return new ReportParser(fReportFile).getConsideredStationIDs();
+		}
+		
+	}
+	
 	
 	@Parameter(names = "-STARTING_STATIONS", description = "List of stations to start from.")
 	private List<String> fStartingStations = new ArrayList<String>();
 	public HashSet<Integer> getStartingStationsIDs()
 	{
-		HashSet<Integer> aStartingStations = new HashSet<Integer>();
-		for(String aStation : fStartingStations)
+		if(fReportFile == null)
 		{
-			aStartingStations.add(Integer.valueOf(aStation));
+			HashSet<Integer> aStartingStations = new HashSet<Integer>();
+			for(String aStation : fStartingStations)
+			{
+				aStartingStations.add(Integer.valueOf(aStation));
+			}
+			return aStartingStations;
 		}
-		return aStartingStations;
+		else
+		{
+			return new ReportParser(fReportFile).getCurrentStationIDs();
+		}	
 	}
 	
 	@Parameter(names = "-PACKING_CHANNELS", description = "List of channels to pack in.")
 	private List<String> fPackingChannels = Arrays.asList("14" ,"15" ,"16" ,"17" ,"18" ,"19" ,"20" ,"21" ,"22" ,"23" ,"24" ,"25" ,"26" ,"27" ,"28" ,"29" ,"30");
 	public HashSet<Integer> getPackingChannels()
 	{
-		HashSet<Integer> aPackingChannels = new HashSet<Integer>();
-		for(String aChannel : fPackingChannels)
+
+		if(fReportFile == null)
 		{
-			aPackingChannels.add(Integer.valueOf(aChannel));
+			HashSet<Integer> aPackingChannels = new HashSet<Integer>();
+			for(String aChannel : fPackingChannels)
+			{
+				aPackingChannels.add(Integer.valueOf(aChannel));
+			}
+			return aPackingChannels;
 		}
-		return aPackingChannels;
+		else
+		{
+			return new ReportParser(fReportFile).getPackingChannels();
+		}	
 	}
-	
+
 	@Parameter(names = "-SEED", description = "Seed.")
 	private long fSeed = 1;
 	public long getSeed()

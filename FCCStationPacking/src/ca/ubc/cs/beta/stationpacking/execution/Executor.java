@@ -53,8 +53,12 @@ public class Executor {
 				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Results/TestExperiment",
 				"-TAE_CONC_EXEC_NUM",
 				"1"
+				//"-REPORT_FILE",
+				//"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Results/TestExperiment/TestExperiment.csv"
+				
+				//"-PACKING_CHANNELS",
+				//"14,15,16"
 				};
-		
 		
 		args = aPaxosTargetArgs;
 		
@@ -93,20 +97,26 @@ public class Executor {
 		log.info("Creating experiment reporter...");
 		IExperimentReporter aExperimentReporter = new LocalExperimentReporter(aExecParameters.getExperimentDir(), aExecParameters.getExperimentName());
 		
-		Iterator<Station> aStationIterator = new NInversePopulationStationIterator(aStationManager.getStations(), aExecParameters.getSeed());
-		
 		log.info("Creating instance generation and beginning experiment...");
+		HashSet<Integer> aConsideredStationIDs = aExecParameters.getConsideredStationsIDs();
 		HashSet<Integer> aStartingStationsIDs = aExecParameters.getStartingStationsIDs();
+		
 		HashSet<Station> aStartingStations = new HashSet<Station>();
+		HashSet<Station> aToConsiderStations = new HashSet<Station>();
 		for(Station aStation : aStations)
 		{
 			if(aStartingStationsIDs.contains(aStation.getID()))
 			{
 				aStartingStations.add(aStation);
 			}
+			if(!aConsideredStationIDs.contains(aStation.getID()))
+			{
+				aToConsiderStations.add(aStation);
+			}
 		}
 		
-		NInstanceGeneration aInstanceGeneration = new NInstanceGeneration(aSolver, aExperimentReporter);
+		Iterator<Station> aStationIterator = new InversePopulationStationIterator(aToConsiderStations, aExecParameters.getSeed());
+		InstanceGeneration aInstanceGeneration = new InstanceGeneration(aSolver, aExperimentReporter);
 		aInstanceGeneration.run(aStartingStations, aStationIterator,aExecParameters.getPackingChannels(),aExecParameters.getSolverCutoff());	
 		aCNFLookup.writeToFile();
 	}
