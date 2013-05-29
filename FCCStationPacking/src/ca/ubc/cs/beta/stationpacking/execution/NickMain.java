@@ -18,7 +18,7 @@ import ca.ubc.cs.beta.stationpacking.data.manager.DACStationManager;
 import ca.ubc.cs.beta.stationpacking.data.manager.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.data.manager.IStationManager;
 
-import ca.ubc.cs.beta.stationpacking.experiment.NInstanceGeneration;
+import ca.ubc.cs.beta.stationpacking.experiment.InstanceGeneration;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.LocalExperimentReporter;
 
@@ -103,12 +103,12 @@ public class NickMain {
         String testFolder = "/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/ExperimentDir";
 		IExperimentReporter aExperimentReporter = new LocalExperimentReporter(testFolder, "test");
 		
-		Iterator<Station> aStationIterator = new NInversePopulationStationIterator(aSM.getStations(), fSeed);
+		Iterator<Station> aStationIterator = new InversePopulationStationIterator(aSM.getStations(), fSeed);
 		
 		log.info("Creating instance generation and beginning experiment...");
 		Set<Station> aStartingStations = new HashSet<Station>();
 		double aCutoff = 1800;
-		NInstanceGeneration aInstanceGeneration = new NInstanceGeneration(aSolver, aExperimentReporter);
+		InstanceGeneration aInstanceGeneration = new InstanceGeneration(aSolver, aExperimentReporter);
 		aInstanceGeneration.run(aStartingStations, aStationIterator,aChannels,aCutoff);	
 		aCNFLookup.writeToFile();
 		File folder = new File(aCNFDir);
