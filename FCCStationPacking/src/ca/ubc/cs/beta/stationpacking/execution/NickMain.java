@@ -25,10 +25,10 @@ import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.LocalExperiment
 import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
 import ca.ubc.cs.beta.stationpacking.experiment.instance.Instance;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.ICNFEncoder;
-import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.NickCNFEncoder;
+import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.CNFEncoder;
 
-import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ICNFResultLookup;
-import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.HybridCNFResultLookup;
+import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfresultlookup.HybridCNFResultLookup;
+import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfresultlookup.ICNFResultLookup;
 
 import ca.ubc.cs.beta.stationpacking.experiment.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.TAESolver;
@@ -83,7 +83,7 @@ public class NickMain {
 		DACConstraintManager2 dCM = new DACConstraintManager2(aStations,dacConstraintFile);
 		*/
 		
-		ICNFEncoder aCNFEncoder = new NickCNFEncoder();
+		ICNFEncoder aCNFEncoder = new CNFEncoder();
 		//System.out.println(aCNFEncoder.decode(new NInstance(aStationSet,aChannels),FileUtils.readFileToString(new File("/Users/narnosti/Documents/fcc-station-packing/CNFs/7ff9afd8a241da50dd85dc361ab701183c18e66445.out"))));
 		
 		
@@ -97,7 +97,7 @@ public class NickMain {
 		String aAlgorithmExecutable = "python solverwrapper.py";
         String aExecDir = "/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/SATsolvers/";
 		int aMaximumConcurrentExecution = 4;
-		ISolver aSolver = new TAESolver(aCM, aCNFLookup, aCNFEncoder, aParamConfigurationSpaceLocation, aAlgorithmExecutable, aExecDir, "CLI",aMaximumConcurrentExecution);
+		ISolver aSolver = new TAESolver(aCM, aCNFLookup, aCNFEncoder, aParamConfigurationSpaceLocation, aAlgorithmExecutable, aExecDir, "CLI",aMaximumConcurrentExecution, fSeed);
 		
 		log.info("Creating experiment reporter...");
         String testFolder = "/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/ExperimentDir";

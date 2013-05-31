@@ -37,7 +37,16 @@ public class ConstraintGrouper implements IComponentGrouper{
 			}
 		}
 		ConnectivityInspector<Station, DefaultEdge> aConnectivityInspector = new ConnectivityInspector<Station,DefaultEdge>(aConstraintGraph);
-		return(new HashSet<Set<Station>>(aConnectivityInspector.connectedSets()));
+		
+		HashSet<Set<Station>> aGroups = new HashSet<Set<Station>>();
+		for(Set<Station> aConnectedComponent : aConnectivityInspector.connectedSets())
+		{
+			if(aConnectedComponent.size()>1)
+			{
+				aGroups.add(aConnectedComponent);
+			}
+		}
+		return aGroups;
 	}
 
 }

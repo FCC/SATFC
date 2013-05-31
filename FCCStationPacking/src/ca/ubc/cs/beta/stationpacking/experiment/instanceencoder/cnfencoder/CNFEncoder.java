@@ -15,10 +15,10 @@ import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.ICNFEncoder;
 
 
-public class NickCNFEncoder implements ICNFEncoder {
+public class CNFEncoder implements ICNFEncoder {
 	
 	//Whenever a trivially UNSAT problem is detected, return this string
-	String fUNSAT_CNF = "p cnf 1 2\n 1 0\n -1 0\n";
+	String fUNSAT_CNF = "1 0\n -1 0\n";
 
 	@Override
 	/* NA - takes an Instance and a set of Constraints, and returns
@@ -41,6 +41,17 @@ public class NickCNFEncoder implements ICNFEncoder {
 		Set<Integer> aDomainInternal;
 		Set<Integer> aCOInterferingInternal;
 		Set<Integer> aADJInterferingInternal;
+		
+		for(Station aStation : aInternalStationIDs.keySet()){
+			aDomainInternal = mapSet(aInternalChannelIDs,aStation.getDomain());
+			if(aDomainInternal.isEmpty()){
+				aBuilder.append(fUNSAT_CNF);
+				aBuilder.insert(0,"c Trivially UNSAT because "+aStation.toString()+"'s domain interval is empty\n");
+				aBuilder.insert(0,"p cnf 1 2\n");
+				return aBuilder.toString();
+			}
+		}
+		
 		//For each station, add CNF clauses 
 		for(Station aStation : aInternalStationIDs.keySet()){
 			Integer aInternalID = aInternalStationIDs.get(aStation);
@@ -48,8 +59,7 @@ public class NickCNFEncoder implements ICNFEncoder {
 			aNumClauses += writeBaseClauses(aInternalID,aInternalChannelIDs.values(),aBuilder);
 			//Encode that aStation must be assigned to at least one channel
 			aDomainInternal = mapSet(aInternalChannelIDs,aStation.getDomain());
-			if(aDomainInternal.isEmpty()) return aBuilder.toString()+fUNSAT_CNF;
-			else aNumClauses += writeDomainClauses(aInternalID,aDomainInternal,aInternalChannelIDs.size(),aBuilder);
+			aNumClauses += writeDomainClauses(aInternalID,aDomainInternal,aInternalChannelIDs.size(),aBuilder);
 			//Encode that aStation cannot share a channel with any station in aConstraintManager.getCOInterferingStations(aStation)
 			aCOInterferingInternal = mapSet(aInternalStationIDs,aConstraintManager.getCOInterferingStations(aStation));
 			aNumClauses += writeConstraints("CO",aInternalID,aCOInterferingInternal,aInternalChannelIDs,aBuilder);

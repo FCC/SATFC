@@ -20,7 +20,7 @@ public class Instance implements IInstance{
 	}
 	
 	//AF - Added a different way to print set of channels so that an Instance.toString() is easier to read in CSV.
-	private String hashChannelSet(Set<Integer> aChannels)
+	public static String hashChannelSet(Set<Integer> aChannels)
 	{
 		LinkedList<Integer> aChannelList = new LinkedList<Integer>(aChannels);
 		Collections.sort(aChannelList);

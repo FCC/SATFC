@@ -2,6 +2,8 @@ package ca.ubc.cs.beta.stationpacking.experiment.solver;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -10,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 
 import ca.ubc.cs.beta.aclib.algorithmrun.AlgorithmRun;
@@ -17,13 +21,13 @@ import ca.ubc.cs.beta.aclib.algorithmrun.RunResult;
 import ca.ubc.cs.beta.aclib.algorithmrun.kill.KillableAlgorithmRun;
 import ca.ubc.cs.beta.aclib.configspace.ParamConfigurationSpace;
 import ca.ubc.cs.beta.aclib.execconfig.AlgorithmExecutionConfig;
-import ca.ubc.cs.beta.aclib.misc.version.VersionTracker;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.aclib.options.TargetAlgorithmEvaluatorOptions;
 import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstance;
 import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstanceSeedPair;
 import ca.ubc.cs.beta.aclib.runconfig.RunConfig;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluator;
+import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluatorCallback;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluatorRunObserver;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.base.cli.CommandLineTargetAlgorithmEvaluatorOptions;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorBuilder;
@@ -31,6 +35,7 @@ import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluat
 import ca.ubc.cs.beta.stationpacking.data.Station;
 import ca.ubc.cs.beta.stationpacking.data.manager.DACConstraintManager2;
 import ca.ubc.cs.beta.stationpacking.data.manager.IConstraintManager;
+import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
 import ca.ubc.cs.beta.stationpacking.experiment.instance.Instance;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.ICNFEncoder;
@@ -39,13 +44,12 @@ import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.componentgrouper
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SATResult;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SolverResult;
-
 /**
- * SAT solver wrapper that uses Steve Ramage's AClib Target Algorithm Evaluators for execution.
- * @author afrechet, narnosti
+ * SAT solver wrapper that uses Steve Ramage's AClib Target Algorithm Evaluators for execution in an asynchronous way, particularly useful for parallel solving of many instances..
+ * @author afrechet
  *
  */
-public class TAESolver implements ISolver{
+public class AsyncTAESolver {
 	
 	private final double fScenarioCutoff = 999999.0;
 	
@@ -54,8 +58,9 @@ public class TAESolver implements ISolver{
 	private long fSeed;
 	private IComponentGrouper fGrouper;
 	private IConstraintManager fManager;
-	private ICNFResultLookup fLookup;
 	private ICNFEncoder fEncoder;
+	
+	private AsyncCachedCNFLookup fLookup;
 	
 	
 	/**
@@ -65,18 +70,20 @@ public class TAESolver implements ISolver{
 	 * @param aExecDir - the directory in which to execute the algorithm (<i> e.g. </i> "[...]/SolverWrapper/").
 	 * @param aTargetAlgorithmEvaluatorExecutionEnvironment - <i> e.g. </i> "CLI" command-line on system, "MYSQLDBTAE" plug-in for mySQL workers, ... 
 	 * @param aManager - constraint manager for the repacking instance.
+	 * @param aCNFDirectory - a location for the CNF to be written to.
 	 * @param aLookup - CNF & Result lookup object.
 	 * @param aEncoder - CNF encoder.
 	 * @param aMaximumConcurrentExecutions - number of concurrent executions that can be done with the TAE.
+	 * @param aSeed 
 	 * @deprecated
 	 */
-	public TAESolver(IConstraintManager aManager, ICNFResultLookup aLookup, ICNFEncoder aEncoder, String aParamConfigurationSpaceFile, String aAlgorithmExecutable, String aExecDir, String aTargetAlgorithmEvaluatorExecutionEnvironment, int aMaximumConcurrentExecutions, long aSeed)
+	public AsyncTAESolver(IConstraintManager aManager, ICNFEncoder aEncoder, String aCNFDirectory, String aParamConfigurationSpaceFile, String aAlgorithmExecutable, String aExecDir, String aTargetAlgorithmEvaluatorExecutionEnvironment, int aMaximumConcurrentExecutions, long aSeed)
 	{
-		fSeed = aSeed;
 		fEncoder = aEncoder;
 		fManager = aManager;
 		fGrouper = new ConstraintGrouper(fManager);
-		fLookup = aLookup;
+		fLookup = new AsyncCachedCNFLookup(aCNFDirectory);
+		
 		//Parameter configuration space
 		fParamConfigurationSpace  = new ParamConfigurationSpace(new File(aParamConfigurationSpaceFile));
 		
@@ -84,31 +91,24 @@ public class TAESolver implements ISolver{
 		AlgorithmExecutionConfig aAlgorithmExecutionConfig = new AlgorithmExecutionConfig(aAlgorithmExecutable, aExecDir, fParamConfigurationSpace, false, false, fScenarioCutoff);
 		
 		//Target Algorithm Evaluator
-		Map<String,AbstractOptions> aTargetAlgorithmEvaluatorOptionsMap = TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators();
-	
 		TargetAlgorithmEvaluatorOptions aTargetAlgorithmEvaluatorOptions = new TargetAlgorithmEvaluatorOptions();
 		aTargetAlgorithmEvaluatorOptions.retryCount = 0 ;
 		aTargetAlgorithmEvaluatorOptions.maxConcurrentAlgoExecs = aMaximumConcurrentExecutions;
 		aTargetAlgorithmEvaluatorOptions.targetAlgorithmEvaluator = aTargetAlgorithmEvaluatorExecutionEnvironment;
 		
-		//Setting CLI options.
-		CommandLineTargetAlgorithmEvaluatorOptions CLIopts = (CommandLineTargetAlgorithmEvaluatorOptions) aTargetAlgorithmEvaluatorOptionsMap.get("CLI");
-		CLIopts.logAllCallStrings = false;
-		CLIopts.logAllProcessOutput = false;
-		CLIopts.concurrentExecution = true;
+		Map<String,AbstractOptions> aTargetAlgorithmEvaluatorOptionsMap = TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators();
 		
 		fTargetAlgorithmEvaluator = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(aTargetAlgorithmEvaluatorOptions, aAlgorithmExecutionConfig, false, aTargetAlgorithmEvaluatorOptionsMap);
 	}
 	
 	
-	public TAESolver(DACConstraintManager2 aConstraintManager, ICNFResultLookup aLookup,
-			ICNFEncoder aCNFEncoder, TargetAlgorithmEvaluator aTAE,
-			AlgorithmExecutionConfig aTAEExecConfig, long aSeed) {
+	public AsyncTAESolver(DACConstraintManager2 aConstraintManager, ICNFEncoder aCNFEncoder,
+			String aCNFDirectory, TargetAlgorithmEvaluator aTAE, AlgorithmExecutionConfig aTAEExecConfig, long aSeed) {
 		fSeed = aSeed;
 		fEncoder = aCNFEncoder;
 		fManager = aConstraintManager;
 		fGrouper = new ConstraintGrouper(fManager);
-		fLookup = aLookup;
+		fLookup = new AsyncCachedCNFLookup(aCNFDirectory);
 		
 		fParamConfigurationSpace  = aTAEExecConfig.getParamFile();
 		fTargetAlgorithmEvaluator = aTAE;
@@ -144,25 +144,143 @@ public class TAESolver implements ISolver{
 		};
 	}
 	
-	/* NA - Returns a SolverResult corresponding to packing stations aInstance.getStations()
-	 * into channels aInstance.getChannelRange() given constraints imposed by fManager.
-	 * 
-	 * Optimized in the following ways:
-	 * 1. Clusters the Instance into disjoint connected components
-	 * 2. Checks with fLookup to see whether each component has been solved.
-	 *    If any component has been determined to be UNSAT, the method returns.
-	 * 3. Sequentially solves each new component, returning if any of them are not in SAT.
-	 * 
+	private TargetAlgorithmEvaluatorCallback getCompilingCallback(final IInstance aInstance,final IExperimentReporter aAsynchronousReporter)
+	{
+		return new TargetAlgorithmEvaluatorCallback()
+		{
+			@Override
+			public void onSuccess(List<AlgorithmRun> runs) {
+				HashSet<SolverResult> aComponentResults = new HashSet<SolverResult>();
+				for(AlgorithmRun aRun : runs)
+				{
+					if(!aRun.getRunResult().equals(RunResult.KILLED))
+					{
+						double aRuntime = aRun.getRuntime();				
+						SATResult aResult;
+						switch (aRun.getRunResult()){
+							case SAT:
+								aResult = SATResult.SAT;
+								break;
+							case UNSAT:
+								aResult = SATResult.UNSAT;
+								break;
+							case TIMEOUT:
+								aResult = SATResult.TIMEOUT;
+								break;
+							default:
+								aResult = SATResult.CRASHED;
+								break;
+						}
+						
+						SolverResult aSolverResult = new SolverResult(aResult,aRuntime);
+
+						
+						//Add result to component results
+						aComponentResults.add(aSolverResult);
+					}	
+				}
+				try {
+					aAsynchronousReporter.report(aInstance, mergeComponentResults(aComponentResults));
+				} 
+				catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					return;
+				}
+				
+			}
+
+			@Override
+			public void onFailure(RuntimeException t) {
+				t.printStackTrace();
+				System.exit(1);
+				
+			}
+		};
+	}
+	
+	/**
+	 * A CNF (only) lookup for the asynchronous solver. 
+	 * <i> We do not use a standard CNF/Result lookup because we inherently will use asynchronous TAE with workers which contain they're own lookup process. </i>
+	 * @author afrechet
+	 *
 	 */
-	@Override
-	public SolverResult solve(IInstance aInstance, double aCutoff) throws Exception{
+	private class AsyncCachedCNFLookup
+	{
 		
+		private HashMap<IInstance,String> fCNFMap;
+		private String fCNFDirectory;
+		/**
+		 * Construct an asynchronous cached CNF llookup.
+		 */
+		public AsyncCachedCNFLookup(String aCNFDirectory)
+		{
+			fCNFMap = new HashMap<IInstance,String>();
+			fCNFDirectory = aCNFDirectory;
+		}
+		
+		//Private function to create hashed filenames for CNF.
+		private String hashforFilename(String aString)
+		{
+			MessageDigest aDigest = DigestUtils.getSha1Digest();
+			try {
+				byte[] aResult = aDigest.digest(aString.getBytes("UTF-8"));
+			    String aResultString = new String(Hex.encodeHex(aResult));	
+			    return aResultString;
+			}
+			catch (UnsupportedEncodingException e) {
+			    throw new IllegalStateException("Could not encode filename", e);
+			}
+		}
+		
+		private String getNameCNF(IInstance aInstance)
+		{
+			return hashforFilename(Station.hashStationSet(aInstance.getStations())+Instance.hashChannelSet(aInstance.getChannelRange()));
+		}
+		
+		/**
+		 * Return the CNF name for an instance.
+		 * @param aInstance - problem instance to get CNF name for.
+		 * @return the string CNF name for the problem instance.
+		 */
+		public String getCNFNameFor(IInstance aInstance)
+		{
+			return fCNFDirectory+File.separatorChar+getNameCNF(aInstance)+".cnf";
+		}
+		
+		/**
+		 * Return true if the instance was saved by the lookup.
+		 * @param aInstance - an instance to look for.
+		 * @return true if the instance is present in the lookup, false otherwise.
+		 */
+		public boolean hasCNFFor(IInstance aInstance)
+		{
+			return fCNFMap.containsKey(aInstance);
+		}
+		
+		/**
+		 * Put an instance in the lookup.
+		 * @param aInstance - the instance to put in the lookup.
+		 * @return ture if the instance was already there, false otherwise.
+		 */
+		public boolean putCNFfor(IInstance aInstance)
+		{
+			return (fCNFMap.put(aInstance, getNameCNF(aInstance))!=null);
+		}	
+	}
+	
+	/**
+	 * Solve the instance asynchronously, and give the result to the AsynchronousReporter once finished.
+	 * @param aInstance - the instance to solve.
+	 * @param aCutoff - the cutoff time.
+	 * @param aAsynchronousReporter - the reporter in charge of the results.
+	 * @throws Exception
+	 */
+	public void solve(IInstance aInstance, double aCutoff, IExperimentReporter aAsynchronousReporter) throws Exception{
+
 		Set<Integer> aChannelRange = aInstance.getChannelRange();
 		
 		//Group stations
 		Set<Set<Station>> aInstanceGroups = fGrouper.group(aInstance.getStations());
-		
-		ArrayList<SolverResult> aComponentResults = new ArrayList<SolverResult>();
 		
 		HashMap<RunConfig,IInstance> aToSolveInstances = new HashMap<RunConfig,IInstance>();
 	
@@ -170,85 +288,37 @@ public class TAESolver implements ISolver{
 			//Create the component group instance.
 			Instance aComponentInstance = new Instance(aStationComponent,aChannelRange);
 			
-			//Check if present
-			if(fLookup.hasSolverResult(aComponentInstance))
+			//Name the instance
+			String aCNFFileName = fLookup.getCNFNameFor(aComponentInstance);
+			
+			//Check if new CNF
+			if(!fLookup.hasCNFFor(aComponentInstance))
 			{
-				SolverResult aSolverResult = fLookup.getSolverResult(aComponentInstance);
-				//Early preemption if component is UNSAT,
-				if (!aSolverResult.getResult().equals(SATResult.SAT) )
+				//Encode the instance
+				String aCNF = fEncoder.encode(aComponentInstance,fManager);
+				try 
 				{
-					return new SolverResult(SATResult.UNSAT,0.0);
-				}
-				
-				aComponentResults.add(aSolverResult);
-			}
-			else
-			{
-				//Not present, CNF must be solved.
-				//Name the instance
-				String aCNFFileName = fLookup.getCNFNameFor(aComponentInstance);
-				
-				File aCNFFile = new File(aCNFFileName);
-				
-				if(!aCNFFile.exists())
+					FileUtils.writeStringToFile(new File(aCNFFileName), aCNF);
+				} 
+				catch (IOException e) 
 				{
-					//Encode the instance
-					String aCNF = fEncoder.encode(aComponentInstance,fManager);
-					//Write it to disk
-					try 
-					{
-						FileUtils.writeStringToFile(aCNFFile, aCNF);
-					} 
-					catch (IOException e) 
-					{
-						e.printStackTrace();
-					}
+					throw new IllegalStateException("Solver had a problem writing a CNF to file.",e);
 				}
-				//Create the run config and add it to the to-do list.
-				ProblemInstance aProblemInstance = new ProblemInstance(aCNFFileName);
-				ProblemInstanceSeedPair aProblemInstanceSeedPair = new ProblemInstanceSeedPair(aProblemInstance,fSeed);
-				RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aCutoff, fParamConfigurationSpace.getDefaultConfiguration());
-				
-				aToSolveInstances.put(aRunConfig,aComponentInstance);
-			}
+				//Save the CNF.
+				fLookup.putCNFfor(aInstance);
+			}	
+			
+			//Create the run config and add it to the to-do list.
+			ProblemInstance aProblemInstance = new ProblemInstance(aCNFFileName);
+			ProblemInstanceSeedPair aProblemInstanceSeedPair = new ProblemInstanceSeedPair(aProblemInstance,fSeed);
+			RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aCutoff, fParamConfigurationSpace.getDefaultConfiguration());
+			
+			aToSolveInstances.put(aRunConfig,aInstance);
 		}
 		
 		List<RunConfig> aRunConfigs = new ArrayList<RunConfig>(aToSolveInstances.keySet());
-		List<AlgorithmRun> aRuns = fTargetAlgorithmEvaluator.evaluateRun(aRunConfigs,getPreemptingObserver());
+		fTargetAlgorithmEvaluator.evaluateRunsAsync(aRunConfigs,getCompilingCallback(aInstance,aAsynchronousReporter),getPreemptingObserver());
 		
-		for(AlgorithmRun aRun : aRuns)
-		{
-			if(!aRun.getRunResult().equals(RunResult.KILLED))
-			{
-				double aRuntime = aRun.getRuntime();				
-				SATResult aResult;
-				switch (aRun.getRunResult()){
-					case SAT:
-						aResult = SATResult.SAT;
-						break;
-					case UNSAT:
-						aResult = SATResult.UNSAT;
-						break;
-					case TIMEOUT:
-						aResult = SATResult.TIMEOUT;
-						break;
-					default:
-						aResult = SATResult.CRASHED;
-						throw new IllegalStateException("Run "+aRun+" crashed!");
-				}
-				
-				SolverResult aSolverResult = new SolverResult(aResult,aRuntime);
-				
-				//Save result if successfully computed
-				fLookup.putSolverResult(aToSolveInstances.get(aRun.getRunConfig()),aSolverResult);
-
-				
-				//Add result to component results
-				aComponentResults.add(aSolverResult);
-			}	
-		}
-		return mergeComponentResults(aComponentResults);
-
 	}
 	
 	private SolverResult mergeComponentResults(Collection<SolverResult> aComponentResults){
@@ -280,5 +350,10 @@ public class TAESolver implements ISolver{
 	}
 	
 	
-	
+	public void waitForFinish()
+	{
+		fTargetAlgorithmEvaluator.waitForOutstandingEvaluations();
+		fTargetAlgorithmEvaluator.notifyShutdown();
+	}
+		
 }
