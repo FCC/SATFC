@@ -1,7 +1,10 @@
-package ca.ubc.cs.beta.stationpacking.execution.executionparameters.parameterparser;
+package ca.ubc.cs.beta.stationpacking.execution.parameters.parsers;
 
 import java.io.FileReader;
+import java.util.ArrayList;
 import java.util.HashSet;
+
+import org.apache.commons.math3.util.Pair;
 
 
 import au.com.bytecode.opencsv.CSVReader;
@@ -12,10 +15,13 @@ public class ReportParser {
 	private HashSet<Integer> fConsideredStationIDs;
 	private HashSet<Integer> fPackingChannels;
 	
+	private ArrayList<Pair<HashSet<Integer>,HashSet<Integer>>> fInstances;
+	
 	public ReportParser(String aReportFile)
 	{
 		CSVReader aReader;
 		fConsideredStationIDs = new HashSet<Integer>();
+		fInstances = new ArrayList<Pair<HashSet<Integer>,HashSet<Integer>>>();
 		try 
 		{
 			aReader = new CSVReader(new FileReader(aReportFile),',');
@@ -36,6 +42,8 @@ public class ReportParser {
 				{
 					fCurrentStationIDs.add(Integer.valueOf(aStation));
 				}
+				fInstances.add(new Pair<HashSet<Integer>,HashSet<Integer>>(fPackingChannels,fCurrentStationIDs));
+				
 				fConsideredStationIDs.addAll(fCurrentStationIDs);
 			}
 		} 
@@ -43,6 +51,11 @@ public class ReportParser {
 		{
 			e.printStackTrace();
 		}
+	}
+	
+	public ArrayList<Pair<HashSet<Integer>,HashSet<Integer>>> getInstanceIDs()
+	{
+		return fInstances;
 	}
 	
 	public HashSet<Integer> getCurrentStationIDs()

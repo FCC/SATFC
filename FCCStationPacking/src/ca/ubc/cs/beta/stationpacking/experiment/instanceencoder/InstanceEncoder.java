@@ -17,7 +17,7 @@ import ca.ubc.cs.beta.stationpacking.experiment.instance.Instance;
 import ca.ubc.cs.beta.stationpacking.data.Station;
 import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfencoder.ICNFEncoder;
-import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup.ICNFResultLookup;
+import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfresultlookup.ICNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.componentgrouper.IComponentGrouper;
 
 
