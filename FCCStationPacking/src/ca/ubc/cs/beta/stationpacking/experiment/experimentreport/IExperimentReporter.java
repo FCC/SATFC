@@ -14,8 +14,8 @@ public interface IExperimentReporter {
 	 * Record an instance-run result pair.
 	 * @param aInstance - a problem instance.
 	 * @param aRunResult - the result of solving the given instance.
-	 * @throws Exception
+	 * @throws InterruptedException 
 	 */
-	public void report(IInstance aInstance, SolverResult aRunResult) throws Exception;
+	public void report(IInstance aInstance, SolverResult aRunResult) throws InterruptedException;
 	
 }
