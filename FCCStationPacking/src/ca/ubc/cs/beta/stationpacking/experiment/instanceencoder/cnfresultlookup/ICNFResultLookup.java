@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup;
+package ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfresultlookup;
 
 
 import java.io.IOException;

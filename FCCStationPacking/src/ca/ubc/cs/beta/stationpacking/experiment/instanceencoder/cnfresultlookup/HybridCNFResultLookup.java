@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnflookup;
+package ca.ubc.cs.beta.stationpacking.experiment.instanceencoder.cnfresultlookup;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -18,6 +18,7 @@ import au.com.bytecode.opencsv.CSVReader;
 
 import ca.ubc.cs.beta.stationpacking.data.Station;
 import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
+import ca.ubc.cs.beta.stationpacking.experiment.instance.Instance;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SATResult;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SolverResult;
 
@@ -96,7 +97,7 @@ public class HybridCNFResultLookup implements ICNFResultLookup{
 				aExistingResult = getSolverResult(aInstance);
 				if(aExistingResult.getResult() != aResult.getResult())
 				{
-					throw new Exception("Instance previously determined "+aExistingResult.getResult()+", now declared to be "+aResult.getResult());
+					throw new Exception("Instance "+aInstance.toString()+" previously determined "+aExistingResult.getResult()+", now declared to be "+aResult.getResult());
 				}
 				else
 				{
@@ -126,7 +127,7 @@ public class HybridCNFResultLookup implements ICNFResultLookup{
 	}
 			
 	private String getCNFName(IInstance aInstance){
-		return 	hashforFilename(Station.hashStationSet(aInstance.getStations()))+aInstance.getChannelRange().hashCode();
+		return hashforFilename(Station.hashStationSet(aInstance.getStations())+Instance.hashChannelSet(aInstance.getChannelRange()));
 	}		
 	
 	private String hashforFilename(String aString)

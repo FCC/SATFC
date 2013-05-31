@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.execution.executionparameters;
+package ca.ubc.cs.beta.stationpacking.execution.parameters;
 
 import java.util.Arrays;
 import java.util.HashSet;
