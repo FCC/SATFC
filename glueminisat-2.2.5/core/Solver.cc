@@ -23,7 +23,92 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "mtl/Sort.h"
 #include "core/Solver.h"
 
+
+
 using namespace Minisat;
+
+//Added by narnosti
+//Gets rid of name mangling
+extern "C"
+{
+    void* createSolver(){
+        Solver* s = new Solver();
+        //printf("Created Solver: %p\n", s);
+        return s;
+    }
+    
+    void destroySolver(void* _solver){
+        delete reinterpret_cast<Solver*>(_solver);
+    }
+    
+    void* createVecLit(){
+        return new vec<Lit>();
+    }
+    
+    void destroyVecLit(void* _vec){
+        delete reinterpret_cast<vec<Lit>*>(_vec);
+    }
+    
+    bool BOOL(bool x) { if (x) return 1; return 0; }
+
+    //state passed as int so that we can ensure that it is either 0 or 1 (as mkLit assumes)
+    //if state has type bool, the compiler optimizes "state ? 1 : 0" away, giving us a problem
+    void addLitToVec(void* _vec, int variable, int state){
+        reinterpret_cast<vec<Lit>*>(_vec)->push(mkLit(variable, BOOL(state)));
+    }
+
+
+    bool solveWithAssumptions(void* _solver, void* _vec){
+        return reinterpret_cast<Solver*>(_solver)->solve(*reinterpret_cast<vec<Lit>*>(_vec));
+    }
+    
+    bool addClause(void* _solver, void* _vec){
+        return reinterpret_cast<Solver*>(_solver)->addClause(*reinterpret_cast<vec<Lit>*>(_vec));
+    }
+    
+    
+    
+    
+    //state passed as int so that we can ensure that it is either 0 or 1 (as mkLit assumes)
+    //if state has type bool, the compiler optimizes "state ? 1 : 0" away, giving us a problem
+    void printLit(void* _solver, int variable, int state){
+        Minisat::Solver* solver = (Minisat::Solver*)_solver;
+        solver->printNick(Minisat::mkLit(variable,BOOL(state)));
+    }
+    
+    //First parameter is the pointer to the solver that was made earlier
+    bool solve(void* _solver)
+    {
+        //Cast the pointer into something useful...
+        Minisat::Solver* solver = (Minisat::Solver*)_solver;
+        //Run the actual method that you want
+        return solver->solve();
+    }
+    
+    //First parameter is the pointer to the solver that was made earlier
+    void addEmptyClause(void* _solver)
+    {
+        //Cast the pointer into something useful...
+        Minisat::Solver* solver = (Minisat::Solver*)_solver;
+        //Run the actual method that you want
+        solver->addEmptyClause();
+    }
+    
+    int testing(void* _solver, int i){
+        //Cast the pointer into something useful...
+        Minisat::Solver* solver = (Minisat::Solver*)_solver;
+        //Run the actual method that you want
+        return solver->testing(i);
+    }
+
+
+}
+
+//end: added by narnosti
+
+
+
+
 
 //=================================================================================================
 // Options:
@@ -78,6 +163,16 @@ static double luby(double y, int x);
 #define RS_LBD_DLV       3
 #define RS_LBD_DLV_LUBY  4
 #define RS_LBD_DLV_IMPLS 5
+
+// added by narnosti
+Var Solver::testing(Var i){
+	return i;
+}
+void Solver::printNick(Lit p) {
+    printf("%s%d\n",sign(p) ? "" : "-",var(p));
+    fflush(stdout);
+}
+//end: added by narnosti
 
 // added by nabesima
 void Solver::printLit(Lit l) {
