@@ -1,3 +1,4 @@
+MROOT=../
 EXEC      = glueminisat
 LIB		= glueminisat
 DEPDIR    = mtl utils
