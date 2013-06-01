@@ -55,6 +55,10 @@ public:
     bool    addClause_(      vec<Lit>& ps);                     // Add a clause to the solver without making superflous internal copy. Will
                                                                 // change the passed vector 'ps'.
 
+    //Added by narnosti
+    int     testing(Var i);                         // Returns i
+    void    printNick(Lit p);                       // Prints the literal
+    
     // Solving:
     //
     bool    simplify     ();                        // Removes already satisfied clauses.
