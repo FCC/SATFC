@@ -1,8 +1,6 @@
 package ca.ubc.cs.beta.stationpacking.data.manager;
 
 import java.io.FileReader;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -20,10 +18,9 @@ public class DACStationManager implements IStationManager{
 	
 	//private Set<Station> fUnfixedStations = new HashSet<Station>();
 	//private Set<Station> fFixedStations = new HashSet<Station>();
-	private Set<Station> fStations = new HashSet<Station>();
-	
+	//private Set<Station> fStations = new HashSet<Station>();
+	private HashMap<Integer,Station> fStations = new HashMap<Integer,Station>();
 	public DACStationManager(String aStationFilename, String aStationDomainsFilename) throws Exception{
-
 		CSVReader aReader = new CSVReader(new FileReader(aStationDomainsFilename),',');
 		String[] aLine;
 		Integer aID,aChannel;
@@ -54,7 +51,6 @@ public class DACStationManager implements IStationManager{
 		aReader.close();	
 		System.out.println("aStationLookup is of size "+aStationLookup.size());
 
-		int aUnfixedStationCount = 0;
 		Set<Integer> aChannels;
 		Integer aStationPop;
 		aReader = new CSVReader(new FileReader(aStationFilename));
@@ -64,9 +60,8 @@ public class DACStationManager implements IStationManager{
 			if((aChannels = aStationLookup.get(aID))!=null){
 				aStationPop = Integer.valueOf(aLine[4]);
 				
-				fStations.add(new Station(aID,aChannels,aStationPop));
+				fStations.put(aID,new Station(aID,aChannels,aStationPop));
 				aStationLookup.remove(aID);
-				if(aChannels.size()>1) aUnfixedStationCount++;
 			}
 		}
 		aReader.close();
@@ -86,12 +81,10 @@ public class DACStationManager implements IStationManager{
 				e.printStackTrace();
 				for(Integer aID1 : aStationLookup.keySet()){
 					aChannels = aStationLookup.get(aID1);
-					if(aChannels.size()>1) aUnfixedStationCount++;
-					fStations.add(new Station(aID1,aChannels,0));
+					fStations.put(aID1,new Station(aID1,aChannels,0));
 				}
 			}
 		}
-		System.out.println("Number of stations with domains of size at least 2: "+aUnfixedStationCount);
 
 		/*
 		aReader = new CSVReader(new FileReader(aStationFilename));
@@ -122,7 +115,11 @@ public class DACStationManager implements IStationManager{
 	
 	@Override
 	public Set<Station> getStations() {
-		return fStations;
+		return new HashSet<Station>(fStations.values());
+	}
+	
+	public Station get(Integer aID){
+		return fStations.get(aID);
 	}
 
 
