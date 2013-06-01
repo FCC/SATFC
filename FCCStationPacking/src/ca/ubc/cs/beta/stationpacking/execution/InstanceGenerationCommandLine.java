@@ -125,7 +125,7 @@ public class InstanceGenerationCommandLine {
 					//log.info("Instance was UNSAT, removing station.");
 					//aCurrentStationIDs.remove(aID);
 				//} else {
-					//aInstance.addStation(new Station(aID,new HashSet<Integer>(),0));
+					//aInstance.addStation(aStationManager.get(aID));
 				//}
 			} catch (Exception e){ 
 					e.printStackTrace();
