@@ -30,6 +30,12 @@ public interface IInstance {
 	 */
 	public Set<Integer> getChannelRange();
 	
+	/*
+	 * 
+	 */
+	
+	public Station getStation(Integer aID);
+	
 	@Override
 	public String toString();
 

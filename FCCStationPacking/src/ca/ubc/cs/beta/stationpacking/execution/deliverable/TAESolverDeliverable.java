@@ -37,23 +37,25 @@ import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SolverResult;
 public class TAESolverDeliverable {
 	
 	private static Logger log = LoggerFactory.getLogger(TAESolverDeliverable.class);
-
-	public static void main(String[] args) throws Exception {
-		
+	private ISolver fSolver;
+	private DACStationManager fStationManager;
+	
+	//public static void main(String[] args) throws Exception {
+	public TAESolverDeliverable(String[] args) throws Exception{
 		/**
 		 * Test arguments to use, instead of compiling and using command line.
 		**/
 		
 		String[] aPaxosTargetArgs = {"-STATIONS_FILE",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/stations2.csv",
+				"/Users/narnosti/Documents/FCCOutput/toy_stations.txt",
 				"-DOMAINS_FILE",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/NewDACData/Domain-041813.csv",
+				"/Users/narnosti/Documents/FCCOutput/toy_domains.txt",
 				"-CONSTRAINTS_FILE",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/NewDACData/Interferences-041813.csv",
+				"/Users/narnosti/Documents/FCCOutput/toy_constraints.txt",
 				"-CNF_DIR",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/CNFs",
+				"/Users/narnosti/Documents/fcc-station-packing/CNFs",
 				"-SOLVER",
-				"tunedclasp",
+				"picosat",
 				"--execDir",
 				"SATsolvers",
 				/*
@@ -98,10 +100,10 @@ public class TAESolverDeliverable {
 		
 		//Use the parameters to instantiate the experiment.
 		log.info("Getting station information...");
-		DACStationManager aStationManager = new DACStationManager(aExecParameters.getRepackingDataParameters().getStationFilename(),aExecParameters.getRepackingDataParameters().getDomainFilename());
+		fStationManager = new DACStationManager(aExecParameters.getRepackingDataParameters().getStationFilename(),aExecParameters.getRepackingDataParameters().getDomainFilename());
 	    
 		log.info("Getting constraint information...");
-		Set<Station> aStations = aStationManager.getStations();
+		Set<Station> aStations = fStationManager.getStations();
 		DACConstraintManager2 dCM = new DACConstraintManager2(aStations,aExecParameters.getRepackingDataParameters().getConstraintFilename());
 	
 		log.info("Creating solver components...");
@@ -122,18 +124,18 @@ public class TAESolverDeliverable {
 		TargetAlgorithmEvaluator aTAE = null;
 		try {
 			aTAE = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(aExecParameters.getAlgorithmExecutionOptions().taeOpts, aTAEExecConfig, false, aAvailableTAEOptions);
-			ISolver aSolver = new TAESolver(dCM, aCNFLookup, aCNFEncoder, aTAE, aTAEExecConfig,aExecParameters.getSeed());			
-			while(true){ //There must be a way to do this that puts fewer demands on the processor
+			fSolver = new TAESolver(dCM, aCNFLookup, aCNFEncoder, aTAE, aTAEExecConfig,aExecParameters.getSeed());			
+			//while(true){ //There must be a way to do this that puts fewer demands on the processor
 				//if(a message has arrived)
 					//if(the message encodes an instance) 
 						IInstance aInstance = decodeInstance(/*message*/);
-						SolverResult aSolverResult = aSolver.solve(aInstance,1800/*we could pass CutoffTime to the solver in its constructor*/);
+						SolverResult aSolverResult = fSolver.solve(aInstance,1800/*we could pass CutoffTime to the solver in its constructor*/);
 						//Send aSolverResult back
 					//else if(the message tells us to quit)
 						//quit
 					//else
 						//send "message not understood" reply
-			}
+			//}
 		} 
 		finally
 		{
@@ -146,6 +148,17 @@ public class TAESolverDeliverable {
 	//NA - Alex: fill in here!
 	private static IInstance decodeInstance(/*message*/){
 		return new Instance(new HashSet<Station>(),new HashSet<Integer>());
+	}
+	
+	//NA - temporary method of communication
+	public SolverResult receiveMessage(Set<Integer> aStationIDs, Set<Integer> aChannels) throws Exception{
+		Set<Station> aStations = new HashSet<Station>();
+		for(Integer aStationID : aStationIDs){
+			aStations.add(fStationManager.get(aStationID));
+		}
+		IInstance aInstance = new Instance(aStations,aChannels);
+		SolverResult aSolverResult = fSolver.solve(aInstance,1800/*we could pass CutoffTime to the solver in its constructor*/);
+		return(aSolverResult);
 	}
 }
 

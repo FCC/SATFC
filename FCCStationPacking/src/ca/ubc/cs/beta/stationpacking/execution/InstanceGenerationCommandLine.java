@@ -22,14 +22,15 @@ import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluat
 import ca.ubc.cs.beta.stationpacking.data.Station;
 import ca.ubc.cs.beta.stationpacking.data.manager.DACStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.InstanceGenerationExecutor;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.InstanceGenerationParameters;
+import ca.ubc.cs.beta.stationpacking.execution.deliverable.TAESolverDeliverable;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.InstanceGenerationParameterParser;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.LocalExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
 import ca.ubc.cs.beta.stationpacking.experiment.instance.Instance;
-
 import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SATResult;
 import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SolverResult;
+
 
 public class InstanceGenerationCommandLine {
 		
@@ -40,21 +41,18 @@ public class InstanceGenerationCommandLine {
 		/**
 		 * Test arguments to use, instead of compiling and using command line.
 		**/
-
 		String[] aPaxosTargetArgs = {"-STATIONS_FILE",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/stations2.csv",
+				"/Users/narnosti/Documents/FCCOutput/toy_stations.txt",
 				"-DOMAINS_FILE",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/NewDACData/Domain-041813.csv",
+				"/Users/narnosti/Documents/FCCOutput/toy_domains.txt",
 				"-CONSTRAINTS_FILE",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/NewDACData/Interferences-041813.csv",
+				"/Users/narnosti/Documents/FCCOutput/toy_constraints.txt",
 				"-EXPERIMENT_NAME",
 				"TestExperiment",
 				"-EXPERIMENT_DIR",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Results/TestExperiment",
-				/*
+				"/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/ExperimentDir",
 				"-PACKING_CHANNELS",
-				"1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49",
-				*/
+				"14,15,16",
 				};
 		
 		args = aPaxosTargetArgs;
@@ -67,7 +65,7 @@ public class InstanceGenerationCommandLine {
 		Map<String,AbstractOptions> aAvailableTAEOptions = TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators();
 		
 		//Parse the command line arguments in a parameter object.
-		InstanceGenerationParameters aExecParameters = new InstanceGenerationParameters();
+		InstanceGenerationParameterParser aExecParameters = new InstanceGenerationParameterParser();
 		JCommander aParameterParser = JCommanderHelper.getJCommander(aExecParameters, aAvailableTAEOptions);
 		try
 		{
@@ -118,10 +116,22 @@ public class InstanceGenerationCommandLine {
 			aCurrentStationIDs.add(aID);
 			try {
 				log.info("Solving instance of size {}.",aCurrentStationIDs.size());
+				
+				//NA - this is temporary to allow communication with solver
+				TAESolverDeliverable aTAE = new TAESolverDeliverable(new String[02]);
+				SolverResult aRunResult = aTAE.receiveMessage(aCurrentStationIDs,aChannels);
+				aExperimentReporter.report(aInstance, aRunResult);
+				if(!aRunResult.getResult().equals(SATResult.SAT)){
+					log.info("Instance was UNSAT, removing station.");
+					aCurrentStationIDs.remove(aID);
+				} else {
+					aInstance.addStation(aStationManager.get(aID));
+				}
+				
 				//SolverResult aRunResult = SEND MESSAGE TO SOLVER with aCurrentStations, aChannels
 				//log.info("Result: {}",aRunResult);
 				//aExperimentReporter.report(aInstance, aRunResult);
-				///if(!aRunResult.getResult().equals(SATResult.SAT)){
+				//if(!aRunResult.getResult().equals(SATResult.SAT)){
 					//log.info("Instance was UNSAT, removing station.");
 					//aCurrentStationIDs.remove(aID);
 				//} else {

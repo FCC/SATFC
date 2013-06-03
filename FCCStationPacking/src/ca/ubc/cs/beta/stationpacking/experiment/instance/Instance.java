@@ -2,6 +2,7 @@ package ca.ubc.cs.beta.stationpacking.experiment.instance;
 
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -11,12 +12,15 @@ import ca.ubc.cs.beta.stationpacking.data.Station;
 
 public class Instance implements IInstance{
 	
-	private final Set<Integer> fChannels = new HashSet<Integer>();
-	private final Set<Station> fStations = new HashSet<Station>(); 
+	private HashMap<Integer,Station> fStations = new HashMap<Integer,Station>();
+
+	
+	private final Set<Integer> fChannels;
+	//private final Set<Station> fStations = new HashSet<Station>(); 
 	
 	public Instance(Set<Station> aStations, Set<Integer> aChannels){
-		for(Integer aChannel : aChannels) fChannels.add(aChannel);
-		for(Station aStation : aStations) fStations.add(aStation);
+		fChannels = new HashSet<Integer>(aChannels);
+		for(Station aStation : aStations) fStations.put(aStation.getID(),aStation);
 	}
 	
 	//AF - Added a different way to print set of channels so that an Instance.toString() is easier to read in CSV.
@@ -40,7 +44,7 @@ public class Instance implements IInstance{
 	
 	@Override
 	public String toString() {
-		return hashChannelSet(fChannels)+"_"+Station.hashStationSet(fStations);
+		return hashChannelSet(fChannels)+"_"+Station.hashStationSet(fStations.values());
 	}
 
 	@Override
@@ -50,22 +54,27 @@ public class Instance implements IInstance{
 	
 	@Override
 	public boolean addStation(Station aStation){
-		return fStations.add(aStation);
+		return (fStations.put(aStation.getID(),aStation)==null);
 	}
 	
 	@Override
 	public boolean removeStation(Station aStation){
-		return fStations.remove(aStation);
+		return (fStations.remove(aStation)!=null);
 	}
 	
 	@Override
 	public Set<Station> getStations(){
-		return fStations;
+		return new HashSet<Station>(fStations.values());
 	}
 	
 	@Override
 	public Set<Integer> getChannelRange(){
-		return fChannels;
+		return new HashSet<Integer>(fChannels);
+	}
+	
+	@Override
+	public Station getStation(Integer aID){
+		return fStations.get(aID);
 	}
 
 
