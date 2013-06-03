@@ -112,6 +112,15 @@ public class HybridCNFResultLookup implements ICNFResultLookup{
 		else
 		{
 			fResultLookup.put(getCNFName(aInstance), aResult);
+			try{
+				String aOutputFilename = fCNFDirectory+File.separatorChar+fOutputName;
+				BufferedWriter aWriter = new BufferedWriter(new FileWriter(aOutputFilename));
+				aWriter.append(getCNFName(aInstance)+","+aResult+"\n");	
+				aWriter.close();
+			} catch(Exception e){
+				e.printStackTrace();
+			}
+
 			return false;
 		} 
 	}
