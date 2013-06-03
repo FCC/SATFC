@@ -5,8 +5,8 @@ import java.io.IOException;
 
 import org.apache.commons.io.FileUtils;
 
-import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
-import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SolverResult;
+import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
+import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 
 public class LocalExperimentReporter implements IExperimentReporter{
 
@@ -20,7 +20,7 @@ public class LocalExperimentReporter implements IExperimentReporter{
 	}
 	
 	@Override
-	public void report(IInstance aInstance, SolverResult aRunResult){
+	public void report(Instance aInstance, SolverResult aRunResult){
 		
 		String aLine = aInstance.toString()+","+Double.toString(aRunResult.getRuntime())+","+aRunResult.getResult().toString()+"\n";
 		

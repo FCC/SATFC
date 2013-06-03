@@ -1,12 +1,12 @@
-package ca.ubc.cs.beta.stationpacking.execution;
+package ca.ubc.cs.beta.stationpacking.experiment;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,28 +14,33 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;
 
 import ca.ubc.cs.beta.aclib.execconfig.AlgorithmExecutionConfig;
+import ca.ubc.cs.beta.aclib.misc.jcommander.JCommanderHelper;
+import ca.ubc.cs.beta.aclib.misc.options.UsageSection;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
+import ca.ubc.cs.beta.aclib.options.ConfigToLaTeX;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluator;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorBuilder;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
-
 import ca.ubc.cs.beta.stationpacking.datamanagers.DACConstraintManager2;
 import ca.ubc.cs.beta.stationpacking.datamanagers.DACStationManager;
-import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.execution.cnfencoder.CNFEncoder;
 import ca.ubc.cs.beta.stationpacking.execution.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.parsers.InstanceGenerationParameters;
-import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.AsynchronousLocalExperimentReporter;
-import ca.ubc.cs.beta.stationpacking.solver.AsyncTAESolver;
+import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentReporter;
+import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.LocalExperimentReporter;
+import ca.ubc.cs.beta.stationpacking.solver.ISolver;
+import ca.ubc.cs.beta.stationpacking.solver.TAESolver.TAESolver;
+import ca.ubc.cs.beta.stationpacking.solver.TAESolver.cnflookup.HybridCNFResultLookup;
+import ca.ubc.cs.beta.stationpacking.solver.TAESolver.cnflookup.ICNFResultLookup;
 
 
-public class AsyncResolvingExecutor {
-
-	private static Logger log = LoggerFactory.getLogger(AsyncResolvingExecutor.class);
+public class InstanceGenerationExecutor {
 	
+	private static Logger log = LoggerFactory.getLogger(InstanceGenerationExecutor.class);
+
 	public static void main(String[] args) throws Exception {
-			
+		
 		/**
 		 * Test arguments to use, instead of compiling and using command line.
 		 * 
@@ -43,6 +48,7 @@ public class AsyncResolvingExecutor {
 		**/
 		
 		/*
+		 * Deprecated arguments.
 		 * 
 		String[] aPaxosTargetArgs_old = {"-STATIONS_FILE",
 				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/stations2.csv",
@@ -55,18 +61,13 @@ public class AsyncResolvingExecutor {
 				"-SOLVER",
 				"tunedclasp",
 				"-EXPERIMENT_NAME",
-				"ResolvingTestExperiment",
+				"TestExperiment",
 				"-EXPERIMENT_DIR",
 				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Results/TestExperiment",
 				"-TAE_CONC_EXEC_NUM",
-				"1",
-				"-REPORT_FILE",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Results/TestExperiment/TestExperiment.csv"
-				//"-PACKING_CHANNELS",
-				//"14,15,16"
+				"1"
 				};
 		*/
-		
 		String[] aPaxosTargetArgs = {"-STATIONS_FILE",
 				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/stations2.csv",
 				"-DOMAINS_FILE",
@@ -78,13 +79,19 @@ public class AsyncResolvingExecutor {
 				"-SOLVER",
 				"tunedclasp",
 				"-EXPERIMENT_NAME",
-				"ResolvingTestExperiment",
+				"TestExperiment",
 				"-EXPERIMENT_DIR",
 				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Results/TestExperiment",
-				"-REPORT_FILE",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Results/TestExperiment/TestExperiment.csv",
+				/*
+				"-PACKING_CHANNELS",
+				"1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49",
+				*/
 				"--execDir",
 				"SATsolvers",
+				/*
+				"--paramFile",
+				"SATsolvers/sw_parameterspaces/sw_tunedclasp.txt",
+				*/
 				"--algoExec",
 				"python solverwrapper.py",
 				"--cutoffTime",
@@ -97,20 +104,27 @@ public class AsyncResolvingExecutor {
 		/**
 		 * 
 		**/
-		//Available TAE Options
+		//TAE Options
 		Map<String,AbstractOptions> aAvailableTAEOptions = TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators();
 		
 		//Parse the command line arguments in a parameter object.
 		InstanceGenerationParameters aExecParameters = new InstanceGenerationParameters();
-		JCommander aParameterParser = new JCommander(aExecParameters);
+		JCommander aParameterParser = JCommanderHelper.getJCommander(aExecParameters, aAvailableTAEOptions);
 		try
 		{
 			aParameterParser.parse(args);
 		}
 		catch (ParameterException aParameterException)
 		{
-			System.out.println(aParameterException.getMessage());
-			aParameterParser.usage();
+			List<UsageSection> sections = ConfigToLaTeX.getParameters(aExecParameters, aAvailableTAEOptions);
+			
+			boolean showHiddenParameters = false;
+			
+			//A much nicer usage screen than JCommander's 
+			ConfigToLaTeX.usage(sections, showHiddenParameters);
+			
+			log.error(aParameterException.getMessage());
+			return;
 		}
 		
 		//Use the parameters to instantiate the experiment.
@@ -118,12 +132,12 @@ public class AsyncResolvingExecutor {
 		DACStationManager aStationManager = new DACStationManager(aExecParameters.getRepackingDataParameters().getStationFilename(),aExecParameters.getRepackingDataParameters().getDomainFilename());
 	    Set<Station> aStations = aStationManager.getStations();
 		DACConstraintManager2 dCM = new DACConstraintManager2(aStations,aExecParameters.getRepackingDataParameters().getConstraintFilename());
+	
 		ICNFEncoder aCNFEncoder = new CNFEncoder();
-				
-		log.info("Creating experiment reporter...");
-		AsynchronousLocalExperimentReporter aAsynchronousReporter = new AsynchronousLocalExperimentReporter(aExecParameters.getExperimentDir(), aExecParameters.getExperimentName());
-		aAsynchronousReporter.startWritingReport();
 		
+		log.info("Creating cnf lookup...");
+		ICNFResultLookup aCNFLookup = new HybridCNFResultLookup(aExecParameters.getCNFDirectory(), aExecParameters.getCNFOutputName());
+				
 		log.info("Creating solver...");
 		//Logs the available target algorithm evaluators
 		for(String name : aAvailableTAEOptions.keySet())
@@ -132,43 +146,42 @@ public class AsyncResolvingExecutor {
 		}
 		//Fix config space file based on solver
 		aExecParameters.getAlgorithmExecutionOptions().paramFileDelegate.paramFile = aExecParameters.getAlgorithmExecutionOptions().algoExecDir+File.separatorChar+"sw_parameterspaces"+File.separatorChar+"sw_"+aExecParameters.getSolver()+".txt";
+		
 		AlgorithmExecutionConfig aTAEExecConfig = aExecParameters.getAlgorithmExecutionOptions().getAlgorithmExecutionConfig();
 		TargetAlgorithmEvaluator aTAE = null;
 		try {
 			
 			aTAE = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(aExecParameters.getAlgorithmExecutionOptions().taeOpts, aTAEExecConfig, false, aAvailableTAEOptions);
+		
+			ISolver aSolver = new TAESolver(dCM, aCNFEncoder, aCNFLookup, aTAE, aTAEExecConfig,aExecParameters.getSeed());
 			
-			AsyncTAESolver aAsyncSolver = new AsyncTAESolver(dCM, aCNFEncoder, aExecParameters.getCNFDirectory(), aTAE, aTAEExecConfig, aExecParameters.getSeed());
+			log.info("Creating experiment reporter...");
+			IExperimentReporter aExperimentReporter = new LocalExperimentReporter(aExecParameters.getExperimentDir(), aExecParameters.getExperimentName());
 			
-			//Get all instances, and solve each instance.
-			log.info("Getting all instances from report file...");
-			ArrayList<Pair<HashSet<Integer>,HashSet<Integer>>> aInstanceIDs = aExecParameters.getReportParser().getInstanceIDs();
-			for(Pair<HashSet<Integer>,HashSet<Integer>> aInstanceID : aInstanceIDs)
+			log.info("Creating instance generation and beginning experiment...");
+			HashSet<Integer> aConsideredStationIDs = aExecParameters.getConsideredStationsIDs();
+			HashSet<Integer> aStartingStationsIDs = aExecParameters.getStartingStationsIDs();
+			
+			HashSet<Station> aStartingStations = new HashSet<Station>();
+			HashSet<Station> aToConsiderStations = new HashSet<Station>();
+			for(Station aStation : aStations)
 			{
-				HashSet<Integer> aInstanceChannels = aInstanceID.getKey();
-				HashSet<Integer> aInstanceStationsIDs = aInstanceID.getValue();
-				HashSet<Station> aInstanceStations = new HashSet<Station>();
-				for(Station aStation : aStations)
+				if(aStartingStationsIDs.contains(aStation.getID()))
 				{
-					if(aInstanceStationsIDs.contains(aStation.getID()))
-					{
-						aInstanceStations.add(aStation);
-					}
+					aStartingStations.add(aStation);
 				}
-				Instance aInstance = new Instance(aInstanceStations, aInstanceChannels);
-				log.info("Solving "+aInstance.toString());
-				aAsyncSolver.solve(aInstance, aTAEExecConfig.getAlgorithmCutoffTime(), aAsynchronousReporter);
-				
+				if(!aConsideredStationIDs.contains(aStation.getID()))
+				{
+					aToConsiderStations.add(aStation);
+				}
 			}
 			
-			//Wait for completion and die.
-			log.info("Waiting for completion of the runs...");
-			aAsyncSolver.waitForFinish();
+			Iterator<Station> aStationIterator = new InversePopulationStationIterator(aToConsiderStations, aExecParameters.getSeed());
+			InstanceGeneration aInstanceGeneration = new InstanceGeneration(aSolver, aExperimentReporter);
+			aInstanceGeneration.run(aStartingStations, aStationIterator,aExecParameters.getPackingChannels(),aTAEExecConfig.getAlgorithmCutoffTime());	
+			aCNFLookup.writeToFile();
 			
-			//Kill report writing process
-			log.info("Done! Shutting down EVERYTHING!");
-			aAsynchronousReporter.stopWritingReport();
-		}
+		} 
 		finally
 		{
 			//We need to tell the TAE we are shutting down
@@ -178,9 +191,5 @@ public class AsyncResolvingExecutor {
 				aTAE.notifyShutdown();
 			}
 		}
-		
-		
-		
 	}
-
 }

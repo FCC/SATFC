@@ -11,23 +11,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aclib.concurrent.threadfactory.SequentiallyNamedThreadFactory;
-import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
-import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SolverResult;
+import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
+import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 
 public class AsynchronousLocalExperimentReporter implements IExperimentReporter {
 	
 	public class AsynchronousResult
 	{	
-		private IInstance fInstance;
+		private Instance fInstance;
 		private SolverResult fSolverResult;
 		
-		public AsynchronousResult(IInstance aInstance, SolverResult aSolverResult)
+		public AsynchronousResult(Instance aInstance, SolverResult aSolverResult)
 		{
 			fInstance = aInstance;
 			fSolverResult = aSolverResult;
 		}
 		
-		public IInstance getInstance()
+		public Instance getInstance()
 		{
 			return fInstance;
 		}
@@ -65,7 +65,7 @@ public class AsynchronousLocalExperimentReporter implements IExperimentReporter 
 	}
 
 	@Override
-	public void report(IInstance aInstance, SolverResult aRunResult) throws InterruptedException {
+	public void report(Instance aInstance, SolverResult aRunResult) throws InterruptedException {
 		
 		fReportQueue.put(new AsynchronousResult(aInstance, aRunResult));
 	}

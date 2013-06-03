@@ -1,7 +1,7 @@
 package ca.ubc.cs.beta.stationpacking.experiment.experimentreport;
 
-import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
-import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SolverResult;
+import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
+import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 
 /**
  * Report and record experiment results.
@@ -16,6 +16,6 @@ public interface IExperimentReporter {
 	 * @param aRunResult - the result of solving the given instance.
 	 * @throws InterruptedException 
 	 */
-	public void report(IInstance aInstance, SolverResult aRunResult) throws InterruptedException;
+	public void report(Instance aInstance, SolverResult aRunResult) throws InterruptedException;
 	
 }
