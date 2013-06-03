@@ -6,12 +6,12 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.ubc.cs.beta.stationpacking.data.Station;
+import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
+import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
+import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
+import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentReporter;
-import ca.ubc.cs.beta.stationpacking.experiment.instance.*;
-import ca.ubc.cs.beta.stationpacking.experiment.solver.ISolver;
-import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SATResult;
-import ca.ubc.cs.beta.stationpacking.experiment.solver.result.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 
 
 /**
@@ -40,7 +40,7 @@ public class InstanceGeneration {
 	 *
 	**/
 	public void run(Set<Station> aStartingStations, Iterator<Station> aStationIterator, Set<Integer> aChannelRange,double aCutoff){
-		IInstance aInstance = new Instance(aStartingStations,aChannelRange);
+		Instance aInstance = new Instance(aStartingStations,aChannelRange);
 		System.out.println(aStationIterator.hasNext());
 		while(aStationIterator.hasNext()) {
 			Station aStation = aStationIterator.next();
