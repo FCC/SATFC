@@ -5,6 +5,7 @@ import java.util.Set;
 
 import ca.ubc.cs.beta.stationpacking.data.Station;
 import ca.ubc.cs.beta.stationpacking.data.manager.IConstraintManager;
+import ca.ubc.cs.beta.stationpacking.experiment.Clause;
 import ca.ubc.cs.beta.stationpacking.experiment.instance.IInstance;
 
 /**
@@ -20,11 +21,16 @@ public interface ICNFEncoder {
 	 */
 	public String encode(IInstance aInstance, IConstraintManager aConstraintManager);
 	
+	//public Set<Clause> encode(IInstance aInstance, IConstraintManager aConstraintManager);
+	
 	/* NA - takes an Instance and a string corresponding to a satisfying variable assignment.
 	 * Checks that each station is assigned exactly one channel, and that this channel is in its domain.
 	 * If these conditions are not met, it throws and catches an exception describing the problem, and 
 	 * returns an empty map.
 	 */
 	public Map<Integer,Set<Station>> decode(IInstance aInstance, String aCNFAssignment);
+	
+	//public Map<Integer,Set<Station>> decode(IInstance aInstance, Set<Clause> aAssignment);
+
 	
 }

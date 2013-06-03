@@ -1,6 +1,8 @@
 package ca.ubc.cs.beta.stationpacking.data;
 
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Set;
@@ -80,7 +82,7 @@ public class Station implements Comparable<Station>{
 	}
 	
 	public Set<Integer> getDomain(){
-		return fDomain;
+		return new HashSet<Integer>(fDomain);
 	}
 	
 	public boolean removeFromDomain(Integer aChannel){
@@ -106,7 +108,7 @@ public class Station implements Comparable<Station>{
 		return fID.hashCode();
 	}
 	
-	public static String hashStationSet(Set<Station> aStations)
+	public static String hashStationSet(Collection<Station> aStations)
 	{
 		LinkedList<Station> aStationsList = new LinkedList<Station>(aStations);
 		Collections.sort(aStationsList, new StationComparator());
