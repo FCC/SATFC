@@ -6,7 +6,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Random;
 
-import ca.ubc.cs.beta.stationpacking.data.Station;
+import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 
 public class InversePopulationStationIterator implements Iterator<Station>{
 
