@@ -57,7 +57,7 @@ public class IncrementalSolver {
 		Map<String,AbstractOptions> aAvailableTAEOptions = TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators();
 		//Parse the command line arguments in a parameter object.
 		IncrementalSolverParameterParser aExecParameters = new IncrementalSolverParameterParser();
-		JCommander aParameterParser = JCommanderHelper.getJCommander(aExecParameters, aAvailableTAEOptions);
+		JCommander aParameterParser = new JCommander(aExecParameters);
 		try
 		{
 			aParameterParser.parse(args);
