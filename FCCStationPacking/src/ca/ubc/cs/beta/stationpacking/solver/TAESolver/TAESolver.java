@@ -76,7 +76,7 @@ public class TAESolver implements ISolver{
 		fSeed = aSeed;
 		fEncoder = aEncoder;
 		fManager = aManager;
-		fGrouper = new ConstraintGrouper(fManager);
+		fGrouper = new ConstraintGrouper();
 		fLookup = aLookup;
 		//Parameter configuration space
 		fParamConfigurationSpace  = new ParamConfigurationSpace(new File(aParamConfigurationSpaceFile));
@@ -103,12 +103,12 @@ public class TAESolver implements ISolver{
 	
 	
 	public TAESolver(DACConstraintManager2 aConstraintManager, ICNFEncoder aCNFEncoder,
-			ICNFResultLookup aLookup, TargetAlgorithmEvaluator aTAE,
-			AlgorithmExecutionConfig aTAEExecConfig, long aSeed) {
+			ICNFResultLookup aLookup, IComponentGrouper aGrouper, 
+			TargetAlgorithmEvaluator aTAE, AlgorithmExecutionConfig aTAEExecConfig, long aSeed) {
 		fSeed = aSeed;
 		fEncoder = aCNFEncoder;
 		fManager = aConstraintManager;
-		fGrouper = new ConstraintGrouper(fManager);
+		fGrouper = aGrouper;
 		fLookup = aLookup;
 		
 		fParamConfigurationSpace  = aTAEExecConfig.getParamFile();
@@ -161,7 +161,7 @@ public class TAESolver implements ISolver{
 		Set<Integer> aChannelRange = aInstance.getChannels();
 		
 		//Group stations
-		Set<Set<Station>> aInstanceGroups = fGrouper.group(aInstance.getStations());
+		Set<Set<Station>> aInstanceGroups = fGrouper.group(aInstance.getStations(),fManager);
 		
 		ArrayList<SolverResult> aComponentResults = new ArrayList<SolverResult>();
 		

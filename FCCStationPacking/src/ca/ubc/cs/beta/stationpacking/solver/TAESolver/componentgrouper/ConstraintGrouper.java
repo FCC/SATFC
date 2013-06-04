@@ -12,25 +12,20 @@ import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 
 public class ConstraintGrouper implements IComponentGrouper{
 	
-	private static IConstraintManager fConstraintManager;
-	
-	public ConstraintGrouper(IConstraintManager aConstraintManager){
-		fConstraintManager = aConstraintManager;
-	}
 	
 	//NA - just assume that at least two feasible channels are adjacent (so that ADJ constraints are relevant).
-	public Set<Set<Station>> group(Set<Station> aStations){
+	public Set<Set<Station>> group(Set<Station> aStations, IConstraintManager aConstraintManager){
 		SimpleGraph<Station,DefaultEdge> aConstraintGraph = new SimpleGraph<Station,DefaultEdge>(DefaultEdge.class);
 		for(Station aStation : aStations){
 			aConstraintGraph.addVertex(aStation);
 		}
 		for(Station aStation1 : aStations){
-			for(Station aStation2 : fConstraintManager.getCOInterferingStations(aStation1)){
+			for(Station aStation2 : aConstraintManager.getCOInterferingStations(aStation1)){
 				if(aConstraintGraph.containsVertex(aStation2)){
 					aConstraintGraph.addEdge(aStation1, aStation2);
 				}
 			}
-			for(Station aStation2 : fConstraintManager.getADJplusInterferingStations(aStation1)){
+			for(Station aStation2 : aConstraintManager.getADJplusInterferingStations(aStation1)){
 				if(aConstraintGraph.containsVertex(aStation2)){
 					aConstraintGraph.addEdge(aStation1, aStation2);
 				}
