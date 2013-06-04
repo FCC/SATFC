@@ -11,9 +11,13 @@ import com.sun.jna.Pointer;
 public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 	
 	
-	String fLibraryPath = "/Users/narnosti/Documents/fcc-station-packing/glueminisat-2.2.5/core/libglueminisat.so";
-	GMSLibrary fGMSsolver = (GMSLibrary) Native.loadLibrary(fLibraryPath, GMSLibrary.class);
+	String fLibraryPath;
+	GMSLibrary fGMSsolver;
 
+    public GlueMiniSatLibrary(String aLibraryPath){
+        fLibraryPath = aLibraryPath;
+        fGMSsolver = (GMSLibrary) Native.loadLibrary(fLibraryPath, GMSLibrary.class);
+    }
 	
 	private interface GMSLibrary extends Library {
 		   //public boolean addEmptyClause(Pointer solver);
