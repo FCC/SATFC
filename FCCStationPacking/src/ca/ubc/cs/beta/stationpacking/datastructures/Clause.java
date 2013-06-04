@@ -29,5 +29,14 @@ public class Clause {
 		if(state) fVars.add(var);
 		else fNegatedVars.add(var);
 	}
+	
+	public boolean removeLiteral(Integer var, Boolean state){
+		if(state) return fVars.remove(var);
+		else return fNegatedVars.remove(var);
+	}
+	
+	public int size(){
+		return fVars.size()+fNegatedVars.size();
+	}
 
 }

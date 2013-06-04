@@ -17,6 +17,10 @@ public class Instance {
 	private final Set<Integer> fChannels;
 	//private final Set<Station> fStations = new HashSet<Station>(); 
 	
+	public Instance(){
+		fChannels = new HashSet<Integer>();
+	}
+	
 	public Instance(Set<Station> aStations, Set<Integer> aChannels){
 		fChannels = new HashSet<Integer>(aChannels);
 		for(Station aStation : aStations) fStations.put(aStation.getID(),aStation);

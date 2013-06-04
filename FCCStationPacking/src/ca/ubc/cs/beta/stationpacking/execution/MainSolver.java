@@ -28,11 +28,18 @@ import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.parsers.ParameterParser;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
+import ca.ubc.cs.beta.stationpacking.solver.IncrementalSolver.IncrementalSolver;
+import ca.ubc.cs.beta.stationpacking.solver.IncrementalSolver.SATLibraries.GlueMiniSatLibrary;
+import ca.ubc.cs.beta.stationpacking.solver.IncrementalSolver.SATLibraries.IIncrementalSATLibrary;
 import ca.ubc.cs.beta.stationpacking.solver.TAESolver.TAESolver;
 import ca.ubc.cs.beta.stationpacking.solver.TAESolver.cnflookup.HybridCNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.TAESolver.cnflookup.ICNFResultLookup;
+import ca.ubc.cs.beta.stationpacking.solver.TAESolver.componentgrouper.ConstraintGrouper;
+import ca.ubc.cs.beta.stationpacking.solver.TAESolver.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder2;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
 
 
 public class MainSolver {
@@ -71,6 +78,15 @@ public class MainSolver {
 		} catch(Exception e){
 			e.printStackTrace();
 		}
+		
+		boolean terminate = false
+		while(!terminate){
+			//Wait for message, if it's a new instance "decode" it and
+			//return aSolver.receiveMessage(,);
+			//else if it's a quit message:
+			//terminate = true;
+		}
+		
 	}
 	*/
 	
@@ -90,11 +106,11 @@ public class MainSolver {
 		log.info("Creating solver...");
 		ICNFEncoder aCNFEncoder = new CNFEncoder();
 		
-		
-		if(true/*the solver requested requires a TAEsolver*/){
+		boolean taeSolver = false;
+		if(taeSolver/*the solver requested requires a TAEsolver*/){
 			
 			ICNFResultLookup aCNFLookup = new HybridCNFResultLookup(aExecParameters.getCNFDirectory(), aExecParameters.getCNFOutputName());
-
+			IComponentGrouper aGrouper = new ConstraintGrouper();
 			
 			//Fix config space file based on solver
 			aExecParameters.getAlgorithmExecutionOptions().paramFileDelegate.paramFile = aExecParameters.getAlgorithmExecutionOptions().algoExecDir+File.separatorChar+"sw_parameterspaces"+File.separatorChar+"sw_"+aExecParameters.getSolver()+".txt";
@@ -102,26 +118,24 @@ public class MainSolver {
 			TargetAlgorithmEvaluator aTAE = null;
 			try {
 				aTAE = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(aExecParameters.getAlgorithmExecutionOptions().taeOpts, aTAEExecConfig, false, aAvailableTAEOptions);
-				fSolver = new TAESolver(aConstraintManager, aCNFEncoder, aCNFLookup, aTAE, aTAEExecConfig,aExecParameters.getSeed());			
+				fSolver = new TAESolver(aConstraintManager, aCNFEncoder, aCNFLookup, aGrouper, aTAE, aTAEExecConfig,aExecParameters.getSeed());			
 			} finally {
 				//We need to tell the TAE we are shutting down, otherwise the program may not exit 
 				if(aTAE != null){ aTAE.notifyShutdown();}
 			}
 			
+		} else if(true /*the solver is incremental*/){
+			/* get incremental options - 
+			 * which type of incremental solver (memcopy or dummyvar)
+			 * if(dummyvar), how many dummy variables to use
+			 * which solver library (glueminisat or other?)
+			 * any other parameters needed
+			 */
+			ICNFEncoder2 aCNFEncoder2 = new CNFEncoder2();
+			
+			IIncrementalSATLibrary aSATLibrary = new GlueMiniSatLibrary();
+			fSolver = new IncrementalSolver(aConstraintManager, aCNFEncoder2, aSATLibrary,100, aExecParameters.getSeed());			
 		}
-		
-		/*
-		branch on solver type
-			if(TAESolver){
-				construct a CNFLookup, an AlgorithmExecutionConfig, a TargetAlgorithmEvaluator
-				fSolver = new TAESolver(aConstraintManager, aCNFEncoder, aCNFLookup, aTAE, aTAEExecConfig,aExecParameters.getSeed());			
-			} else if(Incremental Solver){
-				construct an IncrementalSATLibrary, algorithm Execution options (which type of incremental, how many dummy variables)
-				fSolver = new IncrementalSolver(aConstraintManager, aCNFEncoder, aIncrementalSATLibrary,aIncrementalParams, aExecParameters.getSeed());			
-
-			}
-
-		 */
 		
 	}
 	
