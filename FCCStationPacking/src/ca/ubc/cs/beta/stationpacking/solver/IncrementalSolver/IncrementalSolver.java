@@ -1,117 +1,106 @@
 package ca.ubc.cs.beta.stationpacking.solver.IncrementalSolver;
 
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.beust.jcommander.JCommander;
-import com.beust.jcommander.ParameterException;
 
-import ca.ubc.cs.beta.aclib.misc.jcommander.JCommanderHelper;
-import ca.ubc.cs.beta.aclib.misc.options.UsageSection;
-import ca.ubc.cs.beta.aclib.options.AbstractOptions;
-import ca.ubc.cs.beta.aclib.options.ConfigToLaTeX;
-import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
-import ca.ubc.cs.beta.stationpacking.datamanagers.DACConstraintManager2;
-import ca.ubc.cs.beta.stationpacking.datamanagers.DACStationManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
-import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
+import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
 import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
+import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.parsers.IncrementalSolverParameterParser;
-import ca.ubc.cs.beta.stationpacking.solver.IncrementalSolver.ClauseAdder.DummyVarClauseAdder;
-import ca.ubc.cs.beta.stationpacking.solver.IncrementalSolver.ClauseAdder.IClauseAdder;
+import ca.ubc.cs.beta.stationpacking.execution.cnfencoder.ICNFEncoder;
+import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.solver.IncrementalSolver.SATLibraries.GlueMiniSatLibrary;
 import ca.ubc.cs.beta.stationpacking.solver.IncrementalSolver.SATLibraries.IIncrementalSATLibrary;
 
-public class IncrementalSolver {
+public class IncrementalSolver implements ISolver{
 	
-	IStationManager fStationManager;
-	IClauseAdder fClauseAdder;
+	IConstraintManager fConstraintManager;
+	ICNFEncoder fEncoder;
+	IIncrementalSATLibrary fIncrementalSATLibrary;
+	double fSeed;
+	
+	Instance fCurrentInstance;
+	
+	Clause fAssumptions = new Clause(new HashSet<Integer>(),new HashSet<Integer>());
+	Set<Integer> fIncluded = new HashSet<Integer>();
+	Set<Integer> fNotIncluded = new HashSet<Integer>();
+	Integer curCount = 1;
+	
+	final Integer fNumDummyVariables;
+
+	
 	private static Logger log = LoggerFactory.getLogger(IncrementalSolver.class);
+	
 
+	//pass other parameters (such as incremental technique, how many dummy variables to store) as one final arg to constructor
+	public IncrementalSolver(	IConstraintManager aConstraintManager, ICNFEncoder aCNFEncoder, 
+								IIncrementalSATLibrary aIncrementalSATLibrary, Integer aNumDummyVariables, double aSeed){
+		fConstraintManager = aConstraintManager;
+		fIncrementalSATLibrary = aIncrementalSATLibrary;
+		fEncoder = aCNFEncoder;
+		fSeed = aSeed;
+		fNumDummyVariables = aNumDummyVariables;
+		reset(); //TODO - currently initializes fIncrementalSAT with GLueMiniSatLibrary
+		//Only reason that it can't be completely agnostic is that I don't see a "clear" function in GlueMiniSat
+		//so it has to "know" what type to re-initialize with when solving from scratch
+	}
 	
-	public IncrementalSolver(String[] args) throws Exception{
-		String[] aPaxosTargetArgs = {"-STATIONS_FILE",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/stations2.csv",
-				"-DOMAINS_FILE",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/NewDACData/Domain-041813.csv",
-				"-CONSTRAINTS_FILE",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/NewDACData/Interferences-041813.csv",
-				"-SOLVER",
-				"glueminisat",
-				/*
-				"--paramFile",
-				"SATsolvers/sw_parameterspaces/sw_tunedclasp.txt",
-				*/
-				"--cutoffTime",
-				"1800",
-				"--numDummyVars",
-				"1000"
-				};
-		
-		args = aPaxosTargetArgs;
-		
+	/*
+	 * NA - think about when to set numVarsPerStation, how to initialize set of stations 
+	 * Do we need all variables up front, or not?
+	 * Think about decoding instances - how to get a consistent map from station to variable?
+	 * Probably want a little method that goes from (station,channel) -> variable.
+	 * Also should be told whether to save state (never do if you get UNSAT, but if you get SAT...)
+	 */
 	
-		//NA - I don't understand much of what follows immediately; also, don't currently use the cutoffTime
-		//TAE Options
-		Map<String,AbstractOptions> aAvailableTAEOptions = TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators();
-		//Parse the command line arguments in a parameter object.
-		IncrementalSolverParameterParser aExecParameters = new IncrementalSolverParameterParser();
-		JCommander aParameterParser = new JCommander(aExecParameters);
-		try
-		{
-			aParameterParser.parse(args);
-		}
-		catch (ParameterException aParameterException)
-		{
-			List<UsageSection> sections = ConfigToLaTeX.getParameters(aExecParameters, aAvailableTAEOptions);
-			
-			boolean showHiddenParameters = false;
-			
-			//A much nicer usage screen than JCommander's 
-			ConfigToLaTeX.usage(sections, showHiddenParameters);
-			
-			log.error(aParameterException.getMessage());
-			return;
-		}
-		
-		//Use the parameters to instantiate the experiment.
-		log.info("Getting station information...");
-		fStationManager = new DACStationManager(aExecParameters.getRepackingDataParameters().getStationFilename(),aExecParameters.getRepackingDataParameters().getDomainFilename());
-
-		log.info("Getting constraint information...");
-		IConstraintManager aConstraintManager = new DACConstraintManager2(fStationManager.getStations(),aExecParameters.getRepackingDataParameters().getConstraintFilename());
-	
+	@Override
+	//If stations are superset and channels are subset (or if we had no instance previously), go incremental
+	public SolverResult solve(Instance aInstance, double aCutoff) {
+		if(	(aInstance.getStations().containsAll(fCurrentInstance.getStations()) &&
+				fCurrentInstance.getChannels().containsAll(aInstance.getChannels())) ||
+				fCurrentInstance.getChannels().isEmpty()){
+			//add clauses as needed - remember to include curCount
 				
-		log.info("Creating solver...");		
-		fClauseAdder = new DummyVarClauseAdder(aConstraintManager,new GlueMiniSatLibrary(),aExecParameters.getNumDummyVars());
-		//fClauseAdder = new MemoryCopyingClauseAdder(new GlueMiniSatLibrary(),fConstraintManager)
-		
-		//while(true){}
-		
-	}
-
-	//We'd want to be able to send a "quit" message in addition to new instances
-	//Also catch errors if the message isn't in right form
-	public SolverResult receiveMessage(Set<Integer> aStationIDs, Set<Integer> aChannels,Boolean priceCheck) throws Exception{
-		Set<Station> aStations = new HashSet<Station>();
-		Station aStation;
-		for(Integer aID : aStationIDs){
-			if((aStation=fStationManager.get(aID))!=null) aStations.add(aStation);
-		}
-		Instance aInstance;
-		if(aStations.size()>0&&aChannels.size()>0){
-			aInstance = new Instance(aStations,aChannels);
 		} else {
-			throw new Exception("Invalid Instance: recognized station set is: "+aStations+", channels are: "+aChannels);
+			reset();
+			//add clauses as needed - remember to include curCount
 		}
-		return fClauseAdder.updateAndSolve(aInstance, priceCheck);
-
+		//Include clauses involving dummy variable curCount
+		
+		//Use fAssumptions
+		
+		
+		fIncluded.add(curCount);
+		fNotIncluded.remove(curCount);
+		long startTime = System.currentTimeMillis();
+		SATResult aResult = fIncrementalSATLibrary.solve(fNotIncluded,fIncluded);
+		long elapsedTime = (System.currentTimeMillis()-startTime)/1000;
+		//if SAT and it's not a price check, update current model
+		if(aResult == SATResult.SAT){
+			fCurrentInstance = aInstance;
+		} else {
+			//Rollback - "remove" the most recent clauses
+			fNotIncluded.add(curCount);
+			fIncluded.remove(curCount);
+		}
+		if(curCount==fNumDummyVariables) reset();
+		else curCount++; //next time, use a new dummy variable
+		return new SolverResult(aResult,elapsedTime);
 	}
+	
+	
+	private void reset(){
+		fIncrementalSATLibrary = new GlueMiniSatLibrary();
+		fCurrentInstance = new Instance(new HashSet<Station>(),new HashSet<Integer>());
+		curCount = 1;
+		fIncluded.clear();
+		for(int i = 1; i <= fNumDummyVariables; i++) fNotIncluded.add(i);
+	}
+
 }
