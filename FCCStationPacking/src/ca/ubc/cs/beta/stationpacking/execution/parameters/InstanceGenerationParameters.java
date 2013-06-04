@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.execution.parameters.parsers;
+package ca.ubc.cs.beta.stationpacking.execution.parameters;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -17,7 +17,7 @@ import com.beust.jcommander.ParameterException;
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.aclib.options.AlgorithmExecutionOptions;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.ImplementedSolverParameterValidator;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.parsers.ReportParser;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
