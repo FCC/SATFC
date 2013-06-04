@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solver.TAESolver;
+package ca.ubc.cs.beta.stationpacking.solver.taesolver;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,10 +35,10 @@ import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
-import ca.ubc.cs.beta.stationpacking.solver.TAESolver.cnflookup.ICNFResultLookup;
-import ca.ubc.cs.beta.stationpacking.solver.TAESolver.componentgrouper.ConstraintGrouper;
-import ca.ubc.cs.beta.stationpacking.solver.TAESolver.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
+import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
+import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.ConstraintGrouper;
+import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponentGrouper;
 
 
 /**

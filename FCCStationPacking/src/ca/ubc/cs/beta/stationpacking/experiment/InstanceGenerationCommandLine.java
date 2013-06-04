@@ -39,7 +39,7 @@ public class InstanceGenerationCommandLine {
 		/**
 		 * Test arguments to use, instead of compiling and using command line.
 		**/
-		String[] aPaxosTargetArgs = {"-STATIONS_FILE",
+		String[] aNArnostiArgs = {"-STATIONS_FILE",
 				"/Users/narnosti/Documents/FCCOutput/toy_stations.txt",
 				"-DOMAINS_FILE",
 				"/Users/narnosti/Documents/FCCOutput/toy_domains.txt",
@@ -53,7 +53,19 @@ public class InstanceGenerationCommandLine {
 				"14,15,16",
 				};
 		
-		args = aPaxosTargetArgs;
+		String[] aPaxosArgs = {"-STATIONS_FILE",
+				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/stations2.csv",
+				"-DOMAINS_FILE",
+				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/NewDACData/Domain-041813.csv",
+				"-CONSTRAINTS_FILE",
+				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/NewDACData/Interferences-041813.csv",
+				"-EXPERIMENT_NAME",
+				"TestExperiment",
+				"-EXPERIMENT_DIR",
+				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Results/TestExperiment"
+				};
+		
+		args = aPaxosArgs;
 		
 	
 		/**
@@ -87,6 +99,11 @@ public class InstanceGenerationCommandLine {
 		DACStationManager aStationManager = new DACStationManager(aExecParameters.getRepackingDataParameters().getStationFilename(),aExecParameters.getRepackingDataParameters().getDomainFilename());
 	    Set<Station> aStations = aStationManager.getStations();
 	
+	    log.info("Creating solver...");
+	    //NA - this is temporary to allow communication with solver
+		MainSolver aTAE = new MainSolver(new String[02]);
+	    
+	    
 	    log.info("Creating experiment reporter...");
 		IExperimentReporter aExperimentReporter = new LocalExperimentReporter(aExecParameters.getExperimentDir(), aExecParameters.getExperimentName());
 			
@@ -115,8 +132,6 @@ public class InstanceGenerationCommandLine {
 			try {
 				log.info("Solving instance of size {}.",aCurrentStationIDs.size());
 				
-				//NA - this is temporary to allow communication with solver
-				MainSolver aTAE = new MainSolver(new String[02]);
 				SolverResult aRunResult = aTAE.receiveMessage(aCurrentStationIDs,aChannels,1800.0);
 				aExperimentReporter.report(aInstance, aRunResult);
 				if(!aRunResult.getResult().equals(SATResult.SAT)){
