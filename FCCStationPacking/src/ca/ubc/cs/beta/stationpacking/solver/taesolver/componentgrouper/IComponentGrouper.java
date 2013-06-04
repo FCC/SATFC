@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solver.TAESolver.componentgrouper;
+package ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper;
 
 import java.util.Set;
 
