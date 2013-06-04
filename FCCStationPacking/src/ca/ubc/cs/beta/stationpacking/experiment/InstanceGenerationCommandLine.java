@@ -26,14 +26,13 @@ import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.execution.MainSolver;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.parsers.InstanceGenerationParameterParser;
-import ca.ubc.cs.beta.stationpacking.experiment.InstanceGenerationExecutor;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.LocalExperimentReporter;
 
 
 public class InstanceGenerationCommandLine {
 		
-	private static Logger log = LoggerFactory.getLogger(InstanceGenerationExecutor.class);
+	private static Logger log = LoggerFactory.getLogger(InstanceGenerationCommandLine.class);
 
 	public static void main(String[] args) throws Exception {
 		

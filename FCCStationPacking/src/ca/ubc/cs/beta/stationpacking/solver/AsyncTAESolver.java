@@ -38,10 +38,10 @@ import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
-import ca.ubc.cs.beta.stationpacking.execution.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.solver.TAESolver.componentgrouper.ConstraintGrouper;
 import ca.ubc.cs.beta.stationpacking.solver.TAESolver.componentgrouper.IComponentGrouper;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
 
 /**
  * SAT solver wrapper that uses Steve Ramage's AClib Target Algorithm Evaluators for execution in an asynchronous way, particularly useful for parallel solving of many instances..
