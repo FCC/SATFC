@@ -58,7 +58,7 @@ public class MainSolver {
 				"-CONSTRAINTS_FILE",
 				"/Users/narnosti/Documents/FCCOutput/toy_constraints.txt",
 				"-CNF_DIR",
-				"/Users/narnosti/Documents/fcc-station-packing/CNFs",
+				"/Users/narnosti/Documents/FCCOutput/CNFs",
 				"-SOLVER",
 				"picosat",
 				"--execDir",
@@ -132,8 +132,8 @@ public class MainSolver {
 			 * any other parameters needed
 			 */
 			ICNFEncoder2 aCNFEncoder2 = new CNFEncoder2();
-			
-			IIncrementalSATLibrary aSATLibrary = new GlueMiniSatLibrary();
+			String aLibraryPath =  = "/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/SATsolversglueminisat-2.2.5/core/libglueminisat.so";
+			IIncrementalSATLibrary aSATLibrary = new GlueMiniSatLibrary(aLibraryPath);
 			fSolver = new IncrementalSolver(aConstraintManager, aCNFEncoder2, aSATLibrary,100, aExecParameters.getSeed());			
 		}
 		

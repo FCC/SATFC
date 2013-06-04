@@ -29,5 +29,6 @@
 	<classpathentry kind="lib" path="lib/jgrapht-0.8.3/lib/jgraph.jar"/>
 	<classpathentry kind="lib" path="lib/opencsv-2.3/deploy/opencsv-2.3.jar"/>
 	<classpathentry kind="lib" path="lib/jgrapht-0.8.3/jgrapht-jdk1.6.jar"/>
+	<classpathentry kind="lib" path="lib/jna-3.0.9.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
