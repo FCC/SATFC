@@ -117,7 +117,7 @@ public class MainSolver {
 				fSolver = new TAESolver(aConstraintManager, aCNFEncoder, aCNFLookup, aTAE, aTAEExecConfig,aExecParameters.getSeed());			
 			} else if(Incremental Solver){
 				construct an IncrementalSATLibrary, algorithm Execution options (which type of incremental, how many dummy variables)
-				fSolver = new TAESolver(aConstraintManager, aCNFEncoder, aIncrementalSATLibrary,aIncrementalParams, aExecParameters.getSeed());			
+				fSolver = new IncrementalSolver(aConstraintManager, aCNFEncoder, aIncrementalSATLibrary,aIncrementalParams, aExecParameters.getSeed());			
 
 			}
 
@@ -125,14 +125,20 @@ public class MainSolver {
 		
 	}
 	
-	public SolverResult receiveMessage(Set<Integer> aStationIDs, Set<Integer> aChannels, double aCutoff) throws Exception{
+	public SolverResult receiveMessage(Set<Integer> aStationIDs, Set<Integer> aChannels,double aCutoff) throws Exception{
 		Set<Station> aStations = new HashSet<Station>();
-		for(Integer aStationID : aStationIDs){
-			aStations.add(fStationManager.get(aStationID));
+		Station aStation;
+		for(Integer aID : aStationIDs){
+			if((aStation=fStationManager.get(aID))!=null) aStations.add(aStation);
 		}
-		Instance aInstance = new Instance(aStations,aChannels);
-		SolverResult aSolverResult = fSolver.solve(aInstance,aCutoff);
-		return(aSolverResult);
+		Instance aInstance;
+		if(aStations.size()>0&&aChannels.size()>0){
+			aInstance = new Instance(aStations,aChannels);
+		} else {
+			throw new Exception("Invalid Instance: recognized station set is: "+aStations+", channels are: "+aChannels);
+		}
+		return fSolver.solve(aInstance, aCutoff);
+
 	}
 	
 	static private ParameterParser getParameterParser(String[] args, Map<String,AbstractOptions> aAvailableTAEOptions){
