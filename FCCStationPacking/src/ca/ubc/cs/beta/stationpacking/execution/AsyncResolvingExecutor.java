@@ -23,11 +23,11 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.DACConstraintManager2;
 import ca.ubc.cs.beta.stationpacking.datamanagers.DACStationManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
-import ca.ubc.cs.beta.stationpacking.execution.cnfencoder.CNFEncoder;
-import ca.ubc.cs.beta.stationpacking.execution.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.parsers.InstanceGenerationParameters;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.AsynchronousLocalExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.solver.AsyncTAESolver;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
 
 
 public class AsyncResolvingExecutor {

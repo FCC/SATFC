@@ -13,10 +13,10 @@ import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
-import ca.ubc.cs.beta.stationpacking.execution.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.solver.IncrementalSolver.SATLibraries.GlueMiniSatLibrary;
 import ca.ubc.cs.beta.stationpacking.solver.IncrementalSolver.SATLibraries.IIncrementalSATLibrary;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
 
 public class IncrementalSolver implements ISolver{
 	

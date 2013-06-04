@@ -26,13 +26,13 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.DACStationManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
-import ca.ubc.cs.beta.stationpacking.execution.cnfencoder.CNFEncoder;
-import ca.ubc.cs.beta.stationpacking.execution.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.parsers.ParameterParser;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.solver.TAESolver.TAESolver;
 import ca.ubc.cs.beta.stationpacking.solver.TAESolver.cnflookup.HybridCNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.TAESolver.cnflookup.ICNFResultLookup;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
 
 
 public class MainSolver {
