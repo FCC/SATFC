@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solver.IncrementalSolver;
+package ca.ubc.cs.beta.stationpacking.solver.incrementalsolver;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -10,8 +10,8 @@ import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
-import ca.ubc.cs.beta.stationpacking.solver.IncrementalSolver.SATLibraries.IIncrementalSATLibrary;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
+import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries.IIncrementalSATLibrary;
 
 public class IncrementalSolver implements ISolver{
 	

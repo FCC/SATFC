@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solver.TAESolver.cnflookup;
+package ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup;
 
 
 import java.io.IOException;

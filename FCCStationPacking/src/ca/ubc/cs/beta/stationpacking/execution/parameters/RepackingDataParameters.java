@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.execution.parameters.parsers;
+package ca.ubc.cs.beta.stationpacking.execution.parameters;
 
 import com.beust.jcommander.Parameter;
 

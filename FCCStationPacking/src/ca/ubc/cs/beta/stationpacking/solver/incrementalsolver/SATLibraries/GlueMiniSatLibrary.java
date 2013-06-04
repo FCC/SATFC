@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solver.IncrementalSolver.SATLibraries;
+package ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries;
 
 import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
 import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;

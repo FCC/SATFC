@@ -28,18 +28,18 @@ import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.parsers.ParameterParser;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
-import ca.ubc.cs.beta.stationpacking.solver.IncrementalSolver.IncrementalSolver;
-import ca.ubc.cs.beta.stationpacking.solver.IncrementalSolver.SATLibraries.GlueMiniSatLibrary;
-import ca.ubc.cs.beta.stationpacking.solver.IncrementalSolver.SATLibraries.IIncrementalSATLibrary;
-import ca.ubc.cs.beta.stationpacking.solver.TAESolver.TAESolver;
-import ca.ubc.cs.beta.stationpacking.solver.TAESolver.cnflookup.HybridCNFResultLookup;
-import ca.ubc.cs.beta.stationpacking.solver.TAESolver.cnflookup.ICNFResultLookup;
-import ca.ubc.cs.beta.stationpacking.solver.TAESolver.componentgrouper.ConstraintGrouper;
-import ca.ubc.cs.beta.stationpacking.solver.TAESolver.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder2;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
+import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.IncrementalSolver;
+import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries.GlueMiniSatLibrary;
+import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries.IIncrementalSATLibrary;
+import ca.ubc.cs.beta.stationpacking.solver.taesolver.TAESolver;
+import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.HybridCNFResultLookup;
+import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
+import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.ConstraintGrouper;
+import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponentGrouper;
 
 
 public class MainSolver {
@@ -132,7 +132,7 @@ public class MainSolver {
 			 * any other parameters needed
 			 */
 			ICNFEncoder2 aCNFEncoder2 = new CNFEncoder2();
-			String aLibraryPath =  = "/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/SATsolversglueminisat-2.2.5/core/libglueminisat.so";
+			String aLibraryPath = "/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/SATsolversglueminisat-2.2.5/core/libglueminisat.so";
 			IIncrementalSATLibrary aSATLibrary = new GlueMiniSatLibrary(aLibraryPath);
 			fSolver = new IncrementalSolver(aConstraintManager, aCNFEncoder2, aSATLibrary,100, aExecParameters.getSeed());			
 		}

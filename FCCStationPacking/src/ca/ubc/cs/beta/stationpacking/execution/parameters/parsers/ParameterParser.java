@@ -5,6 +5,7 @@ import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.aclib.options.AlgorithmExecutionOptions;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.ImplementedSolverParameterValidator;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.RepackingDataParameters;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
