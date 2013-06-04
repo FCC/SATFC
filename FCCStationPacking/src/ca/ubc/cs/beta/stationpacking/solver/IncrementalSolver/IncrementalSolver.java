@@ -3,92 +3,94 @@ package ca.ubc.cs.beta.stationpacking.solver.IncrementalSolver;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
 import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
-import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
-import ca.ubc.cs.beta.stationpacking.solver.IncrementalSolver.SATLibraries.GlueMiniSatLibrary;
 import ca.ubc.cs.beta.stationpacking.solver.IncrementalSolver.SATLibraries.IIncrementalSATLibrary;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
 
 public class IncrementalSolver implements ISolver{
 	
+	//Used to encode the Instance
 	IConstraintManager fConstraintManager;
-	ICNFEncoder fEncoder;
+	ICNFEncoder2 fEncoder;
+
+
+	//Each added clause contains the literal !curCount 
+	//(when we solve with assumptions, we "activate" clauses for which the corresponding variable is true)
+	Clause fAssumptions;
+	Integer curCount;
+	final Integer fNumDummyVariables;
+	
+	//Clauses in fCurrentClauses DO NOT include the dummy variables
+	Instance fCurrentInstance;
+	Set<Clause> fCurrentClauses;
+	
+	//Used to solve the Instance
 	IIncrementalSATLibrary fIncrementalSATLibrary;
 	double fSeed;
-	
-	Instance fCurrentInstance;
-	
-	Clause fAssumptions = new Clause(new HashSet<Integer>(),new HashSet<Integer>());
-	Set<Integer> fIncluded = new HashSet<Integer>();
-	Set<Integer> fNotIncluded = new HashSet<Integer>();
-	Integer curCount = 1;
-	
-	final Integer fNumDummyVariables;
-
-	
-	private static Logger log = LoggerFactory.getLogger(IncrementalSolver.class);
-	
+		
 
 	//pass other parameters (such as incremental technique, how many dummy variables to store) as one final arg to constructor
-	public IncrementalSolver(	IConstraintManager aConstraintManager, ICNFEncoder aCNFEncoder, 
+	public IncrementalSolver(	IConstraintManager aConstraintManager, ICNFEncoder2 aCNFEncoder, 
 								IIncrementalSATLibrary aIncrementalSATLibrary, Integer aNumDummyVariables, double aSeed){
 		fConstraintManager = aConstraintManager;
-		fIncrementalSATLibrary = aIncrementalSATLibrary;
 		fEncoder = aCNFEncoder;
-		fSeed = aSeed;
+
 		fNumDummyVariables = aNumDummyVariables;
-		reset(); //TODO - currently initializes fIncrementalSAT with GLueMiniSatLibrary
-		//Only reason that it can't be completely agnostic is that I don't see a "clear" function in GlueMiniSat
-		//so it has to "know" what type to re-initialize with when solving from scratch
+		
+		fIncrementalSATLibrary = aIncrementalSATLibrary;
+		fSeed = aSeed;
+		reset();
 	}
 	
 	/*
-	 * NA - think about when to set numVarsPerStation, how to initialize set of stations 
 	 * Do we need all variables up front, or not?
-	 * Think about decoding instances - how to get a consistent map from station to variable?
-	 * Probably want a little method that goes from (station,channel) -> variable.
 	 * Also should be told whether to save state (never do if you get UNSAT, but if you get SAT...)
 	 */
 	
 	@Override
 	//If stations are superset and channels are subset (or if we had no instance previously), go incremental
 	public SolverResult solve(Instance aInstance, double aCutoff) {
-		if(	(aInstance.getStations().containsAll(fCurrentInstance.getStations()) &&
-				fCurrentInstance.getChannels().containsAll(aInstance.getChannels())) ||
-				fCurrentInstance.getChannels().isEmpty()){
-			//add clauses as needed - remember to include curCount
-				
-		} else {
-			reset();
-			//add clauses as needed - remember to include curCount
+		Set<Clause> aNewClauses = fEncoder.encode(aInstance, fConstraintManager);
+
+		if(	(!aInstance.getStations().containsAll(fCurrentInstance.getStations())) ||
+			(!fCurrentInstance.getChannels().containsAll(aInstance.getChannels()))){
+			reset(); //Can only use incremental if new station set is larger, new channel set smaller
 		}
-		//Include clauses involving dummy variable curCount
 		
-		//Use fAssumptions
+		//Add all new clauses to our clause set (including a dummy variable to "toggle" them)
+		Set<Clause> aNewlyAddedClauses = new HashSet<Clause>();
+		for(Clause aClause : aNewClauses){
+			if(!fCurrentClauses.contains(aClause)){
+				aNewlyAddedClauses.add(aClause);
+				aClause.addLiteral(curCount, false);
+				fIncrementalSATLibrary.addClause(aClause);
+			}
+		}
 		
-		
-		fIncluded.add(curCount);
-		fNotIncluded.remove(curCount);
+		//Set fAssumptions to "activate" the newly added clauses and solve
+		fAssumptions.addLiteral(curCount,true);
+		fAssumptions.removeLiteral(curCount,false);
 		long startTime = System.currentTimeMillis();
-		SATResult aResult = fIncrementalSATLibrary.solve(fNotIncluded,fIncluded);
+		SATResult aResult = fIncrementalSATLibrary.solve(fAssumptions);
 		long elapsedTime = (System.currentTimeMillis()-startTime)/1000;
-		//if SAT and it's not a price check, update current model
+		
+		
+		//if SAT and it's not a price check, update current instance
 		if(aResult == SATResult.SAT){
 			fCurrentInstance = aInstance;
-		} else {
-			//Rollback - "remove" the most recent clauses
-			fNotIncluded.add(curCount);
-			fIncluded.remove(curCount);
+			fCurrentClauses.addAll(aNewlyAddedClauses);
+			//get the model
+		} else { //Rollback - "remove" the most recent clauses
+			fAssumptions.addLiteral(curCount,false);
+			fAssumptions.removeLiteral(curCount,true);
 		}
+		
 		if(curCount==fNumDummyVariables) reset();
 		else curCount++; //next time, use a new dummy variable
 		return new SolverResult(aResult,elapsedTime);
@@ -96,11 +98,11 @@ public class IncrementalSolver implements ISolver{
 	
 	
 	private void reset(){
-		fIncrementalSATLibrary = new GlueMiniSatLibrary();
-		fCurrentInstance = new Instance(new HashSet<Station>(),new HashSet<Integer>());
+		fIncrementalSATLibrary.clear();
+		fCurrentInstance = new Instance();
+		fCurrentClauses = new HashSet<Clause>();
+		fAssumptions = new Clause();
 		curCount = 1;
-		fIncluded.clear();
-		for(int i = 1; i <= fNumDummyVariables; i++) fNotIncluded.add(i);
 	}
 
 }

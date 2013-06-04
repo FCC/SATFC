@@ -80,7 +80,7 @@ public class AsyncTAESolver {
 	{
 		fEncoder = aEncoder;
 		fManager = aManager;
-		fGrouper = new ConstraintGrouper(fManager);
+		fGrouper = new ConstraintGrouper();
 		fLookup = new AsyncCachedCNFLookup(aCNFDirectory);
 		
 		//Parameter configuration space
@@ -106,7 +106,7 @@ public class AsyncTAESolver {
 		fSeed = aSeed;
 		fEncoder = aCNFEncoder;
 		fManager = aConstraintManager;
-		fGrouper = new ConstraintGrouper(fManager);
+		fGrouper = new ConstraintGrouper();
 		fLookup = new AsyncCachedCNFLookup(aCNFDirectory);
 		
 		fParamConfigurationSpace  = aTAEExecConfig.getParamFile();
@@ -279,7 +279,7 @@ public class AsyncTAESolver {
 		Set<Integer> aChannelRange = aInstance.getChannels();
 		
 		//Group stations
-		Set<Set<Station>> aInstanceGroups = fGrouper.group(aInstance.getStations());
+		Set<Set<Station>> aInstanceGroups = fGrouper.group(aInstance.getStations(),fManager);
 		
 		HashMap<RunConfig,Instance> aToSolveInstances = new HashMap<RunConfig,Instance>();
 	

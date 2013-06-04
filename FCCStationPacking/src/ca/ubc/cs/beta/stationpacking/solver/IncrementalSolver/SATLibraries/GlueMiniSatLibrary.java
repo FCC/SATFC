@@ -1,8 +1,6 @@
 package ca.ubc.cs.beta.stationpacking.solver.IncrementalSolver.SATLibraries;
 
-import java.util.HashSet;
-import java.util.Set;
-
+import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
 import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
 
 import com.sun.jna.Library;
@@ -12,7 +10,9 @@ import com.sun.jna.Pointer;
 
 public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 	
-	GMSLibrary GMSsolver = (GMSLibrary) Native.loadLibrary("/Users/narnosti/Documents/fcc-station-packing/glueminisat-2.2.5/core/libglueminisat.so", GMSLibrary.class);
+	
+	String fLibraryPath = "/Users/narnosti/Documents/fcc-station-packing/glueminisat-2.2.5/core/libglueminisat.so";
+	GMSLibrary fGMSsolver = (GMSLibrary) Native.loadLibrary(fLibraryPath, GMSLibrary.class);
 
 	
 	private interface GMSLibrary extends Library {
@@ -35,23 +35,23 @@ public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 
 		}
 		 
-		public SATResult solve(Set<Integer> aTrueVars,Set<Integer> aFalseVars){
-			Pointer solver = GMSsolver.createSolver();
-			Pointer vecAssumptions = GMSsolver.createVecLit();
-			for(Integer aVar : aTrueVars){
-				GMSsolver.addLitToVec(vecAssumptions,aVar,true);
+		public SATResult solve(Clause aAssumptions){
+			Pointer solver = fGMSsolver.createSolver();
+			Pointer vecAssumptions = fGMSsolver.createVecLit();
+			for(Integer aVar : aAssumptions.getVars()){
+				fGMSsolver.addLitToVec(vecAssumptions,aVar,true);
 			}
-			for(Integer aVar : aFalseVars){
-				GMSsolver.addLitToVec(vecAssumptions,aVar,false);
+			for(Integer aVar : aAssumptions.getNegatedVars()){
+				fGMSsolver.addLitToVec(vecAssumptions,aVar,false);
 			}
 			SATResult aResult;
-			if(GMSsolver.solve(solver,vecAssumptions)){
+			if(fGMSsolver.solve(solver,vecAssumptions)){
 				aResult = SATResult.SAT;
 			} else {
 				aResult =  SATResult.UNSAT;
 			}
-			GMSsolver.destroyVecLit();
-			GMSsolver.destroySolver();
+			fGMSsolver.destroyVecLit();
+			fGMSsolver.destroySolver();
 			return aResult;
 			//Pointer lits = GMSsolver.createVecLit();
 			//GMSsolver.addLitToVec(lits, 3, true);
@@ -59,22 +59,26 @@ public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 		}
 		
 		public SATResult solve(){
-			return solve(new HashSet<Integer>(),new HashSet<Integer>());
+			return solve(new Clause());
 		}
 		
-		public boolean addClause(Set<Integer> aTrueVars,Set<Integer> aFalseVars){
-			Pointer solver = GMSsolver.createSolver();
-			Pointer vecAssumptions = GMSsolver.createVecLit();
-			for(Integer aVar : aTrueVars){
-				GMSsolver.addLitToVec(vecAssumptions,aVar,true);
+		public boolean addClause(Clause aClause){
+			Pointer solver = fGMSsolver.createSolver();
+			Pointer vecAssumptions = fGMSsolver.createVecLit();
+			for(Integer aVar : aClause.getVars()){
+				fGMSsolver.addLitToVec(vecAssumptions,aVar,true);
 			}
-			for(Integer aVar : aFalseVars){
-				GMSsolver.addLitToVec(vecAssumptions,aVar,false);
+			for(Integer aVar : aClause.getNegatedVars()){
+				fGMSsolver.addLitToVec(vecAssumptions,aVar,false);
 			}
-			boolean added = GMSsolver.addClause(solver,vecAssumptions);
-			GMSsolver.destroyVecLit();
-			GMSsolver.destroySolver();
+			boolean added = fGMSsolver.addClause(solver,vecAssumptions);
+			fGMSsolver.destroyVecLit();
+			fGMSsolver.destroySolver();
 			return added;
+		}
+		
+		public void clear(){
+			fGMSsolver = (GMSLibrary) Native.loadLibrary(fLibraryPath, GMSLibrary.class);
 		}
 
 }
