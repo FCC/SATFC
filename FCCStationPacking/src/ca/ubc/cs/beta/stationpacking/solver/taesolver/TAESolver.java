@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.io.FileUtils;
 
 import ca.ubc.cs.beta.aclib.algorithmrun.AlgorithmRun;
@@ -36,6 +37,7 @@ import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.ConstraintGrouper;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponentGrouper;
@@ -157,14 +159,13 @@ public class TAESolver implements ISolver{
 	 */
 	@Override
 	public SolverResult solve(Instance aInstance, double aCutoff) throws Exception{
-		
+			
 		Set<Integer> aChannelRange = aInstance.getChannels();
 		
 		//Group stations
 		Set<Set<Station>> aInstanceGroups = fGrouper.group(aInstance.getStations(),fManager);
 		
 		ArrayList<SolverResult> aComponentResults = new ArrayList<SolverResult>();
-		
 		HashMap<RunConfig,Instance> aToSolveInstances = new HashMap<RunConfig,Instance>();
 	
 		for(Set<Station> aStationComponent : aInstanceGroups){
@@ -178,7 +179,8 @@ public class TAESolver implements ISolver{
 				//Early preemption if component is UNSAT,
 				if (!aSolverResult.getResult().equals(SATResult.SAT) )
 				{
-					return new SolverResult(SATResult.UNSAT,0.0);
+					System.out.println(aComponentInstance);
+					return new SolverResult(SATResult.UNSAT,0.0,new HashMap<Integer,HashSet<Station>>());
 				}
 				
 				aComponentResults.add(aSolverResult);
@@ -211,19 +213,19 @@ public class TAESolver implements ISolver{
 				RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aCutoff, fParamConfigurationSpace.getDefaultConfiguration());
 				
 				aToSolveInstances.put(aRunConfig,aComponentInstance);
-				System.out.println("\n\n\n"+aToSolveInstances+" "+aToSolveInstances.size()+"\n\n\n");
+				//System.out.println("\n\n\n"+aToSolveInstances+" "+aToSolveInstances.size()+"\n\n\n");
 
 			}
 		}
 
-		System.out.println("\n\n%%%%%%%%%%%%%%%%%%%%%%%% "+aToSolveInstances.size()+"\n\n");
+		//System.out.println("\n\n%%%%%%%%%%%%%%%%%%%%%%%% "+aToSolveInstances.size()+"\n\n");
 
 
 		List<RunConfig> aRunConfigs = new ArrayList<RunConfig>(aToSolveInstances.keySet());
 		List<AlgorithmRun> aRuns = fTargetAlgorithmEvaluator.evaluateRun(aRunConfigs,getPreemptingObserver());
 		
 		
-		if(!aRuns.isEmpty()) System.out.println("\n\n######################### \n\n");
+		//if(!aRuns.isEmpty()) System.out.println("\n\n######################### \n\n");
 
 		
 		for(AlgorithmRun aRun : aRuns)
@@ -234,9 +236,15 @@ public class TAESolver implements ISolver{
 
 				double aRuntime = aRun.getRuntime();				
 				SATResult aResult;
+				HashMap<Integer,HashSet<Station>> aAssignment = new HashMap<Integer,HashSet<Station>>();
 				switch (aRun.getRunResult()){
 					case SAT:
 						aResult = SATResult.SAT;
+						
+						//Grab assignment
+						String aAdditionalRunData = aRun.getAdditionalRunData();
+						aAssignment = fEncoder.decode(aToSolveInstances.get(aRun.getRunConfig()), aAdditionalRunData);
+						
 						break;
 					case UNSAT:
 						aResult = SATResult.UNSAT;
@@ -249,7 +257,7 @@ public class TAESolver implements ISolver{
 						throw new IllegalStateException("Run "+aRun+" crashed!");
 				}
 				
-				SolverResult aSolverResult = new SolverResult(aResult,aRuntime);
+				SolverResult aSolverResult = new SolverResult(aResult,aRuntime,aAssignment);
 				
 				//Save result if successfully computed
 
@@ -267,6 +275,7 @@ public class TAESolver implements ISolver{
 	private SolverResult mergeComponentResults(Collection<SolverResult> aComponentResults){
 		double aRuntime = 0.0;
 		
+		//Merge runtimes as sum of times.
 		HashSet<SATResult> aSATResults = new HashSet<SATResult>();
 		for(SolverResult aSolverResult : aComponentResults)
 		{
@@ -274,6 +283,7 @@ public class TAESolver implements ISolver{
 			aSATResults.add(aSolverResult.getResult());
 		}
 		
+		//Merge SAT results 
 		SATResult aSATResult = SATResult.SAT;
 		
 		if(aSATResults.contains(SATResult.UNSAT))
@@ -289,7 +299,26 @@ public class TAESolver implements ISolver{
 			aSATResult = SATResult.TIMEOUT;
 		}
 		
-		return new SolverResult(aSATResult,aRuntime);
+		//Merge assignments
+		HashMap<Integer,HashSet<Station>> aAssignment = new HashMap<Integer,HashSet<Station>>();
+		if(aSATResult.equals(SATResult.SAT))
+		{
+			for(SolverResult aComponentResult : aComponentResults)
+			{
+				HashMap<Integer,HashSet<Station>> aComponentAssignment = aComponentResult.getAssignment();
+				for(Integer aAssignedChannel : aComponentAssignment.keySet())
+				{
+					if(!aAssignment.containsKey(aAssignedChannel))
+					{
+						aAssignment.put(aAssignedChannel, new HashSet<Station>());
+					}
+					aAssignment.get(aAssignedChannel).addAll(aComponentAssignment.get(aAssignedChannel));
+				}
+			}
+		}
+		
+		
+		return new SolverResult(aSATResult,aRuntime,aAssignment);
 	}
 	
 	

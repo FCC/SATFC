@@ -59,7 +59,7 @@ public class Instance {
 	}
 	
 	public boolean removeStation(Station aStation){
-		return (fStations.remove(aStation)!=null);
+		return (fStations.remove(aStation.getID())!=null);
 	}
 	
 	public Set<Station> getStations(){

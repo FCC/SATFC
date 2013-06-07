@@ -79,7 +79,7 @@ public class InstanceGenerationExecutor {
 				"-CNF_DIR",
 				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/CNFs",
 				"-SOLVER",
-				"tunedclasp",
+				"picosat",
 				"-EXPERIMENT_NAME",
 				"TestExperiment",
 				"-EXPERIMENT_DIR",
@@ -98,6 +98,12 @@ public class InstanceGenerationExecutor {
 				"python solverwrapper.py",
 				"--cutoffTime",
 				"1800"
+				/*
+				"--logAllCallStrings",
+				"true",
+				"--logAllProcessOutput",
+				"true"
+				*/
 				};
 		
 		args = aPaxosTargetArgs;
@@ -135,11 +141,15 @@ public class InstanceGenerationExecutor {
 	    Set<Station> aStations = aStationManager.getStations();
 		DACConstraintManager2 dCM = new DACConstraintManager2(aStations,aExecParameters.getRepackingDataParameters().getConstraintFilename());
 	
+		log.info("Creating constraint grouper...");
+		IComponentGrouper aGrouper = new ConstraintGrouper();
+		
+		log.info("Creating CNF encoder...");
 		ICNFEncoder aCNFEncoder = new CNFEncoder();
 		
-		log.info("Creating cnf lookup...");
+		log.info("Creating CNF lookup...");
 		ICNFResultLookup aCNFLookup = new HybridCNFResultLookup(aExecParameters.getCNFDirectory(), aExecParameters.getCNFOutputName());
-				
+		
 		log.info("Creating solver...");
 		//Logs the available target algorithm evaluators
 		for(String name : aAvailableTAEOptions.keySet())
@@ -155,7 +165,6 @@ public class InstanceGenerationExecutor {
 			
 			aTAE = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(aExecParameters.getAlgorithmExecutionOptions().taeOpts, aTAEExecConfig, false, aAvailableTAEOptions);
 		
-			IComponentGrouper aGrouper = new ConstraintGrouper();
 			ISolver aSolver = new TAESolver(dCM, aCNFEncoder, aCNFLookup, aGrouper, aTAE, aTAEExecConfig,aExecParameters.getSeed());
 			
 			log.info("Creating experiment reporter...");
