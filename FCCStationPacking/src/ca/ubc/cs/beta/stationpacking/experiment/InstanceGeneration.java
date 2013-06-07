@@ -52,11 +52,10 @@ public class InstanceGeneration {
 				log.info("Result: {}",aRunResult);
 				fExperimentReporter.report(aInstance, aRunResult);
 				if(!aRunResult.getResult().equals(SATResult.SAT)){
-					log.info("Instance was UNSAT, removing station.");
-					aInstance.removeStation(aStation);
-				} else {
-					
+					log.info("Instance was UNSAT, removing {}",aStation);
+					aInstance.removeStation(aStation);						
 				}
+				
 			} 
 			catch (Exception e){ 
 				e.printStackTrace();

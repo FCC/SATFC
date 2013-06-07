@@ -37,6 +37,7 @@ public class HybridCNFResultLookup implements ICNFResultLookup{
 		fOutputName = aOutputName;
 		fCNFDirectory = aCNFDirectory;
 		
+		/*
 		try{
 			File aOutputFile = new File(fCNFDirectory+File.separatorChar+fOutputName);
 			String[] aLine;
@@ -54,6 +55,7 @@ public class HybridCNFResultLookup implements ICNFResultLookup{
 		} catch(Exception e){
 			e.printStackTrace();
 		}
+		*/
 	}
 	
 	@Override
@@ -88,7 +90,7 @@ public class HybridCNFResultLookup implements ICNFResultLookup{
 	//NA - returns true if the entry already existed
 	@Override
 	public boolean putSolverResult(Instance aInstance, SolverResult aResult){
-		System.out.println("\n\n\n testing \n\n\n");
+		//System.out.println("\n\n\n testing \n\n\n");
 
 		if(hasSolverResult(aInstance))
 		{
@@ -116,7 +118,7 @@ public class HybridCNFResultLookup implements ICNFResultLookup{
 				String aOutputFilename = fCNFDirectory+File.separatorChar+fOutputName;
 				File aOutputFile = new File(aOutputFilename);
 				BufferedWriter aWriter = new BufferedWriter(new FileWriter(aOutputFilename));
-				System.out.println("\n\n\n testing \n\n\n"+aOutputFilename+"\n\n\n");
+				//System.out.println("\n\n\n testing \n\n\n"+aOutputFilename+"\n\n\n");
 				if(aOutputFile.exists()){
 					aWriter.append(getCNFName(aInstance)+","+aResult+"\n");	
 				} else {

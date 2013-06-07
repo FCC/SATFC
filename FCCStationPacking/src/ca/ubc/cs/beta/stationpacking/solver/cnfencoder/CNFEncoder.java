@@ -77,10 +77,10 @@ public class CNFEncoder implements ICNFEncoder {
 	 * If these conditions are not met, it throws and catches an exception describing the problem, and
 	 * returns an empty Map.
 	 */
-	public Map<Integer,Set<Station>> decode(Instance aInstance, String aCNFAssignment){
+	public HashMap<Integer,HashSet<Station>> decode(Instance aInstance, String aCNFAssignment){
 		Map<Station,Integer> aInternalStationIDs = getInternalIDs(aInstance.getStations());
 		Map<Integer,Integer> aInternalChannelIDs = getInternalIDs(aInstance.getChannels());
-		Map<Integer,Set<Station>> aStationAssignment = new HashMap<Integer,Set<Station>>();
+		HashMap<Integer,HashSet<Station>> aStationAssignment = new HashMap<Integer,HashSet<Station>>();
 		try{
 			Map<Integer,Boolean> aCNFdecoding = stringToAssignment(aCNFAssignment);
 			int aNumCNFVars = aCNFdecoding.size();
@@ -95,7 +95,7 @@ public class CNFEncoder implements ICNFEncoder {
 							if(aStationAssignment.containsKey(aChannel)){
 								aStationAssignment.get(aChannel).add(aStation);
 							} else {
-								Set<Station> aSet = new HashSet<Station>();
+								HashSet<Station> aSet = new HashSet<Station>();
 								aSet.add(aStation);
 								aStationAssignment.put(aChannel,aSet);
 							}
@@ -193,7 +193,8 @@ public class CNFEncoder implements ICNFEncoder {
 	}
 	
 	//NA - Takes the string output of a SAT solver, turns it into the corresponding variable assignment.
-	private Map<Integer,Boolean> stringToAssignment(String aCNFAssignment) throws Exception{
+	@Deprecated
+	private Map<Integer,Boolean> stringToAssignment2(String aCNFAssignment) throws Exception{
 		Map<Integer,Boolean> aAssignment = new HashMap<Integer,Boolean>();
 		String[] a = aCNFAssignment.substring(aCNFAssignment.indexOf(" v "),aCNFAssignment.indexOf("CPU")).split(" |\n");
 		for(int i = 0; i < a.length; i++){
@@ -208,6 +209,31 @@ public class CNFEncoder implements ICNFEncoder {
 		}
 		if(aAssignment.remove(0)==null) throw new Exception("No terminating 0 in CNF string.");
 		return aAssignment;
+	}
+	
+	/**
+	 * Take a string of semi-column separated DIMACS formatted variables outputted by a SAT solver and transform it to a boolean function sending
+	 * variable number to its value.
+	 * @param aCNFAssignment - semi-column separated string of DIMACS formatted variables.
+	 * @return a map taking variable number to its boolean value. 
+	 * @throws Exception
+	 */
+	private Map<Integer,Boolean> stringToAssignment(String aCNFAssignment) throws Exception{
+		Map<Integer,Boolean> aAssignment = new HashMap<Integer,Boolean>();
+		for(String aLitteral : aCNFAssignment.split(";"))
+		{
+			boolean aValue = !aLitteral.contains("-"); 
+			Integer aVariable = Integer.valueOf(aLitteral.replace("-", ""));
+			
+			if(aAssignment.containsKey(aVariable))
+			{
+				throw new Exception("Variable "+aVariable+" assigned to multiple truth values.");
+			}
+			aAssignment.put(aVariable, aValue);
+			
+		}
+		return aAssignment;
+		
 	}
 	
 	// NA - given a (Station,Channel) pair, returns the corresponding variable number
