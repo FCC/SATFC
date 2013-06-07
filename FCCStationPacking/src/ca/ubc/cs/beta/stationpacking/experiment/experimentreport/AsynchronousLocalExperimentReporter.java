@@ -106,7 +106,7 @@ public class AsynchronousLocalExperimentReporter implements IExperimentReporter 
 								return;
 							}
 							//Write object to file 
-							String aLine = aResult.getInstance().toString()+","+Double.toString(aResult.getResult().getRuntime())+","+aResult.getResult().getResult().toString()+"\n";
+							String aLine = aResult.getInstance().toString()+","+aResult.getResult().toString()+"\n";
 							
 							try 
 							{

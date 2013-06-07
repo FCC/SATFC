@@ -143,7 +143,7 @@ public class AsyncTAESolver {
 		};
 	}
 	
-	private TargetAlgorithmEvaluatorCallback getCompilingCallback(final Instance aInstance,final IExperimentReporter aAsynchronousReporter)
+	private TargetAlgorithmEvaluatorCallback getCompilingCallback(final Instance aInstance,final IExperimentReporter aAsynchronousReporter,final HashMap<RunConfig,Instance> aToRunInstances)
 	{
 		return new TargetAlgorithmEvaluatorCallback()
 		{
@@ -156,9 +156,15 @@ public class AsyncTAESolver {
 					{
 						double aRuntime = aRun.getRuntime();				
 						SATResult aResult;
+						HashMap<Integer,HashSet<Station>> aAssignment = new HashMap<Integer,HashSet<Station>>();
 						switch (aRun.getRunResult()){
 							case SAT:
 								aResult = SATResult.SAT;
+								
+								//Grab assignment
+								String aAdditionalRunData = aRun.getAdditionalRunData();
+								aAssignment = fEncoder.decode(aToRunInstances.get(aRun.getRunConfig()), aAdditionalRunData);
+								
 								break;
 							case UNSAT:
 								aResult = SATResult.UNSAT;
@@ -171,7 +177,7 @@ public class AsyncTAESolver {
 								break;
 						}
 						
-						SolverResult aSolverResult = new SolverResult(aResult,aRuntime);
+						SolverResult aSolverResult = new SolverResult(aResult,aRuntime,aAssignment);
 
 						
 						//Add result to component results
@@ -316,13 +322,14 @@ public class AsyncTAESolver {
 		}
 		
 		List<RunConfig> aRunConfigs = new ArrayList<RunConfig>(aToSolveInstances.keySet());
-		fTargetAlgorithmEvaluator.evaluateRunsAsync(aRunConfigs,getCompilingCallback(aInstance,aAsynchronousReporter),getPreemptingObserver());
+		fTargetAlgorithmEvaluator.evaluateRunsAsync(aRunConfigs,getCompilingCallback(aInstance,aAsynchronousReporter,aToSolveInstances),getPreemptingObserver());
 		
 	}
 	
 	private SolverResult mergeComponentResults(Collection<SolverResult> aComponentResults){
 		double aRuntime = 0.0;
 		
+		//Merge runtimes as sum of times.
 		HashSet<SATResult> aSATResults = new HashSet<SATResult>();
 		for(SolverResult aSolverResult : aComponentResults)
 		{
@@ -330,6 +337,7 @@ public class AsyncTAESolver {
 			aSATResults.add(aSolverResult.getResult());
 		}
 		
+		//Merge SAT results 
 		SATResult aSATResult = SATResult.SAT;
 		
 		if(aSATResults.contains(SATResult.UNSAT))
@@ -345,7 +353,26 @@ public class AsyncTAESolver {
 			aSATResult = SATResult.TIMEOUT;
 		}
 		
-		return new SolverResult(aSATResult,aRuntime);
+		//Merge assignments
+		HashMap<Integer,HashSet<Station>> aAssignment = new HashMap<Integer,HashSet<Station>>();
+		if(aSATResult.equals(SATResult.SAT))
+		{
+			for(SolverResult aComponentResult : aComponentResults)
+			{
+				HashMap<Integer,HashSet<Station>> aComponentAssignment = aComponentResult.getAssignment();
+				for(Integer aAssignedChannel : aComponentAssignment.keySet())
+				{
+					if(!aAssignment.containsKey(aAssignedChannel))
+					{
+						aAssignment.put(aAssignedChannel, new HashSet<Station>());
+					}
+					aAssignment.get(aAssignedChannel).addAll(aComponentAssignment.get(aAssignedChannel));
+				}
+			}
+		}
+		
+		
+		return new SolverResult(aSATResult,aRuntime,aAssignment);
 	}
 	
 	

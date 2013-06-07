@@ -1,5 +1,7 @@
 package ca.ubc.cs.beta.stationpacking.solver.cnfencoder;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -27,7 +29,7 @@ public interface ICNFEncoder {
 	 * If these conditions are not met, it throws and catches an exception describing the problem, and 
 	 * returns an empty map.
 	 */
-	public Map<Integer,Set<Station>> decode(Instance aInstance, String aCNFAssignment);
+	public HashMap<Integer,HashSet<Station>> decode(Instance aInstance, String aCNFAssignment);
 	
 	//public Map<Integer,Set<Station>> decode(IInstance aInstance, Set<Clause> aAssignment);
 

@@ -1,5 +1,6 @@
 package ca.ubc.cs.beta.stationpacking.solver.incrementalsolver;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -9,6 +10,7 @@ import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
 import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
+import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
 import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries.IIncrementalSATLibrary;
@@ -93,7 +95,7 @@ public class IncrementalSolver implements ISolver{
 		
 		if(curCount==fNumDummyVariables) reset();
 		else curCount++; //next time, use a new dummy variable
-		return new SolverResult(aResult,elapsedTime);
+		return new SolverResult(aResult,elapsedTime,new HashMap<Integer,HashSet<Station>>());
 	}
 	
 	
