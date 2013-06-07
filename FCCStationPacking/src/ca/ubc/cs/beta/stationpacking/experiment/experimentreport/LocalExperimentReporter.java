@@ -22,7 +22,7 @@ public class LocalExperimentReporter implements IExperimentReporter{
 	@Override
 	public void report(Instance aInstance, SolverResult aRunResult){
 		
-		String aLine = aInstance.toString()+","+Double.toString(aRunResult.getRuntime())+","+aRunResult.getResult().toString()+"\n";
+		String aLine = aInstance.toString()+","+aRunResult.toString()+"\n";
 		
 		try 
 		{

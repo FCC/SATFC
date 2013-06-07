@@ -120,8 +120,6 @@ UNSATre = re.compile('\\bUNSATISFIABLE\\b')
 
 TIMEre = re.compile('CPU time \(s\)\: \d+\.*\d*')
 
-print std_out
-
 if re.search(TIMEOUTre,std_out):
     output_solved = 'TIMEOUT'
     output_runtime = cutoff_time
@@ -131,23 +129,19 @@ elif re.search(UNSATre,std_out):
     output_runtime = str(float(TIMEre.findall(std_out)[0].split(':')[1].replace(' ','')))
 elif re.search(SATre,std_out):
     output_solved = 'SAT'
+    TIMEre.findall(std_out)
     output_runtime = str(float(TIMEre.findall(std_out)[0].split(':')[1].replace(' ','')))
     
-    #Each line of the assignment starts with a 'v' and the final line ends with '0'.
-    ASSIGNMENTre = re.compile('v([\\s\\-\\d]+)\n')
-    
-    assignment = reduce(lambda x,y : x+y,ASSIGNMENTre.findall(std_out)).lstrip().rstrip().split()
-    assignment.remove('0')
-    assignment = ';'.join(assignment)
+    print std_out
+    output_file = open(instance_name+output_suffix, "w")
+    output_file.write(std_out)
+    output_file.close()
     
 else:
     output_solved = 'CRASHED'
-    output_runtime = str(time.time()-clock)
     print std_out
     print std_err
+    output_runtime = str(time.time()-clock)
 
-if output_solved == 'SAT':
-    print 'Result for ParamILS: '+output_solved+', '+output_runtime+', '+output_runlength+', '+output_quality+', '+output_seed+', '+assignment+'\n'
-else:
-    print 'Result for ParamILS: '+output_solved+', '+output_runtime+', '+output_runlength+', '+output_quality+', '+output_seed+'\n'
+print 'Result for ParamILS: '+output_solved+', '+output_runtime+', '+output_runlength+', '+output_quality+', '+output_seed+'\n'
 
