@@ -79,7 +79,7 @@ public class InstanceGenerationExecutor {
 				"-CNF_DIR",
 				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/CNFs",
 				"-SOLVER",
-				"picosat",
+				"tunedclasp",
 				"-EXPERIMENT_NAME",
 				"TestExperiment",
 				"-EXPERIMENT_DIR",
