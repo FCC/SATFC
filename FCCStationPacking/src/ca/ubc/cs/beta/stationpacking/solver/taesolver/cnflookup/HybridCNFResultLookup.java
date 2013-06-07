@@ -12,6 +12,7 @@ import java.util.Map;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.io.FileUtils;
 
 
 import au.com.bytecode.opencsv.CSVReader;
@@ -116,15 +117,7 @@ public class HybridCNFResultLookup implements ICNFResultLookup{
 			fResultLookup.put(getCNFName(aInstance), aResult);
 			try{
 				String aOutputFilename = fCNFDirectory+File.separatorChar+fOutputName;
-				File aOutputFile = new File(aOutputFilename);
-				BufferedWriter aWriter = new BufferedWriter(new FileWriter(aOutputFilename));
-				//System.out.println("\n\n\n testing \n\n\n"+aOutputFilename+"\n\n\n");
-				if(aOutputFile.exists()){
-					aWriter.append(getCNFName(aInstance)+","+aResult+"\n");	
-				} else {
-					aWriter.write(getCNFName(aInstance)+","+aResult+"\n");	
-				}
-				aWriter.close();
+				FileUtils.write(new File(aOutputFilename), getCNFName(aInstance)+".cnf,"+aResult+"\n",true);
 			} catch(Exception e){
 				e.printStackTrace();
 			}
