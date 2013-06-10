@@ -2,7 +2,6 @@ package ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup;
 
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -14,10 +13,8 @@ import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 
 
-import au.com.bytecode.opencsv.CSVReader;
 
 import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
-import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 

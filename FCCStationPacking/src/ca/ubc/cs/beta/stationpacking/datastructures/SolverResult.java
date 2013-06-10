@@ -1,11 +1,9 @@
 package ca.ubc.cs.beta.stationpacking.datastructures;
 
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+
 
 /**
  * Container object for the result of a solver executed on a problem instance.
@@ -16,13 +14,13 @@ public class SolverResult {
 	
 	private SATResult fResult;
 	private double fRuntime;
-	private HashMap<Integer,HashSet<Station>> fAssignment;
+	private Map<Integer,Set<Station>> fAssignment;
 	
-	public SolverResult(SATResult aResult, double aRuntime, HashMap<Integer,HashSet<Station>> aAssignment)
+	public SolverResult(SATResult aResult, double aRuntime, Map<Integer,Set<Station>> aAssignment)
 	{
 		fResult = aResult;
 		fRuntime = aRuntime;
-		fAssignment = new HashMap<Integer,HashSet<Station>>(aAssignment);
+		fAssignment = new HashMap<Integer,Set<Station>>(aAssignment);
 	}
 	
 	public SATResult getResult(){
@@ -34,11 +32,12 @@ public class SolverResult {
 		return fRuntime;
 	}
 	
-	public HashMap<Integer,HashSet<Station>> getAssignment()
+	public Map<Integer,Set<Station>> getAssignment()
 	{
-		return fAssignment;
+		return new HashMap<Integer,Set<Station>>(fAssignment); 
 	}
 	
+	/*
 	private String toStringAssignment(HashMap<Integer,HashSet<Station>> aAssignment)
 	{
 		String aOutput = "";
@@ -69,11 +68,12 @@ public class SolverResult {
 		return aOutput;
 		
 	}
+	*/
 	
 	@Override
 	public String toString()
 	{
-		return fResult+","+fRuntime+","+toStringAssignment(fAssignment);
+		return fResult+","+fRuntime+","+fAssignment;//toStringAssignment(fAssignment);
 	}
 	
 	/*

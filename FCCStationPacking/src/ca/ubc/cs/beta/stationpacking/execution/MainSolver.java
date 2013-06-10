@@ -132,9 +132,10 @@ public class MainSolver {
 			 * any other parameters needed
 			 */
 			ICNFEncoder2 aCNFEncoder2 = new CNFEncoder2();
-			String aLibraryPath = "/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/SATsolversglueminisat-2.2.5/core/libglueminisat.so";
+			String aLibraryPath = "/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/SATsolvers/glueminisat-2.2.5/core/libglueminisat.so";
+			//String aLibraryPath = "/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/SATsolvers/minisat/core/libminisat.so";
 			IIncrementalSATLibrary aSATLibrary = new GlueMiniSatLibrary(aLibraryPath);
-			fSolver = new IncrementalSolver(aConstraintManager, aCNFEncoder2, aSATLibrary,100, aExecParameters.getSeed());			
+			fSolver = new IncrementalSolver(aConstraintManager, aCNFEncoder2, aSATLibrary, aExecParameters.getSeed());			
 		}
 		
 	}
