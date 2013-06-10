@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
@@ -29,7 +30,7 @@ public interface ICNFEncoder {
 	 * If these conditions are not met, it throws and catches an exception describing the problem, and 
 	 * returns an empty map.
 	 */
-	public HashMap<Integer,HashSet<Station>> decode(Instance aInstance, String aCNFAssignment);
+	public Map<Integer,Set<Station>> decode(Instance aInstance, String aCNFAssignment);
 	
 	//public Map<Integer,Set<Station>> decode(IInstance aInstance, Set<Clause> aAssignment);
 

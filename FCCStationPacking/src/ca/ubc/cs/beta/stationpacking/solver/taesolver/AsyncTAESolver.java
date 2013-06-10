@@ -156,7 +156,7 @@ public class AsyncTAESolver {
 					{
 						double aRuntime = aRun.getRuntime();				
 						SATResult aResult;
-						HashMap<Integer,HashSet<Station>> aAssignment = new HashMap<Integer,HashSet<Station>>();
+						Map<Integer,Set<Station>> aAssignment = new HashMap<Integer,Set<Station>>();
 						switch (aRun.getRunResult()){
 							case SAT:
 								aResult = SATResult.SAT;
@@ -354,12 +354,12 @@ public class AsyncTAESolver {
 		}
 		
 		//Merge assignments
-		HashMap<Integer,HashSet<Station>> aAssignment = new HashMap<Integer,HashSet<Station>>();
+		HashMap<Integer,Set<Station>> aAssignment = new HashMap<Integer,Set<Station>>();
 		if(aSATResult.equals(SATResult.SAT))
 		{
 			for(SolverResult aComponentResult : aComponentResults)
 			{
-				HashMap<Integer,HashSet<Station>> aComponentAssignment = aComponentResult.getAssignment();
+				Map<Integer,Set<Station>> aComponentAssignment = aComponentResult.getAssignment();
 				for(Integer aAssignedChannel : aComponentAssignment.keySet())
 				{
 					if(!aAssignment.containsKey(aAssignedChannel))

@@ -77,10 +77,10 @@ public class CNFEncoder implements ICNFEncoder {
 	 * If these conditions are not met, it throws and catches an exception describing the problem, and
 	 * returns an empty Map.
 	 */
-	public HashMap<Integer,HashSet<Station>> decode(Instance aInstance, String aCNFAssignment){
+	public Map<Integer,Set<Station>> decode(Instance aInstance, String aCNFAssignment){
 		Map<Station,Integer> aInternalStationIDs = getInternalIDs(aInstance.getStations());
 		Map<Integer,Integer> aInternalChannelIDs = getInternalIDs(aInstance.getChannels());
-		HashMap<Integer,HashSet<Station>> aStationAssignment = new HashMap<Integer,HashSet<Station>>();
+		HashMap<Integer,Set<Station>> aStationAssignment = new HashMap<Integer,Set<Station>>();
 		try{
 			Map<Integer,Boolean> aCNFdecoding = stringToAssignment(aCNFAssignment);
 			int aNumCNFVars = aCNFdecoding.size();

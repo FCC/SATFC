@@ -23,9 +23,8 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "mtl/Sort.h"
 #include "core/Solver.h"
 
-
-
 using namespace Minisat;
+
 
 //Added by narnosti
 //Gets rid of name mangling
@@ -50,15 +49,15 @@ extern "C"
     }
     
     bool BOOL(bool x) { if (x) return 1; return 0; }
-
+    
     //state passed as int so that we can ensure that it is either 0 or 1 (as mkLit assumes)
     //if state has type bool, the compiler optimizes "state ? 1 : 0" away, giving us a problem
     void addLitToVec(void* _vec, int variable, int state){
         
         reinterpret_cast<vec<Lit>*>(_vec)->push(mkLit(variable, BOOL(state)));
     }
-
-
+    
+    
     bool solveWithAssumptions(void* _solver, void* _vec){
         //vec<Lit>* ps = reinterpret_cast<vec<Lit>*>(_vec);
         return reinterpret_cast<Solver*>(_solver)->solve(*reinterpret_cast<vec<Lit>*>(_vec));
@@ -80,27 +79,20 @@ extern "C"
         return reinterpret_cast<Solver*>(_solver)->okay();
     }
     
+    void printNick(void* _solver){
+        return reinterpret_cast<Solver*>(_solver)->printNick();
+    }
+    
     bool addClause(void* _solver, void* _vec){
         vec<Lit>* ps = reinterpret_cast<vec<Lit>*>(_vec);
         //int sz = ps->size();
         //printf("Size of vector is %d\n",sz);
         //for(int i = 0; i < sz-1; i++){
-            //reinterpret_cast<Solver*>(_solver)->printNick(ps->last());
-            //ps->pop();
+        //reinterpret_cast<Solver*>(_solver)->printNick(ps->last());
+        //ps->pop();
         //}
         //fflush(stdout);
         return reinterpret_cast<Solver*>(_solver)->addClause(*ps);
-    }
-    
-    
-    
-    
-    //state passed as int so that we can ensure that it is either 0 or 1 (as mkLit assumes)
-    //if state has type bool, the compiler optimizes "state ? 1 : 0" away, giving us a problem
-    void printLit(void* _solver, int variable, int state){
-        Solver* solver = (Solver*) _solver;
-        solver->printNick(mkLit(variable,BOOL(state)));
-
     }
     
     //First parameter is the pointer to the solver that was made earlier
@@ -112,31 +104,34 @@ extern "C"
         return solver->solve();
     }
     
-    int testing(void* _solver, int i){
-        //Cast the pointer into something useful...
-        Solver* solver = (Solver*) _solver;
-        //Run the actual method that you want
-        return solver->testing(i);
-    }
     
-    //bool value(void* _solver, int var){
-    //    return (reinterpret_cast<Solver*>(_solver)->modelValue(var)!=l_True);
-    //}
-    
+    //NA - weird things going on. If you keep everything the same but change the return type to bool
+    //then JAVA usually gets it right but occasionally doesn't get the right value.
+    //If you return ((s->modelValue(var))!=l_True); rather than calling b = ((s->modelValue(var))!=l_True); return b;
+    //then other things break... EXPLORE MORE
     int value(void* _solver, int var){
         Solver* s = reinterpret_cast<Solver*>(_solver);
         bool b = (s->modelValue(var)!=l_True);
+        //if(b){
+        //    printf("In C land, modelValue(%d)!=l_True is %s\n",var, b ? "true":"false");
+        //    fflush(stdout);
+        //}
+        //printf("In C land, modelValue(%d)!=l_True is %s\n",var, b ? "true":"false");
+        //b = (s->modelValue(var)!=l_True);
+        //printf("Now in C land, modelValue(%d)!=l_True is %s\n",var, b ? "true":"false");
+        //fflush(stdout);
+        //return ((s->modelValue(var))!=l_True);
         return b;
     }
-
-
+    
+    bool litValue(void* _solver, int var, int state){        
+        return (reinterpret_cast<Solver*>(_solver)->modelValue(mkLit(var,BOOL(state)))!=l_True);
+    }
+    
+    
 }
 
 //end: added by narnosti
-
-
-
-
 
 //=================================================================================================
 // Options:
@@ -153,83 +148,9 @@ static IntOption     opt_phase_saving      (_cat, "phase-saving", "Controls the 
 static BoolOption    opt_rnd_init_act      (_cat, "rnd-init",    "Randomize the initial activity", false);
 static BoolOption    opt_luby_restart      (_cat, "luby",        "Use the Luby restart sequence", true);
 static IntOption     opt_restart_first     (_cat, "rfirst",      "The base restart interval", 100, IntRange(1, INT32_MAX));
-static DoubleOption  opt_restart_inc       (_cat, "rinc",        "Restart interval increase factor", 1.3, DoubleRange(1, false, HUGE_VAL, false));
+static DoubleOption  opt_restart_inc       (_cat, "rinc",        "Restart interval increase factor", 2, DoubleRange(1, false, HUGE_VAL, false));
 static DoubleOption  opt_garbage_frac      (_cat, "gc-frac",     "The fraction of wasted memory allowed before a garbage collection is triggered",  0.20, DoubleRange(0, false, HUGE_VAL, false));
 
-// added by nabesima
-static const char* _glue = "GLUE";
-static IntOption	 opt_learnts_measure   (_glue, "lmeasure",          "The measure of learned clause quality (0=LRU, 1=LBD, 2=strict LBD)", 2, IntRange(0, 2));
-static IntOption	 opt_max_lbd           (_glue, "lbd",               "The max LBD of survived learnt clauses in reduce DB (3)", 3, IntRange(2, INT32_MAX));
-static IntOption	 opt_max_len           (_glue, "len",               "The max length of survived learnt clauses in reduce DB (3)", 3, IntRange(2, INT32_MAX));
-static BoolOption    opt_ag_reduce_db      (_glue, "ag-reduce",         "Use the aggressive reduce DB strategy", true);
-static IntOption     opt_restart_strategy  (_glue, "restart",           "The restart strategy (0=minisat, 1=glucose, 2=dlevel avg, 3=1+2, 4=0+1+2, 5=1+2+impulse", 3, IntRange(0, 5));
-static DoubleOption  opt_lbd_restart_rate  (_glue, "lbd-restart-rate",  "Restarts if local LBD average * this val < global one", 0.8, DoubleRange(0, true, 1, true));
-static DoubleOption  opt_dlv_restart_rate  (_glue, "dlv-restart-rate",  "Restarts if local DLV average * this val < global one", 1.0, DoubleRange(0, true, 1, true));
-static IntOption     opt_restart_min_confs (_glue, "restart-min-confs", "The number of conflicts for next restart", 50, IntRange(1, INT32_MAX));
-static IntOption     opt_lbd_act_bumping   (_glue, "bump",              "The LBD based activity bumping strategy (0=none, 1=glucose, 2=more aggressive)", 1, IntRange(0, 2));
-static IntOption	 opt_impulse_interval  (_glue, "impulse-interval",  "The interval of impulse search", 500, IntRange(1, INT32_MAX));
-static IntOption	 opt_impulse_init	   (_glue, "impulse-init",      "The initial size of impulse search", 250, IntRange(1, INT32_MAX));
-static IntOption	 opt_impulse_width     (_glue, "impulse-width",     "The width of impulse search", 5, IntRange(1, INT32_MAX));
-static IntOption     opt_learnts_init      (_glue, "linit",             "The initial size of learnt clauses (20000 in glucose)", 30000, IntRange(1, INT32_MAX));
-static IntOption     opt_learnts_inc       (_glue, "linc",              "The factor with which the limit of learnts is added in each reduction (1000 in glucose)", 10000, IntRange(1, INT32_MAX));
-
-// added by nabesima
-static const char* _solver = "SOLVER";
-static BoolOption    opt_minisat		   (_solver, "minisat",         "Behaves as MiniSat", false);
-static BoolOption    opt_glucose		   (_solver, "glucose",         "Behaves as glucose", false);
-
-// added by nabesima
-static double luby(double y, int x);
-// Learned clause measure
-#define MS_LRU		     0
-#define MS_LBD		     1
-#define MS_STRICT_LBD    2
-// Restart strategy
-#define RS_MINISAT       0
-#define RS_LBD_AVG       1
-#define RS_DLV_AVG       2
-#define RS_LBD_DLV       3
-#define RS_LBD_DLV_LUBY  4
-#define RS_LBD_DLV_IMPLS 5
-
-// added by narnosti
-Var Solver::testing(Var i){
-	return i;
-}
-void Solver::printNick(Lit p) {
-    printf("%s%d\n",sign(p) ? "" : "-",var(p));
-    fflush(stdout);
-}
-//end: added by narnosti
-
-// added by nabesima
-void Solver::printLit(Lit l) {
-	printf("%s%d:%c", sign(l) ? "-" : "", var(l)+1, value(l) == l_True ? '1' : (value(l) == l_False ? '0' : 'X'));
-	if (value(l) != l_Undef) printf("@%d", level(var(l)));
-}
-void Solver::printLits(vec<Lit>& lits) {
-	for (int i=0; i < lits.size(); i++) {
-		printLit(lits[i]);
-		printf(" ");
-	}
-}
-void Solver::printClause(Clause& c) {
-	printf("{ ");
-	for (int i=0; i < c.size(); i++) {
-        printLit(c[i]);
-        printf(" ");
-    }
-	printf("} ");
-	if (c.learnt()) printf("lbd=%d ", c.lbd());
-	printf("act=%f\n", c.activity());
-}
-void Solver::printLog() {
-	printf("| %9d | %7d %8d %8d | %8d %6.0f %6.1f %6.1f | %6.3f %% |\n",
-           (int)conflicts,
-           (int)dec_vars - (trail_lim.size() == 0 ? trail.size() : trail_lim[0]), nClauses(), (int)clauses_literals,
-           nLearnts(), (double)learnts_literals/nLearnts(), (double)tot_lbds/nLearnts(), wholeDLVs/conflicts, progressEstimate()*100);
-	fflush(stdout);
-}
 
 //=================================================================================================
 // Constructor/Destructor:
@@ -267,9 +188,6 @@ Solver::Solver() :
   , solves(0), starts(0), decisions(0), rnd_decisions(0), propagations(0), conflicts(0)
   , dec_vars(0), clauses_literals(0), learnts_literals(0), max_literals(0), tot_literals(0)
 
-	// added by nabesima
-  , reduce_dbs(0), tot_lbds(0), curr_restarts(0)
-
   , ok                 (true)
   , cla_inc            (1)
   , var_inc            (1)
@@ -286,51 +204,7 @@ Solver::Solver() :
   , conflict_budget    (-1)
   , propagation_budget (-1)
   , asynch_interrupt   (false)
-
-  // added by nabesima
-  , learnts_measure  (opt_learnts_measure)
-  , ag_reduce_db     (opt_ag_reduce_db)
-  , max_lbd          (opt_max_lbd)
-  , max_len          (opt_max_len)
-  , restart_strategy (opt_restart_strategy)
-  , lbd_restart_rate (opt_lbd_restart_rate)
-  , dlv_restart_rate (opt_dlv_restart_rate)
-  , restart_min_confs(opt_restart_min_confs)
-  , lbd_act_bumping  (opt_lbd_act_bumping)
-  , impulse_interval (opt_impulse_interval)
-  , impulse_init 	 (opt_impulse_init)
-  , impulse_width    (opt_impulse_width)
-
-  , reduce_db_base   (opt_learnts_init)
-  , reduce_db_inc	 (opt_learnts_inc)
-  , reduce_db_limit  (reduce_db_base)
-
-  , lbd_updates      (0)
-
-, wholeLBDs          (0.0)
-, wholeDLVs          (0.0)
-{
-	// added by nabesima
-	if (opt_minisat) {
-		restart_inc = 2;
-		learnts_measure = MS_LRU;
-		ag_reduce_db = false;
-		max_len = 2;
-		restart_strategy = RS_MINISAT;
-		lbd_act_bumping = false;
-	}
-	else if (opt_glucose) {
-		restart_inc = 2;
-		learnts_measure = MS_LBD;
-		max_lbd = 2;
-		max_len = 2;
-		restart_strategy = RS_LBD_AVG;
-		lbd_restart_rate = 0.7;
-		restart_min_confs = 100;
-		reduce_db_base = 20000;
-		reduce_db_inc = 1000;
-	}
-}
+{}
 
 
 Solver::~Solver()
@@ -340,6 +214,7 @@ Solver::~Solver()
 
 //=================================================================================================
 // Minor methods:
+
 
 
 // Creates a new SAT variable in the solver. If 'decision' is cleared, variable will not be
@@ -359,12 +234,44 @@ Var Solver::newVar(bool sign, bool dvar)
     decision .push();
     trail    .capacity(v+1);
     setDecisionVar(v, dvar);
-
-    // added by nabesima
-    lbd_time.push(0);
-
     return v;
 }
+
+//begin narnosti
+void Solver::printLit(Lit p) {
+    printf("%s%d\n",sign(p) ? "" : "-",var(p));
+    fflush(stdout);
+}
+
+void Solver::printNick() {
+    Lit p;
+    for(int i = 0; i < 10; i++){
+        p = mkLit(i,true);
+        printf("Printing toLbool(%d)==l_False: %s\n",i,(toLbool(i)==l_False) ? "true":"false");
+        printf("Printing toLbool(%d)==l_True: %s\n",i,(toLbool(i)==l_True) ? "true":"false");
+
+        //printf("Printing literal associated with %d,true: %s%d\n",i,sign(p) ? "" : "-",var(p));
+        //printf("Printing toInt(toLbool(%d)): %d\n",i,toInt(toLbool(i)));
+    }
+    lbool t = lbool(true);
+    lbool f = lbool(false);
+    lbool t2 = lbool(true);
+    printf("Result of t==l_True: %s\n",t==l_True ? "true":"false");
+    printf("Result of f==l_True: %s\n",f==l_True ? "true":"false");
+    printf("Result of f==l_False: %s\n",f==l_False ? "true":"false");
+    printf("Result of t==t2: %s\n", t==t2 ? "true":"false");
+    printf("Result of t!=t2: %s\n", t!=t2 ? "true":"false");
+    printf("Result of t==f: %s\n", t==f ? "true":"false");
+    printf("Result of t!=f: %s\n", t!=f ? "true":"false");
+    printf("Result of t||f: %s\n", ((t||f)==l_True) ? "true":"false");
+    printf("Result of t&&f: %s\n", ((t&&f)==l_True) ? "true":"false");
+    printf("Result of t^false: %s\n", ((t^false)==l_True) ? "true":"false");
+    printf("Result of t^true: %s\n", ((t^true)==l_True) ? "true":"false");
+    fflush(stdout);
+
+    
+}
+//end narnosti
 
 
 bool Solver::addClause_(vec<Lit>& ps)
@@ -375,13 +282,13 @@ bool Solver::addClause_(vec<Lit>& ps)
     // Check if clause is satisfied and remove false/duplicate literals:
     sort(ps);
     Lit p; int i, j;
-    for (i = j = 0, p = lit_Undef; i < ps.size(); i++){
+    for (i = j = 0, p = lit_Undef; i < ps.size(); i++)
         if (value(ps[i]) == l_True || ps[i] == ~p)
             return true;
         else if (value(ps[i]) != l_False && ps[i] != p)
             ps[j++] = p = ps[i];
-    }
     ps.shrink(i - j);
+
     if (ps.size() == 0)
         return ok = false;
     else if (ps.size() == 1){
@@ -396,11 +303,12 @@ bool Solver::addClause_(vec<Lit>& ps)
     return true;
 }
 
+
 void Solver::attachClause(CRef cr) {
     const Clause& c = ca[cr];
     assert(c.size() > 1);
-	watches[~c[0]].push(Watcher(cr, c[1]));
-	watches[~c[1]].push(Watcher(cr, c[0]));
+    watches[~c[0]].push(Watcher(cr, c[1]));
+    watches[~c[1]].push(Watcher(cr, c[0]));
     if (c.learnt()) learnts_literals += c.size();
     else            clauses_literals += c.size(); }
 
@@ -419,10 +327,7 @@ void Solver::detachClause(CRef cr, bool strict) {
     }
 
     if (c.learnt()) learnts_literals -= c.size();
-    else            clauses_literals -= c.size();
-    // added by nabesima
-    if (c.learnt()) tot_lbds -= c.lbd();
-}
+    else            clauses_literals -= c.size(); }
 
 
 void Solver::removeClause(CRef cr) {
@@ -501,9 +406,7 @@ Lit Solver::pickBranchLit()
 |        rest of literals. There may be others from the same level though.
 |  
 |________________________________________________________________________________________________@*/
-// modified by nabesima
-//void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
-void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, int& lbd)
+void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
 {
     int pathC = 0;
     Lit p     = lit_Undef;
@@ -513,15 +416,12 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, int& lb
     out_learnt.push();      // (leave room for the asserting literal)
     int index   = trail.size() - 1;
 
-    // added by nabesima
-    implied_by_learnts.clear();
-
     do{
         assert(confl != CRef_Undef); // (otherwise should be UIP)
         Clause& c = ca[confl];
 
         if (c.learnt())
-        	claBumpActivity(c);
+            claBumpActivity(c);
 
         for (int j = (p == lit_Undef) ? 0 : 1; j < c.size(); j++){
             Lit q = c[j];
@@ -529,13 +429,8 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, int& lb
             if (!seen[var(q)] && level(var(q)) > 0){
                 varBumpActivity(var(q));
                 seen[var(q)] = 1;
-                // modified by nabesima
-                if (level(var(q)) >= decisionLevel()) {
+                if (level(var(q)) >= decisionLevel())
                     pathC++;
-                    // added by nabesima
-                    if(lbd_act_bumping > 0 && reason(var(q)) != CRef_Undef && ca[reason(var(q))].learnt())
-                    	implied_by_learnts.push(q);
-                }
                 else
                     out_learnt.push(q);
             }
@@ -600,41 +495,6 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel, int& lb
         out_learnt[max_i] = out_learnt[1];
         out_learnt[1]     = p;
         out_btlevel       = level(var(p));
-    }
-
-    // added by nabesima
-    {
-    	lbd = 0;
-    	lbd_updates++;
-    	for (int i=0; i < out_learnt.size(); i++) {
-    		int lv = level(var(out_learnt[i]));
-    		if (lbd_time[lv] != lbd_updates) {
-    			lbd_time[lv] = lbd_updates;
-    			lbd++;
-    		}
-    	}
-    	tot_lbds += lbd;
-
-    	if (lbd_act_bumping > 0 && implied_by_learnts.size() > 0) {
-    		// glucose1.0 version
-    		if (lbd_act_bumping == 1) {
-				for(int i=0; i < implied_by_learnts.size(); i++) {
-					if (ca[reason(var(implied_by_learnts[i]))].lbd() < lbd)
-						varBumpActivity(var(implied_by_learnts[i]));
-				}
-    		}
-    		// More aggressive version
-    		else if (lbd_act_bumping == 2) {
-				for(int i=0; i < implied_by_learnts.size(); i++) {
-					Clause &c = ca[reason(var(implied_by_learnts[i]))];
-					if (c.lbd() <= 2 || c.lbd() < tot_lbds / nLearnts() * 0.5) {
-						for (int j=0; j < c.size(); j++)
-							varBumpActivity(var(c[j]));
-					}
-				}
-    		}
-    		implied_by_learnts.clear();
-    	}
     }
 
     for (int j = 0; j < analyze_toclear.size(); j++) seen[var(analyze_toclear[j])] = 0;    // ('seen[]' is now cleared)
@@ -782,43 +642,6 @@ CRef Solver::propagate()
             }else
                 uncheckedEnqueue(first, cr);
 
-            // added by nabesima
-            if (c.learnt() && c.lbd() > 2) {
-            	lbd_updates++;
-            	int lbd;
-            	if (learnts_measure <= MS_LBD) {  // glucose version
-            		lbd = 0;
-            		for (int i=0; i < c.size(); i++) {
-						int lv = level(var(c[i]));
-						if (lbd_time[lv] != lbd_updates) {
-							lbd_time[lv] = lbd_updates;
-							lbd++;
-						}
-					}
-            	}
-            	else {  // Strict LBD version
-					lbd = 1;    // literal block of false lit
-					for (int i=0; i < c.size(); i++) {
-						if (i == 1) continue;  // skip false lit
-						int lv = level(var(c[i]));
-//						if (lv == decisionLevel()) {
-//							lbd = c.lbd();
-//							break;
-//						}
-						if (lbd_time[lv] != lbd_updates) {
-							lbd_time[lv] = lbd_updates;
-							lbd++;
-							if (lbd >= c.lbd()) break;
-						}
-					}
-            	}
-				if (lbd < c.lbd()) {   // The difference to the glucose code.
-					tot_lbds = tot_lbds - c.lbd() + lbd;
-					assert(lbd > 0);
-					c.set_lbd(lbd);
-				}
-            }
-
         NextClause:;
         }
         ws.shrink(i - j);
@@ -844,152 +667,23 @@ struct reduceDB_lt {
     bool operator () (CRef x, CRef y) { 
         return ca[x].size() > 2 && (ca[y].size() == 2 || ca[x].activity() < ca[y].activity()); } 
 };
-
-// added by nabesima
-struct reduceDB_lt_with_lbd {
-    ClauseAllocator& ca;
-    reduceDB_lt_with_lbd(ClauseAllocator& ca_) : ca(ca_) {}
-    bool operator () (CRef x, CRef y) {
-        // First criteria
-        if (ca[x].size() >  2 && ca[y].size() == 2) return true;
-        if (ca[y].size() >  2 && ca[x].size() == 2) return false;
-        if (ca[x].size() == 2 && ca[y].size() == 2) return false;
-
-        // Second one
-        if (ca[x].lbd() > ca[y].lbd()) return true;
-        if (ca[x].lbd() < ca[y].lbd()) return false;
-
-        return ca[x].size() > ca[y].size();   // The difference to the glucose code.
-    }
-};
-
-// added by nabesima
-struct reduceDB_lt_with_lbd_lru {
-	ClauseAllocator& ca;
-    int max_lbd;
-    reduceDB_lt_with_lbd_lru(ClauseAllocator& ca_, int max_lbd_) : ca(ca_), max_lbd(max_lbd_) {}
-    bool operator () (CRef x, CRef y) {
-        if (ca[x].lbd() <= max_lbd) {
-        	if (ca[y].lbd() <= max_lbd)
-        		return ca[x].lbd() > ca[y].lbd();
-        	else
-        		return false;
-        }
-        else {
-        	if (ca[y].lbd() <= max_lbd)
-        		return true;
-        	else
-        		return ca[x].activity() < ca[y].activity();;
-        }
-    }
-};
-
 void Solver::reduceDB()
 {
-    int     i = 0, j = 0;
+    int     i, j;
     double  extra_lim = cla_inc / learnts.size();    // Remove any clause below this activity
 
-    // added by nabesima
-    reduce_dbs++;
-    int org_learnts = nLearnts();
-    if (verbosity >= 1) printLog();
-    uint num_bin = 0;
-    uint num_glue = 0;
-    uint num_glue3 = 0;
-
-    // modified by nabesima
-    if (learnts_measure == MS_LRU) {  // minisat version
-    	sort(learnts, reduceDB_lt(ca));
-    	// Don't delete binary or locked clauses. From the rest, delete clauses from the first half
-    	// and clauses with activity smaller than 'extra_lim':
-    	for (i = j = 0; i < learnts.size(); i++){
-    		Clause& c = ca[learnts[i]];
-
-    		// added by nabesima
-    		if (c.size() == 2) num_bin++;
-    		if (c.lbd()  == 2) num_glue++;
-    		if (c.lbd()  == 3) num_glue3++;
-
-    		if (c.size() > max_len && !locked(c) && (i < learnts.size() / 2 || c.activity() < extra_lim))
-    			removeClause(learnts[i]);
-    		else
-    			learnts[j++] = learnts[i];
-    	}
+    sort(learnts, reduceDB_lt(ca));
+    // Don't delete binary or locked clauses. From the rest, delete clauses from the first half
+    // and clauses with activity smaller than 'extra_lim':
+    for (i = j = 0; i < learnts.size(); i++){
+        Clause& c = ca[learnts[i]];
+        if (c.size() > 2 && !locked(c) && (i < learnts.size() / 2 || c.activity() < extra_lim))
+            removeClause(learnts[i]);
+        else
+            learnts[j++] = learnts[i];
     }
-    else if (learnts_measure == MS_LBD){  // glucose version
-        sort(learnts, reduceDB_lt_with_lbd(ca));
-    	for (i = j = 0; i < learnts.size(); i++) {
-    		Clause& c = ca[learnts[i]];
-
-    		// added by nabesima
-    		if (c.size() == 2) num_bin++;
-    		if (c.lbd()  == 2) num_glue++;
-    		if (c.lbd()  == 3) num_glue3++;
-
-    		assert(c.lbd() > 0);
-
-    		if (c.size() > max_len && !locked(c) && i < learnts.size() / 2 && c.lbd() > max_lbd)
-    			removeClause(learnts[i]);
-    		else
-    			learnts[j++] = learnts[i];
-    	}
-    }
-    else if (learnts_measure == MS_STRICT_LBD) {  // Strict LBD version
-
-    	sort(learnts, reduceDB_lt_with_lbd_lru(ca, max_lbd));
-
-    	int org_size = learnts.size();
-        for (i = j = 0; i < org_size; i++) {
-
-        	Clause& c = ca[learnts[i]];
-    		assert(c.lbd() > 0);
-
-    		// added by nabesima
-    		if (c.size() == 2) num_bin++;
-    		if (c.lbd()  == 2) num_glue++;
-    		if (c.lbd()  == 3) num_glue3++;
-
-    		//printf("survived = %d\n", j);
-    		//printf("(j + org_size - 1) < (org_size / 4) = %d < %d\n", j + org_size - i, org_size / 4);
-
-    		if (locked(c))
-    			learnts[j++] = learnts[i];
-    		//else if (c.activity() == 0 && c.lbd() > 2)
-    		//	removeClause(learnts[i]);
-    		else if (c.lbd() <= max_lbd || c.size() <= max_len)
-    			learnts[j++] = learnts[i];
-    		else if ((j + org_size - i) < (org_size / 4))    // At least 25% learnts are preversed.
-    			learnts[j++] = learnts[i];
-    		else if (c.activity() < extra_lim)
-    			removeClause(learnts[i]);
-    		else
-    			learnts[j++] = learnts[i];
-        }
-        if (j > org_size / 2) {
-			learnts.shrink(i - j);
-			for (i = j = 0; i < learnts.size(); i++) {
-	        	Clause& c = ca[learnts[i]];
-	    		if (!locked(c) && i < learnts.size() - org_size / 2)
-	    			removeClause(learnts[i]);
-	    		else
-	    			learnts[j++] = learnts[i];
-			}
-        }
-    }
-    else
-    	assert(false);
-
     learnts.shrink(i - j);
-
     checkGarbage();
-
-	// added by nabesima
-    if (verbosity >= 1) {
-    	printf("< ReduceDB %-3"PRIu64" (%4"PRIu64" restarts, %4.0f cnfs/res, %4.1f%% reduced, %4db %5dg %5dg3) >\n",
-    		reduce_dbs, starts, (double)conflicts / starts, (double)nLearnts() / org_learnts * 100.0,
-    		num_bin, num_glue, num_glue3);
-    	printLog();
-    }
 }
 
 
@@ -1066,43 +760,11 @@ lbool Solver::search(int nof_conflicts)
 {
     assert(ok);
     int         backtrack_level;
-    int			lbd;                      // added by nabesima
-    int			curr_impulse_size = 0;    // added by nabesima
     int         conflictC = 0;
     vec<Lit>    learnt_clause;
     starts++;
 
-    // added by nabesima
-    int curr_restart_strategy = restart_strategy;
-    switch (curr_restart_strategy) {
-    case RS_MINISAT:
-    	break;
-    case RS_LBD_DLV_LUBY: {
-    	double base = luby(restart_inc, curr_restarts);
-    	recentLBDs.init(restart_min_confs, restart_min_confs * base);
-    	recentDLVs.init(restart_min_confs, restart_min_confs * base);
-    	break;
-    }
-    case RS_LBD_DLV_IMPLS:
-    	if (curr_restarts > (uint64_t)impulse_width) {
-    		int remain = curr_restarts % impulse_interval;
-    		if (remain < impulse_width) {
-    			curr_impulse_size = impulse_init << remain;
-    			break;
-    		}
-    	}
-    	// otherwise, follows RS_LBD_DLV
-    	curr_restart_strategy = RS_LBD_DLV;
-    case RS_LBD_AVG:
-    case RS_DLV_AVG:
-    case RS_LBD_DLV:
-    	recentLBDs.init(restart_min_confs);    // glucose1.0
-    	recentDLVs.init(restart_min_confs);	  // glucose
-    	break;
-    }
-
     for (;;){
-
         CRef confl = propagate();
         if (confl != CRef_Undef){
             // CONFLICT
@@ -1110,19 +772,7 @@ lbool Solver::search(int nof_conflicts)
             if (decisionLevel() == 0) return l_False;
 
             learnt_clause.clear();
-            // modified by nabesima
-            //analyze(confl, learnt_clause, backtrack_level);
-            analyze(confl, learnt_clause, backtrack_level, lbd);
-            assert(lbd > 0);
-
-            // added by nabesima
-        	wholeDLVs += decisionLevel();
-            if (curr_restart_strategy != RS_MINISAT) {
-        	    recentLBDs.push(lbd);
-            	recentDLVs.push(decisionLevel());
-        	    wholeLBDs += lbd;
-            }
-
+            analyze(confl, learnt_clause, backtrack_level);
             cancelUntil(backtrack_level);
 
             if (learnt_clause.size() == 1){
@@ -1130,9 +780,6 @@ lbool Solver::search(int nof_conflicts)
             }else{
                 CRef cr = ca.alloc(learnt_clause, true);
                 learnts.push(cr);
-                // modified by nabesima
-                assert(lbd > 0);
-            	ca[cr].set_lbd(lbd);
                 attachClause(cr);
                 claBumpActivity(ca[cr]);
                 uncheckedEnqueue(learnt_clause[0], cr);
@@ -1146,104 +793,28 @@ lbool Solver::search(int nof_conflicts)
                 learntsize_adjust_cnt    = (int)learntsize_adjust_confl;
                 max_learnts             *= learntsize_inc;
 
-                // modified by nabesima
-                if (verbosity >= 1) {
-                	/*
-                    printf("| %9d | %7d %8d %8d | %8d %8d %6.1f | %6.3f %% |\n",
+                if (verbosity >= 1)
+                    printf("| %9d | %7d %8d %8d | %8d %8d %6.0f | %6.3f %% |\n", 
                            (int)conflicts, 
                            (int)dec_vars - (trail_lim.size() == 0 ? trail.size() : trail_lim[0]), nClauses(), (int)clauses_literals, 
                            (int)max_learnts, nLearnts(), (double)learnts_literals/nLearnts(), progressEstimate()*100);
-                    */
-                	printLog();
-                }
             }
 
         }else{
             // NO CONFLICT
-
-        	// modified by nabesima
-        	switch (curr_restart_strategy) {
-        	// Minisat version
-        	case RS_MINISAT: {
-            	if (nof_conflicts >= 0 && conflictC >= nof_conflicts || !withinBudget()){
-            		// Reached bound on number of conflicts:
-            		progress_estimate = progressEstimate();
-            		cancelUntil(0);
-            		return l_Undef;
-            	}
-            	break;
-        	}
-        	// Glucose version
-        	case RS_LBD_AVG: {
-            	if ((recentLBDs.ready() &&
-            		 recentLBDs.average() * lbd_restart_rate > wholeLBDs / conflicts) ||
-            		 !withinBudget()) {
-            		progress_estimate = progressEstimate();
-            		cancelUntil(0);
-            		//printf("recent avg=%f, total avg=%f, restarts=%d\n", recentLBDs.average() * 0.8, totalLBDs / conflicts, starts);
-            		recentLBDs.clear();
-            		return l_Undef;
-    			}
-            	break;
-            }
-        	// Average of conflicting decision levels
-        	case RS_DLV_AVG: {
-        		if ((recentDLVs.ready() &&
-               		 recentDLVs.average() * dlv_restart_rate > wholeDLVs / conflicts) ||
-               		 !withinBudget()) {
-            		progress_estimate = progressEstimate();
-            		cancelUntil(0);
-            		recentDLVs.clear();
-            		return l_Undef;
-    			}
-        		break;
-            }
-
-        	case RS_LBD_DLV:
-        	case RS_LBD_DLV_LUBY: {
-        		bool restart = false;
-        		if (!withinBudget())
-        			restart = true;
-        		else if (recentLBDs.ready() &&
-            		 recentLBDs.average() * lbd_restart_rate > wholeLBDs / conflicts)
-        			restart = true;
-        		else if (recentDLVs.ready() &&
-               		 recentDLVs.average() * dlv_restart_rate > wholeDLVs / conflicts)
-        			restart = true;
-        		if (restart) {
-            		progress_estimate = progressEstimate();
-            		cancelUntil(0);
-            		recentLBDs.clear();
-            		return l_Undef;
-    			}
-        		break;
-        	}
-
-        	case RS_LBD_DLV_IMPLS: {
-            	if (conflictC >= curr_impulse_size || !withinBudget()){
-            		// Reached bound on number of conflicts:
-            		progress_estimate = progressEstimate();
-            		cancelUntil(0);
-            		return l_Undef;
-            	}
-            	break;
-        	}
-        	default:
-        		assert(false);
-        	}
+            if (nof_conflicts >= 0 && conflictC >= nof_conflicts || !withinBudget()){
+                // Reached bound on number of conflicts:
+                progress_estimate = progressEstimate();
+                cancelUntil(0);
+                return l_Undef; }
 
             // Simplify the set of problem clauses:
             if (decisionLevel() == 0 && !simplify())
                 return l_False;
 
-            // modified by nabesima
-            if (!ag_reduce_db && learnts.size()-nAssigns() >= max_learnts)  // Minisat version
+            if (learnts.size()-nAssigns() >= max_learnts)
                 // Reduce the set of learnt clauses:
                 reduceDB();
-            else if (ag_reduce_db && conflicts > reduce_db_limit) {  // gluecose version
-            	reduceDB();
-            	reduce_db_limit += reduce_db_base + reduce_db_inc * reduce_dbs;
-            }
 
             Lit next = lit_Undef;
             while (decisionLevel() < assumptions.size()){
@@ -1324,53 +895,26 @@ static double luby(double y, int x){
 // NOTE: assumptions passed in member-variable 'assumptions'.
 lbool Solver::solve_()
 {
-    //begin narnosti
-    int sz = assumptions.size();
-    printf("Size of assumptions vector is %d\n",sz);
-    fflush(stdout);
-    //for(int i = 0; i < sz;i++){
-    //    printNick(assumptions.last());
-    //    assumptions.pop();
-    //}
-    
-    //end narnosti
     model.clear();
     conflict.clear();
     if (!ok) return l_False;
 
     solves++;
 
-
-    
     max_learnts               = nClauses() * learntsize_factor;
     learntsize_adjust_confl   = learntsize_adjust_start_confl;
     learntsize_adjust_cnt     = (int)learntsize_adjust_confl;
     lbool   status            = l_Undef;
 
-    // added by nabesima
-    if(max_learnts < reduce_db_base) {
-    	reduce_db_base = reduce_db_limit = (max_learnts/2 < 5000) ? 5000 : max_learnts/2;
-		reduce_db_inc  /= 2;
-    }
-
     if (verbosity >= 1){
-    	/*
         printf("============================[ Search Statistics ]==============================\n");
         printf("| Conflicts |          ORIGINAL         |          LEARNT          | Progress |\n");
-			printf("|           |    Vars  Clauses Literals |    Limit  Clauses Lit/Cl |          |\n");
+        printf("|           |    Vars  Clauses Literals |    Limit  Clauses Lit/Cl |          |\n");
         printf("===============================================================================\n");
-        */
-    	// modified by nabesima
-        printf("===============================[ Search Statistics ]================================\n");
-        printf("| Conflicts |          ORIGINAL         |          LEARNT               | Progress |\n");
-        printf("|           |    Vars  Clauses Literals |  Clauses Lit/Cl LBD/Cl DLV/Cl |          |\n");
-        printf("====================================================================================\n");
     }
-    
 
     // Search:
-    //int curr_restarts = 0;
-    curr_restarts = 0;    // modified by nabesima
+    int curr_restarts = 0;
     while (status == l_Undef){
         double rest_base = luby_restart ? luby(restart_inc, curr_restarts) : pow(restart_inc, curr_restarts);
         status = search(rest_base * restart_first);
@@ -1378,29 +922,23 @@ lbool Solver::solve_()
         curr_restarts++;
     }
 
-    // modified by nabesima
-    if (verbosity >= 1) {
-    	//printf("===============================================================================\n");
-        printLog();
-        printf("====================================================================================\n");
-    }
-    
-    
-    printf(" ");//narnosti
-    //printf("we're here!\n"); //narnosti
-    //fflush(stdout); //narnosti
+    if (verbosity >= 1)
+        printf("===============================================================================\n");
 
 
+    printf(" "); //narnosti
+    
     if (status == l_True){
         // Extend & copy model:
         model.growTo(nVars());
+        //printf("-------------------%d-------------\n",nVars());//narnosti
         for (int i = 0; i < nVars(); i++){
             model[i] = value(i);
-            //begin narnosti
-            //printf("variable %d is %d\n",i,toInt(model[i]));
-            //end narnosti
+            if(modelValue(i)!=model[i]) printf("\n\nWTF???\n\n");//narnosti
+            if(modelValue(i)!=l_True) printf("%d,",i); //narnosti
         }
-        //fflush(stdout); //narnosti
+        printf("\n"); //narnosti
+        fflush(stdout); //narnosti
     }else if (status == l_False && conflict.size() == 0)
         ok = false;
 
