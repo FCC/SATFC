@@ -1,12 +1,9 @@
 package ca.ubc.cs.beta.stationpacking.experiment;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -51,7 +48,48 @@ public class InstanceGenerationCommandLine {
 				"/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/ExperimentDir",
 				"-PACKING_CHANNELS",
 				"14,15,16",
+				/*
+				"--algoExec",
+				"python solverwrapper.py",
+				"--cutoffTime",
+				"1800",
+				"--execDir",
+				"SATsolvers",
+				"-SOLVER",
+				"picosat",s
+				*/
+				"-SEED",
+				"123"
 				};
+		
+		String[] aNArnostiRealArgs = {"-STATIONS_FILE",
+				"/Users/narnosti/Documents/FCCOutput/stations.csv",
+				"-DOMAINS_FILE",
+				"/Users/narnosti/Dropbox/Alex/2013 04 New Data/Domain 041813.csv",
+				"-CONSTRAINTS_FILE",
+				"/Users/narnosti/Dropbox/Alex/2013 04 New Data/Interferences 041813.csv",
+				"-EXPERIMENT_NAME",
+				"TestExperiment",
+				"-EXPERIMENT_DIR",
+				"/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/ExperimentDir",
+				/*
+				"-PACKING_CHANNELS",
+				"14,15,16",
+				"--algoExec",
+				"python solverwrapper.py",
+				"--cutoffTime",
+				"1800",
+				"--execDir",
+				"SATsolvers",
+				"-SOLVER",
+				"picosat",s
+				*/
+				"-SEED",
+				"123",
+				"-STARTING_STATIONS",
+				"24914"
+				};
+		
 		
 		String[] aPaxosArgs = {"-STATIONS_FILE",
 				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/stations2.csv",
@@ -65,7 +103,7 @@ public class InstanceGenerationCommandLine {
 				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Results/TestExperiment"
 				};
 		
-		args = aPaxosArgs;
+		args = aNArnostiRealArgs;
 		
 	
 		/**
@@ -101,44 +139,45 @@ public class InstanceGenerationCommandLine {
 	
 	    log.info("Creating solver...");
 	    //NA - this is temporary to allow communication with solver
-		MainSolver aTAE = new MainSolver(new String[02]);
+		MainSolver aTAE = new MainSolver(args);
 	    
 	    
 	    log.info("Creating experiment reporter...");
 		IExperimentReporter aExperimentReporter = new LocalExperimentReporter(aExecParameters.getExperimentDir(), aExecParameters.getExperimentName());
 			
-		log.info("Creating instance generation and beginning experiment...");
 		HashSet<Integer> aConsideredStationIDs = aExecParameters.getConsideredStationsIDs();
 		HashSet<Integer> aCurrentStationIDs = aExecParameters.getStartingStationsIDs();
-		List<Integer> aToConsiderStations = new ArrayList<Integer>();
+		HashSet<Station> aToConsiderStations = new HashSet<Station>();
 		HashSet<Integer> aChannels = aExecParameters.getPackingChannels();
+		log.info("Packing channels are "+aChannels);
 		
+		log.info("Beginning experiment...");
 		HashSet<Station> aStartingStations = new HashSet<Station>();
 		for(Station aStation : aStations){
 			if(aCurrentStationIDs.contains(aStation.getID())){
 				aStartingStations.add(aStation);
 			}
 			if(!aConsideredStationIDs.contains(aStation.getID())){
-				aToConsiderStations.add(aStation.getID());
+				aToConsiderStations.add(aStation);
 			}
 		}
 		Instance aInstance = new Instance(aStartingStations,aChannels);
-		Collections.shuffle(aToConsiderStations,new Random(aExecParameters.getSeed()));
-		Iterator<Integer> aStationIterator = aToConsiderStations.iterator();
+		Iterator<Station> aStationIterator = new InversePopulationStationIterator(aToConsiderStations, aExecParameters.getSeed());
 		while(aStationIterator.hasNext()) {
-			Integer aID = aStationIterator.next();
-			log.info("Trying to add {} to current set.",aID);
-			aCurrentStationIDs.add(aID);
+			Station aStation = aStationIterator.next();
+			log.info("Trying to add {} to current set.",aStation);
+			aCurrentStationIDs.add(aStation.getID());
 			try {
 				log.info("Solving instance of size {}.",aCurrentStationIDs.size());
 				
 				SolverResult aRunResult = aTAE.receiveMessage(aCurrentStationIDs,aChannels,1800.0);
 				aExperimentReporter.report(aInstance, aRunResult);
 				if(!aRunResult.getResult().equals(SATResult.SAT)){
-					log.info("Instance was UNSAT, removing station.");
-					aCurrentStationIDs.remove(aID);
+					log.info("Instance was UNSAT, removing "+aStation);
+					aCurrentStationIDs.remove(aStation.getID());
 				} else {
-					aInstance.addStation(aStationManager.get(aID));
+					log.info("Instance was SAT, with assignment "+aRunResult.getAssignment());
+					aInstance.addStation(aStationManager.get(aStation.getID()));
 				}
 				
 				//SolverResult aRunResult = SEND MESSAGE TO SOLVER with aCurrentStations, aChannels

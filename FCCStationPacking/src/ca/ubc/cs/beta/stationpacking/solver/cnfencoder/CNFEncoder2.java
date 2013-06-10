@@ -1,8 +1,11 @@
 package ca.ubc.cs.beta.stationpacking.solver.cnfencoder;
 
+
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
@@ -10,17 +13,46 @@ import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
 import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 
+
+//NA - I use LinkedHashSet because I want to get a consistent ordering for debugging purposes
+
+
 public class CNFEncoder2 implements ICNFEncoder2 {
 
 	
 	static final Set<Clause> fUNSAT_CLAUSES = new HashSet<Clause>();
-	static final Set<Integer> aEmpty = new HashSet<Integer>();
+	//static final Set<Integer> aEmpty = new HashSet<Integer>();
+	
+	Map<Integer,Integer> fExternalToInternal = new HashMap<Integer,Integer>();
+	Map<Integer,Integer> fInternalToExternal = new HashMap<Integer,Integer>();
 	
 	public CNFEncoder2(){
 		Set<Integer> aSingleVar = new HashSet<Integer>();
 		aSingleVar.add(1);
-		fUNSAT_CLAUSES.add(new Clause(aSingleVar,aEmpty));
-		fUNSAT_CLAUSES.add(new Clause(aEmpty,aSingleVar));
+		fUNSAT_CLAUSES.add(new Clause(aSingleVar,new HashSet<Integer>()));
+		fUNSAT_CLAUSES.add(new Clause(new HashSet<Integer>(),aSingleVar));
+		/*
+		Random r = new Random(1);
+		try{
+			int next;
+			int station = 301;
+			int channel = 2510;
+			for(int i = 0; i < 100000; i++){
+				if( varToChannel(stationChannelPairToVar(station,channel)) !=channel) {
+					throw new Exception("Error in decoding! Station: "+station+", Channel: "+channel+".\nGot Channel "+varToChannel(stationChannelPairToVar(station,channel)));
+				}
+				if(varToStationID(stationChannelPairToVar(station,channel)) != station) 
+					throw new Exception("Error in decoding! Station: "+station+", Channel: "+channel+".\nGot Station "+varToStationID(stationChannelPairToVar(station,channel)));
+				next = Math.abs(r.nextInt());
+				station = 1+new Double(next - 10000*Math.floor(next/10000)).intValue();
+				next = Math.abs(r.nextInt());
+				channel = 1+new Double(next - 10000*Math.floor(next/10000)).intValue();
+			}
+			throw new Exception("100000 station-channel pairs decoded accurately.");
+		} catch(Exception e){
+			e.printStackTrace();
+		}
+		*/
 	}
 	
 	/* NA - the new encode method
@@ -30,7 +62,7 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 	 * Another solution: store state in constructor
 	 */
 	public Set<Clause> encode(Instance aInstance, IConstraintManager aConstraintManager){
-		Set<Clause> aClauses = new HashSet<Clause>();
+		Set<Clause> aClauses = new LinkedHashSet<Clause>();
 		try{
 			aClauses.addAll(getBaseClauses(aInstance));
 		} catch(Exception e){
@@ -46,32 +78,37 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 	//Or I could pass a ConstraintManager and have decode do full verification (exactly one channel per station, in that station's domain, no constraints violated)
 	@Override
 	public Map<Integer,Set<Station>> decode(Instance aInstance, Clause aAssignment) throws Exception{
-		Map<Integer,Set<Station>> aChannelAssignments = new HashMap<Integer,Set<Station>>();
-		
 		Set<Integer> aInstanceDomain = aInstance.getChannels();
+		Map<Station,Integer> aAssignmentMap = new HashMap<Station,Integer>();
+		for(Integer aVar : aAssignment.getVars()){
+			Integer aChannel = varToChannel(aVar);
+			Station aStation = aInstance.getStation(varToStationID(aVar));
+			if(aStation != null){
+				if(aInstanceDomain.contains(aChannel)&&aStation.getDomain().contains(aChannel)){
+					Integer aPreviousChannel = aAssignmentMap.put(aStation, aChannel);
+					if(!(aPreviousChannel==null)){
+						System.out.println(aStation+" assigned to both Channel "+aChannel+" and Channel "+aPreviousChannel);
+						throw new Exception(aStation+" assigned to both Channel "+aChannel+" and Channel "+aPreviousChannel);
+					}
+				} else {
+					throw new Exception(aStation+" assigned to channel "+aChannel+", which is not feasible.");
+				}
+			}
+		}
+		if(aAssignmentMap.size()!=aInstance.getStations().size()) 
+			throw new Exception("Instance has "+aInstance.getStations().size()+" stations, but only "+aAssignmentMap.size()+" were assigned.");
+		Map<Integer,Set<Station>> aChannelAssignments = new HashMap<Integer,Set<Station>>();
 		for(Integer aChannel : aInstanceDomain){
 			aChannelAssignments.put(aChannel, new HashSet<Station>());
 		}
-		
-		Set<Integer> aAssignmentVariables = aAssignment.getVars();
-		if(aAssignmentVariables.size()==aInstance.getStations().size()){
-			for(Integer aVar : aAssignmentVariables){
-				Integer aChannel = varToChannel(aVar);
-				Integer aStationID = varToStationID(aVar);
-				if(aInstanceDomain.contains(aChannel)){
-					aChannelAssignments.get(aChannel).add(aInstance.getStation(aStationID));
-				} else {
-					throw new Exception("Station "+aStationID+" assigned to channel "+aChannel+", which is not in the packing instance.");
-				}
-			}
-		} else {
-			throw new Exception("This assignment makes "+aAssignmentVariables.size()+" assignments, but the instance has "+aInstance.getStations().size()+" stations.");
+		for(Station aStation : aAssignmentMap.keySet()){
+			aChannelAssignments.get(aAssignmentMap.get(aStation)).add(aStation);
 		}
 		return aChannelAssignments;
 	}
 		
 	private Set<Clause> getBaseClauses(Instance aInstance) throws Exception{
-		Set<Clause> aBaseClauseSet = new HashSet<Clause>();
+		Set<Clause> aBaseClauseSet = new LinkedHashSet<Clause>();
 		final Set<Integer> aInstanceDomain = aInstance.getChannels();
 		
 		for(Station aStation : aInstance.getStations()){
@@ -88,8 +125,7 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 			if(! aStationChannelPairVars.isEmpty()){
 				
 				//Encode that aStation must be assigned to at least one channel in its domain
-				aBaseClauseSet.add(new Clause(aStationChannelPairVars,aEmpty));
-				
+				aBaseClauseSet.add(new Clause(aStationChannelPairVars,new HashSet<Integer>()));
 				//Encode that aStation must be assigned to at most one channel in its domain
 				for(Integer aVar1 : aStationChannelPairVars){
 					for(Integer aVar2 : aStationChannelPairVars){
@@ -108,27 +144,40 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 		return aBaseClauseSet;
 	}
 	
+	public void translate(Clause aAssignment,Map<Integer,Integer> aMap){
+		for(Integer aVar : aAssignment.getVars()){
+			System.out.print("["+aMap.get(aVar)+"]"+aVar+"("+varToStationID(aVar)+":"+varToChannel(aVar)+"),");
+		}
+		System.out.println();
+	}
+	
 	private Set<Clause> getConstraintClauses(Instance aInstance, IConstraintManager aConstraintManager){
-		Set<Clause> aConstraintClauseSet = new HashSet<Clause>();
+		Set<Clause> aConstraintClauseSet = new LinkedHashSet<Clause>();
 		Set<Integer> aInstanceDomain = aInstance.getChannels();
 		for(Station aStation : aInstance.getStations()){
 			
 			//Encode co-channel constraints involving aStation
 			Set<Station> aCOInterferingStations = aConstraintManager.getCOInterferingStations(aStation);
+			aCOInterferingStations.retainAll(aInstance.getStations());
 			for(Station aInterferingStation : aCOInterferingStations){
 				for(Integer aChannel : aInstanceDomain){
-					Clause aClause = new Clause();
-					aClause.addLiteral(stationChannelPairToVar(aStation.getID(),aChannel),false);
-					aClause.addLiteral(stationChannelPairToVar(aInterferingStation.getID(),aChannel),false);
-					aConstraintClauseSet.add(aClause);
+					//Is this check worth doing? If we didn't do it, the encoding is still valid, but we include superfluous variables
+					if(aStation.getDomain().contains(aChannel)&&aInterferingStation.getDomain().contains(aChannel)){
+						Clause aClause = new Clause();
+						aClause.addLiteral(stationChannelPairToVar(aStation.getID(),aChannel),false);
+						aClause.addLiteral(stationChannelPairToVar(aInterferingStation.getID(),aChannel),false);
+						aConstraintClauseSet.add(aClause);
+					}
 				}
 			}
 			
 			//Encode adjacent-channel constraints involving aStation
 			Set<Station> aADJInterferingStations = aConstraintManager.getADJplusInterferingStations(aStation);
+			aADJInterferingStations.retainAll(aInstance.getStations());
 			for(Station aInterferingStation : aADJInterferingStations){
 				for(Integer aChannel : aInstanceDomain){
-					if(aInstanceDomain.contains(aChannel+1)){
+					//Is this check worth doing? If we didn't do it, the encoding is still valid, but we include superfluous variables
+					if(aInstanceDomain.contains(aChannel+1)&&aStation.getDomain().contains(aChannel)&&aInterferingStation.getDomain().contains(aChannel+1)){
 						Clause aClause = new Clause();
 						aClause.addLiteral(stationChannelPairToVar(aStation.getID(),aChannel),false);
 						aClause.addLiteral(stationChannelPairToVar(aInterferingStation.getID(),aChannel+1),false);
@@ -151,13 +200,18 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 	
 	private Integer varToChannel(Integer var){
 		Integer diag = new Double(Math.floor(Math.sqrt(2*var))).intValue();
+		if(diag*(diag+1)/2<var) diag = diag+1;
 		return getExternalChannel(var - diag*(diag-1)/2);
 	}
 	
 	private Integer varToStationID(Integer var){
 		Integer diag = new Double(Math.floor(Math.sqrt(2*var))).intValue();
+		if(diag*(diag+1)/2<var) diag = diag+1;
 		Integer channel = var - diag*(diag-1)/2;
-		return getExternalStationID(diag+1-channel);
+		Integer aExternalStationID = getExternalStationID(diag+1-channel);
+		if(aExternalStationID==null)
+			System.out.println("Trying to decode variable "+var);
+		return aExternalStationID;
 	}
 	
 	/* NA - currently no-ops
@@ -165,11 +219,24 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 	 * and similarly for channel matchings
 	 */
 	private Integer getInternalStationID(Integer aStationID){
-		return aStationID;
+		Integer aInternalID = fExternalToInternal.get(aStationID);
+		if(aInternalID==null){
+			aInternalID = fExternalToInternal.size()+1;
+			fExternalToInternal.put(aStationID,aInternalID);
+			fInternalToExternal.put(aInternalID, aStationID);
+		}
+		return aInternalID;
 	}
 	
 	private Integer getExternalStationID(Integer aInternalStationID){
-		return aInternalStationID;
+		Integer aExternalID = fInternalToExternal.get(aInternalStationID);
+		if(aExternalID==null) try{
+			throw new Exception("Cannot decode internal ID "+aInternalStationID+" in CNFEncoder");	
+		} catch(Exception e){
+			e.printStackTrace();
+			System.out.println(fExternalToInternal);
+		}
+		return aExternalID;
 	}
 		
 	private Integer getInternalChannel(Integer aChannel){
