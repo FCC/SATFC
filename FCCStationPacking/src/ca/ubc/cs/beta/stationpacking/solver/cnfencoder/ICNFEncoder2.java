@@ -28,5 +28,6 @@ public interface ICNFEncoder2 {
 	 */
 	public Map<Integer,Set<Station>> decode(Instance aInstance, Clause aAssignment) throws Exception;
 
+	public void translate(Clause aClause, Map<Integer,Integer> aMap);
 	
 }

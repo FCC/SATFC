@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.io.FileUtils;
 
 import ca.ubc.cs.beta.aclib.algorithmrun.AlgorithmRun;
@@ -37,7 +36,6 @@ import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.ConstraintGrouper;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponentGrouper;
@@ -180,7 +178,7 @@ public class TAESolver implements ISolver{
 				if (!aSolverResult.getResult().equals(SATResult.SAT) )
 				{
 					System.out.println(aComponentInstance);
-					return new SolverResult(SATResult.UNSAT,0.0,new HashMap<Integer,HashSet<Station>>());
+					return new SolverResult(SATResult.UNSAT,0.0,new HashMap<Integer,Set<Station>>());
 				}
 				
 				aComponentResults.add(aSolverResult);
@@ -236,7 +234,7 @@ public class TAESolver implements ISolver{
 
 				double aRuntime = aRun.getRuntime();				
 				SATResult aResult;
-				HashMap<Integer,HashSet<Station>> aAssignment = new HashMap<Integer,HashSet<Station>>();
+				Map<Integer,Set<Station>> aAssignment = new HashMap<Integer,Set<Station>>();
 				switch (aRun.getRunResult()){
 					case SAT:
 						aResult = SATResult.SAT;
@@ -300,12 +298,12 @@ public class TAESolver implements ISolver{
 		}
 		
 		//Merge assignments
-		HashMap<Integer,HashSet<Station>> aAssignment = new HashMap<Integer,HashSet<Station>>();
+		Map<Integer,Set<Station>> aAssignment = new HashMap<Integer,Set<Station>>();
 		if(aSATResult.equals(SATResult.SAT))
 		{
 			for(SolverResult aComponentResult : aComponentResults)
 			{
-				HashMap<Integer,HashSet<Station>> aComponentAssignment = aComponentResult.getAssignment();
+				Map<Integer,Set<Station>> aComponentAssignment = aComponentResult.getAssignment();
 				for(Integer aAssignedChannel : aComponentAssignment.keySet())
 				{
 					if(!aAssignment.containsKey(aAssignedChannel))
