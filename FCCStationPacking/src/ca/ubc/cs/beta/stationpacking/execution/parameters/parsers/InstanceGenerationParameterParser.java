@@ -122,5 +122,11 @@ public class InstanceGenerationParameterParser extends AbstractOptions {
 	{
 		return fSeed;
 	}
+	
+	@Parameter(names = "-CUTOFF", description = "Algorithm cutoff time.")
+	private double fCutoff = 1800.0;
+	public double getCutoffTime(){
+		return fCutoff;
+	}
 
 }

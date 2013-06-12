@@ -54,8 +54,9 @@ public class InstanceGeneration {
 				if(!aRunResult.getResult().equals(SATResult.SAT)){
 					log.info("Instance was UNSAT, removing {}",aStation);
 					aInstance.removeStation(aStation);						
-				}
-				
+				} else {
+					log.info("Instance was SAT, with assignment "+aRunResult.getAssignment());
+				}				
 			} 
 			catch (Exception e){ 
 				e.printStackTrace();

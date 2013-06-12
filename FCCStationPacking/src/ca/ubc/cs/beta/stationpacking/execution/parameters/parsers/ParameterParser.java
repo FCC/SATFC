@@ -60,4 +60,15 @@ public class ParameterParser extends AbstractOptions {
 	{
 		return fCNFOutputName;
 	}
+	
+	@Parameter(names = "-LIBRARY", description = "Path to incremental SAT library.")
+	private String fLibraryPath;
+	public String getIncrementalLibraryLocation(){
+		//Insert check here? I want it to be required IF we're using an incremental solver.
+		return fLibraryPath;
+	}
+	
+	public boolean useIncrementalSolver(){
+		return getSolver().equals("glueminisat-incremental");
+	}
 }

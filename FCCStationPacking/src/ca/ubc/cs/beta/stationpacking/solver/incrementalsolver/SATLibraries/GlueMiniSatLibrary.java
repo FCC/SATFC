@@ -262,8 +262,9 @@ public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 	        }
 		}
 		
-		
+		/* Used for debugging
 		public Map<Integer,Integer> getMap(){
 			return fExternalToInternal;
 		}
+		*/
 }

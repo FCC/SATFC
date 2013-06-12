@@ -70,6 +70,39 @@ public class InstanceGenerationExecutor {
 				"1"
 				};
 		*/
+		
+		String[] aNArnostiRealArgs = {"-STATIONS_FILE",
+				"/Users/narnosti/Documents/FCCOutput/stations.csv",
+				"-DOMAINS_FILE",
+				"/Users/narnosti/Dropbox/Alex/2013 04 New Data/Domain 041813.csv",
+				"-CONSTRAINTS_FILE",
+				"/Users/narnosti/Dropbox/Alex/2013 04 New Data/Interferences 041813.csv",
+				"-EXPERIMENT_NAME",
+				"TestExperiment",
+				"-EXPERIMENT_DIR",
+				"/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/ExperimentDir",
+				"-CNF_DIR",
+				"/Users/narnosti/Documents/FCCOutput/CNFs",
+				/*
+				"-PACKING_CHANNELS",
+				"14,15,16",
+				*/
+				"--algoExec",
+				"python solverwrapper.py",
+				"--cutoffTime",
+				"1800",
+				"--execDir",
+				"SATsolvers",
+				"-SOLVER",
+				"picosat",
+				/*
+				"-SEED",
+				"123",
+				"-STARTING_STATIONS",
+				"24914"
+				*/
+				};
+		
 		String[] aPaxosTargetArgs = {"-STATIONS_FILE",
 				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/stations2.csv",
 				"-DOMAINS_FILE",
@@ -106,7 +139,7 @@ public class InstanceGenerationExecutor {
 				*/
 				};
 		
-		args = aPaxosTargetArgs;
+		args = aNArnostiRealArgs;
 		
 	
 		/**
