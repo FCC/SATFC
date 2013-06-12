@@ -21,24 +21,40 @@ import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries.IIncr
 
 public class IncrementalSolver implements ISolver{
 	
-	//Used to encode the Instance
+	/*
+	 * Used to encode the Instance
+	 */
 	IConstraintManager fConstraintManager;
 	ICNFEncoder2 fEncoder;
 
 
-	//Each added clause contains the literal !curCount 
-	//(when we solve with assumptions, we "activate" clauses for which the corresponding variable is true)
-	Clause fAssumptions;
+	/*
+	 * Each added clause contains the literal !(-curCount)
+	 */
 	Integer curCount;
-	//final Integer fNumDummyVariables;
 	
-	//Clauses in fCurrentClauses DO NOT include the dummy variables
+	/*
+	 * When we solve with assumptions, we "activate" clauses for which the corresponding variable is true
+	 * Clauses in fCurrentClauses DO NOT include the dummy variables
+	 */
 	Instance fCurrentInstance;
 	Set<Clause> fCurrentClauses;
+	Clause fAssumptions;
 	
-	//Used to solve the Instance
+	/*
+	 * For resetting to a flagged state
+	 */
+	Instance fFlaggedInstance = new Instance();
+	Set<Clause> fFlaggedClauses = new HashSet<Clause>(); //can't recover these from fFlaggedInstance because we may have added "side" clauses
+	Clause fFlaggedAssumptions = new Clause();
+	boolean fResetFlag = false; //'true' indicates that we have called reset() more recently than flagState()
+
+	
+	/*
+	 * Used to solve the Instance
+	 */
 	IIncrementalSATLibrary fIncrementalSATLibrary;
-	double fSeed;
+	double fSeed; //currently unused
 	
 	private static Logger log = LoggerFactory.getLogger(IncrementalSolver.class);
 
@@ -58,19 +74,19 @@ public class IncrementalSolver implements ISolver{
 	}
 	
 	/*
-	 * Do we need all variables up front, or not?
 	 * Also should be told whether to save state (never do if you get UNSAT, but if you get SAT...)
 	 */
 	
 	@Override
 	//If stations are superset and channels are subset (or if we had no instance previously), go incremental
 	public SolverResult solve(Instance aInstance, double aCutoff) throws Exception {
+		
+		//Get
 		Set<Clause> aNewClauses = fEncoder.encode(aInstance, fConstraintManager);
 		aNewClauses = fEncoder.encode(aInstance, fConstraintManager);
 		if(	(!aInstance.getStations().containsAll(fCurrentInstance.getStations())) ||
 			(!fCurrentInstance.getChannels().containsAll(aInstance.getChannels()))){
 			reset(); //Can only use incremental if new station set is larger, new channel set smaller
-			log.info("Cannot use incremental capability, re-setting...");
 		}
 		
 		//log.info("Adding clauses to library...");
@@ -113,7 +129,6 @@ public class IncrementalSolver implements ISolver{
 						throw new Exception("Assumption Not Satisfied: tried to remove -"+aNegatedVar);
 					}
 				}
-				fEncoder.translate(aAssignment, fIncrementalSATLibrary.getMap());
 				aStationAssignment = fEncoder.decode(aInstance, aAssignment);
 				fCurrentInstance = aInstance;
 				fCurrentClauses.addAll(aNewlyAddedClauses);
@@ -139,11 +154,55 @@ public class IncrementalSolver implements ISolver{
 	
 	
 	private void reset(){
+		log.info("Cannot use incremental capability, re-setting...");
 		fIncrementalSATLibrary.clear();
 		fCurrentInstance = new Instance();
 		fCurrentClauses = new HashSet<Clause>();
 		fAssumptions = new Clause();
 		curCount = 1;
+		fResetFlag = true;
+	}
+	
+	/* Store the current state
+	 * 
+	 */
+	public void flagState(){
+		fFlaggedInstance = new Instance(fCurrentInstance.getStations(),fCurrentInstance.getChannels());
+		fFlaggedClauses = new HashSet<Clause>(fCurrentClauses);
+		fFlaggedAssumptions = new Clause(fAssumptions.getVars(),fAssumptions.getNegatedVars());
+		fResetFlag = false;
+	}
+	
+
+	/*
+	 * 
+	 */
+	public void resetToFlaggedState(){
+		if(!fResetFlag){ //We haven't reset since our last flagged state
+			fCurrentInstance = fFlaggedInstance;
+			fCurrentClauses = fFlaggedClauses;
+			for(int i = 1; i < curCount; i++){ //Make sure to "turn off" clauses that have been added since the Flag
+				if(!fFlaggedAssumptions.getVars().contains(i)) fFlaggedAssumptions.addLiteral(i, false);
+			}
+			fAssumptions = fFlaggedAssumptions;
+		} else { //We have reset, so we need to do so again, re-populate fIncrementalSATLibrary with clauses
+			reset();
+			fCurrentInstance = fFlaggedInstance;
+			fCurrentClauses = fFlaggedClauses;
+			for(Clause aClause : fCurrentClauses){
+				Clause aCopyClause = new Clause(aClause.getVars(),aClause.getNegatedVars());
+				aCopyClause.addLiteral(-curCount, false);
+				fIncrementalSATLibrary.addClause(aCopyClause);
+			}
+			curCount++;
+		}
+
+		flagState(); //Called to create "new" FlaggedInstance and Assumptions (so that modifications to fCurrent don't change fFlagged)
+	}
+	
+	
+	public void addClause(){
+		
 	}
 
 }

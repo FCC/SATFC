@@ -87,7 +87,7 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 				if(aInstanceDomain.contains(aChannel)&&aStation.getDomain().contains(aChannel)){
 					Integer aPreviousChannel = aAssignmentMap.put(aStation, aChannel);
 					if(!(aPreviousChannel==null)){
-						System.out.println(aStation+" assigned to both Channel "+aChannel+" and Channel "+aPreviousChannel);
+						//System.out.println(aStation+" assigned to both Channel "+aChannel+" and Channel "+aPreviousChannel);
 						throw new Exception(aStation+" assigned to both Channel "+aChannel+" and Channel "+aPreviousChannel);
 					}
 				} else {
@@ -144,12 +144,14 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 		return aBaseClauseSet;
 	}
 	
+	/* NA: Used for debugging
 	public void translate(Clause aAssignment,Map<Integer,Integer> aMap){
 		for(Integer aVar : aAssignment.getVars()){
 			System.out.print("["+aMap.get(aVar)+"]"+aVar+"("+varToStationID(aVar)+":"+varToChannel(aVar)+"),");
 		}
 		System.out.println();
 	}
+	*/
 	
 	private Set<Clause> getConstraintClauses(Instance aInstance, IConstraintManager aConstraintManager){
 		Set<Clause> aConstraintClauseSet = new LinkedHashSet<Clause>();

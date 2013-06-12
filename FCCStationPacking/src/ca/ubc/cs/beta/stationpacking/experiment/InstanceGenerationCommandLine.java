@@ -17,20 +17,25 @@ import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.aclib.options.ConfigToLaTeX;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 import ca.ubc.cs.beta.stationpacking.datamanagers.DACStationManager;
-import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
-import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
-import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.execution.MainSolver;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.parsers.InstanceGenerationParameterParser;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.LocalExperimentReporter;
+import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 
 
 public class InstanceGenerationCommandLine {
 		
 	private static Logger log = LoggerFactory.getLogger(InstanceGenerationCommandLine.class);
 
+	
+	/**
+	 * This class is designed to take command-line parameters, create a solver,
+	 * and then perform an "instance generation" run.
+	 */
+	
+	
 	public static void main(String[] args) throws Exception {
 		
 		/**
@@ -51,13 +56,14 @@ public class InstanceGenerationCommandLine {
 				/*
 				"--algoExec",
 				"python solverwrapper.py",
-				"--cutoffTime",
-				"1800",
+
 				"--execDir",
 				"SATsolvers",
 				"-SOLVER",
 				"picosat",s
 				*/
+				"-CUTOFF",
+				"20.0",
 				"-SEED",
 				"123"
 				};
@@ -104,11 +110,46 @@ public class InstanceGenerationCommandLine {
 				};
 		
 		args = aNArnostiRealArgs;
+
+	    log.info("Creating solver...");
+		ISolver aSolver = new MainSolver(args);
+	    
+	    InstanceGenerationParameterParser aExecParameters = getParameterParser(args);
 		
+	    log.info("Creating experiment reporter...");
+		IExperimentReporter aExperimentReporter = new LocalExperimentReporter(aExecParameters.getExperimentDir(), aExecParameters.getExperimentName());
+			
+		InstanceGeneration aInstanceGeneration = new InstanceGeneration(aSolver,aExperimentReporter);
+		
+		
+		HashSet<Integer> aChannels = aExecParameters.getPackingChannels();
+		log.info("Packing channels are "+aChannels);
+		
+		
+		log.info("Getting station information...");
+		DACStationManager aStationManager = new DACStationManager(aExecParameters.getRepackingDataParameters().getStationFilename(),aExecParameters.getRepackingDataParameters().getDomainFilename());
+	    Set<Station> aStations = aStationManager.getStations();
+		HashSet<Integer> aConsideredStationIDs = aExecParameters.getConsideredStationsIDs();
+		HashSet<Integer> aCurrentStationIDs = aExecParameters.getStartingStationsIDs();
+		HashSet<Station> aToConsiderStations = new HashSet<Station>();
+		HashSet<Station> aStartingStations = new HashSet<Station>();
+		for(Station aStation : aStations){
+			if(aCurrentStationIDs.contains(aStation.getID())){
+				aStartingStations.add(aStation);
+			}
+			if(!aConsideredStationIDs.contains(aStation.getID())){
+				aToConsiderStations.add(aStation);
+			}
+		}
+		Iterator<Station> aStationIterator = new InversePopulationStationIterator(aToConsiderStations, aExecParameters.getSeed());
+
+		log.info("Beginning experiment...");
+		aInstanceGeneration.run(aStartingStations, aStationIterator, aChannels, aExecParameters.getCutoffTime());
+
+	}
 	
-		/**
-		 * 
-		**/
+	private static InstanceGenerationParameterParser getParameterParser(String[] args){
+		
 		//TAE Options
 		Map<String,AbstractOptions> aAvailableTAEOptions = TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators();
 		
@@ -129,69 +170,7 @@ public class InstanceGenerationCommandLine {
 			ConfigToLaTeX.usage(sections, showHiddenParameters);
 			
 			log.error(aParameterException.getMessage());
-			return;
 		}
-		
-		//Use the parameters to instantiate the experiment.
-		log.info("Getting data...");
-		DACStationManager aStationManager = new DACStationManager(aExecParameters.getRepackingDataParameters().getStationFilename(),aExecParameters.getRepackingDataParameters().getDomainFilename());
-	    Set<Station> aStations = aStationManager.getStations();
-	
-	    log.info("Creating solver...");
-	    //NA - this is temporary to allow communication with solver
-		MainSolver aTAE = new MainSolver(args);
-	    
-	    
-	    log.info("Creating experiment reporter...");
-		IExperimentReporter aExperimentReporter = new LocalExperimentReporter(aExecParameters.getExperimentDir(), aExecParameters.getExperimentName());
-			
-		HashSet<Integer> aConsideredStationIDs = aExecParameters.getConsideredStationsIDs();
-		HashSet<Integer> aCurrentStationIDs = aExecParameters.getStartingStationsIDs();
-		HashSet<Station> aToConsiderStations = new HashSet<Station>();
-		HashSet<Integer> aChannels = aExecParameters.getPackingChannels();
-		log.info("Packing channels are "+aChannels);
-		
-		log.info("Beginning experiment...");
-		HashSet<Station> aStartingStations = new HashSet<Station>();
-		for(Station aStation : aStations){
-			if(aCurrentStationIDs.contains(aStation.getID())){
-				aStartingStations.add(aStation);
-			}
-			if(!aConsideredStationIDs.contains(aStation.getID())){
-				aToConsiderStations.add(aStation);
-			}
-		}
-		Instance aInstance = new Instance(aStartingStations,aChannels);
-		Iterator<Station> aStationIterator = new InversePopulationStationIterator(aToConsiderStations, aExecParameters.getSeed());
-		while(aStationIterator.hasNext()) {
-			Station aStation = aStationIterator.next();
-			log.info("Trying to add {} to current set.",aStation);
-			aCurrentStationIDs.add(aStation.getID());
-			try {
-				log.info("Solving instance of size {}.",aCurrentStationIDs.size());
-				
-				SolverResult aRunResult = aTAE.receiveMessage(aCurrentStationIDs,aChannels,1800.0);
-				aExperimentReporter.report(aInstance, aRunResult);
-				if(!aRunResult.getResult().equals(SATResult.SAT)){
-					log.info("Instance was UNSAT, removing "+aStation);
-					aCurrentStationIDs.remove(aStation.getID());
-				} else {
-					log.info("Instance was SAT, with assignment "+aRunResult.getAssignment());
-					aInstance.addStation(aStationManager.get(aStation.getID()));
-				}
-				
-				//SolverResult aRunResult = SEND MESSAGE TO SOLVER with aCurrentStations, aChannels
-				//log.info("Result: {}",aRunResult);
-				//aExperimentReporter.report(aInstance, aRunResult);
-				//if(!aRunResult.getResult().equals(SATResult.SAT)){
-					//log.info("Instance was UNSAT, removing station.");
-					//aCurrentStationIDs.remove(aID);
-				//} else {
-					//aInstance.addStation(aStationManager.get(aID));
-				//}
-			} catch (Exception e){ 
-					e.printStackTrace();
-			}
-		} 
+		return aExecParameters;
 	}
 }
