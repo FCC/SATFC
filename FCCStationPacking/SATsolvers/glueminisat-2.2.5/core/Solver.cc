@@ -1325,9 +1325,9 @@ static double luby(double y, int x){
 lbool Solver::solve_()
 {
     //begin narnosti
-    int sz = assumptions.size();
-    printf("Size of assumptions vector is %d\n",sz);
-    fflush(stdout);
+    //int sz = assumptions.size();
+    //printf("Size of assumptions vector is %d\n",sz);
+    //fflush(stdout);
     //for(int i = 0; i < sz;i++){
     //    printNick(assumptions.last());
     //    assumptions.pop();
@@ -1385,10 +1385,7 @@ lbool Solver::solve_()
         printf("====================================================================================\n");
     }
     
-    
-    printf(" ");//narnosti
-    //printf("we're here!\n"); //narnosti
-    //fflush(stdout); //narnosti
+
 
 
     if (status == l_True){
@@ -1405,6 +1402,7 @@ lbool Solver::solve_()
         ok = false;
 
     cancelUntil(0);
+    fflush(stdout);     //narnosti - need the fflush call; else the solver fails on some input
     return status;
 }
 
