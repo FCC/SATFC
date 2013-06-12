@@ -42,7 +42,7 @@ import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.Constrain
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponentGrouper;
 
 
-public class MainSolver {
+public class MainSolver  implements ISolver{
 	
 	private static Logger log = LoggerFactory.getLogger(MainSolver.class);
 	private ISolver fSolver;
@@ -172,5 +172,11 @@ public class MainSolver {
 			log.error(aParameterException.getMessage());
 		}
 		return aExecParameters;
+	}
+
+	@Override
+	public SolverResult solve(Instance aInstance, double aCutoff)
+			throws Exception {
+		return(fSolver.solve(aInstance, aCutoff));
 	}
 }
