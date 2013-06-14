@@ -65,7 +65,11 @@ public class InstanceGenerationCommandLine {
 				"-CUTOFF",
 				"20.0",
 				"-SEED",
-				"123"
+				"123",
+				"-SOLVER",
+				"glueminisat-incremental",
+				"-LIBRARY",
+				"/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/SATsolvers/glueminisat-2.2.5/core/libglueminisat.so",
 				};
 		
 		String[] aNArnostiRealArgs = {"-STATIONS_FILE",
@@ -93,7 +97,11 @@ public class InstanceGenerationCommandLine {
 				"-SEED",
 				"123",
 				"-STARTING_STATIONS",
-				"24914"
+				"24914",
+				"-SOLVER",
+				"glueminisat-incremental",
+				"-LIBRARY",
+				"/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/SATsolvers/glueminisat-2.2.5/core/libglueminisat.so",
 				};
 		
 		
@@ -110,11 +118,12 @@ public class InstanceGenerationCommandLine {
 				};
 		
 		args = aNArnostiRealArgs;
+		
+	    InstanceGenerationParameterParser aExecParameters = getParameterParser(args);
 
 	    log.info("Creating solver...");
 		ISolver aSolver = new MainSolver(args);
 	    
-	    InstanceGenerationParameterParser aExecParameters = getParameterParser(args);
 		
 	    log.info("Creating experiment reporter...");
 		IExperimentReporter aExperimentReporter = new LocalExperimentReporter(aExecParameters.getExperimentDir(), aExecParameters.getExperimentName());
@@ -149,7 +158,7 @@ public class InstanceGenerationCommandLine {
 	}
 	
 	private static InstanceGenerationParameterParser getParameterParser(String[] args){
-		
+				
 		//TAE Options
 		Map<String,AbstractOptions> aAvailableTAEOptions = TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators();
 		
@@ -162,6 +171,8 @@ public class InstanceGenerationCommandLine {
 		}
 		catch (ParameterException aParameterException)
 		{
+			log.error(aParameterException.getMessage());
+
 			List<UsageSection> sections = ConfigToLaTeX.getParameters(aExecParameters, aAvailableTAEOptions);
 			
 			boolean showHiddenParameters = false;
@@ -169,8 +180,9 @@ public class InstanceGenerationCommandLine {
 			//A much nicer usage screen than JCommander's 
 			ConfigToLaTeX.usage(sections, showHiddenParameters);
 			
-			log.error(aParameterException.getMessage());
 		}
+
+
 		return aExecParameters;
 	}
 }
