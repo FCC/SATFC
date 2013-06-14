@@ -128,5 +128,6 @@ public class InstanceGenerationParameterParser extends AbstractOptions {
 	public double getCutoffTime(){
 		return fCutoff;
 	}
+	
 
 }
