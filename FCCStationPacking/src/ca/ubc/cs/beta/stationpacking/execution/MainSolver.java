@@ -110,7 +110,7 @@ public class MainSolver  implements ISolver{
 		System.out.println(aExecParameters.getCNFDirectory());
 		System.out.println(aExecParameters.getIncrementalLibraryLocation());
 		System.out.println(aExecParameters.getSolver());
-		if(true/*aExecParameters.useIncrementalSolver()*//*the solver requested is incremental*/){
+		if(aExecParameters.useIncrementalSolver()/*the solver requested is incremental*/){
 			/* get incremental options - 
 			 * which type of incremental solver (memcopy or dummyvar)
 			 * if(dummyvar), how many dummy variables to use
