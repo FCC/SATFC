@@ -94,6 +94,7 @@ public class MainSolver  implements ISolver{
 		
 		log.info("Parsing parameters...");
 		Map<String,AbstractOptions> aAvailableTAEOptions = TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators();
+		System.out.println("\n\n\n\n\n\n\n\n\n\n");
 		ParameterParser aExecParameters = getParameterParser(args,aAvailableTAEOptions);
 		
 		log.info("Getting station information...");
@@ -106,9 +107,25 @@ public class MainSolver  implements ISolver{
 		log.info("Creating solver...");
 		ICNFEncoder aCNFEncoder = new CNFEncoder();
 		
-		boolean taeSolver = false;
-		if(taeSolver/*the solver requested requires a TAEsolver*/){
-			
+		System.out.println(aExecParameters.getCNFDirectory());
+		System.out.println(aExecParameters.getIncrementalLibraryLocation());
+		System.out.println(aExecParameters.getSolver());
+		if(true/*aExecParameters.useIncrementalSolver()*//*the solver requested is incremental*/){
+			/* get incremental options - 
+			 * which type of incremental solver (memcopy or dummyvar)
+			 * if(dummyvar), how many dummy variables to use
+			 * which solver library (glueminisat or other?)
+			 * any other parameters needed
+			 */
+			ICNFEncoder2 aCNFEncoder2 = new CNFEncoder2();
+			String aLibraryPath = aExecParameters.getIncrementalLibraryLocation();
+			//String aLibraryPath = "/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/SATsolvers/glueminisat-2.2.5/core/libglueminisat.so";
+			//String aLibraryPath = "/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/SATsolvers/minisat/core/libminisat.so";
+			IIncrementalSATLibrary aSATLibrary = new GlueMiniSatLibrary(aLibraryPath);
+			fSolver = new IncrementalSolver(aConstraintManager, aCNFEncoder2, aSATLibrary, aExecParameters.getSeed());
+
+		} else {			
+		
 			ICNFResultLookup aCNFLookup = new HybridCNFResultLookup(aExecParameters.getCNFDirectory(), aExecParameters.getCNFOutputName());
 			IComponentGrouper aGrouper = new ConstraintGrouper();
 			
@@ -124,18 +141,6 @@ public class MainSolver  implements ISolver{
 				if(aTAE != null){ aTAE.notifyShutdown();}
 			}
 			
-		} else if(true /*the solver is incremental*/){
-			/* get incremental options - 
-			 * which type of incremental solver (memcopy or dummyvar)
-			 * if(dummyvar), how many dummy variables to use
-			 * which solver library (glueminisat or other?)
-			 * any other parameters needed
-			 */
-			ICNFEncoder2 aCNFEncoder2 = new CNFEncoder2();
-			String aLibraryPath = "/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/SATsolvers/glueminisat-2.2.5/core/libglueminisat.so";
-			//String aLibraryPath = "/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/SATsolvers/minisat/core/libminisat.so";
-			IIncrementalSATLibrary aSATLibrary = new GlueMiniSatLibrary(aLibraryPath);
-			fSolver = new IncrementalSolver(aConstraintManager, aCNFEncoder2, aSATLibrary, aExecParameters.getSeed());			
 		}
 		
 	}
