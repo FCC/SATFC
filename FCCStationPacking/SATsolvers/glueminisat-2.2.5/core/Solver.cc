@@ -50,14 +50,24 @@ extern "C"
     }
     
     bool BOOL(bool x) { if (x) return 1; return 0; }
-
+    
     //state passed as int so that we can ensure that it is either 0 or 1 (as mkLit assumes)
     //if state has type bool, the compiler optimizes "state ? 1 : 0" away, giving us a problem
     void addLitToVec(void* _vec, int variable, int state){
-        
         reinterpret_cast<vec<Lit>*>(_vec)->push(mkLit(variable, BOOL(state)));
     }
-
+    
+    bool addClause(void* _solver, void* _vec){
+        vec<Lit>* ps = reinterpret_cast<vec<Lit>*>(_vec);
+        return reinterpret_cast<Solver*>(_solver)->addClause(*ps);
+    }
+    
+    //Parameter is the pointer to the solver that was made with createSolver()
+    bool solve(void* _solver)
+    {
+        Solver* solver = (Solver*) _solver;
+        return solver->solve();
+    }
 
     bool solveWithAssumptions(void* _solver, void* _vec){
         //vec<Lit>* ps = reinterpret_cast<vec<Lit>*>(_vec);
@@ -68,67 +78,26 @@ extern "C"
         return reinterpret_cast<Solver*>(_solver)->solve(mkLit(variable,BOOL(state)));
     }
     
-    int nVars(void* _solver){
-        return reinterpret_cast<Solver*>(_solver)->nVars();
-    }
-    
     int newVar(void* _solver){
         return reinterpret_cast<Solver*>(_solver)->newVar();
     }
     
+    int nVars(void* _solver){
+        return reinterpret_cast<Solver*>(_solver)->nVars();
+    }
+    
+
     bool okay(void* _solver){
         return reinterpret_cast<Solver*>(_solver)->okay();
     }
     
-    bool addClause(void* _solver, void* _vec){
-        vec<Lit>* ps = reinterpret_cast<vec<Lit>*>(_vec);
-        //int sz = ps->size();
-        //printf("Size of vector is %d\n",sz);
-        //for(int i = 0; i < sz-1; i++){
-            //reinterpret_cast<Solver*>(_solver)->printNick(ps->last());
-            //ps->pop();
-        //}
-        //fflush(stdout);
-        return reinterpret_cast<Solver*>(_solver)->addClause(*ps);
-    }
-    
-    
-    
-    
-    //state passed as int so that we can ensure that it is either 0 or 1 (as mkLit assumes)
-    //if state has type bool, the compiler optimizes "state ? 1 : 0" away, giving us a problem
-    void printLit(void* _solver, int variable, int state){
-        Solver* solver = (Solver*) _solver;
-        solver->printNick(mkLit(variable,BOOL(state)));
-
-    }
-    
-    //First parameter is the pointer to the solver that was made earlier
-    bool solve(void* _solver)
-    {
-        //Cast the pointer into something useful...
-        Solver* solver = (Solver*) _solver;
-        //Run the actual method that you want
-        return solver->solve();
-    }
-    
-    int testing(void* _solver, int i){
-        //Cast the pointer into something useful...
-        Solver* solver = (Solver*) _solver;
-        //Run the actual method that you want
-        return solver->testing(i);
-    }
-    
-    //bool value(void* _solver, int var){
-    //    return (reinterpret_cast<Solver*>(_solver)->modelValue(var)!=l_True);
-    //}
-    
+    //Important that the return value be an int (not a bool) - otherwise it doesn't play well with Java
     int value(void* _solver, int var){
         Solver* s = reinterpret_cast<Solver*>(_solver);
-        bool b = (s->modelValue(var)!=l_True);
-        return b;
+        //bool b = (s->modelValue(var)!=l_True);
+        //return b;
+        return (s->modelValue(var)!=l_True);
     }
-
 
 }
 
@@ -192,15 +161,6 @@ static double luby(double y, int x);
 #define RS_LBD_DLV_LUBY  4
 #define RS_LBD_DLV_IMPLS 5
 
-// added by narnosti
-Var Solver::testing(Var i){
-	return i;
-}
-void Solver::printNick(Lit p) {
-    printf("%s%d\n",sign(p) ? "" : "-",var(p));
-    fflush(stdout);
-}
-//end: added by narnosti
 
 // added by nabesima
 void Solver::printLit(Lit l) {
@@ -1324,16 +1284,7 @@ static double luby(double y, int x){
 // NOTE: assumptions passed in member-variable 'assumptions'.
 lbool Solver::solve_()
 {
-    //begin narnosti
-    //int sz = assumptions.size();
-    //printf("Size of assumptions vector is %d\n",sz);
-    //fflush(stdout);
-    //for(int i = 0; i < sz;i++){
-    //    printNick(assumptions.last());
-    //    assumptions.pop();
-    //}
-    
-    //end narnosti
+
     model.clear();
     conflict.clear();
     if (!ok) return l_False;
@@ -1393,11 +1344,7 @@ lbool Solver::solve_()
         model.growTo(nVars());
         for (int i = 0; i < nVars(); i++){
             model[i] = value(i);
-            //begin narnosti
-            //printf("variable %d is %d\n",i,toInt(model[i]));
-            //end narnosti
         }
-        //fflush(stdout); //narnosti
     }else if (status == l_False && conflict.size() == 0)
         ok = false;
 

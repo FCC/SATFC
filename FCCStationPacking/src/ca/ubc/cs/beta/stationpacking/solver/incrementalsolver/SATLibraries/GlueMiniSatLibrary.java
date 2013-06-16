@@ -12,166 +12,101 @@ import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 
 
+/** This class provides an implementation of the IncrementalSATLibrary interface.
+ * Its backbone is the GMSLibrary interface (provided below). For each function listed in 
+ * this interface, there is a corresponding function (i.e. same signature) in the Solver.cc
+ * file in the glueminisat-2.2.5/core/ folder. 
+ * 
+ * Author: narnosti
+ */
+
 public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 	
 	
+	/* The path to the library to be loaded.
+	 */
 	String fLibraryPath;
+	
+	/* A set of function calls provided in Solver.cc (interface listed below)
+	 */
 	GMSLibrary fGMSsolver;
-	Pointer fSolverPointer; //need to provide a way to free this memory (a shutdown method)
+	
+	/* A call to createSolver() returns a pointer to a location in memory where the
+	 * GlueMiniSat Solver object is stored. Any time we want to use any methods in the
+	 * GlueMiniSat library, we must pass this pointer as an argument.
+	 * 
+	 * To be careful, we should provide some sort of "shut down library" call
+	 * so that this pointer can be freed, but there is only one pointer, and 
+	 * such a call would be made only if the program was about to exit.
+	 */
+	Pointer fSolverPointer;
+	
+	
+	/* GlueMiniSAT seems intent on using [0 ... n-1] as its variable names, so rather than
+	 * creating a number of variables equal to the maximum value of any external variable,
+	 * we have a map from external variables to the corresponding variables in GlueMiniSAT
+	 * (and the corresponding inverse). These grow any time clauses with previously unseen
+	 * variables are added.
+	 */
 	private Map<Integer,Integer> fExternalToInternal = new HashMap<Integer,Integer>();
 	private Map<Integer,Integer> fInternalToExternal = new HashMap<Integer,Integer>();
 
 	
-    public GlueMiniSatLibrary(String aLibraryPath){
-        fLibraryPath = aLibraryPath;
-        fGMSsolver = (GMSLibrary) Native.loadLibrary(fLibraryPath, GMSLibrary.class);
-		fSolverPointer = fGMSsolver.createSolver();
-		
-		Clause aClause;
-		/*
-		System.out.println("Testing trivially UNSAT instance...");
-        aClause = new Clause();
-        aClause.addLiteral(1,false);
-        addClause(aClause);
-        aClause = new Clause();
-        aClause.addLiteral(1,true);
-        addClause(aClause);
-        printResult(new Clause());
-        clear();
-        */
-        
-        /*
-		System.out.println("Testing trivially SAT instance...");
-        aClause = new Clause();
-        aClause.addLiteral(1,true);
-        addClause(aClause);
-        aClause = new Clause();
-        aClause.addLiteral(1,false);
-        aClause.addLiteral(2,true);
-        addClause(aClause);
-        printResult(new Clause());
-       
-        System.out.println("Now it should be UNSAT...");
-        aClause = new Clause();
-        aClause.addLiteral(2,false);
-        printResult(aClause);
-        clear();
-        */
-		
-		//fGMSsolver.printNick(fSolverPointer);
-        
-        System.out.println("Should give SAT.");
-        aClause = new Clause();
-        aClause.addLiteral(1,false);
-        aClause.addLiteral(2, true);
-        addClause(aClause);
-        aClause = new Clause();
-        aClause.addLiteral(2,false);
-        addClause(aClause);
-        aClause = new Clause();
-        printResult(aClause); 
-        
-        System.out.println("Should give UNSAT.");
-        aClause.addLiteral(1,true);
-        printResult(aClause);
-        
-        //System.out.println("Should give UNSAT.");
-        //System.out.println("Got "+fGMSsolver.solveWithOneAssumption(fSolverPointer, 0, true));
-        
-        System.out.println("Should give UNSAT.");
-        addClause(aClause);
-        printResult(new Clause());
-        
-        /*
-		System.out.println("Testing slightly more complicated SAT instance...");
-        aClause = new Clause();
-        aClause.addLiteral(1,true);
-        aClause.addLiteral(2,true);
-        aClause.addLiteral(3,true);
-        aClause.addLiteral(4,false);
-        addClause(aClause);
-        aClause = new Clause();
-        aClause.addLiteral(1,false);
-        aClause.addLiteral(2,false);
-        aClause.addLiteral(4,false);
-        addClause(aClause);
-        aClause = new Clause();
-        aClause.addLiteral(1,false);
-        aClause.addLiteral(3,false);
-        aClause.addLiteral(4,false);
-        addClause(aClause);
-        aClause = new Clause();
-        aClause.addLiteral(2,false);
-        aClause.addLiteral(3,false);
-        aClause.addLiteral(4,false);
-        addClause(aClause);
-        aClause = new Clause();
-        aClause.addLiteral(2,false);
-        addClause(aClause);
-        printResult(new Clause());
-        
-        System.out.println("Now variable 4 should be true.");
-        aClause = new Clause();
-        aClause.addLiteral(4,true);
-        printResult(aClause);
-        
-        System.out.println("Now it should be UNSAT.");
-        aClause.addLiteral(2,false);
-        printResult(aClause);
-        
-        System.out.println("Now it should really, really be UNSAT.");
-        aClause = new Clause();
-        aClause.addLiteral(2,true);
-        addClause(aClause);
-        printResult(new Clause());
-        clear();
-        */
-		/*
-        for(int i = 0; i < 10; i++){
-        	System.out.println("Created variable "+fGMSsolver.newVar(fSolverPointer));
-        }
-        System.out.println("Number of variables is: "+fGMSsolver.nVars(fSolverPointer));
-        Clause aClause = new Clause();
-        aClause.addLiteral(12,false);
-        aClause.addLiteral(13, false);
-        addClause(aClause);
-        System.out.println("Solver result is : "+ fGMSsolver.solve(fSolverPointer));
-        System.out.println("WOOHOO!!!");
-        */
-    }
-	
 	private interface GMSLibrary extends Library {
-		 	//public boolean addEmptyClause(Pointer solver);
-		   	//public boolean simplify(Pointer solver);
-		   	//public boolean okay(Pointer solver);
-		   
-		
-			public void printLit(Pointer solver, Integer variable, Boolean value);
-		   
-			public Pointer createSolver();
-		   
-			public void destroySolver(Pointer solver);
 
+			//Provides a pointer to a glueminisat Solver object
+			public Pointer createSolver();
+			
+			//Frees the memory used for the Solver pointer
+			public void destroySolver(Pointer solver);	
+			
+		   	//Creates a pointer to a vector of literals
 		  	public Pointer createVecLit();
-		  	public void destroyVecLit(Pointer vecAssumptions);
+		  	
+		  	//Frees the memory used for the vector of literals
+		  	public void destroyVecLit(Pointer vecLiterals);
+		  	
+		  	//Adds the literal (num, state) to the vector pointed to by vec
 		  	public void addLitToVec(Pointer vec, int num, boolean state);
-		   
-		  	public boolean addClause(Pointer Solver, Pointer vecAssumptions);
-		   	public boolean solveWithAssumptions(Pointer solver, Pointer vecAssumptions);
-		   	
-		   	public int nVars(Pointer solver);
+		  	
+			//Creates a new variable, returning the value of the new variable
 		   	public int newVar(Pointer solver);
-		   	//public Integer testing(Pointer solver, Integer i);
+
+			//Returns the number of variables used by the Solver
+		   	public int nVars(Pointer solver);
+
+		  	//Adds the clause associated with the vector of literals vecLiterals
+		  	public boolean addClause(Pointer Solver, Pointer vecLiterals);
+		   	
+		  	//Returns true if the current problem is satisfiable given the assumptions in vecAssumptions
+		  	public boolean solveWithAssumptions(Pointer solver, Pointer vecAssumptions);
+		  	
+		  	//Returns true if the current problem is satisfiable.
 		   	public boolean solve(Pointer solver);
+		   	
+		   	/* Returns the value of the variable var in the last model.
+		   	 * Meaningless output if the last call to solve() returned false.
+		   	 */
 		   	public int value(Pointer solver, int var);
+		   	
+		   	// Returns true if the solver is not in a conflicting state
 		   	public boolean okay(Pointer solver);
+
+		    // Other function that exists in Solver.cc but is not needed.
 		   	public boolean solveWithOneAssumption(Pointer solver, int var, boolean state);
-		   	public boolean litValue(Pointer solver, int var, boolean state);
-		   	//public void printNick(Pointer solver);
+
 		}
+	
+    	public GlueMiniSatLibrary(String aLibraryPath){
+    		fLibraryPath = aLibraryPath;
+    		fGMSsolver = (GMSLibrary) Native.loadLibrary(fLibraryPath, GMSLibrary.class);
+    		fSolverPointer = fGMSsolver.createSolver();
+    		runBasicTests(); //Prints the output of basic tests to stdout; used for debugging
+    	}
 		 
 		public SATResult solve(Clause aAssumptions){
-			//System.out.println("\n Assumptions are "+aAssumptions+"\n");
+			
+			//Create a pointer to a vector of assumptions corresponding to aAssumptions
 			Pointer vecAssumptions = fGMSsolver.createVecLit();
 			for(Integer aVar : aAssumptions.getVars()){
 				fGMSsolver.addLitToVec(vecAssumptions,getInternalVariable(aVar),true);
@@ -179,13 +114,15 @@ public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 			for(Integer aVar : aAssumptions.getNegatedVars()){
 				fGMSsolver.addLitToVec(vecAssumptions,getInternalVariable(aVar),false);
 			}
+			
+			
 			SATResult aResult;
 			if(fGMSsolver.solveWithAssumptions(fSolverPointer,vecAssumptions)){
 				aResult = SATResult.SAT;
 			} else {
 				aResult =  SATResult.UNSAT;
 			}
-						
+				
 			fGMSsolver.destroyVecLit(vecAssumptions);
 			return aResult;
 		}
@@ -196,23 +133,32 @@ public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 		
 		public boolean addClause(Clause aClause){
 			
-			//System.out.print("Clause to add is: <");
-
-			Pointer vecAssumptions = fGMSsolver.createVecLit();			
+			//Create a pointer to a vector of Literals corresponding to aClause
+			Pointer vecLiterals = fGMSsolver.createVecLit();			
 			for(Integer aVar : aClause.getVars()){
-				fGMSsolver.addLitToVec(vecAssumptions,getInternalVariable(aVar),true);
-				//System.out.print(getInternalVariable(aVar)+"("+aVar+"),");
+				fGMSsolver.addLitToVec(vecLiterals,getInternalVariable(aVar),true);
 			}
-			//System.out.print("_");
 			for(Integer aVar : aClause.getNegatedVars()){
-				fGMSsolver.addLitToVec(vecAssumptions,getInternalVariable(aVar),false);
-				//System.out.print(getInternalVariable(aVar)+"("+aVar+"),");
+				fGMSsolver.addLitToVec(vecLiterals,getInternalVariable(aVar),false);
 			}
-			//System.out.println(">");
-			boolean added = fGMSsolver.addClause(fSolverPointer,vecAssumptions);
-			fGMSsolver.destroyVecLit(vecAssumptions);
 			
+			boolean added = fGMSsolver.addClause(fSolverPointer,vecLiterals);
+			fGMSsolver.destroyVecLit(vecLiterals);			
 			return added;
+		}
+		
+		public Clause getAssignment(){
+			Clause aAssignment = new Clause();
+			if(fGMSsolver.okay(fSolverPointer)){
+				for(int i = 0; i < fGMSsolver.nVars(fSolverPointer); i++){
+					/* For some reason, when passing booleans from c to java there were problems.
+					 * By returning an int and then testing (b>0), these problems were resolved.
+					 */	
+					int b = fGMSsolver.value(fSolverPointer,i);
+					aAssignment.addLiteral(fInternalToExternal.get(i),(b>0));
+				}
+			}
+			return aAssignment;
 		}
 		
 		public void clear(){
@@ -223,6 +169,10 @@ public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 			fSolverPointer = fGMSsolver.createSolver();
 		}
 		
+		/* Used to map external variables (passed to this class)
+		 * to internal variables (used by the GMSLibrary solver)
+		 * If given a previously unseen variable, it creates a new one.
+		 */
 		private Integer getInternalVariable(Integer aVar){
 			Integer aInternalVar = fExternalToInternal.get(aVar);
 			if(aInternalVar == null){
@@ -232,39 +182,89 @@ public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 			}
 			return aInternalVar;
 		}
-
-		//Insert some checks to see that the last state is okay
-		public Clause getAssignment(){
-			//fGMSsolver.solve(fSolverPointer);
-			Clause aAssignment = new Clause();
-			for(int i = 0; i < fGMSsolver.nVars(fSolverPointer); i++){
-				int b = fGMSsolver.value(fSolverPointer,i);
-				//if(b>0) System.out.println("In JAVA we got: var "+i+" is "+b);
-				//if(b) System.out.println("REVERSE");
-				//b = (fGMSsolver.litValue(fSolverPointer,i,false)!=fGMSsolver.value(fSolverPointer,i));
-				//if(b) System.out.println("I'm tired");
-				aAssignment.addLiteral(fInternalToExternal.get(i),(b>0));
-
-				//System.out.println(fInternalToExternal.get(i)+","+fGMSsolver.value(fSolverPointer,i));
-				//System.out.println(fInternalToExternal.get(i)+","+fGMSsolver.litValue(fSolverPointer,i,false));
-
-				//if(fGMSsolver.litValue(fSolverPointer,fInternalToExternal.get(i),fGMSsolver.value(fSolverPointer,i))) System.out.println("\n\n\nWTF???\n\n\n");
-			}
-			return aAssignment;
+		
+		/* 
+		 * getMap(), printResult() and runBasicTests() were used for debugging.
+		 */
+		
+		/* 
+		public Map<Integer,Integer> getMap(){
+			return fExternalToInternal;
 		}
+		*/
 		
 		private void printResult(Clause aAssumptions){
 	        if(solve(aAssumptions)!=SATResult.SAT){
 	            System.out.println("Solver result is UNSAT.");
 	        } else{
-	        	if(fGMSsolver.okay(fSolverPointer))
-	        		System.out.println("Solver result is SAT, with assignment: "+getAssignment());
+	        	System.out.println("Solver result is SAT, with assignment: "+getAssignment());
 	        }
 		}
-		
-		/* Used for debugging
-		public Map<Integer,Integer> getMap(){
-			return fExternalToInternal;
+
+		private void runBasicTests(){
+			Clause aClause;
+	        
+	        System.out.println("Testing trivial SAT instance...");
+	        aClause = new Clause();
+	        aClause.addLiteral(1,false);
+	        aClause.addLiteral(2, true);
+	        addClause(aClause);
+	        aClause = new Clause();
+	        aClause.addLiteral(2,false);
+	        addClause(aClause);
+	        aClause = new Clause();
+	        printResult(aClause); 
+	        
+	        System.out.println("Testing trivial UNSAT instance...");
+	        aClause.addLiteral(1,true);
+	        printResult(aClause);
+	        	        
+	        System.out.println("Testing trivial UNSAT instance...");
+	        addClause(aClause);
+	        printResult(new Clause());
+	        
+			System.out.println("Testing slightly more complicated SAT instance...");
+	        aClause = new Clause();
+	        aClause.addLiteral(1,true);
+	        aClause.addLiteral(2,true);
+	        aClause.addLiteral(3,true);
+	        aClause.addLiteral(4,false);
+	        addClause(aClause);
+	        aClause = new Clause();
+	        aClause.addLiteral(1,false);
+	        aClause.addLiteral(2,false);
+	        aClause.addLiteral(4,false);
+	        addClause(aClause);
+	        aClause = new Clause();
+	        aClause.addLiteral(1,false);
+	        aClause.addLiteral(3,false);
+	        aClause.addLiteral(4,false);
+	        addClause(aClause);
+	        aClause = new Clause();
+	        aClause.addLiteral(2,false);
+	        aClause.addLiteral(3,false);
+	        aClause.addLiteral(4,false);
+	        addClause(aClause);
+	        aClause = new Clause();
+	        aClause.addLiteral(2,false);
+	        addClause(aClause);
+	        printResult(new Clause());
+	        
+	        System.out.println("Now variable 4 should be true.");
+	        aClause = new Clause();
+	        aClause.addLiteral(4,true);
+	        printResult(aClause);
+	        
+	        System.out.println("Now the problem should be UNSAT...");
+	        aClause.addLiteral(2,false);
+	        printResult(aClause);
+	        
+	        System.out.println("Now the problem should really, really be UNSAT.");
+	        aClause = new Clause();
+	        aClause.addLiteral(2,true);
+	        addClause(aClause);
+	        printResult(new Clause());
+	        
+	        clear();	//Important to clear; otherwise the clauses inserted above remain in the problem.
 		}
-		*/
 }
