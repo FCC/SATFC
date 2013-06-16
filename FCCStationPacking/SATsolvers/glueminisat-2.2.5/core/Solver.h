@@ -54,10 +54,6 @@ public:
     bool    addClause (Lit p, Lit q, Lit r);                    // Add a ternary clause to the solver. 
     bool    addClause_(      vec<Lit>& ps);                     // Add a clause to the solver without making superflous internal copy. Will
                                                                 // change the passed vector 'ps'.
-
-    //Added by narnosti
-    int     testing(Var i);                         // Returns i
-    void    printNick(Lit p);                       // Prints the literal
     
     // Solving:
     //
