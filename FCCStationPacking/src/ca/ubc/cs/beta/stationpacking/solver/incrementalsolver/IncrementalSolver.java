@@ -29,69 +29,97 @@ public class IncrementalSolver implements ISolver{
 
 
 	/*
-	 * Each added clause contains the literal !(-curCount)
+	 * curCount is the next dummy variable to use. Each added clause contains the literal !(-curCount),
+	 * so this effectively counts the number of calls to solve() since the last reset.
 	 */
 	Integer curCount;
 	
 	/*
-	 * When we solve with assumptions, we "activate" clauses for which the corresponding variable is true
-	 * Clauses in fCurrentClauses DO NOT include the dummy variables
+	 * The most recently solved instance - helps us decide whether we can use incremental capability.
 	 */
 	Instance fCurrentInstance;
+	/*
+	 * We keep fCurrentClauses around because it makes it easy to figure out which clauses 
+	 * are new and should be added to the IncrementalSATLibrary. Without fCurrentClauses, we would
+	 * either have to reason about this ourselves, or add ALL clauses from each instance to the library.
+	 * 
+	 * Note that Clauses in fCurrentClauses DO NOT include the dummy variables 
+	 * (so that we can compare them to clauses produced by the CNFEncoder).
+	 */
 	Set<Clause> fCurrentClauses;
-	Clause fAssumptions;
 	
 	/*
-	 * For resetting to a flagged state
+	 * When we solve with assumptions, we "activate" clauses for which the corresponding variable is true
 	 */
+	Clause fAssumptions;
+	
+	/* 
+	 * For resetting to a flagged state (Not yet implemented)
+	 */
+	
+	/*
 	Instance fFlaggedInstance = new Instance();
 	Set<Clause> fFlaggedClauses = new HashSet<Clause>(); //can't recover these from fFlaggedInstance because we may have added "side" clauses
 	Clause fFlaggedAssumptions = new Clause();
 	boolean fResetFlag = false; //'true' indicates that we have called reset() more recently than flagState()
+	*/
 
 	
 	/*
 	 * Used to solve the Instance
 	 */
 	IIncrementalSATLibrary fIncrementalSATLibrary;
-	double fSeed; //currently unused
 	
 	private static Logger log = LoggerFactory.getLogger(IncrementalSolver.class);
 
 		
 
-	//pass other parameters (such as incremental technique, how many dummy variables to store) as one final arg to constructor
+	/* 
+	 * The constructor. We may want to add other parameters indicating what "mode" to run the solver in.
+	 */
 	public IncrementalSolver(	IConstraintManager aConstraintManager, ICNFEncoder2 aCNFEncoder, 
-								IIncrementalSATLibrary aIncrementalSATLibrary, double aSeed){
+								IIncrementalSATLibrary aIncrementalSATLibrary){
 		fConstraintManager = aConstraintManager;
-		fEncoder = aCNFEncoder;
-
-		//fNumDummyVariables = aNumDummyVariables;
-		
+		fEncoder = aCNFEncoder;		
 		fIncrementalSATLibrary = aIncrementalSATLibrary;
-		fSeed = aSeed;
 		reset();
 	}
 	
-	/*
-	 * Also should be told whether to save state (never do if you get UNSAT, but if you get SAT...)
+	/* 
+	 * This method adds clauses as needed to the IncrementalSATLibrary. 
+	 * 
+	 * If the resulting problem is UNSAT, we "remove" these clauses by 
+	 * toggling the dummy variable and do not update fCurrentInstance, fCurrentClauses.
+	 * If the resulting problem is SAT, we update our state. 
+	 * 
+	 * In the future, we may want to not always save our state when finding SAT.
+	 * One way to do this would be to include another parameter to the solve() method.
+	 * Another way would be to implement the "flagState" and "resetToFlaggedState" methods.
+	 * 
+	 * Also, we currently reset only when absolutely necessary; if we get many UNSAT instances
+	 * in a row, there will be many superfluous clauses in the IncrementalSATLibrary (each of which
+	 * we deactivate by passing appropriate assumptions about the dummy variables). I believe that
+	 * this should be fine, but it's possible that too many of these will slow the solver down.
 	 */
 	
 	@Override
-	//If stations are superset and channels are subset (or if we had no instance previously), go incremental
 	public SolverResult solve(Instance aInstance, double aCutoff) throws Exception {
-		
-		//Get
-		Set<Clause> aNewClauses = fEncoder.encode(aInstance, fConstraintManager);
-		aNewClauses = fEncoder.encode(aInstance, fConstraintManager);
+
+		//We can only go incremental if stations are superset and channels are subset; else reset
 		if(	(!aInstance.getStations().containsAll(fCurrentInstance.getStations())) ||
 			(!fCurrentInstance.getChannels().containsAll(aInstance.getChannels()))){
-			reset(); //Can only use incremental if new station set is larger, new channel set smaller
+			reset();
 		}
 		
-		//log.info("Adding clauses to library...");
-		
-		//Add all new clauses to our clause set (including a dummy variable to "toggle" them)
+		//Get clauses associated with the new instance
+		Set<Clause> aNewClauses = fEncoder.encode(aInstance, fConstraintManager);
+				
+		/*
+		 * Add all NEW clauses to our clause set (including a dummy variable to "toggle" them).
+		 * Create aCopyClause so that we have two versions of each clause: 
+		 * the original (no dummy variable, possibly added to fCurrentClauses), and
+		 * the copy (including the dummy variable, added to the solver)
+		 */
 		Set<Clause> aNewlyAddedClauses = new HashSet<Clause>();
 		for(Clause aClause : aNewClauses){
 			if(!fCurrentClauses.contains(aClause)){
@@ -107,20 +135,21 @@ public class IncrementalSolver implements ISolver{
 		//Set fAssumptions to "activate" the newly added clauses and solve
 		fAssumptions.addLiteral(-curCount,true);
 		fAssumptions.removeLiteral(-curCount,false);
+		
 		long startTime = System.currentTimeMillis();
 		SATResult aResult = fIncrementalSATLibrary.solve(fAssumptions);
 		long elapsedTime = (System.currentTimeMillis()-startTime)/1000;
 		
 		Map<Integer,Set<Station>> aStationAssignment = new HashMap<Integer,Set<Station>>();
 		
-		//if SAT and it's not a price check, update current instance
+		//if(SAT), get the assignment and update current instance
 		if(aResult == SATResult.SAT){
 
-			Clause aAssignment = fIncrementalSATLibrary.getAssignment();
-			//System.out.println(aAssignment);
-			//aAssignment = fIncrementalSATLibrary.getAssignment();				
+			//Get the assignment from the IncrementalSATLibrary
+			Clause aAssignment = fIncrementalSATLibrary.getAssignment();	
 
 			try{
+				//Check to make sure that all assumptions are satisfied
 				for(Integer aVar : fAssumptions.getVars()){
 					if(!aAssignment.removeLiteral(aVar, true)) throw new Exception("Assumption Not Satisfied: tried to remove "+aVar);
 				}
@@ -129,25 +158,27 @@ public class IncrementalSolver implements ISolver{
 						throw new Exception("Assumption Not Satisfied: tried to remove -"+aNegatedVar);
 					}
 				}
+				
+				//Decode the assignment
 				aStationAssignment = fEncoder.decode(aInstance, aAssignment);
+				
+				//Update current instance and current clauses
 				fCurrentInstance = aInstance;
 				fCurrentClauses.addAll(aNewlyAddedClauses);
 			} catch(Exception e){
+				//Error decoding or unsatisfied assumption - something is wrong!
+				//Rollback - "remove" the most recent clauses by deactivating them
 				fAssumptions.addLiteral(-curCount,false);
 				fAssumptions.removeLiteral(-curCount,true);
 				e.printStackTrace();
 			}
 			
-			//log.info("Instance was SAT, with assignment: "+aStationAssignment);
-			//get the model
-		} else { //Rollback - "remove" the most recent clauses
+		} else { 
+			//Rollback - "remove" the most recent clauses by deactivating them
 			fAssumptions.addLiteral(-curCount,false);
 			fAssumptions.removeLiteral(-curCount,true);
-			
 		}
 		
-		//if(curCount==fNumDummyVariables) reset();
-		//else 
 		curCount++; //next time, use a new dummy variable
 		return new SolverResult(aResult,elapsedTime,aStationAssignment);
 	}
@@ -160,23 +191,24 @@ public class IncrementalSolver implements ISolver{
 		fCurrentClauses = new HashSet<Clause>();
 		fAssumptions = new Clause();
 		curCount = 1;
-		fResetFlag = true;
+		//fResetFlag = true; //Will be used when solver interface is extended
 	}
 	
-	/* Store the current state
-	 * 
+	/* The following three methods are for an extension of the solver capability.
+	 * Currently unimplemented.
 	 */
+	
+	
+	/*
 	public void flagState(){
 		fFlaggedInstance = new Instance(fCurrentInstance.getStations(),fCurrentInstance.getChannels());
 		fFlaggedClauses = new HashSet<Clause>(fCurrentClauses);
 		fFlaggedAssumptions = new Clause(fAssumptions.getVars(),fAssumptions.getNegatedVars());
 		fResetFlag = false;
 	}
-	
+	*/
 
 	/*
-	 * 
-	 */
 	public void resetToFlaggedState(){
 		if(!fResetFlag){ //We haven't reset since our last flagged state
 			fCurrentInstance = fFlaggedInstance;
@@ -199,10 +231,7 @@ public class IncrementalSolver implements ISolver{
 
 		flagState(); //Called to create "new" FlaggedInstance and Assumptions (so that modifications to fCurrent don't change fFlagged)
 	}
-	
-	
-	public void addClause(){
-		
-	}
+	*/
 
+	//public void addClauseAndSolve(/*some arguments*/){}
 }

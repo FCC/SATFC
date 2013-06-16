@@ -42,6 +42,14 @@ import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.Constrain
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponentGrouper;
 
 
+/**
+ * This class should serve as one of the two main methods in the final architecture.
+ * Its primary purpose is to parse arguments, determine which solver type to use,
+ * create a solver, and then wait for messages.
+ * 
+ * @author narnosti
+ */
+
 public class MainSolver  implements ISolver{
 	
 	private static Logger log = LoggerFactory.getLogger(MainSolver.class);
@@ -90,11 +98,15 @@ public class MainSolver  implements ISolver{
 	}
 	*/
 	
+	
+	/*
+	 * Currently, we pass args through the constructor.
+	 * Eventually, we want this to be a main method (commented out above).
+	 */
 	public MainSolver(String[] args) throws Exception{
 		
 		log.info("Parsing parameters...");
 		Map<String,AbstractOptions> aAvailableTAEOptions = TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators();
-		System.out.println("\n\n\n\n\n\n\n\n\n\n");
 		ParameterParser aExecParameters = getParameterParser(args,aAvailableTAEOptions);
 		
 		log.info("Getting station information...");
@@ -107,25 +119,18 @@ public class MainSolver  implements ISolver{
 		log.info("Creating solver...");
 		ICNFEncoder aCNFEncoder = new CNFEncoder();
 		
-		System.out.println(aExecParameters.getCNFDirectory());
-		System.out.println(aExecParameters.getIncrementalLibraryLocation());
-		System.out.println(aExecParameters.getSolver());
-		if(aExecParameters.useIncrementalSolver()/*the solver requested is incremental*/){
-			/* get incremental options - 
-			 * which type of incremental solver (memcopy or dummyvar)
-			 * if(dummyvar), how many dummy variables to use
-			 * which solver library (glueminisat or other?)
-			 * any other parameters needed
+		if(aExecParameters.useIncrementalSolver()){ //Create IncrementalSolver
+			/* May want more parameters in the future; for example
+			 * -Implement more incremental solvers; don't always call GlueMiniSatLibrary below
+			 * -Implement an incremental solver using memory copying rather than dummy variables
 			 */
 			ICNFEncoder2 aCNFEncoder2 = new CNFEncoder2();
 			String aLibraryPath = aExecParameters.getIncrementalLibraryLocation();
-			//String aLibraryPath = "/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/SATsolvers/glueminisat-2.2.5/core/libglueminisat.so";
-			//String aLibraryPath = "/Users/narnosti/Documents/fcc-station-packing/FCCStationPacking/SATsolvers/minisat/core/libminisat.so";
 			IIncrementalSATLibrary aSATLibrary = new GlueMiniSatLibrary(aLibraryPath);
-			fSolver = new IncrementalSolver(aConstraintManager, aCNFEncoder2, aSATLibrary, aExecParameters.getSeed());
+			fSolver = new IncrementalSolver(aConstraintManager, aCNFEncoder2, aSATLibrary);
 
-		} else {			
-		
+		} else { //Create TAESolver			
+			
 			ICNFResultLookup aCNFLookup = new HybridCNFResultLookup(aExecParameters.getCNFDirectory(), aExecParameters.getCNFOutputName());
 			IComponentGrouper aGrouper = new ConstraintGrouper();
 			
@@ -142,27 +147,40 @@ public class MainSolver  implements ISolver{
 			}
 			
 		}
-		
+		/*
+		 while(true){ 
+		 	//wait for message; decode and solve when it arrives
+		 }
+		 */
 	}
 	
+	/*
+	 * A temporary stub; currently used to send "instances" to solve 
+	 * (without having to have the actual "station" information)
+	 */
 	public SolverResult receiveMessage(Set<Integer> aStationIDs, Set<Integer> aChannels,double aCutoff) throws Exception{
+		
+		//Turn station IDs into a set of stations
 		Set<Station> aStations = new HashSet<Station>();
 		Station aStation;
 		for(Integer aID : aStationIDs){
 			if((aStation=fStationManager.get(aID))!=null) aStations.add(aStation);
+			else throw new Exception("Unrecognized station: "+aID);
 		}
-		Instance aInstance;
+		
+		//Create an instance and solve
 		if(aStations.size()>0&&aChannels.size()>0){
-			aInstance = new Instance(aStations,aChannels);
+			Instance aInstance = new Instance(aStations,aChannels);
+			return fSolver.solve(aInstance, aCutoff);
 		} else {
 			throw new Exception("Invalid Instance: recognized station set is: "+aStations+", channels are: "+aChannels);
 		}
-		return fSolver.solve(aInstance, aCutoff);
-
 	}
 	
+	/*
+	 * Copied existing code; parse parameters 
+	 */
 	static private ParameterParser getParameterParser(String[] args, Map<String,AbstractOptions> aAvailableTAEOptions){
-	
 		//Parse the command line arguments in a parameter object.
 		ParameterParser aExecParameters = new ParameterParser();
 		JCommander aParameterParser = JCommanderHelper.getJCommander(aExecParameters, aAvailableTAEOptions);
@@ -179,6 +197,9 @@ public class MainSolver  implements ISolver{
 		return aExecParameters;
 	}
 
+	/*
+	 * Added to that MainSolver implements ISolver (so that we can easily use InstanceGeneration)
+	 */
 	@Override
 	public SolverResult solve(Instance aInstance, double aCutoff)
 			throws Exception {
