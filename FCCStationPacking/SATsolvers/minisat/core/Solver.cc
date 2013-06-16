@@ -79,9 +79,6 @@ extern "C"
         return reinterpret_cast<Solver*>(_solver)->okay();
     }
     
-    void printNick(void* _solver){
-        return reinterpret_cast<Solver*>(_solver)->printNick();
-    }
     
     bool addClause(void* _solver, void* _vec){
         vec<Lit>* ps = reinterpret_cast<vec<Lit>*>(_vec);
@@ -237,41 +234,6 @@ Var Solver::newVar(bool sign, bool dvar)
     return v;
 }
 
-//begin narnosti
-void Solver::printLit(Lit p) {
-    printf("%s%d\n",sign(p) ? "" : "-",var(p));
-    fflush(stdout);
-}
-
-void Solver::printNick() {
-    Lit p;
-    for(int i = 0; i < 10; i++){
-        p = mkLit(i,true);
-        printf("Printing toLbool(%d)==l_False: %s\n",i,(toLbool(i)==l_False) ? "true":"false");
-        printf("Printing toLbool(%d)==l_True: %s\n",i,(toLbool(i)==l_True) ? "true":"false");
-
-        //printf("Printing literal associated with %d,true: %s%d\n",i,sign(p) ? "" : "-",var(p));
-        //printf("Printing toInt(toLbool(%d)): %d\n",i,toInt(toLbool(i)));
-    }
-    lbool t = lbool(true);
-    lbool f = lbool(false);
-    lbool t2 = lbool(true);
-    printf("Result of t==l_True: %s\n",t==l_True ? "true":"false");
-    printf("Result of f==l_True: %s\n",f==l_True ? "true":"false");
-    printf("Result of f==l_False: %s\n",f==l_False ? "true":"false");
-    printf("Result of t==t2: %s\n", t==t2 ? "true":"false");
-    printf("Result of t!=t2: %s\n", t!=t2 ? "true":"false");
-    printf("Result of t==f: %s\n", t==f ? "true":"false");
-    printf("Result of t!=f: %s\n", t!=f ? "true":"false");
-    printf("Result of t||f: %s\n", ((t||f)==l_True) ? "true":"false");
-    printf("Result of t&&f: %s\n", ((t&&f)==l_True) ? "true":"false");
-    printf("Result of t^false: %s\n", ((t^false)==l_True) ? "true":"false");
-    printf("Result of t^true: %s\n", ((t^true)==l_True) ? "true":"false");
-    fflush(stdout);
-
-    
-}
-//end narnosti
 
 
 bool Solver::addClause_(vec<Lit>& ps)

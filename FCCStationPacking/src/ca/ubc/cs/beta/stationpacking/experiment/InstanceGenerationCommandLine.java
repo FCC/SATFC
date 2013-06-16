@@ -32,7 +32,9 @@ public class InstanceGenerationCommandLine {
 	
 	/**
 	 * This class is designed to take command-line parameters, create a solver,
-	 * and then perform an "instance generation" run.
+	 * and then perform an "instance generation" run. Currently, the default parameters
+	 * are not complete: they do not have the information required for a TAESolver run, and 
+	 * aPaxosArgs do not have the information required for an IncrementalSolver run.
 	 */
 	
 	
@@ -124,7 +126,6 @@ public class InstanceGenerationCommandLine {
 	    log.info("Creating solver...");
 		ISolver aSolver = new MainSolver(args);
 	    
-		
 	    log.info("Creating experiment reporter...");
 		IExperimentReporter aExperimentReporter = new LocalExperimentReporter(aExecParameters.getExperimentDir(), aExecParameters.getExperimentName());
 			
@@ -137,11 +138,19 @@ public class InstanceGenerationCommandLine {
 		
 		log.info("Getting station information...");
 		DACStationManager aStationManager = new DACStationManager(aExecParameters.getRepackingDataParameters().getStationFilename(),aExecParameters.getRepackingDataParameters().getDomainFilename());
-	    Set<Station> aStations = aStationManager.getStations();
+	    
+		
+		Set<Station> aStations = aStationManager.getStations();
 		HashSet<Integer> aConsideredStationIDs = aExecParameters.getConsideredStationsIDs();
 		HashSet<Integer> aCurrentStationIDs = aExecParameters.getStartingStationsIDs();
 		HashSet<Station> aToConsiderStations = new HashSet<Station>();
 		HashSet<Station> aStartingStations = new HashSet<Station>();
+		
+		/*
+		 * For each station we know about, if it's in the set of starting stations, 
+		 * add it to current stations. If it's not in the set of already-considered stations,
+		 * add it to the set of stations which we will consider in the InstanceGeneration run.
+		 */
 		for(Station aStation : aStations){
 			if(aCurrentStationIDs.contains(aStation.getID())){
 				aStartingStations.add(aStation);
@@ -157,6 +166,10 @@ public class InstanceGenerationCommandLine {
 
 	}
 	
+	
+	/*
+	 * Copied existing code to parse parameters
+	 */
 	private static InstanceGenerationParameterParser getParameterParser(String[] args){
 				
 		//TAE Options
