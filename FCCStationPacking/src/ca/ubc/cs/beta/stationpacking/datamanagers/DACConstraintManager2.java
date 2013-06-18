@@ -28,62 +28,31 @@ public class DACConstraintManager2 implements IConstraintManager{
 	HashMap<Station,Set<Station>> fLowerVHFADJminusConstraints;
 	HashMap<Station,Set<Station>> fUpperVHFADJminusConstraints;
 	HashMap<Station,Set<Station>> fUHFADJminusConstraints;
-
-	/*
-	public DACConstraintManager2(Set<Station> aStations,Set<Constraint> aPairwiseConstraints){
-		for(Station aStation : aStations){
-			fStations.put(aStation.getID(), aStation);
-			fCOConstraints.put(aStation,new HashSet<Station>());
-			fADJplusConstraints.put(aStation,new HashSet<Station>());
-			fADJminusConstraints.put(aStation,new HashSet<Station>());
-		}		
-	*/
-		/*NA - If two stations have ANY co-channel constraint, add them to fCOConstraints
-		 *If two stations have ANY adjacent-channel constraints, add them to corresponding fADJ constraint
-		 *Could insert code to check whether the constraint set actually has one constraint for EACH channel
-		 */
-	/*
-		try{
-			for(Constraint aConstraint : aPairwiseConstraints){
-				StationChannelPair aPair1 = aConstraint.getProtectedPair();
-				Station aStation1 = aPair1.getStation();
-				StationChannelPair aPair2 = aConstraint.getInterferingPair();
-				Station aStation2 = aPair2.getStation();
-				if(aStations.contains(aStation1) && aStations.contains(aStation2)){
-					Integer aDifference = aPair1.getChannel()-aPair2.getChannel();
-					if(aDifference == 0){
-						fCOConstraints.get(aStation1).add(aStation2);
-						fCOConstraints.get(aStation2).add(aStation1);
-					} else if(aDifference == -1){
-						fADJplusConstraints.get(aStation1).add(aStation2);
-						fADJminusConstraints.get(aStation2).add(aStation1);
-					} else if(aDifference == 1){
-						fADJplusConstraints.get(aStation2).add(aStation1);
-						fADJminusConstraints.get(aStation1).add(aStation2);
-					} else throw new Exception("Constraint involves a channel difference of "+ aDifference);
-
-				} else throw new Exception("One of stations "+aStation1.getID()+" and "+aStation2.getID()+" are not in fStations.");
-			}
-		}	catch(Exception e) {
-			System.out.println("Exception in DAC Constructor: "+e.getMessage());
-			e.printStackTrace();
-		}
-	}
-	*/
 	
+	static final Integer LVHFmin = 2, LVHFmax = 6, UVHFmin=7, UVHFmax = 13, UHFmin = 14, UHFmax = 51;
+	Set<Integer> LVHFChannels = new HashSet<Integer>(), UVHFChannels = new HashSet<Integer>(), UHFChannels = new HashSet<Integer>();
 	
 	public DACConstraintManager2(Set<Station> aStations, String aPairwiseConstraintsFilename){	
+		
+		LVHFChannels = new HashSet<Integer>();
+		for(int i = LVHFmin; i<= LVHFmax; i++) LVHFChannels.add(i);
+		for(int i = UVHFmin; i<= UVHFmax; i++) UVHFChannels.add(i);
+		for(int i = UHFmin; i<= UHFmax; i++) UHFChannels.add(i);
+
+		
 		ArrayList<HashMap<Station,Set<Station>>> aCOConstraints = new ArrayList<HashMap<Station,Set<Station>>>(3);
 		ArrayList<HashMap<Station,Set<Station>>> aADJplusConstraints = new ArrayList<HashMap<Station,Set<Station>>>(3);
 		ArrayList<HashMap<Station,Set<Station>>> aADJminusConstraints = new ArrayList<HashMap<Station,Set<Station>>>(3);
+		
+		//Each ArrayList has three hashmaps: one each for Lower VHF, Upper VHF, and UHF
 		for(int j = 0; j < 3; j++){
 			aCOConstraints.add(new HashMap<Station,Set<Station>>());
 			aADJplusConstraints.add(new HashMap<Station,Set<Station>>());
 			aADJminusConstraints.add(new HashMap<Station,Set<Station>>());	
 		}
 		for(Station aStation : aStations){
+			fStations.put(aStation.getID(), aStation);
 			for(int j = 0; j < 3; j++){
-				fStations.put(aStation.getID(), aStation);
 				aCOConstraints.get(j).put(aStation,new HashSet<Station>());
 				aADJplusConstraints.get(j).put(aStation,new HashSet<Station>());
 				aADJminusConstraints.get(j).put(aStation,new HashSet<Station>());
@@ -105,11 +74,11 @@ public class DACConstraintManager2 implements IConstraintManager{
 					Integer aChannelLower = Integer.valueOf(aLine[1].replaceAll("\\s", ""));
 					Integer aChannelUpper = Integer.valueOf(aLine[2].replaceAll("\\s", ""));
 					//NA - check to see if CO constraints are symmetric, if channel range matters
-					if(aChannelLower==2 && aChannelUpper==6){ 
+					if(aChannelLower==LVHFmin && aChannelUpper==LVHFmax){ 
 						aChannelType = 0;
-					} else if(aChannelLower==7 && aChannelUpper==13){
+					} else if(aChannelLower==UVHFmin && aChannelUpper==UVHFmax){
 						aChannelType = 1;
-					} else if(aChannelLower==14 && aChannelUpper==51){
+					} else if(aChannelLower==UHFmin && aChannelUpper==UHFmax){
 						aChannelType = 2;
 					} else {
 						aReader.close();
@@ -158,6 +127,20 @@ public class DACConstraintManager2 implements IConstraintManager{
 		}
 		
 		/*
+		Integer aStationID = 9781;
+		Station aTestStation = fStations.get(aStationID);
+		if(aTestStation==null){
+			System.out.println("Station "+aStationID+" not found!!!.");
+		}
+		
+		try{
+			System.out.println(aTestStation+" co-channel constraints are: "+getCOInterferingStations(aTestStation,new HashSet<Integer>(14)));
+		} catch(Exception e){
+			e.printStackTrace();
+		}
+		*/
+		
+		/*
 		int aCount = 0;
 		for(int j = 0; j < 3; j++){
 			for(Station aStation1 : fCOConstraints.get(j).keySet()){
@@ -202,25 +185,87 @@ public class DACConstraintManager2 implements IConstraintManager{
 	}
 
 
-	public Set<Station> getCOInterferingStations(Station aStation) {
-		Set<Station> aInterfering = fUHFCOConstraints.get(aStation);
+	public Set<Station> getCOInterferingStations(Station aStation, Set<Integer> aChannelRange) throws Exception {
+		Set<Station> aInterfering;
+		if(LVHFChannels.containsAll(aChannelRange)){
+			aInterfering = fLowerVHFCOConstraints.get(aStation);
+		} else if(UVHFChannels.containsAll(aChannelRange)){
+			aInterfering = fUpperVHFCOConstraints.get(aStation);
+		} else if(UHFChannels.containsAll(aChannelRange)) {
+			aInterfering = fUHFCOConstraints.get(aStation);
+		} else {
+			throw new Exception("Specified channel range contains channels from multiple bands.");
+		}
 		if(aInterfering==null) aInterfering = new HashSet<Station>();
 		return new HashSet<Station>(aInterfering);
 	}
 	
-	public Set<Station> getADJplusInterferingStations(Station aStation) {
-		Set<Station> aInterfering = fUHFADJConstraints.get(aStation);
+	public Set<Station> getADJplusInterferingStations(Station aStation, Set<Integer> aChannelRange) throws Exception{
+		Set<Station> aInterfering;
+		if(LVHFChannels.containsAll(aChannelRange)){
+			aInterfering = fLowerVHFADJConstraints.get(aStation);
+		} else if(UVHFChannels.containsAll(aChannelRange)){
+			aInterfering = fUpperVHFADJConstraints.get(aStation);
+		} else if(UHFChannels.containsAll(aChannelRange)) {
+			aInterfering = fUHFADJConstraints.get(aStation);
+		} else {
+			throw new Exception("Specified channel range contains channels from multiple bands.");
+		}
 		if(aInterfering==null) aInterfering = new HashSet<Station>();
 		return new HashSet<Station>(aInterfering);
 	}
 	
+	private Set<Station> getADJplusInterferingStations(Station aStation, Integer aChannel) throws Exception{
+		Set<Integer> aChannelSet = new HashSet<Integer>();
+		aChannelSet.add(aChannel);
+		return getADJplusInterferingStations(aStation,aChannelSet);
+	}
+	
+	private Set<Station> getCOInterferingStations(Station aStation, Integer aChannel) throws Exception{
+		Set<Integer> aChannelSet = new HashSet<Integer>();
+		aChannelSet.add(aChannel);
+		return getCOInterferingStations(aStation,aChannelSet);
+	}
+	
+	
+	public Boolean isSatisfyingAssignment(Map<Integer,Set<Station>> aAssignment){
+		try{
+			Set<Station> aStations;
+			for(Integer aChannel : aAssignment.keySet()){ //For each channel
+				aStations = aAssignment.get(aChannel);
+				for(Station aStation1 : aStations){ //Look at all stations on that channel
+					for(Station aStation2 : aStations){ //Check to see if aStaion violates a co-channel constraint
+						if(getCOInterferingStations(aStation1,aChannel).contains(aStation2)){
+							System.out.println("\n"+aStation1 + " and "+aStation2+" share channel "+aChannel+", on which they interfere.\n");
+							return false; 
+						}
+					}
+					if(aAssignment.containsKey(aChannel+1)){ //Check to see if aStaion violates an adj-channel constraint
+						for(Station aStation2 : aAssignment.get(aChannel+1)){
+							if(getADJplusInterferingStations(aStation1,aChannel).contains(aStation2)){
+								System.out.println("\n"+aStation1 + " is on channel "+aChannel+", while "+aStation2+" is on channel "+(aChannel+1)+", causing them to interfere.\n");
+								return false;
+							}
+						}
+					}
+				}
+			}
+		} catch(Exception e){
+			System.out.println("\nStation assigned to channel not in the range 2-51.\n");
+			return false; //Station assigned to a channel not in the range 2-51; should we throw an exception?
+		}
+		return true;
+	}
+	
+	/*
 	public Set<Station> getADJminusInterferingStations(Station aStation) {
 		Set<Station> aInterfering = fUHFADJminusConstraints.get(aStation);
 		if(aInterfering==null) aInterfering = new HashSet<Station>();
 		return new HashSet<Station>(aInterfering);	
 	}
+	*/
 	
-	
+	/*
 	public boolean writeConstraints(String fileName, Set<Integer> aChannels){
 		try{
 			Integer aMinChannel = Integer.MAX_VALUE;
@@ -252,8 +297,9 @@ public class DACConstraintManager2 implements IConstraintManager{
 			return false;
 		}
 	}
+	*/
 	
-	
+	/*
 	public boolean writePairwiseConstraints(String fileName){
 		try{
 			BufferedWriter writer = new BufferedWriter(new FileWriter(fileName));
@@ -273,6 +319,7 @@ public class DACConstraintManager2 implements IConstraintManager{
 			return false;
 		}
 	}
+	*/
 
 	/*
 	public Set<Constraint> getPairwiseConstraints(Set<Integer> aChannels) {
@@ -300,24 +347,6 @@ public class DACConstraintManager2 implements IConstraintManager{
 		return(pairwiseConstraints);
 	}
 	*/
-	
-	public Boolean isSatisfyingAssignment(Map<Integer,Set<Station>> aAssignment){
-		Set<Station> aStations;
-		for(Integer aChannel : aAssignment.keySet()){ //For each channel
-			aStations = aAssignment.get(aChannel);
-			for(Station aStation1 : aStations){ //Look at all stations on that channel
-				for(Station aStation2 : aStations){ //Check to see if aStaion violates a co-channel constraint
-					if(getCOInterferingStations(aStation1).contains(aStation2)) return false; 
-				}
-				if(aAssignment.containsKey(aChannel+1)){ //Check to see if aStaion violates an adj-channel constraint
-					for(Station aStation2 : aAssignment.get(aChannel+1)){
-						if(getADJplusInterferingStations(aStation1).contains(aStation2)) return false;
-					}
-				}
-			}
-		}
-		return true;
-	}
 
 	/*
 	public boolean matchesConstraints(IConstraintManager aOtherManager, Set<Integer> aChannels){

@@ -136,9 +136,10 @@ public class IncrementalSolver implements ISolver{
 		fAssumptions.addLiteral(-curCount,true);
 		fAssumptions.removeLiteral(-curCount,false);
 		
+
 		long startTime = System.currentTimeMillis();
 		SATResult aResult = fIncrementalSATLibrary.solve(fAssumptions);
-		long elapsedTime = (System.currentTimeMillis()-startTime)/1000;
+		double elapsedTime = new Double(System.currentTimeMillis()-startTime)/1000;
 		
 		Map<Integer,Set<Station>> aStationAssignment = new HashMap<Integer,Set<Station>>();
 		
@@ -161,7 +162,11 @@ public class IncrementalSolver implements ISolver{
 				
 				//Decode the assignment
 				aStationAssignment = fEncoder.decode(aInstance, aAssignment);
-				
+				if(!fConstraintManager.isSatisfyingAssignment(aStationAssignment)){
+					throw new Exception("When decoding station assignment, violated pairwise interference constraints found.");
+				} else {
+					log.info("Successfully verified feasibility of assignment.");
+				}
 				//Update current instance and current clauses
 				fCurrentInstance = aInstance;
 				fCurrentClauses.addAll(aNewlyAddedClauses);

@@ -1,7 +1,6 @@
 package ca.ubc.cs.beta.stationpacking.solver.cnfencoder;
 
-import java.util.HashMap;
-import java.util.HashSet;
+
 import java.util.Map;
 import java.util.Set;
 
@@ -21,7 +20,7 @@ public interface ICNFEncoder {
 	/* NA - takes an Instance and a set of Constraints, and returns
 	 * the DIMACS CNF corresponding to this instance of SAT.
 	 */
-	public String encode(Instance aInstance, IConstraintManager aConstraintManager);
+	public String encode(Instance aInstance, IConstraintManager aConstraintManager) throws Exception;
 	
 	//public Set<Clause> encode(IInstance aInstance, IConstraintManager aConstraintManager);
 	
