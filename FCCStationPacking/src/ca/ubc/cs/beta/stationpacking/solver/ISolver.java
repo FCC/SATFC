@@ -12,5 +12,12 @@ import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 public interface ISolver {
 	
 	public SolverResult solve(Instance aInstance, double aCutoff) throws Exception;
-		
+	
+	/*
+	public void flagState();
+	
+	public void resetToFlaggedState();
+	
+	public void addClause();
+	*/
 }
