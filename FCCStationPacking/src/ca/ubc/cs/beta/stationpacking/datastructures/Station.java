@@ -1,5 +1,6 @@
 package ca.ubc.cs.beta.stationpacking.datastructures;
 
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -14,7 +15,12 @@ import java.util.Set;
  * @author afrechet
  *
  */
-public class Station implements Comparable<Station>{
+public class Station implements Comparable<Station>, Serializable{
+	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	
 	private final Integer fID;
 	private final Integer fPop;
