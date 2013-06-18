@@ -50,57 +50,54 @@ extern "C"
     }
     
     bool BOOL(bool x) { if (x) return 1; return 0; }
-
+    
     //state passed as int so that we can ensure that it is either 0 or 1 (as mkLit assumes)
     //if state has type bool, the compiler optimizes "state ? 1 : 0" away, giving us a problem
     void addLitToVec(void* _vec, int variable, int state){
         reinterpret_cast<vec<Lit>*>(_vec)->push(mkLit(variable, BOOL(state)));
     }
-
+    
+    bool addClause(void* _solver, void* _vec){
+        vec<Lit>* ps = reinterpret_cast<vec<Lit>*>(_vec);
+        return reinterpret_cast<Solver*>(_solver)->addClause(*ps);
+    }
+    
+    //Parameter is the pointer to the solver that was made with createSolver()
+    bool solve(void* _solver)
+    {
+        Solver* solver = (Solver*) _solver;
+        return solver->solve();
+    }
 
     bool solveWithAssumptions(void* _solver, void* _vec){
+        //vec<Lit>* ps = reinterpret_cast<vec<Lit>*>(_vec);
         return reinterpret_cast<Solver*>(_solver)->solve(*reinterpret_cast<vec<Lit>*>(_vec));
     }
     
-    bool addClause(void* _solver, void* _vec){
-        return reinterpret_cast<Solver*>(_solver)->addClause(*reinterpret_cast<vec<Lit>*>(_vec));
+    bool solveWithOneAssumption(void* _solver,int variable, int state){
+        return reinterpret_cast<Solver*>(_solver)->solve(mkLit(variable,BOOL(state)));
     }
     
-    
-    
-    
-    //state passed as int so that we can ensure that it is either 0 or 1 (as mkLit assumes)
-    //if state has type bool, the compiler optimizes "state ? 1 : 0" away, giving us a problem
-    void printLit(void* _solver, int variable, int state){
-        Minisat::Solver* solver = (Minisat::Solver*)_solver;
-        solver->printNick(Minisat::mkLit(variable,BOOL(state)));
+    int newVar(void* _solver){
+        return reinterpret_cast<Solver*>(_solver)->newVar();
     }
     
-    //First parameter is the pointer to the solver that was made earlier
-    bool solve(void* _solver)
-    {
-        //Cast the pointer into something useful...
-        Minisat::Solver* solver = (Minisat::Solver*)_solver;
-        //Run the actual method that you want
-        return solver->solve();
+    int nVars(void* _solver){
+        return reinterpret_cast<Solver*>(_solver)->nVars();
     }
     
-    //First parameter is the pointer to the solver that was made earlier
-    void addEmptyClause(void* _solver)
-    {
-        //Cast the pointer into something useful...
-        Minisat::Solver* solver = (Minisat::Solver*)_solver;
-        //Run the actual method that you want
-        solver->addEmptyClause();
-    }
-    
-    int testing(void* _solver, int i){
-        //Cast the pointer into something useful...
-        Minisat::Solver* solver = (Minisat::Solver*)_solver;
-        //Run the actual method that you want
-        return solver->testing(i);
-    }
 
+    bool okay(void* _solver){
+        return reinterpret_cast<Solver*>(_solver)->okay();
+    }
+    
+    //Important that the return value be an int (not a bool) - otherwise it doesn't play well with Java
+    int value(void* _solver, int var){
+        Solver* s = reinterpret_cast<Solver*>(_solver);
+        //bool b = (s->modelValue(var)!=l_True);
+        //return b;
+        return (s->modelValue(var)!=l_True);
+    }
 
 }
 
@@ -164,15 +161,6 @@ static double luby(double y, int x);
 #define RS_LBD_DLV_LUBY  4
 #define RS_LBD_DLV_IMPLS 5
 
-// added by narnosti
-Var Solver::testing(Var i){
-	return i;
-}
-void Solver::printNick(Lit p) {
-    printf("%s%d\n",sign(p) ? "" : "-",var(p));
-    fflush(stdout);
-}
-//end: added by narnosti
 
 // added by nabesima
 void Solver::printLit(Lit l) {
@@ -347,13 +335,13 @@ bool Solver::addClause_(vec<Lit>& ps)
     // Check if clause is satisfied and remove false/duplicate literals:
     sort(ps);
     Lit p; int i, j;
-    for (i = j = 0, p = lit_Undef; i < ps.size(); i++)
+    for (i = j = 0, p = lit_Undef; i < ps.size(); i++){
         if (value(ps[i]) == l_True || ps[i] == ~p)
             return true;
         else if (value(ps[i]) != l_False && ps[i] != p)
             ps[j++] = p = ps[i];
+    }
     ps.shrink(i - j);
-
     if (ps.size() == 0)
         return ok = false;
     else if (ps.size() == 1){
@@ -1296,12 +1284,15 @@ static double luby(double y, int x){
 // NOTE: assumptions passed in member-variable 'assumptions'.
 lbool Solver::solve_()
 {
+
     model.clear();
     conflict.clear();
     if (!ok) return l_False;
 
     solves++;
 
+
+    
     max_learnts               = nClauses() * learntsize_factor;
     learntsize_adjust_confl   = learntsize_adjust_start_confl;
     learntsize_adjust_cnt     = (int)learntsize_adjust_confl;
@@ -1326,6 +1317,7 @@ lbool Solver::solve_()
         printf("|           |    Vars  Clauses Literals |  Clauses Lit/Cl LBD/Cl DLV/Cl |          |\n");
         printf("====================================================================================\n");
     }
+    
 
     // Search:
     //int curr_restarts = 0;
@@ -1343,16 +1335,21 @@ lbool Solver::solve_()
         printLog();
         printf("====================================================================================\n");
     }
+    
+
 
 
     if (status == l_True){
         // Extend & copy model:
         model.growTo(nVars());
-        for (int i = 0; i < nVars(); i++) model[i] = value(i);
+        for (int i = 0; i < nVars(); i++){
+            model[i] = value(i);
+        }
     }else if (status == l_False && conflict.size() == 0)
         ok = false;
 
     cancelUntil(0);
+    fflush(stdout);     //narnosti - need the fflush call; else the solver fails on some input
     return status;
 }
 

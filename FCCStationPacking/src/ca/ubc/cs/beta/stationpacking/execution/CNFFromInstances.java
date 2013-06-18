@@ -138,7 +138,7 @@ public class CNFFromInstances {
 
 
 				
-			Set<Set<Station>> aInstanceGroups = aGrouper.group(aInstance.getStations(),dCM);
+			Set<Set<Station>> aInstanceGroups = aGrouper.group(aInstance,dCM);
 			for(Set<Station> aStationComponent : aInstanceGroups){
 			
 			

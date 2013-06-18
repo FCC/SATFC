@@ -10,11 +10,11 @@ public interface IConstraintManager {
 	
 	//public Set<Constraint> getPairwiseConstraints(Set<Integer> aChannels);
 		
-	public Set<Station> getCOInterferingStations(Station aStation);
+	public Set<Station> getCOInterferingStations(Station aStation, Set<Integer> aChannelRange) throws Exception;
 	
-	public Set<Station> getADJplusInterferingStations(Station aStation);
+	public Set<Station> getADJplusInterferingStations(Station aStation, Set<Integer> aChannelRange) throws Exception;
 	
-	public Set<Station> getADJminusInterferingStations(Station aStation);
+	//public Set<Station> getADJminusInterferingStations(Station aStation);
 	
 	public Boolean isSatisfyingAssignment(Map<Integer,Set<Station>> aAssignment);
 	
