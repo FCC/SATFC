@@ -285,7 +285,7 @@ public class AsyncTAESolver {
 		Set<Integer> aChannelRange = aInstance.getChannels();
 		
 		//Group stations
-		Set<Set<Station>> aInstanceGroups = fGrouper.group(aInstance.getStations(),fManager);
+		Set<Set<Station>> aInstanceGroups = fGrouper.group(aInstance,fManager);
 		
 		HashMap<RunConfig,Instance> aToSolveInstances = new HashMap<RunConfig,Instance>();
 	
