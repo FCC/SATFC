@@ -1,5 +1,6 @@
 package ca.ubc.cs.beta.stationpacking.datastructures;
 
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,8 +13,12 @@ import java.util.Set;
  * @author afrechet
  *
  */
-public class SolverResult {
+public class SolverResult implements Serializable {
 	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private SATResult fResult;
 	private double fRuntime;
 	private HashMap<Integer,HashSet<Station>> fAssignment;
