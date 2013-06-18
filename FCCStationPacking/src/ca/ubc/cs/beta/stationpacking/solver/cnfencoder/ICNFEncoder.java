@@ -1,9 +1,9 @@
 package ca.ubc.cs.beta.stationpacking.solver.cnfencoder;
 
-import java.util.HashMap;
-import java.util.HashSet;
+
 import java.util.Map;
 import java.util.Set;
+
 
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
@@ -20,7 +20,7 @@ public interface ICNFEncoder {
 	/* NA - takes an Instance and a set of Constraints, and returns
 	 * the DIMACS CNF corresponding to this instance of SAT.
 	 */
-	public String encode(Instance aInstance, IConstraintManager aConstraintManager);
+	public String encode(Instance aInstance, IConstraintManager aConstraintManager) throws Exception;
 	
 	//public Set<Clause> encode(IInstance aInstance, IConstraintManager aConstraintManager);
 	
@@ -29,7 +29,7 @@ public interface ICNFEncoder {
 	 * If these conditions are not met, it throws and catches an exception describing the problem, and 
 	 * returns an empty map.
 	 */
-	public HashMap<Integer,HashSet<Station>> decode(Instance aInstance, String aCNFAssignment);
+	public Map<Integer,Set<Station>> decode(Instance aInstance, String aCNFAssignment);
 	
 	//public Map<Integer,Set<Station>> decode(IInstance aInstance, Set<Clause> aAssignment);
 
