@@ -220,7 +220,6 @@ public class DACConstraintManager2 implements IConstraintManager{
 		return new HashSet<Station>(aInterfering);	
 	}
 	
-	
 	public boolean writeConstraints(String fileName, Set<Integer> aChannels){
 		try{
 			Integer aMinChannel = Integer.MAX_VALUE;
