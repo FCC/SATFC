@@ -161,7 +161,7 @@ public class TAESolver implements ISolver{
 		Set<Integer> aChannelRange = aInstance.getChannels();
 		
 		//Group stations
-		Set<Set<Station>> aInstanceGroups = fGrouper.group(aInstance.getStations(),fManager);
+		Set<Set<Station>> aInstanceGroups = fGrouper.group(aInstance,fManager);
 		
 		ArrayList<SolverResult> aComponentResults = new ArrayList<SolverResult>();
 		HashMap<RunConfig,Instance> aToSolveInstances = new HashMap<RunConfig,Instance>();
@@ -304,6 +304,19 @@ public class TAESolver implements ISolver{
 			for(SolverResult aComponentResult : aComponentResults)
 			{
 				Map<Integer,Set<Station>> aComponentAssignment = aComponentResult.getAssignment();
+				
+				try{
+					if(!fManager.isSatisfyingAssignment(aComponentAssignment)){
+						throw new Exception("When decoding station assignment, violated pairwise interference constraints found.");
+					} else {
+						System.out.println("Successfully verified feasibility of assignment.");
+					}
+				} catch(Exception e){
+					e.printStackTrace();
+				}
+				
+				
+				
 				for(Integer aAssignedChannel : aComponentAssignment.keySet())
 				{
 					if(!aAssignment.containsKey(aAssignedChannel))
@@ -314,8 +327,7 @@ public class TAESolver implements ISolver{
 				}
 			}
 		}
-		
-		
+				
 		return new SolverResult(aSATResult,aRuntime,aAssignment);
 	}
 	

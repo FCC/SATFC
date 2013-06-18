@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
@@ -61,7 +60,7 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 	 * One solution: don't use internal IDs
 	 * Another solution: store state in constructor
 	 */
-	public Set<Clause> encode(Instance aInstance, IConstraintManager aConstraintManager){
+	public Set<Clause> encode(Instance aInstance, IConstraintManager aConstraintManager) throws Exception{
 		Set<Clause> aClauses = new LinkedHashSet<Clause>();
 		try{
 			aClauses.addAll(getBaseClauses(aInstance));
@@ -153,13 +152,13 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 	}
 	*/
 	
-	private Set<Clause> getConstraintClauses(Instance aInstance, IConstraintManager aConstraintManager){
+	private Set<Clause> getConstraintClauses(Instance aInstance, IConstraintManager aConstraintManager) throws Exception{
 		Set<Clause> aConstraintClauseSet = new LinkedHashSet<Clause>();
 		Set<Integer> aInstanceDomain = aInstance.getChannels();
 		for(Station aStation : aInstance.getStations()){
 			
 			//Encode co-channel constraints involving aStation
-			Set<Station> aCOInterferingStations = aConstraintManager.getCOInterferingStations(aStation);
+			Set<Station> aCOInterferingStations = aConstraintManager.getCOInterferingStations(aStation,aInstanceDomain);
 			aCOInterferingStations.retainAll(aInstance.getStations());
 			for(Station aInterferingStation : aCOInterferingStations){
 				for(Integer aChannel : aInstanceDomain){
@@ -174,7 +173,7 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 			}
 			
 			//Encode adjacent-channel constraints involving aStation
-			Set<Station> aADJInterferingStations = aConstraintManager.getADJplusInterferingStations(aStation);
+			Set<Station> aADJInterferingStations = aConstraintManager.getADJplusInterferingStations(aStation, aInstanceDomain);
 			aADJInterferingStations.retainAll(aInstance.getStations());
 			for(Station aInterferingStation : aADJInterferingStations){
 				for(Integer aChannel : aInstanceDomain){

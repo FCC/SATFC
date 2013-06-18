@@ -19,7 +19,7 @@ public interface ICNFEncoder2 {
 	/* NA - takes an Instance and a set of Constraints, and returns
 	 * the DIMACS CNF corresponding to this instance of SAT.
 	 */	
-	public Set<Clause> encode(Instance aInstance, IConstraintManager aConstraintManager);
+	public Set<Clause> encode(Instance aInstance, IConstraintManager aConstraintManager) throws Exception;
 	
 	/* NA - takes an Instance and a string corresponding to a satisfying variable assignment.
 	 * Checks that each station is assigned exactly one channel, and that this channel is in its domain.

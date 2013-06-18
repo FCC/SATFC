@@ -24,9 +24,10 @@ public class CNFEncoder implements ICNFEncoder {
 	/* NA - takes an Instance and a set of Constraints, and returns
 	 * the DIMACS CNF corresponding to this instance of SAT.
 	 */
-	public String encode(Instance aInstance, IConstraintManager aConstraintManager) {
+	public String encode(Instance aInstance, IConstraintManager aConstraintManager) throws Exception{
 		Map<Station,Integer> aInternalStationIDs = getInternalIDs(aInstance.getStations());
-		Map<Integer,Integer> aInternalChannelIDs = getInternalIDs(aInstance.getChannels());	
+		Set<Integer> aInstanceDomain = aInstance.getChannels();
+		Map<Integer,Integer> aInternalChannelIDs = getInternalIDs(aInstanceDomain);	
 		StringBuilder aBuilder = new StringBuilder();
 		aBuilder.append("c Stations: ");
 		for(Station aStation : aInternalStationIDs.keySet()){
@@ -61,10 +62,10 @@ public class CNFEncoder implements ICNFEncoder {
 			aDomainInternal = mapSet(aInternalChannelIDs,aStation.getDomain());
 			aNumClauses += writeDomainClauses(aInternalID,aDomainInternal,aInternalChannelIDs.size(),aBuilder);
 			//Encode that aStation cannot share a channel with any station in aConstraintManager.getCOInterferingStations(aStation)
-			aCOInterferingInternal = mapSet(aInternalStationIDs,aConstraintManager.getCOInterferingStations(aStation));
+			aCOInterferingInternal = mapSet(aInternalStationIDs,aConstraintManager.getCOInterferingStations(aStation, aInstanceDomain));
 			aNumClauses += writeConstraints("CO",aInternalID,aCOInterferingInternal,aInternalChannelIDs,aBuilder);
 			//Encode that aStation cannot be one channel below any station in aConstraintManager.getADJplusInterferingStations(aStation)
-			aADJInterferingInternal = mapSet(aInternalStationIDs,aConstraintManager.getADJplusInterferingStations(aStation));
+			aADJInterferingInternal = mapSet(aInternalStationIDs,aConstraintManager.getADJplusInterferingStations(aStation, aInstanceDomain));
 			aNumClauses += writeConstraints("ADJ",aInternalID,aADJInterferingInternal,aInternalChannelIDs,aBuilder);
 		}
 		aBuilder.insert(0,"p cnf "+aInternalStationIDs.size()*aInternalChannelIDs.size()+" "+aNumClauses+"\n");
