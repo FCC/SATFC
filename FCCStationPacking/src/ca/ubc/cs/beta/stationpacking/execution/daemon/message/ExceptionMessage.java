@@ -9,6 +9,10 @@ public class ExceptionMessage implements IMessage{
 	
 	private final Exception fException;
 	
+	/**
+	 * Message containing an exception encountered in the solver.
+	 * @param aSolverResult
+	 */
 	public ExceptionMessage(Exception aException)
 	{
 		fException = aException;
@@ -22,6 +26,6 @@ public class ExceptionMessage implements IMessage{
 	@Override
 	public String toString()
 	{
-		return fException.toString();
+		return "Exception message - "+fException.toString();
 	}
 }
