@@ -23,6 +23,7 @@ import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluat
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 import ca.ubc.cs.beta.stationpacking.datamanagers.DACConstraintManager2;
 import ca.ubc.cs.beta.stationpacking.datamanagers.DACStationManager;
+import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.InstanceGenerationParameters;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentReporter;
@@ -174,7 +175,8 @@ public class InstanceGenerationExecutor {
 		DACStationManager aStationManager = new DACStationManager(aExecParameters.getRepackingDataParameters().getStationFilename(),aExecParameters.getRepackingDataParameters().getDomainFilename());
 	    Set<Station> aStations = aStationManager.getStations();
 		DACConstraintManager2 dCM = new DACConstraintManager2(aStations,aExecParameters.getRepackingDataParameters().getConstraintFilename());
-	
+		Set<Integer> aChannels = aExecParameters.getPackingChannels();
+		
 		log.info("Creating constraint grouper...");
 		IComponentGrouper aGrouper = new ConstraintGrouper();
 		
@@ -223,7 +225,7 @@ public class InstanceGenerationExecutor {
 			
 			Iterator<Station> aStationIterator = new InversePopulationStationIterator(aToConsiderStations, aExecParameters.getSeed());
 			InstanceGeneration aInstanceGeneration = new InstanceGeneration(aSolver, aExperimentReporter);
-			aInstanceGeneration.run(aStartingStations, aStationIterator,aExecParameters.getPackingChannels(),aTAEExecConfig.getAlgorithmCutoffTime());	
+			aInstanceGeneration.run(aStartingStations, aStationIterator,aChannels,aTAEExecConfig.getAlgorithmCutoffTime());	
 			aCNFLookup.writeToFile();
 			
 		} 

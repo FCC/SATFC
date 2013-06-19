@@ -119,6 +119,8 @@ public class AsyncResolvingExecutor {
 		DACStationManager aStationManager = new DACStationManager(aExecParameters.getRepackingDataParameters().getStationFilename(),aExecParameters.getRepackingDataParameters().getDomainFilename());
 	    Set<Station> aStations = aStationManager.getStations();
 		DACConstraintManager2 dCM = new DACConstraintManager2(aStations,aExecParameters.getRepackingDataParameters().getConstraintFilename());
+		
+		//Set<Integer> aChannels = aExecParameters.getPackingChannels();
 		ICNFEncoder2 aCNFEncoder = new CNFEncoder2(aStations);
 				
 		
