@@ -2,6 +2,11 @@ package ca.ubc.cs.beta.stationpacking.execution.daemon.message;
 
 import java.io.Serializable;
 
+/**
+ * Message containing status information.
+ * @author afrechet
+ *
+ */
 public class StatusMessage implements IMessage {
 
 	/**

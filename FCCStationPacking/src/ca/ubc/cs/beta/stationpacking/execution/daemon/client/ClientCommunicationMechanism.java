@@ -39,7 +39,7 @@ public class ClientCommunicationMechanism {
 	private final static int MAXPACKETSIZE = 65000;
 	
 	/**
-	 * Create a mechanism that sends messages to local host at a given port.
+	 * Create a mechanism that sends messages to local host at a given port, and is only valid for a single message (as per the expected usage in a command line solver interface executable). 
 	 * @param aServerPort - port to communicate to.
 	 * @throws SocketException
 	 * @throws UnknownHostException
@@ -62,9 +62,27 @@ public class ClientCommunicationMechanism {
 	}
 	
 	/**
+	 * Sends a message to a server on local host at the communication mechanism's port. The communication protocol works as follows: 
+	 * <ol>
+	 * <li>
+	 * The client communication mechanism packages the input message and sends it to the solver.
+	 * </li>
+	 * <li>
+	 * The solver receives the message, and may return some status messages (e.g. RUNNING, ...)
+	 * </li>
+	 * <li>
+	 * As long as the solver's message is not final, the communication mechanism keeps listening (and logging messages). A final message is :
+	 * <ul>
+	 * <li> A solver result. </li>
+	 * <li> An exception of some sort. </li>
+	 * <li> A terminal status (e.g. TERMINATED or CRASHED).</li>
+	 * </ul>
+	 * </li>
+	 * <li> The (last) final message is returned by the method. </li>
+	 * </ol>
 	 * 
-	 * @param aSendMessage
-	 * @return
+	 * @param aSendMessage - a command/request for the solver in the form of an IMessage.
+	 * @return a final message emitted by the server.
 	 * @throws IOException
 	 */
 	public IMessage communicate(IMessage aSendMessage) throws ClassNotFoundException, IOException
@@ -99,7 +117,7 @@ public class ClientCommunicationMechanism {
 
 			try{
 				fClientSocket.receive(aReceivePacket);
-				log.info("Received an object");
+				log.info("Received a packet");
 			}
 			catch(SocketException e)
 			{

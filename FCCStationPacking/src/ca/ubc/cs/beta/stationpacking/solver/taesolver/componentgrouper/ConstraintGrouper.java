@@ -40,10 +40,12 @@ public class ConstraintGrouper implements IComponentGrouper{
 		
 			for(Set<Station> aConnectedComponent : aConnectivityInspector.connectedSets())
 			{
-				if(aConnectedComponent.size()>1)
-				{
-					aGroups.add(aConnectedComponent);
-				}
+				//Early optimization - we wouldn't need to add groups of size 1.
+//				if(aConnectedComponent.size()>1)
+//				{
+//					aGroups.add(aConnectedComponent);	
+//				}
+				aGroups.add(aConnectedComponent);
 			}
 		} catch(Exception e){
 			aGroups.add(aStations); //if there's an error, return a single component (should we instead pass the exception along?)

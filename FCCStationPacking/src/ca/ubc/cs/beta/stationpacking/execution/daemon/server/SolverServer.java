@@ -146,7 +146,7 @@ public class SolverServer {
 						continue;
 					}
 					
-					log.info("Received a message");
+					log.info("Received a packet.");
 					aReceiveData = aReceivePacket.getData();
 					ByteArrayInputStream aBIN = new ByteArrayInputStream(
 							aReceiveData);
@@ -208,10 +208,12 @@ public class SolverServer {
 						}
 						
 					} 
-					if (aObject instanceof CommandMessage)
+					else if (aObject instanceof CommandMessage)
 					{
 						//Command message
 						CommandMessage aCommandMessage = (CommandMessage) aObject;
+					
+						log.info(aCommandMessage.toString());
 						
 						Command aCommand = aCommandMessage.getCommand();
 						switch(aCommand)
