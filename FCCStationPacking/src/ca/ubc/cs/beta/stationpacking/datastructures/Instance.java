@@ -62,11 +62,11 @@ public class Instance {
 		return (fStations.remove(aStation.getID())!=null);
 	}
 	
-	public Set<Station> getStations(){
+	public HashSet<Station> getStations(){
 		return new HashSet<Station>(fStations.values());
 	}
 	
-	public Set<Integer> getChannels(){
+	public HashSet<Integer> getChannels(){
 		return new HashSet<Integer>(fChannels);
 	}
 	

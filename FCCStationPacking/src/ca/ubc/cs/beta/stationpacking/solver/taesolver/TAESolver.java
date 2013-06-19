@@ -266,7 +266,22 @@ public class TAESolver implements ISolver{
 				aComponentResults.add(aSolverResult);
 			}	
 		}
-		return mergeComponentResults(aComponentResults);
+		
+		
+		SolverResult aResult = mergeComponentResults(aComponentResults);
+		
+		//Any station not in assignment can be assigned to an arbitrary channel.
+		
+		//Check that assignment is indeed satisfiable.
+		if(!fManager.isSatisfyingAssignment(aResult.getAssignment())){
+			throw new Exception("When decoding station assignment, violated pairwise interference constraints found.");
+		} 
+		else
+		{
+			System.out.println("Verified assignment is indeed satisfiable!");
+		}
+		
+		return aResult;
 
 	}
 	
@@ -305,18 +320,6 @@ public class TAESolver implements ISolver{
 			{
 				Map<Integer,Set<Station>> aComponentAssignment = aComponentResult.getAssignment();
 				
-				try{
-					if(!fManager.isSatisfyingAssignment(aComponentAssignment)){
-						throw new Exception("When decoding station assignment, violated pairwise interference constraints found.");
-					} else {
-						System.out.println("Successfully verified feasibility of assignment.");
-					}
-				} catch(Exception e){
-					e.printStackTrace();
-				}
-				
-				
-				
 				for(Integer aAssignedChannel : aComponentAssignment.keySet())
 				{
 					if(!aAssignment.containsKey(aAssignedChannel))
@@ -327,6 +330,7 @@ public class TAESolver implements ISolver{
 				}
 			}
 		}
+		
 				
 		return new SolverResult(aSATResult,aRuntime,aAssignment);
 	}
