@@ -1,9 +1,12 @@
 package ca.ubc.cs.beta.stationpacking.solver.cnfencoder;
 
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -25,11 +28,17 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 	Map<Integer,Integer> fExternalToInternal = new HashMap<Integer,Integer>();
 	Map<Integer,Integer> fInternalToExternal = new HashMap<Integer,Integer>();
 	
-	public CNFEncoder2(){
+	public CNFEncoder2(Set<Station> aStations){
 		Set<Integer> aSingleVar = new HashSet<Integer>();
 		aSingleVar.add(1);
 		fUNSAT_CLAUSES.add(new Clause(aSingleVar,new HashSet<Integer>()));
 		fUNSAT_CLAUSES.add(new Clause(new HashSet<Integer>(),aSingleVar));
+		Map<Station,Integer> aInternalIDs = getInternalIDs(aStations);
+		for(Station aStation : aInternalIDs.keySet()){
+			fExternalToInternal.put(aStation.getID(), aInternalIDs.get(aStation));
+			fInternalToExternal.put(aInternalIDs.get(aStation),aStation.getID());
+		}
+		
 		/*
 		Random r = new Random(1);
 		try{
@@ -221,10 +230,16 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 	 */
 	private Integer getInternalStationID(Integer aStationID){
 		Integer aInternalID = fExternalToInternal.get(aStationID);
-		if(aInternalID==null){
+		if(aInternalID==null) try{
+			/*
 			aInternalID = fExternalToInternal.size()+1;
 			fExternalToInternal.put(aStationID,aInternalID);
 			fInternalToExternal.put(aInternalID, aStationID);
+			*/
+			throw new Exception("Station "+aStationID+" not recognized in CNFEncoder.");	
+		} catch(Exception e){
+			e.printStackTrace();
+			System.out.println(fExternalToInternal);
 		}
 		return aInternalID;
 	}
@@ -248,4 +263,15 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 		return aInternalChannel;
 	}
 
+	
+	//NA - returns a map from items of type T to internal ID numbers used to represent them.
+	private <T extends Comparable<T>> Map<T,Integer> getInternalIDs(Set<T> aSet){
+		List<T> aSortedSet = new ArrayList<T>(aSet);
+		Collections.sort(aSortedSet);
+		Map<T,Integer> aInternalID = new HashMap<T,Integer>();
+		for(int i = 0; i < aSortedSet.size(); i++){
+			aInternalID.put(aSortedSet.get(i),i);
+		}
+		return aInternalID;
+	}
 }
