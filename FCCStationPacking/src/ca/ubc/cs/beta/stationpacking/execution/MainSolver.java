@@ -30,10 +30,10 @@ import ca.ubc.cs.beta.stationpacking.execution.parameters.parsers.ParameterParse
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder2;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
+import ca.ubc.cs.beta.stationpacking.solver.cnfwriter.CNFStringWriter;
 import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.IncrementalSolver;
 import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries.GlueMiniSatLibrary;
 import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries.IIncrementalSATLibrary;
-import ca.ubc.cs.beta.stationpacking.solver.taesolver.CNFStringWriter;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.TAESolver;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.HybridCNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;

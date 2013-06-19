@@ -31,7 +31,7 @@ import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.LocalExperiment
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder2;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
-import ca.ubc.cs.beta.stationpacking.solver.taesolver.CNFStringWriter;
+import ca.ubc.cs.beta.stationpacking.solver.cnfwriter.CNFStringWriter;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.TAESolver;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.HybridCNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
@@ -132,16 +132,16 @@ public class InstanceGenerationExecutor {
 				"--algoExec",
 				"python solverwrapper.py",
 				"--cutoffTime",
-				"1800"
-				/*
+				"1800",
 				"--logAllCallStrings",
-				"true",
+				"true"
+				/*
 				"--logAllProcessOutput",
 				"true"
 				*/
 				};
 		
-		args = aNArnostiRealArgs;
+		args = aPaxosTargetArgs;
 		
 	
 		/**
