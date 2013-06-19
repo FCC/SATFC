@@ -25,9 +25,11 @@ public class Clause {
 		return new HashSet<Integer>(fNegatedVars);
 	}
 	
-	public void addLiteral(Integer var, Boolean state){
+	public boolean addLiteral(Integer var, Boolean state){
+		boolean aNewVar = !(getVars().contains(var) || getNegatedVars().contains(var));
 		if(state) fVars.add(var);
 		else fNegatedVars.add(var);
+		return aNewVar;
 	}
 	
 	public boolean removeLiteral(Integer var, Boolean state){

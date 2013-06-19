@@ -34,12 +34,13 @@ import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluat
 
 import ca.ubc.cs.beta.stationpacking.datamanagers.DACConstraintManager2;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
+import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
 import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentReporter;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.ConstraintGrouper;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponentGrouper;
 
@@ -57,7 +58,8 @@ public class AsyncTAESolver {
 	private long fSeed;
 	private IComponentGrouper fGrouper;
 	private IConstraintManager fManager;
-	private ICNFEncoder fEncoder;
+	private ICNFEncoder2 fEncoder;
+	private CNFStringWriter fStringWriter;
 	
 	private AsyncCachedCNFLookup fLookup;
 	
@@ -76,7 +78,7 @@ public class AsyncTAESolver {
 	 * @param aSeed 
 	 * @deprecated
 	 */
-	public AsyncTAESolver(IConstraintManager aManager, ICNFEncoder aEncoder, String aCNFDirectory, String aParamConfigurationSpaceFile, String aAlgorithmExecutable, String aExecDir, String aTargetAlgorithmEvaluatorExecutionEnvironment, int aMaximumConcurrentExecutions, long aSeed)
+	public AsyncTAESolver(IConstraintManager aManager, ICNFEncoder2 aEncoder, String aCNFDirectory, String aParamConfigurationSpaceFile, String aAlgorithmExecutable, String aExecDir, String aTargetAlgorithmEvaluatorExecutionEnvironment, int aMaximumConcurrentExecutions, long aSeed)
 	{
 		fEncoder = aEncoder;
 		fManager = aManager;
@@ -101,14 +103,14 @@ public class AsyncTAESolver {
 	}
 	
 	
-	public AsyncTAESolver(DACConstraintManager2 aConstraintManager, ICNFEncoder aCNFEncoder,
+	public AsyncTAESolver(DACConstraintManager2 aConstraintManager, ICNFEncoder2 aCNFEncoder, CNFStringWriter aStringWriter,
 			String aCNFDirectory, TargetAlgorithmEvaluator aTAE, AlgorithmExecutionConfig aTAEExecConfig, long aSeed) {
 		fSeed = aSeed;
 		fEncoder = aCNFEncoder;
 		fManager = aConstraintManager;
 		fGrouper = new ConstraintGrouper();
 		fLookup = new AsyncCachedCNFLookup(aCNFDirectory);
-		
+		fStringWriter = aStringWriter;
 		fParamConfigurationSpace  = aTAEExecConfig.getParamFile();
 		fTargetAlgorithmEvaluator = aTAE;
 	}
@@ -148,7 +150,7 @@ public class AsyncTAESolver {
 		return new TargetAlgorithmEvaluatorCallback()
 		{
 			@Override
-			public void onSuccess(List<AlgorithmRun> runs) {
+			public void onSuccess(List<AlgorithmRun> runs){
 				HashSet<SolverResult> aComponentResults = new HashSet<SolverResult>();
 				for(AlgorithmRun aRun : runs)
 				{
@@ -163,7 +165,14 @@ public class AsyncTAESolver {
 								
 								//Grab assignment
 								String aAdditionalRunData = aRun.getAdditionalRunData();
-								aAssignment = fEncoder.decode(aToRunInstances.get(aRun.getRunConfig()), aAdditionalRunData);
+								Instance aGroupInstance = aToRunInstances.get(aRun.getRunConfig());
+								try{
+									Clause aAssignmentClause = fStringWriter.stringToAssignmentClause(aGroupInstance, aAdditionalRunData);
+									aAssignment = fEncoder.decode(aGroupInstance, aAssignmentClause);
+								} catch(Exception e){
+									e.printStackTrace();
+								}
+
 								
 								break;
 							case UNSAT:
@@ -300,7 +309,8 @@ public class AsyncTAESolver {
 			if(!fLookup.hasCNFFor(aComponentInstance))
 			{
 				//Encode the instance
-				String aCNF = fEncoder.encode(aComponentInstance,fManager);
+				Set<Clause> aClauseSet = fEncoder.encode(aComponentInstance,fManager);
+				String aCNF = fStringWriter.clausesToString(aComponentInstance,aClauseSet);
 				try 
 				{
 					FileUtils.writeStringToFile(new File(aCNFFileName), aCNF);
