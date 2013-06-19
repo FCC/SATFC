@@ -28,13 +28,12 @@ import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.parsers.ParameterParser;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder2;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
 import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.IncrementalSolver;
 import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries.GlueMiniSatLibrary;
 import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries.IIncrementalSATLibrary;
+import ca.ubc.cs.beta.stationpacking.solver.taesolver.CNFStringWriter;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.TAESolver;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.HybridCNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
@@ -117,7 +116,7 @@ public class MainSolver  implements ISolver{
 		DACConstraintManager2 aConstraintManager = new DACConstraintManager2(aStations,aExecParameters.getRepackingDataParameters().getConstraintFilename());
 	
 		log.info("Creating solver...");
-		ICNFEncoder aCNFEncoder = new CNFEncoder();
+		ICNFEncoder2 aCNFEncoder = new CNFEncoder2();
 		
 		if(aExecParameters.useIncrementalSolver()){ //Create IncrementalSolver
 			/* May want more parameters in the future; for example
@@ -140,7 +139,7 @@ public class MainSolver  implements ISolver{
 			TargetAlgorithmEvaluator aTAE = null;
 			try {
 				aTAE = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(aExecParameters.getAlgorithmExecutionOptions().taeOpts, aTAEExecConfig, false, aAvailableTAEOptions);
-				fSolver = new TAESolver(aConstraintManager, aCNFEncoder, aCNFLookup, aGrouper, aTAE, aTAEExecConfig,aExecParameters.getSeed());			
+				fSolver = new TAESolver(aConstraintManager, aCNFEncoder, aCNFLookup, aGrouper, new CNFStringWriter(),aTAE, aTAEExecConfig,aExecParameters.getSeed());			
 			} finally {
 				//We need to tell the TAE we are shutting down, otherwise the program may not exit 
 				if(aTAE != null){ aTAE.notifyShutdown();}

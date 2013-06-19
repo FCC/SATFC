@@ -25,9 +25,10 @@ import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.InstanceGenerationParameters;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.AsynchronousLocalExperimentReporter;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder2;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.AsyncTAESolver;
+import ca.ubc.cs.beta.stationpacking.solver.taesolver.CNFStringWriter;
 
 
 public class AsyncResolvingExecutor {
@@ -118,8 +119,10 @@ public class AsyncResolvingExecutor {
 		DACStationManager aStationManager = new DACStationManager(aExecParameters.getRepackingDataParameters().getStationFilename(),aExecParameters.getRepackingDataParameters().getDomainFilename());
 	    Set<Station> aStations = aStationManager.getStations();
 		DACConstraintManager2 dCM = new DACConstraintManager2(aStations,aExecParameters.getRepackingDataParameters().getConstraintFilename());
-		ICNFEncoder aCNFEncoder = new CNFEncoder();
+		ICNFEncoder2 aCNFEncoder = new CNFEncoder2();
 				
+		
+		
 		log.info("Creating experiment reporter...");
 		AsynchronousLocalExperimentReporter aAsynchronousReporter = new AsynchronousLocalExperimentReporter(aExecParameters.getExperimentDir(), aExecParameters.getExperimentName());
 		aAsynchronousReporter.startWritingReport();
@@ -138,7 +141,7 @@ public class AsyncResolvingExecutor {
 			
 			aTAE = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(aExecParameters.getAlgorithmExecutionOptions().taeOpts, aTAEExecConfig, false, aAvailableTAEOptions);
 			
-			AsyncTAESolver aAsyncSolver = new AsyncTAESolver(dCM, aCNFEncoder, aExecParameters.getCNFDirectory(), aTAE, aTAEExecConfig, aExecParameters.getSeed());
+			AsyncTAESolver aAsyncSolver = new AsyncTAESolver(dCM, aCNFEncoder, new CNFStringWriter(),aExecParameters.getCNFDirectory(), aTAE, aTAEExecConfig, aExecParameters.getSeed());
 			
 			//Get all instances, and solve each instance.
 			log.info("Getting all instances from report file...");
