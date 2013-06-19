@@ -114,7 +114,8 @@ public class MainSolver  implements ISolver{
 		log.info("Getting constraint information...");
 		Set<Station> aStations = fStationManager.getStations();
 		DACConstraintManager2 aConstraintManager = new DACConstraintManager2(aStations,aExecParameters.getRepackingDataParameters().getConstraintFilename());
-	
+		Set<Integer> aChannels = aExecParameters.getPackingChannels();
+
 		log.info("Creating solver...");
 		ICNFEncoder2 aCNFEncoder = new CNFEncoder2(aStations);
 		

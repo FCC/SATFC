@@ -21,6 +21,7 @@ import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluat
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 import ca.ubc.cs.beta.stationpacking.datamanagers.DACConstraintManager2;
 import ca.ubc.cs.beta.stationpacking.datamanagers.DACStationManager;
+import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.server.SolverServer;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.InstanceGenerationParameters;
@@ -120,6 +121,7 @@ public class DaemonSolverExecutor {
 		IComponentGrouper aGrouper = new ConstraintGrouper();
 		
 		log.info("Creating CNF encoder...");
+		//Set<Integer> aChannels = aExecParameters.getPackingChannels();
 		ICNFEncoder2 aCNFEncoder = new CNFEncoder2(aStations);
 		
 		log.info("Creating CNF lookup...");
