@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
@@ -27,8 +28,11 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 	
 	Map<Integer,Integer> fExternalToInternal = new HashMap<Integer,Integer>();
 	Map<Integer,Integer> fInternalToExternal = new HashMap<Integer,Integer>();
+	Integer fMaxChannel = 100;
 	
 	public CNFEncoder2(Set<Station> aStations){
+		//Set<Station> aStations = aInstance.getStations();
+		//Set<Integer> aChannels = aInstance.getChannels();
 		Set<Integer> aSingleVar = new HashSet<Integer>();
 		aSingleVar.add(1);
 		fUNSAT_CLAUSES.add(new Clause(aSingleVar,new HashSet<Integer>()));
@@ -38,15 +42,24 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 			fExternalToInternal.put(aStation.getID(), aInternalIDs.get(aStation));
 			fInternalToExternal.put(aInternalIDs.get(aStation),aStation.getID());
 		}
+		//for(Integer aChannel : aChannels) if(fMaxChannel < aChannel) fMaxChannel = aChannel;
+		
+		int aCount = aInternalIDs.size()+1;
+		for(int i = 0; i <= 10000; i++){
+			if(fExternalToInternal.get(i)==null){
+				fExternalToInternal.put(i, aCount);
+				fInternalToExternal.put(aCount++, i);
+			}
+		}
 		
 		/*
 		Random r = new Random(1);
 		try{
 			int next;
 			int station = 301;
-			int channel = 2510;
+			int channel = 25;
 			for(int i = 0; i < 100000; i++){
-				if( varToChannel(stationChannelPairToVar(station,channel)) !=channel) {
+				if( varToChannel(stationChannelPairToVar(station,channel)) !=channel) {					
 					throw new Exception("Error in decoding! Station: "+station+", Channel: "+channel+".\nGot Channel "+varToChannel(stationChannelPairToVar(station,channel)));
 				}
 				if(varToStationID(stationChannelPairToVar(station,channel)) != station) 
@@ -54,13 +67,14 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 				next = Math.abs(r.nextInt());
 				station = 1+new Double(next - 10000*Math.floor(next/10000)).intValue();
 				next = Math.abs(r.nextInt());
-				channel = 1+new Double(next - 10000*Math.floor(next/10000)).intValue();
+				channel = 1+new Double(next - fMaxChannel*Math.floor(next/fMaxChannel)).intValue();
 			}
 			throw new Exception("100000 station-channel pairs decoded accurately.");
 		} catch(Exception e){
 			e.printStackTrace();
 		}
 		*/
+		
 	}
 	
 	/* NA - the new encode method
@@ -202,19 +216,41 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 	
 	//Nifty diagonalization trick - could also map to internalIDs if we wanted
 	private Integer stationChannelPairToVar(Integer aStationID, Integer aChannel){
+		/*
+		try{
+			if(0 < aChannel && aChannel < fMaxChannel+1){
+				if(getInternalStationID(aStationID)==null) throw new Exception("No internal ID for Station "+aStationID);
+				return getInternalStationID(aStationID)*(fMaxChannel+1)+aChannel;
+			} else {
+				throw new Exception("Channel "+aChannel+" out of range.");
+			} 
+		}catch(Exception e) {
+			e.printStackTrace();
+			return -1;
+		}
+		*/
+		
 		Integer aStationIDInternal = getInternalStationID(aStationID);
 		Integer aChannelInternal = getInternalChannel(aChannel);
 		Integer diag = aStationIDInternal+aChannelInternal-1;
 		return diag*(diag-1)/2+aChannelInternal;
+		
 	}
 	
 	private Integer varToChannel(Integer var){
+		/*
+		return var - (fMaxChannel+1)*(var/(fMaxChannel+1));
+		 */
+		
 		Integer diag = new Double(Math.floor(Math.sqrt(2*var))).intValue();
 		if(diag*(diag+1)/2<var) diag = diag+1;
 		return getExternalChannel(var - diag*(diag-1)/2);
+		
 	}
 	
 	private Integer varToStationID(Integer var){
+		//return getExternalStationID(var/(fMaxChannel+1));
+		
 		Integer diag = new Double(Math.floor(Math.sqrt(2*var))).intValue();
 		if(diag*(diag+1)/2<var) diag = diag+1;
 		Integer channel = var - diag*(diag-1)/2;
@@ -222,6 +258,7 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 		if(aExternalStationID==null)
 			System.out.println("Trying to decode variable "+var);
 		return aExternalStationID;
+		
 	}
 	
 	/* NA - currently no-ops
@@ -270,7 +307,7 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 		Collections.sort(aSortedSet);
 		Map<T,Integer> aInternalID = new HashMap<T,Integer>();
 		for(int i = 0; i < aSortedSet.size(); i++){
-			aInternalID.put(aSortedSet.get(i),i);
+			aInternalID.put(aSortedSet.get(i),i+1);
 		}
 		return aInternalID;
 	}
