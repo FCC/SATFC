@@ -27,9 +27,9 @@ public class CLIDaemonSolverInterfaceExecutor {
 		//aCComMec.communicate(new StatusMessage(StatusMessage.Status.TERMINATED));
 		log.info(aSolverAnswerMessage.toString());
 		
-		aCComMec = new ClientCommunicationMechanism(8080);
-		aSolverAnswerMessage = aCComMec.communicate(new CommandMessage(CommandMessage.Command.TERMINATE));
-		log.info(aSolverAnswerMessage.toString());
+		//aCComMec = new ClientCommunicationMechanism(8080);
+		//aSolverAnswerMessage = aCComMec.communicate(new CommandMessage(CommandMessage.Command.TERMINATE));
+		//log.info(aSolverAnswerMessage.toString());
 
 	}
 

@@ -2,6 +2,11 @@ package ca.ubc.cs.beta.stationpacking.execution.daemon.message;
 
 import java.io.Serializable;
 
+/**
+ * A command message class.
+ * @author afrechet
+ *
+ */
 public class CommandMessage implements IMessage{
 
 	/**
