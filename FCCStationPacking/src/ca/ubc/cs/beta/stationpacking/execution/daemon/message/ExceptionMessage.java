@@ -1,5 +1,10 @@
 package ca.ubc.cs.beta.stationpacking.execution.daemon.message;
 
+/**
+ * An exception message class.
+ * @author afrechet
+ *
+ */
 public class ExceptionMessage implements IMessage{
 	
 	/**
@@ -11,7 +16,7 @@ public class ExceptionMessage implements IMessage{
 	
 	/**
 	 * Message containing an exception encountered in the solver.
-	 * @param aSolverResult
+	 * @param aException - the contained exception.
 	 */
 	public ExceptionMessage(Exception aException)
 	{

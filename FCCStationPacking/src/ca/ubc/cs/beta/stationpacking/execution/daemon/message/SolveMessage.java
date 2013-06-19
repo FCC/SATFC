@@ -6,6 +6,11 @@ import java.util.HashSet;
 import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 
+/**
+ * A message corresponding to a solve request.
+ * @author afrechet
+ *
+ */
 public class SolveMessage implements IMessage {
 
 	/**
