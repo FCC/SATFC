@@ -179,7 +179,7 @@ public class InstanceGenerationExecutor {
 		IComponentGrouper aGrouper = new ConstraintGrouper();
 		
 		log.info("Creating CNF encoder...");
-		ICNFEncoder2 aCNFEncoder = new CNFEncoder2();
+		ICNFEncoder2 aCNFEncoder = new CNFEncoder2(aStations);
 		
 		log.info("Creating CNF lookup...");
 		ICNFResultLookup aCNFLookup = new HybridCNFResultLookup(aExecParameters.getCNFDirectory(), aExecParameters.getCNFOutputName());

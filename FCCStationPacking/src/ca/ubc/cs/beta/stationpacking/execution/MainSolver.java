@@ -116,17 +116,16 @@ public class MainSolver  implements ISolver{
 		DACConstraintManager2 aConstraintManager = new DACConstraintManager2(aStations,aExecParameters.getRepackingDataParameters().getConstraintFilename());
 	
 		log.info("Creating solver...");
-		ICNFEncoder2 aCNFEncoder = new CNFEncoder2();
+		ICNFEncoder2 aCNFEncoder = new CNFEncoder2(aStations);
 		
 		if(aExecParameters.useIncrementalSolver()){ //Create IncrementalSolver
 			/* May want more parameters in the future; for example
 			 * -Implement more incremental solvers; don't always call GlueMiniSatLibrary below
 			 * -Implement an incremental solver using memory copying rather than dummy variables
 			 */
-			ICNFEncoder2 aCNFEncoder2 = new CNFEncoder2();
 			String aLibraryPath = aExecParameters.getIncrementalLibraryLocation();
 			IIncrementalSATLibrary aSATLibrary = new GlueMiniSatLibrary(aLibraryPath);
-			fSolver = new IncrementalSolver(aConstraintManager, aCNFEncoder2, aSATLibrary);
+			fSolver = new IncrementalSolver(aConstraintManager, aCNFEncoder, aSATLibrary);
 
 		} else { //Create TAESolver			
 			
