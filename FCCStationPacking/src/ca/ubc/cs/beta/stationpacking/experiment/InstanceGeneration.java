@@ -41,7 +41,6 @@ public class InstanceGeneration {
 	**/
 	public void run(Set<Station> aStartingStations, Iterator<Station> aStationIterator, Set<Integer> aChannelRange,double aCutoff){
 		Instance aInstance = new Instance(aStartingStations,aChannelRange);
-		System.out.println(aStationIterator.hasNext());
 		while(aStationIterator.hasNext()) {
 			Station aStation = aStationIterator.next();
 			log.info("Trying to add {} to current set.",aStation);

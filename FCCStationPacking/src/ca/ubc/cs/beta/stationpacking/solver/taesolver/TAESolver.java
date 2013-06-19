@@ -36,6 +36,7 @@ import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.ConstraintGrouper;
@@ -200,6 +201,9 @@ public class TAESolver implements ISolver{
 					//Encode the instance
 					Set<Clause> aClauseSet = fEncoder.encode(aComponentInstance,fManager);
 					String aCNF = fStringWriter.clausesToString(aComponentInstance,aClauseSet);
+					
+					//System.out.println("When encoding, the two matched: "+aCNF.equals())
+					
 					//Write it to disk
 					try 
 					{
@@ -249,6 +253,8 @@ public class TAESolver implements ISolver{
 						Instance aGroupInstance = aToSolveInstances.get(aRun.getRunConfig());
 						Clause aAssignmentClause = fStringWriter.stringToAssignmentClause(aGroupInstance, aAdditionalRunData);
 						aAssignment = fEncoder.decode(aGroupInstance, aAssignmentClause);
+						
+						
 						
 						break;
 					case UNSAT:
