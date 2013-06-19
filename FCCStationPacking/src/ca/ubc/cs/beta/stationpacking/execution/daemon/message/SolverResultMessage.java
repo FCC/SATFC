@@ -3,6 +3,7 @@ package ca.ubc.cs.beta.stationpacking.execution.daemon.message;
 import java.util.HashMap;
 import java.util.HashSet;
 
+import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 
@@ -15,8 +16,12 @@ public class SolverResultMessage implements IMessage {
 	
 	private final HashMap<Integer,HashSet<Integer>> fAssignment;
 	private final double fRuntime;
-	private final String fSATResult;
+	private final SATResult fSATResult;
 	
+	/**
+	 * Message containing solver result information.
+	 * @param aSolverResult
+	 */
 	public SolverResultMessage(SolverResult aSolverResult)
 	{
 		fAssignment = new HashMap<Integer,HashSet<Integer>>();
@@ -30,14 +35,25 @@ public class SolverResultMessage implements IMessage {
 			fAssignment.put(aChannel, aAssignedStations);
 		}
 		fRuntime = aSolverResult.getRuntime();
-		fSATResult = aSolverResult.getResult().toString();
+		fSATResult = aSolverResult.getResult();
 	}
 	
-	
+	public HashMap<Integer,HashSet<Integer>> getAssignment()
+	{
+		return fAssignment;
+	}
+	public double getRuntime()
+	{
+		return fRuntime;
+	}
+	public SATResult getSATresult()
+	{
+		return fSATResult;
+	}
 	
 	@Override
 	public String toString(){
-		return fSATResult+","+fRuntime+";"+fAssignment;
+		return "Solver result message - "+fSATResult+","+fRuntime+","+fAssignment;
 	}
 	
 	

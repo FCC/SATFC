@@ -21,6 +21,8 @@ import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.client.ClientCommunicationMechanism;
+import ca.ubc.cs.beta.stationpacking.execution.daemon.message.CommandMessage;
+import ca.ubc.cs.beta.stationpacking.execution.daemon.message.CommandMessage.Command;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.message.ExceptionMessage;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.message.IMessage;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.message.SolveMessage;
@@ -28,10 +30,16 @@ import ca.ubc.cs.beta.stationpacking.execution.daemon.message.SolverResultMessag
 import ca.ubc.cs.beta.stationpacking.execution.daemon.message.StatusMessage;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 
+/**
+ * Wrapper around an ISolver and a StationManager that takes care of receiving problem instances and various misc commands from UDP localhost, and communicate
+ * result and other information back.
+ * 
+ * @author afrechet
+ *
+ */
 public class SolverServer {
 
-	private static Logger log = LoggerFactory
-			.getLogger(ClientCommunicationMechanism.class);
+	private static Logger log = LoggerFactory.getLogger(ClientCommunicationMechanism.class);
 
 	private final ISolver fSolver;
 	private final IStationManager fStationManager;
@@ -47,13 +55,28 @@ public class SolverServer {
 		fSolver = aSolver;
 		fStationManager = aStationManager;
 		
+		if (aServerPort >= 0 && aServerPort < 1024)
+		{
+		log.warn("Trying to allocate a port < 1024 which generally requires root priviledges (which aren't necessary and discouraged), this may fail");
+		}
+		if(aServerPort < -1 || aServerPort > 65535)
+		{
+		throw new IllegalArgumentException("Port must be in the interval [0,65535]");
+		}
+		 
 		fServerPort = aServerPort;
 		fServerSocket = new DatagramSocket(fServerPort);
 		fIPAdress = InetAddress.getByName("localhost");
 
 	}
-
-	private void sendMessage(IMessage aMessage, int aPort) throws IOException {
+	
+	/**
+	 * @param aMessage - a message to send.
+	 * @param aPort - the port location on localhost.
+	 * @throws IOException
+	 * @throws IllegalArgumentException
+	 */
+	private void sendMessage(IMessage aMessage, int aPort) throws IOException,IllegalArgumentException {
 		ByteArrayOutputStream aBOUT = new ByteArrayOutputStream();
 		ObjectOutputStream aOOUT = new ObjectOutputStream(aBOUT);
 		aOOUT.writeObject(aMessage);
@@ -61,13 +84,11 @@ public class SolverServer {
 		byte[] aSendBytes = aBOUT.toByteArray();
 
 		if (aSendBytes.length > MAXPACKETSIZE) {
-			
-			sendMessage(new ExceptionMessage(new IllegalArgumentException("Solver tried to send a message that is too large.")), aPort);
-			
 			log.warn("Response is too big to send to client, please adjust packet size in both client and server ("
 					+ aSendBytes.length + " > " + MAXPACKETSIZE + ")");
 			log.warn("Dropping message");
-			return;
+			
+			throw new IllegalArgumentException("Solver tried to send a message that is too large.");			
 		}
 
 		DatagramPacket sendPacket = new DatagramPacket(aSendBytes,
@@ -76,63 +97,79 @@ public class SolverServer {
 		fServerSocket.send(sendPacket);
 
 	}
-
+	
+	/**
+	 * Shutdown the solver server.
+	 */
+	public void notifyShutdown()
+	{
+		try 
+		{
+			fServerSocket.close();
+		} 
+		catch (RuntimeException e) 
+		{
+			log.error("Error occured while shutting down", e);
+		}
+		log.info("Server shutting down");
+	}
+	
+	/**
+	 * Start the solver server. It will now listen indefinitely to its given port for messages.
+	 */
 	public void start() {
-		log.info(
-				"Solver server is processing requests using a single thread on port {}",
-				fServerSocket.getLocalPort());
+		
+		// Prevent infinite loop from closed socket re-reading
+		if (fServerSocket.isClosed())
+		{
+			throw new IllegalStateException("Trying to communicate with a closed server socket.");
+		}
+		
+		log.info("Solver server is processing requests using a single thread on port {}",fServerSocket.getLocalPort());
+		
 		try {
 			while (true) {
+				
 				byte[] aReceiveData = new byte[MAXPACKETSIZE];
 
 				try {
-					// Prevent infinite loop from closed socket re-reading
-					if (fServerSocket.isClosed())
-						return;
-
+					//Listen to the socket.
+					log.info("Listening to socket at "+fIPAdress+" port "+fServerPort);
 					DatagramPacket aReceivePacket = new DatagramPacket(
 							aReceiveData, aReceiveData.length);
-
 					fServerSocket.receive(aReceivePacket);
-
-					aReceiveData = aReceivePacket.getData();
-
+					
 					if (!fIPAdress.equals(aReceivePacket.getAddress())) {
 						log.warn(
 								"Received request from a non-{}, ignoring request from {}",
 								fIPAdress, aReceivePacket.getAddress());
 						continue;
 					}
-					log.info("Received a message...");
-
+					
+					log.info("Received a message");
+					aReceiveData = aReceivePacket.getData();
 					ByteArrayInputStream aBIN = new ByteArrayInputStream(
 							aReceiveData);
 					ObjectInputStream aOIN = new ObjectInputStream(aBIN);
-
 					Object aObject = aOIN.readObject();
-
-					// Process message and prepare to send answer back
-
+					
 					int aSendPort = aReceivePacket.getPort();
 
+					//Process message
 					if (aObject instanceof SolveMessage) {
+						//Solve message
 						SolveMessage aSolveMessage = (SolveMessage) aObject;
-						log.info("Received solve request {}", aSolveMessage);
+						log.info(aSolveMessage.toString());
 
-						// Send status message
-						sendMessage(new StatusMessage(
-								StatusMessage.Status.RUNNING), aSendPort);
+						// Send back status message
+						sendMessage(new StatusMessage(StatusMessage.Status.RUNNING), aSendPort);
 
-						HashSet<Integer> aStationIDs = aSolveMessage.getStations();
-						HashSet<Integer> aChannels = aSolveMessage.getChannels();
-
+						//Build instance & solve
 						log.info("Building instance...");
-						
+						HashSet<Integer> aStationIDs = aSolveMessage.getStationIDs();
+						HashSet<Integer> aChannels = aSolveMessage.getChannels();
 						Set<Station> aStations = new HashSet<Station>();
 						Station aStation;
-						
-						
-						// Build instance
 						for (Integer aID : aStationIDs) {
 							if ((aStation = fStationManager.get(aID)) != null)
 								aStations.add(aStation);
@@ -140,60 +177,71 @@ public class SolverServer {
 						Instance aInstance = null;
 						if (aStations.size() <= 0 || aChannels.size() <= 0) 
 						{
-							sendMessage(new ExceptionMessage(new IllegalArgumentException(
-									"Invalid Instance: recognized station set is: "
-											+ aStations + ", channels are: "
-											+ aChannels)),aSendPort);
-							
+							sendMessage(new ExceptionMessage(new IllegalArgumentException("Invalid Instance: recognized station set is: "+ aStations + ", channels are: "+ aChannels)),aSendPort);
 						} 
 						else 
 						{
 							aInstance = new Instance(aStations, aChannels);
-					
 							log.info("Solving the instance...");
-							
-							// Solve instance
 							SolverResult aSolverResult;
 							try {
 								aSolverResult = fSolver.solve(aInstance, aSolveMessage.getCutoff());
 								
-								log.info("Instance solved : "+aSolverResult);
+								//Send the result back
+								log.info("Instance solved");
+								log.info(aSolverResult.toString());
 								log.info("Sending answer back");
-								// Send back answer
-								sendMessage(new SolverResultMessage(aSolverResult), aSendPort);
+								try
+								{
+									sendMessage(new SolverResultMessage(aSolverResult), aSendPort);
+								}
+								catch(IllegalArgumentException e)
+								{
+									log.warn("Failed to send solver result ({})",e);
+									sendMessage(new ExceptionMessage(e), aSendPort);
+								}
 							
 							} catch (Exception e) {
+								log.warn("Failed to solve the instance ({})",e);
 								sendMessage(new ExceptionMessage(e),aSendPort);
 							}
 						}
 						
-					} else {
-						sendMessage(
-								new ExceptionMessage(
-										new IllegalStateException(
-												"Object received is of no recognizable message type - "+aObject.toString())),
-								aSendPort);
+					} 
+					if (aObject instanceof CommandMessage)
+					{
+						//Command message
+						CommandMessage aCommandMessage = (CommandMessage) aObject;
+						
+						Command aCommand = aCommandMessage.getCommand();
+						switch(aCommand)
+						{
+							case TERMINATE:
+								sendMessage(new StatusMessage(StatusMessage.Status.TERMINATED), aSendPort);
+								notifyShutdown();
+								return;
+							default:
+								break;
+						}
+						
+					}
+					else {
+						//Failed recognizing the message.
+						sendMessage(new ExceptionMessage(new IllegalStateException("Object received is of no recognizable message type - "+aObject.toString())),aSendPort);
 						log.warn("Object received is of no recognizable message type.");
 					}
 
 				} catch (IOException e) {
-					log.error(
-							"Unknown IOException occured while recieving data, will wait for next request {}",
-							e);
+					log.error("Unknown IOException occured while recieving data, will wait for next request {}",e);
 				} catch (ClassNotFoundException e) {
-					log.error(
-							"Unknown ClassCastException occured while recieving data, will wait for next request {}, (probably garbage data)",
-							e);
+					log.error("Unknown ClassCastException occured while recieving data, will wait for next request {}, (probably garbage data)",e);
 				}
 
 			}
-		} finally {
-			try {
-				fServerSocket.close();
-			} catch (RuntimeException e) {
-				log.error("Error occured while shutting down", e);
-			}
-			log.info("Server shutting down");
+		} 
+		finally 
+		{
+			notifyShutdown();
 		}
 	}
 
