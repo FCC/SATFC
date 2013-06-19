@@ -222,6 +222,7 @@ public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 	        System.out.println("Testing trivial UNSAT instance...");
 	        addClause(aClause);
 	        printResult(new Clause());
+	        clear();
 	        
 			System.out.println("Testing slightly more complicated SAT instance...");
 	        aClause = new Clause();
@@ -256,7 +257,7 @@ public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 	        printResult(aClause);
 	        
 	        System.out.println("Now the problem should be UNSAT...");
-	        aClause.addLiteral(2,false);
+	        aClause.addLiteral(2,true);
 	        printResult(aClause);
 	        
 	        System.out.println("Now the problem should really, really be UNSAT.");

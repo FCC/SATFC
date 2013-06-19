@@ -28,8 +28,9 @@ import ca.ubc.cs.beta.stationpacking.execution.parameters.InstanceGenerationPara
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.LocalExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder2;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
+import ca.ubc.cs.beta.stationpacking.solver.taesolver.CNFStringWriter;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.TAESolver;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.HybridCNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
@@ -178,7 +179,7 @@ public class InstanceGenerationExecutor {
 		IComponentGrouper aGrouper = new ConstraintGrouper();
 		
 		log.info("Creating CNF encoder...");
-		ICNFEncoder aCNFEncoder = new CNFEncoder();
+		ICNFEncoder2 aCNFEncoder = new CNFEncoder2();
 		
 		log.info("Creating CNF lookup...");
 		ICNFResultLookup aCNFLookup = new HybridCNFResultLookup(aExecParameters.getCNFDirectory(), aExecParameters.getCNFOutputName());
@@ -197,8 +198,7 @@ public class InstanceGenerationExecutor {
 		try {
 			
 			aTAE = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(aExecParameters.getAlgorithmExecutionOptions().taeOpts, aTAEExecConfig, false, aAvailableTAEOptions);
-		
-			ISolver aSolver = new TAESolver(dCM, aCNFEncoder, aCNFLookup, aGrouper, aTAE, aTAEExecConfig,aExecParameters.getSeed());
+			ISolver aSolver = new TAESolver(dCM, aCNFEncoder, aCNFLookup, aGrouper, new CNFStringWriter(), aTAE, aTAEExecConfig,aExecParameters.getSeed());
 			
 			log.info("Creating experiment reporter...");
 			IExperimentReporter aExperimentReporter = new LocalExperimentReporter(aExecParameters.getExperimentDir(), aExecParameters.getExperimentName());

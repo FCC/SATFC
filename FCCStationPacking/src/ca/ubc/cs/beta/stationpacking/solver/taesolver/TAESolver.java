@@ -30,12 +30,13 @@ import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluat
 
 import ca.ubc.cs.beta.stationpacking.datamanagers.DACConstraintManager2;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
+import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
 import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.ConstraintGrouper;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponentGrouper;
@@ -56,7 +57,8 @@ public class TAESolver implements ISolver{
 	private IComponentGrouper fGrouper;
 	private IConstraintManager fManager;
 	private ICNFResultLookup fLookup;
-	private ICNFEncoder fEncoder;
+	private ICNFEncoder2 fEncoder;
+	private CNFStringWriter fStringWriter;
 	
 	
 	/**
@@ -71,13 +73,14 @@ public class TAESolver implements ISolver{
 	 * @param aMaximumConcurrentExecutions - number of concurrent executions that can be done with the TAE.
 	 * @deprecated
 	 */
-	public TAESolver(IConstraintManager aManager, ICNFResultLookup aLookup, ICNFEncoder aEncoder, String aParamConfigurationSpaceFile, String aAlgorithmExecutable, String aExecDir, String aTargetAlgorithmEvaluatorExecutionEnvironment, int aMaximumConcurrentExecutions, long aSeed)
+	public TAESolver(IConstraintManager aManager, ICNFResultLookup aLookup, ICNFEncoder2 aEncoder, CNFStringWriter aStringWriter, String aParamConfigurationSpaceFile, String aAlgorithmExecutable, String aExecDir, String aTargetAlgorithmEvaluatorExecutionEnvironment, int aMaximumConcurrentExecutions, long aSeed)
 	{
 		fSeed = aSeed;
 		fEncoder = aEncoder;
 		fManager = aManager;
 		fGrouper = new ConstraintGrouper();
 		fLookup = aLookup;
+		fStringWriter = aStringWriter;
 		//Parameter configuration space
 		fParamConfigurationSpace  = new ParamConfigurationSpace(new File(aParamConfigurationSpaceFile));
 		
@@ -102,14 +105,15 @@ public class TAESolver implements ISolver{
 	}
 	
 	
-	public TAESolver(DACConstraintManager2 aConstraintManager, ICNFEncoder aCNFEncoder,
-			ICNFResultLookup aLookup, IComponentGrouper aGrouper, 
+	public TAESolver(DACConstraintManager2 aConstraintManager, ICNFEncoder2 aCNFEncoder,
+			ICNFResultLookup aLookup, IComponentGrouper aGrouper, CNFStringWriter aStringWriter,
 			TargetAlgorithmEvaluator aTAE, AlgorithmExecutionConfig aTAEExecConfig, long aSeed) {
 		fSeed = aSeed;
 		fEncoder = aCNFEncoder;
 		fManager = aConstraintManager;
 		fGrouper = aGrouper;
 		fLookup = aLookup;
+		fStringWriter = aStringWriter;
 		
 		fParamConfigurationSpace  = aTAEExecConfig.getParamFile();
 		fTargetAlgorithmEvaluator = aTAE;
@@ -194,7 +198,8 @@ public class TAESolver implements ISolver{
 				if(!aCNFFile.exists())
 				{
 					//Encode the instance
-					String aCNF = fEncoder.encode(aComponentInstance,fManager);
+					Set<Clause> aClauseSet = fEncoder.encode(aComponentInstance,fManager);
+					String aCNF = fStringWriter.clausesToString(aComponentInstance,aClauseSet);
 					//Write it to disk
 					try 
 					{
@@ -241,7 +246,9 @@ public class TAESolver implements ISolver{
 						
 						//Grab assignment
 						String aAdditionalRunData = aRun.getAdditionalRunData();
-						aAssignment = fEncoder.decode(aToSolveInstances.get(aRun.getRunConfig()), aAdditionalRunData);
+						Instance aGroupInstance = aToSolveInstances.get(aRun.getRunConfig());
+						Clause aAssignmentClause = fStringWriter.stringToAssignmentClause(aGroupInstance, aAdditionalRunData);
+						aAssignment = fEncoder.decode(aGroupInstance, aAssignmentClause);
 						
 						break;
 					case UNSAT:
