@@ -1,8 +1,6 @@
 package ca.ubc.cs.beta.stationpacking.execution.daemon;
 
 import java.io.File;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,11 +24,6 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.DACStationManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.server.SolverServer;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.InstanceGenerationParameters;
-import ca.ubc.cs.beta.stationpacking.experiment.InstanceGeneration;
-import ca.ubc.cs.beta.stationpacking.experiment.InstanceGenerationExecutor;
-import ca.ubc.cs.beta.stationpacking.experiment.InversePopulationStationIterator;
-import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentReporter;
-import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.LocalExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
