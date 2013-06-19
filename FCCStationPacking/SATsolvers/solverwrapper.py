@@ -4,7 +4,7 @@ import os
 import time
 import platform
 import re
-
+import tempfile
 
 #Paths
 solver_dir = './'
@@ -95,11 +95,45 @@ elif solvername == 'picosat':
 else:
     print 'ERROR, invalid solver name ',solvername
 
+#####################################################################################################
+#Make a new CNF where variables are named from 1 to n (where n is the total number of variables.
+#Highly undesirable fix - should use a better variable identification scheme inside the (java) solver.
+instance_file = open(instance_name)
+instance_lines = instance_file.readlines()
 
+variables = []
+variables.append(0)
+
+formatted_lines = []
+for line in instance_lines:
+    line = line.replace('\n','')
+    if not (line[0]=='p' or line[0]=='c'):
+        litterals = line.split(' ')
+        litterals.remove('0')
+        litterals = map(lambda l : int(l), litterals)
+        mapped_litterals = []
+        for litteral in litterals:
+            negated = litteral < 0
+            litteral = abs(litteral)
+            if litteral not in variables:
+                variables.append(litteral)
+            mapped_litterals.append((1-2*negated)*variables.index(litteral))
+        formatted_line = ' '.join(map(lambda l : str(l),mapped_litterals))+' 0\n'
+        formatted_lines.append(formatted_line)
+formatted_lines.insert(0,'p cnf '+str(len(variables)-1)+' '+str(len(formatted_lines))+'\n')
+
+(instance_name_head,instance_name_tail) = os.path.split(instance_name)
+temp_CNF = tempfile.NamedTemporaryFile(dir=instance_name_head,delete=True)
+temp_CNF.write(''.join(formatted_lines))
+temp_CNF.flush()
+instance_name = temp_CNF.name
+####################################################################################################
 
 #Run solver
 mem_limit = str(1000)
-callstring = runsolver_path+' -M '+mem_limit+' -C '+cutoff_time+' '+solver_path+' '+instance_name    
+callstring = runsolver_path+' -M '+mem_limit+' -C '+cutoff_time+' '+solver_path+' '+instance_name
+print callstring
+    
 (a,b,c) = os.popen3(callstring)
 
 clock = time.time()
@@ -138,6 +172,12 @@ elif re.search(SATre,std_out):
     
     assignment = reduce(lambda x,y : x+y,ASSIGNMENTre.findall(std_out)).lstrip().rstrip().split()
     assignment.remove('0')
+
+####################################################################################################
+    #Remap variables from temp CNF to variables provided by 
+    assignment = map(lambda l : str((1-2*(int(l)<0))*variables[abs(int(l))]),assignment)
+####################################################################################################
+
     assignment = ';'.join(assignment)
     
 else:

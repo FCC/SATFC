@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solver.taesolver;
+package ca.ubc.cs.beta.stationpacking.solver.cnfwriter;
 
 
 import java.util.HashSet;
@@ -27,7 +27,7 @@ public class CNFStringWriter {
 			writeClause(aClause,aBuilder,aVars);
 		}
 		int maxVar = 0; for(Integer aVar : aVars) if(aVar > maxVar) maxVar = aVar;
-		System.out.println("MaxVar is "+maxVar+", numVars is "+aVars.size());
+		//System.out.println("MaxVar is "+maxVar+", numVars is "+aVars.size());
 		aBuilder.insert(0,"p cnf "+aVars.size()+" "+aClauseSet.size()+"\n");
 		return aBuilder.toString();
 	}
