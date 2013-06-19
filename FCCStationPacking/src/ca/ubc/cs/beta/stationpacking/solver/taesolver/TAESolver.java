@@ -38,6 +38,7 @@ import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
+import ca.ubc.cs.beta.stationpacking.solver.cnfwriter.CNFStringWriter;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.ConstraintGrouper;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponentGrouper;
@@ -254,8 +255,6 @@ public class TAESolver implements ISolver{
 						Clause aAssignmentClause = fStringWriter.stringToAssignmentClause(aGroupInstance, aAdditionalRunData);
 						aAssignment = fEncoder.decode(aGroupInstance, aAssignmentClause);
 						
-						
-						
 						break;
 					case UNSAT:
 						aResult = SATResult.UNSAT;
@@ -283,16 +282,11 @@ public class TAESolver implements ISolver{
 		
 		SolverResult aResult = mergeComponentResults(aComponentResults);
 		
-		//Any station not in assignment can be assigned to an arbitrary channel.
-		
 		//Check that assignment is indeed satisfiable.
 		if(!fManager.isSatisfyingAssignment(aResult.getAssignment())){
 			throw new Exception("When decoding station assignment, violated pairwise interference constraints found.");
 		} 
-		else
-		{
-			System.out.println("Verified assignment is indeed satisfiable!");
-		}
+
 		
 		return aResult;
 

@@ -27,8 +27,8 @@ import ca.ubc.cs.beta.stationpacking.execution.parameters.InstanceGenerationPara
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.AsynchronousLocalExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder2;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
+import ca.ubc.cs.beta.stationpacking.solver.cnfwriter.CNFStringWriter;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.AsyncTAESolver;
-import ca.ubc.cs.beta.stationpacking.solver.taesolver.CNFStringWriter;
 
 
 public class AsyncResolvingExecutor {

@@ -8,7 +8,6 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
@@ -100,6 +99,7 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 	//Or I could pass a ConstraintManager and have decode do full verification (exactly one channel per station, in that station's domain, no constraints violated)
 	@Override
 	public Map<Integer,Set<Station>> decode(Instance aInstance, Clause aAssignment) throws Exception{
+		
 		Set<Integer> aInstanceDomain = aInstance.getChannels();
 		Map<Station,Integer> aAssignmentMap = new HashMap<Station,Integer>();
 		for(Integer aVar : aAssignment.getVars()){
@@ -120,10 +120,12 @@ public class CNFEncoder2 implements ICNFEncoder2 {
 		if(aAssignmentMap.size()!=aInstance.getStations().size()) 
 			throw new Exception("Instance has "+aInstance.getStations().size()+" stations, but only "+aAssignmentMap.size()+" were assigned.");
 		Map<Integer,Set<Station>> aChannelAssignments = new HashMap<Integer,Set<Station>>();
-		for(Integer aChannel : aInstanceDomain){
-			aChannelAssignments.put(aChannel, new HashSet<Station>());
-		}
+		
 		for(Station aStation : aAssignmentMap.keySet()){
+			if(!aChannelAssignments.containsKey(aAssignmentMap.get(aStation)))
+			{
+				aChannelAssignments.put(aAssignmentMap.get(aStation), new HashSet<Station>());
+			}			
 			aChannelAssignments.get(aAssignmentMap.get(aStation)).add(aStation);
 		}
 		return aChannelAssignments;
