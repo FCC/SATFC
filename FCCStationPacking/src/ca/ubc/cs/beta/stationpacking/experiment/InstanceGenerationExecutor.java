@@ -26,12 +26,16 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.DACStationManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.InstanceGenerationParameters;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.parsers.ParameterParser;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.LocalExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder2;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
 import ca.ubc.cs.beta.stationpacking.solver.cnfwriter.CNFStringWriter;
+import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.IncrementalSolver;
+import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries.GlueMiniSatLibrary;
+import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries.IIncrementalSATLibrary;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.TAESolver;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.HybridCNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
@@ -114,9 +118,11 @@ public class InstanceGenerationExecutor {
 				"-CNF_DIR",
 				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/CNFs",
 				"-SOLVER",
-				"tunedclasp",
+				"glueminisat",
+				"-LIBRARY",
+				"/ubc/cs/project/arrow/afrechet/git/fcc-station-packing/FCCStationPacking/SATsolvers/glueminisat/glueminisat-incremental/core/libglueminisat.so",
 				"-EXPERIMENT_NAME",
-				"TestExperiment",
+				"Glueminisat",
 				"-EXPERIMENT_DIR",
 				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Results/TestExperiment",
 				/*
@@ -151,7 +157,7 @@ public class InstanceGenerationExecutor {
 		Map<String,AbstractOptions> aAvailableTAEOptions = TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators();
 		
 		//Parse the command line arguments in a parameter object.
-		InstanceGenerationParameters aExecParameters = new InstanceGenerationParameters();
+		ParameterParser aExecParameters = new ParameterParser();
 		JCommander aParameterParser = JCommanderHelper.getJCommander(aExecParameters, aAvailableTAEOptions);
 		try
 		{
@@ -201,6 +207,10 @@ public class InstanceGenerationExecutor {
 			
 			aTAE = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(aExecParameters.getAlgorithmExecutionOptions().taeOpts, aTAEExecConfig, false, aAvailableTAEOptions);
 			ISolver aSolver = new TAESolver(dCM, aCNFEncoder, aCNFLookup, aGrouper, new CNFStringWriter(), aTAE, aTAEExecConfig,aExecParameters.getSeed());
+			
+//			String aLibraryPath = aExecParameters.getIncrementalLibraryLocation();
+//			IIncrementalSATLibrary aSATLibrary = new GlueMiniSatLibrary(aLibraryPath);
+//			ISolver aSolver = new IncrementalSolver(dCM, aCNFEncoder, aSATLibrary);
 			
 			log.info("Creating experiment reporter...");
 			IExperimentReporter aExperimentReporter = new LocalExperimentReporter(aExecParameters.getExperimentDir(), aExecParameters.getExperimentName());
