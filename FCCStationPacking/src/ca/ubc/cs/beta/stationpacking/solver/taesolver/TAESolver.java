@@ -252,9 +252,10 @@ public class TAESolver implements ISolver{
 						//Grab assignment
 						String aAdditionalRunData = aRun.getAdditionalRunData();
 						Instance aGroupInstance = aToSolveInstances.get(aRun.getRunConfig());
+					
 						Clause aAssignmentClause = fStringWriter.stringToAssignmentClause(aGroupInstance, aAdditionalRunData);
 						aAssignment = fEncoder.decode(aGroupInstance, aAssignmentClause);
-						
+		
 						break;
 					case UNSAT:
 						aResult = SATResult.UNSAT;
