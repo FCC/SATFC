@@ -27,6 +27,8 @@ claspx32_path = clasp_dir + 'claspx32/build/release/bin/clasp'
 claspx64osx_path = clasp_dir + 'claspx64osx/build/release/bin/clasp'
 tunedclasp_path = clasp_dir + 'tunedclasp/claspCMarch13'
 
+glueminisat_dir = solver_dir + 'glueminisat/'
+glueminisatx64_path = glueminisat_dir + 'glueminisatx64/glueminisat'
 
 runsolver_dir = solver_dir + 'runsolver/'
 runsolverx64_path = runsolver_dir+'runsolverx64/runsolver'
@@ -63,6 +65,11 @@ if solvername == 'glucose':
         solver_path = glucosex64_path
     else:
         print 'UNRECOGNIZED ARCHITECTURE IN SETTING SOLVER PATH!'
+elif solvername == 'glueminisat':
+    if '64' in bits:
+        solver_path = glueminisatx64_path
+    else:
+        print 'UNRECOGNIZED ARCHITECTURE IN SETTING SOLVER PATH!'
 elif solvername == 'clasp':
     if '32' in bits:
         solver_path = claspx32_path
@@ -91,7 +98,7 @@ elif solvername == 'picosat':
         elif _platform == "darwin":
             solver_path = picosatx64osx_path
     else:
-        print 'UNRECOGNIZED ARCHITECTURE IN SETTING SOLVER PATH!'
+        print 'UNRECOGNIZED ARCHITECTURE IN SETTING SOLVER PATH!'        
 else:
     print 'ERROR, invalid solver name ',solvername
 
@@ -129,12 +136,22 @@ temp_CNF.flush()
 instance_name = temp_CNF.name
 ####################################################################################################
 
+temp_result = tempfile.NamedTemporaryFile(dir=instance_name_head, delete=True)
+
 #Run solver
 mem_limit = str(1000)
-callstring = runsolver_path+' -M '+mem_limit+' -C '+cutoff_time+' '+solver_path+' '+instance_name
+
+if solvername == 'glueminisat':
+    callstring = runsolver_path+' -M '+mem_limit+' -C '+cutoff_time+' '+solver_path+' '+instance_name+' '+temp_result.name
+else:
+    callstring = runsolver_path+' -M '+mem_limit+' -C '+cutoff_time+' '+solver_path+' '+instance_name
+
+
 print callstring
     
 (a,b,c) = os.popen3(callstring)
+
+temp_result.flush()
 
 clock = time.time()
 #Get output        
@@ -168,10 +185,16 @@ elif re.search(SATre,std_out):
     output_runtime = str(float(TIMEre.findall(std_out)[0].split(':')[1].replace(' ','')))
     
     #Each line of the assignment starts with a 'v' and the final line ends with '0'.
-    ASSIGNMENTre = re.compile('v([\\s\\-\\d]+)\n')
+    ASSIGNMENTre = re.compile('\\s+v([\\s\\-\\d]+)\n')
     
-    assignment = reduce(lambda x,y : x+y,ASSIGNMENTre.findall(std_out)).lstrip().rstrip().split()
-    assignment.remove('0')
+    if len(ASSIGNMENTre.findall(std_out))==0:
+        print 'Solver outputted no assignment!'
+        assignment = ''.join(temp_result.readlines()[1:]).replace('\n','').split(' ')
+        assignment.remove('0')
+    else:
+    
+        assignment = reduce(lambda x,y : x+y,ASSIGNMENTre.findall(std_out)).lstrip().rstrip().split()
+        assignment.remove('0')
 
 ####################################################################################################
     #Remap variables from temp CNF to variables provided by 
