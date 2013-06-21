@@ -214,3 +214,6 @@ if output_solved == 'SAT':
 else:
     print 'Result for ParamILS: '+output_solved+', '+output_runtime+', '+output_runlength+', '+output_quality+', '+output_seed+'\n'
 
+temp_CNF.close()
+temp_result.close()
+sys.exit()

@@ -179,11 +179,7 @@ temp_stderr = tempfile.NamedTemporaryFile(dir=current_dir,prefix='SATFC_stderr',
 
 execution = subprocess.Popen(callstring,shell=True,stdout=temp_stdout,stderr=temp_stderr)
 
-while(not execution.poll()):
-    time.sleep(1)
-    print temp_stdout
-
-#execution.wait()
+execution.wait()
 
 #TODO a print of SATFC execution's standard out every so often would be wonderful.
 
@@ -248,6 +244,12 @@ for channel in assignment.keys():
     for station in assignment[channel]:
         answer_file.write(str(station)+','+str(channel)+'\n')
 answer_file.close()
+
+
+"""Wrap up"""
+
+temp_stdout.close()
+temp_stderr.close()
 
 print 'DONE'
 sys.exit()
