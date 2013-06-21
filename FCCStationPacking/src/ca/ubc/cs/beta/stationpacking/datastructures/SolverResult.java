@@ -2,6 +2,7 @@ package ca.ubc.cs.beta.stationpacking.datastructures;
 
 import java.io.Serializable;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
@@ -81,6 +82,42 @@ public class SolverResult implements Serializable {
 		return fResult+","+fRuntime+","+fAssignment;//toStringAssignment(fAssignment);
 	}
 	
+	public String toParsebleString()
+	{
+		String aOutput = fResult.toString()+","+fRuntime+",";
+		
+		Iterator<Integer> aChannelIterator = fAssignment.keySet().iterator();
+		while(aChannelIterator.hasNext())
+		{
+			Integer aChannel = aChannelIterator.next();
+			
+			aOutput += aChannel+"-";
+			
+			Iterator<Station> aAssignedStationIterator = fAssignment.get(aChannel).iterator();
+			
+			while(aAssignedStationIterator.hasNext())
+			{
+				Station aAssignedStation = aAssignedStationIterator.next();
+				
+				aOutput += aAssignedStation.getID();
+				
+				if(aAssignedStationIterator.hasNext())
+				{
+					aOutput += "_";
+				}
+				
+			}
+			
+			if(aChannelIterator.hasNext())
+			{
+				aOutput +=";";
+			}
+			
+		}
+		
+		
+		return aOutput;
+	}
 	/*
 	public SolverResult valueOf(String aString)
 	{
