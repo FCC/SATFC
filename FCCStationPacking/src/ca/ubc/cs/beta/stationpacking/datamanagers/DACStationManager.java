@@ -50,7 +50,6 @@ public class DACStationManager implements IStationManager{
 			aStationLookup.put(aID, aChannelDomain);
 		}
 		aReader.close();	
-		System.out.println("aStationLookup is of size "+aStationLookup.size());
 
 		Set<Integer> aChannels;
 		Integer aStationPop;
