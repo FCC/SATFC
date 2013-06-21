@@ -15,7 +15,7 @@ import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 @UsageTextField(title="FCC Station Packing Packing Problem Instance Options",description="Parameters defining a single station packing problem.")
 public class InstanceParameters extends AbstractOptions {
 	
-	@Parameter(names = "-PACKING_CHANNELS", description = "List of channels to pack in.", required = true)
+	@Parameter(names = "-PACKING_CHANNELS", description = "List of channels to pack into.", required = true)
 	private List<String> fPackingChannels = Arrays.asList("14" ,"15" ,"16" ,"17" ,"18" ,"19" ,"20" ,"21" ,"22" ,"23" ,"24" ,"25" ,"26" ,"27" ,"28" ,"29" ,"30");
 	public HashSet<Integer> getPackingChannels()
 	{
@@ -46,10 +46,10 @@ public class InstanceParameters extends AbstractOptions {
 		return aPackingStations;
 	}
 	
-	@Parameter(names = "-CUTOFF", description = "Algorithm cutoff time.")
+	@Parameter(names = "-CUTOFF", description = "Time allowed to the feasibility checker (in seconds).")
 	public double Cutoff = 1800.0;
 	
-	@Parameter(names = "-SEED", description = "Seed.")
+	@Parameter(names = "-SEED", description = "(Random) seed given to the feasibility checker.")
 	public long Seed = 1;
 
 }

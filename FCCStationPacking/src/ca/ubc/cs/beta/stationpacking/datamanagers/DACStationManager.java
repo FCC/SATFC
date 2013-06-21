@@ -66,23 +66,24 @@ public class DACStationManager implements IStationManager{
 		}
 		aReader.close();
 		if(!aStationLookup.isEmpty()){
-			try{
-				//AF - print out stations with no populations;
-				/*
-				ArrayList<Integer> aNoPopStations = new ArrayList<Integer>(aStationLookup.keySet());
-				Collections.sort(aNoPopStations);
-				for(Integer aNoPopStation : aNoPopStations)
-				{
-					System.out.println(aNoPopStation);
-				}
-				*/
-				throw new Exception("Missing station population for "+aStationLookup.size()+" stations.");
-			} catch(Exception e){
-				e.printStackTrace();
-				for(Integer aID1 : aStationLookup.keySet()){
-					aChannels = aStationLookup.get(aID1);
-					fStations.put(aID1,new Station(aID1,aChannels,0));
-				}
+//			try{
+//				//AF - print out stations with no populations;
+//				/*
+//				ArrayList<Integer> aNoPopStations = new ArrayList<Integer>(aStationLookup.keySet());
+//				Collections.sort(aNoPopStations);
+//				for(Integer aNoPopStation : aNoPopStations)
+//				{
+//					System.out.println(aNoPopStation);
+//				}
+//				*/
+//				//throw new Exception("Missing station population for "+aStationLookup.size()+" stations.");
+//			} catch(Exception e){
+//				e.printStackTrace();
+//				
+//			}
+			for(Integer aID1 : aStationLookup.keySet()){
+				aChannels = aStationLookup.get(aID1);
+				fStations.put(aID1,new Station(aID1,aChannels,0));
 			}
 		}
 
