@@ -185,7 +185,7 @@ public class SolverServer {
 							log.info("Solving the instance...");
 							SolverResult aSolverResult;
 							try {
-								aSolverResult = fSolver.solve(aInstance, aSolveMessage.getCutoff());
+								aSolverResult = fSolver.solve(aInstance, aSolveMessage.getCutoff(), aSolveMessage.getSeed());
 								
 								//Send the result back
 								log.info("Instance solved");

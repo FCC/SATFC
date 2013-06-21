@@ -39,7 +39,7 @@ public class InstanceGeneration {
 	 * @param aCutoff - the maximum time to consider any individual SAT solver run
 	 *
 	**/
-	public void run(Set<Station> aStartingStations, Iterator<Station> aStationIterator, Set<Integer> aChannelRange,double aCutoff){
+	public void run(Set<Station> aStartingStations, Iterator<Station> aStationIterator, Set<Integer> aChannelRange,double aCutoff, long aSeed){
 		Instance aInstance = new Instance(aStartingStations,aChannelRange);
 		while(aStationIterator.hasNext()) {
 			Station aStation = aStationIterator.next();
@@ -47,7 +47,7 @@ public class InstanceGeneration {
 			aInstance.addStation(aStation);
 			try {
 				log.info("Solving instance of size {}.",aInstance.getNumberofStations());
-				SolverResult aRunResult = fSolver.solve(aInstance,aCutoff);
+				SolverResult aRunResult = fSolver.solve(aInstance,aCutoff,aSeed);
 				log.info("Result: {}",aRunResult);
 				fExperimentReporter.report(aInstance, aRunResult);
 				if(!aRunResult.getResult().equals(SATResult.SAT)){
