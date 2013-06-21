@@ -23,19 +23,14 @@ import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluat
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 import ca.ubc.cs.beta.stationpacking.datamanagers.DACConstraintManager2;
 import ca.ubc.cs.beta.stationpacking.datamanagers.DACStationManager;
-import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.InstanceGenerationParameters;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.parsers.ParameterParser;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.LocalExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder2;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
 import ca.ubc.cs.beta.stationpacking.solver.cnfwriter.CNFStringWriter;
-import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.IncrementalSolver;
-import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries.GlueMiniSatLibrary;
-import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries.IIncrementalSATLibrary;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.TAESolver;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.HybridCNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
@@ -118,11 +113,11 @@ public class InstanceGenerationExecutor {
 				"-CNF_DIR",
 				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/CNFs",
 				"-SOLVER",
-				"glueminisat",
-				"-LIBRARY",
-				"/ubc/cs/project/arrow/afrechet/git/fcc-station-packing/FCCStationPacking/SATsolvers/glueminisat/glueminisat-incremental/core/libglueminisat.so",
+				"tunedclasp",
+//				"-LIBRARY",
+//				"/ubc/cs/project/arrow/afrechet/git/fcc-station-packing/FCCStationPacking/SATsolvers/glueminisat/glueminisat-incremental/core/libglueminisat.so",
 				"-EXPERIMENT_NAME",
-				"Glueminisat",
+				"Test",
 				"-EXPERIMENT_DIR",
 				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Results/TestExperiment",
 				/*
@@ -131,10 +126,8 @@ public class InstanceGenerationExecutor {
 				*/
 				"--execDir",
 				"SATsolvers",
-				/*
-				"--paramFile",
-				"SATsolvers/sw_parameterspaces/sw_tunedclasp.txt",
-				*/
+//				"--paramFile",
+//				"SATsolvers/sw_parameterspaces/sw_tunedclasp.txt",
 				"--algoExec",
 				"python solverwrapper.py",
 				"--cutoffTime",
@@ -157,7 +150,7 @@ public class InstanceGenerationExecutor {
 		Map<String,AbstractOptions> aAvailableTAEOptions = TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators();
 		
 		//Parse the command line arguments in a parameter object.
-		ParameterParser aExecParameters = new ParameterParser();
+		InstanceGenerationParameters aExecParameters = new InstanceGenerationParameters();
 		JCommander aParameterParser = JCommanderHelper.getJCommander(aExecParameters, aAvailableTAEOptions);
 		try
 		{
@@ -178,9 +171,9 @@ public class InstanceGenerationExecutor {
 		
 		//Use the parameters to instantiate the experiment.
 		log.info("Getting data...");
-		DACStationManager aStationManager = new DACStationManager(aExecParameters.getRepackingDataParameters().getStationFilename(),aExecParameters.getRepackingDataParameters().getDomainFilename());
+		DACStationManager aStationManager = new DACStationManager(aExecParameters.getRepackingDataParameters().StationFilename,aExecParameters.getRepackingDataParameters().DomainFilename);
 	    Set<Station> aStations = aStationManager.getStations();
-		DACConstraintManager2 dCM = new DACConstraintManager2(aStations,aExecParameters.getRepackingDataParameters().getConstraintFilename());
+		DACConstraintManager2 dCM = new DACConstraintManager2(aStations,aExecParameters.getRepackingDataParameters().ConstraintFilename);
 		Set<Integer> aChannels = aExecParameters.getPackingChannels();
 		
 		log.info("Creating constraint grouper...");
@@ -206,7 +199,7 @@ public class InstanceGenerationExecutor {
 		try {
 			
 			aTAE = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(aExecParameters.getAlgorithmExecutionOptions().taeOpts, aTAEExecConfig, false, aAvailableTAEOptions);
-			ISolver aSolver = new TAESolver(dCM, aCNFEncoder, aCNFLookup, aGrouper, new CNFStringWriter(), aTAE, aTAEExecConfig,aExecParameters.getSeed());
+			ISolver aSolver = new TAESolver(dCM, aCNFEncoder, aCNFLookup, aGrouper, new CNFStringWriter(), aTAE, aTAEExecConfig);
 			
 //			String aLibraryPath = aExecParameters.getIncrementalLibraryLocation();
 //			IIncrementalSATLibrary aSATLibrary = new GlueMiniSatLibrary(aLibraryPath);
@@ -235,7 +228,7 @@ public class InstanceGenerationExecutor {
 			
 			Iterator<Station> aStationIterator = new InversePopulationStationIterator(aToConsiderStations, aExecParameters.getSeed());
 			InstanceGeneration aInstanceGeneration = new InstanceGeneration(aSolver, aExperimentReporter);
-			aInstanceGeneration.run(aStartingStations, aStationIterator,aChannels,aTAEExecConfig.getAlgorithmCutoffTime());	
+			aInstanceGeneration.run(aStartingStations, aStationIterator,aChannels,aExecParameters.getCutoffTime(),aExecParameters.getSeed());	
 			aCNFLookup.writeToFile();
 			
 		} 

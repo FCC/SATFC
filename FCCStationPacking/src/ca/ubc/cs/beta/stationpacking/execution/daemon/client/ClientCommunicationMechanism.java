@@ -19,7 +19,6 @@ import ca.ubc.cs.beta.stationpacking.execution.daemon.message.IMessage;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.message.SolverResultMessage;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.message.StatusMessage;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.message.StatusMessage.Status;
-import ca.ubc.cs.beta.stationpacking.experiment.InstanceGenerationExecutor;
 
 /**
  * Sends messages across UDP. Communication mechanism for daemon solver interface.
