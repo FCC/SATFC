@@ -49,7 +49,7 @@ public class TAESolverParameters extends AbstractOptions {
 		return AlgorithmExecutionOptions;
 	}
 
-	@Parameter(names = "-SOLVER", description = "SAT solver to use.", required=true, validateWith = ImplementedSolverParameterValidator.class)
+	@Parameter(names = "-SOLVER", description = "SAT solver to use (from the implemented list of SAT solvers - can be circumvented by fully defining a valid TAE).", required=true, validateWith = ImplementedSolverParameterValidator.class)
 	private String Solver;
 	
 	public ISolver getTAESolver() throws Exception

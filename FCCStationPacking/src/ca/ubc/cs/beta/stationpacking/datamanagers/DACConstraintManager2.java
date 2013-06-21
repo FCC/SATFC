@@ -153,25 +153,25 @@ public class DACConstraintManager2 implements IConstraintManager{
 		*/
 		
 		
-		int aCount = 0;
-		for(Station aStation1 : aADJplusConstraints.get(2).keySet()){
-			for(Station aStation2 : aADJplusConstraints.get(2).get(aStation1)){
-				if(! aCOConstraints.get(2).get(aStation2).contains(aStation1)){
-					aCount++;
-				}
-			}
-		}
-		System.out.println("Number of ADJ constraints without corresponding CO-channel constraints: "+aCount);	
+//		int aCount = 0;
+//		for(Station aStation1 : aADJplusConstraints.get(2).keySet()){
+//			for(Station aStation2 : aADJplusConstraints.get(2).get(aStation1)){
+//				if(! aCOConstraints.get(2).get(aStation2).contains(aStation1)){
+//					aCount++;
+//				}
+//			}
+//		}
+		//System.out.println("Number of ADJ constraints without corresponding CO-channel constraints: "+aCount);	
 		
-		aCount = 0;
-		for(Station aStation1 : aADJplusConstraints.get(2).keySet()){
-			for(Station aStation2 : aADJplusConstraints.get(2).get(aStation1)){
-				if(! aADJplusConstraints.get(2).get(aStation2).contains(aStation1)){
-					aCount++;
-				}
-			}
-		}
-		System.out.println("Number of asymmetric ADJ constraints: "+aCount);	
+//		aCount = 0;
+//		for(Station aStation1 : aADJplusConstraints.get(2).keySet()){
+//			for(Station aStation2 : aADJplusConstraints.get(2).get(aStation1)){
+//				if(! aADJplusConstraints.get(2).get(aStation2).contains(aStation1)){
+//					aCount++;
+//				}
+//			}
+//		}
+		//System.out.println("Number of asymmetric ADJ constraints: "+aCount);	
 		
 		fLowerVHFCOConstraints = aCOConstraints.get(0);
 		fUpperVHFCOConstraints = aCOConstraints.get(1);

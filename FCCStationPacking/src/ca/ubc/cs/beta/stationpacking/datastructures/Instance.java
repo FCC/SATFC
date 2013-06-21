@@ -73,6 +73,11 @@ public class Instance {
 	public Station getStation(Integer aID){
 		return fStations.get(aID);
 	}
+	
+	public String getInfo()
+	{
+		return fStations.size()+" stations to pack into "+fChannels.size()+" channels";
+	}
 
 
 }
