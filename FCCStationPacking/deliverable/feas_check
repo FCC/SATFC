@@ -1,0 +1,254 @@
+#! /usr/bin/env python
+# vim: syntax=python
+
+import subprocess
+import sys
+import os
+import tempfile
+import time
+
+version = '0.9.1'
+date = 'June 2013'
+"""
+SAT-based Feasibility checker for FCC's station repacking problem.
+Wrapper around the more parametrized java version of the feasibility checker
+to comform to Ladder Auction Algorithm Mini-Spec v2.1, June 2013 feasibility
+checker requirements.
+
+v0.9.1. - The current version has at its core a configured version (March 2013)
+of the clasp SAT solver.
+
+@author - Alexandre Frechette
+"""
+
+
+if len(sys.argv)<=1:
+    #Output usage.
+    print 'SATFC '+date+', v'+version
+    print 'A SAT-based feasibility checker by A. Frechette, N. Arnosti, K. Leyton-Brown and Auctionomics.'
+    print 'Normal execution: "./feas_check question_csv_file_name answer_csv_file_name"'
+    print 'For more usage see feasibility checker usage section of the Ladder Auction Algorithm Mini-Spec v2.1, June 2013.'
+    sys.exit()
+elif sys.argv[1]=='-init':
+    #Perform initialization
+    print 'No initialization to perform.'
+    sys.exit()
+
+
+print """
+=========================================================
+
+    _________   ____________________________________
+   /   _____/  /  _  \__    ___/\_   _____/\_   ___ \\
+   \_____  \  /  /_\  \|    |    |    __)  /    \  \/
+   /        \/    |    \    |    |     \   \     \____
+  /_______  /\____|__  /____|    \___  /    \______  /
+          \/         \/              \/            \/
+
+
+A SAT-based feasibility checker for FCC's station
+repacking problem by
+
+Alexandre Frechette [UBC],
+Nick Arnosti [Stanford & Auctionomics],
+Kevin Leyton-Brown [UBC & Auctionomics], and
+Auctionomics.
+
+"""+date+""", v"""+version+"""
+=========================================================
+"""
+
+
+"""Parse FCC feas_check parameters"""
+
+print 'Parsing the parameters...'
+
+question_filename = sys.argv[1]
+answer_filename = sys.argv[2]
+
+#Parse the question parameters
+question_parameters = {}
+question_file = open(question_filename,'r')
+question_lines = question_file.readlines()
+question_file.close()
+
+
+question_parameters = {'FC_TIMEOUT':[],'FC_CONFIG':[],'STATION_CONFIG':[],'BAND':[],'HIGHEST':[],'STATIONS':[]}
+
+for question_line in question_lines:
+    question_line = question_line.replace('\n','')
+    key = question_line.split(',')[0]
+    if key in question_parameters.keys():
+        question_parameters[key].append(question_line.split(',')[1])
+    elif key.isdigit():
+        question_parameters['STATIONS'].append(question_line)
+    elif key:
+        raise Exception('Unrecognized problem instance data key in question csv file! ('+question_line+')')
+
+#Map to options for feasibility checker.
+current_dir = os.getcwd()
+
+cnf_dir = current_dir + os.sep + 'CNFs'
+
+try:
+    cutoff = str(float(question_parameters['FC_TIMEOUT'][0])/1000.0)
+except:
+    raise Exception('Unrecognized value for key FC_TIMEOUT in question csv file!')
+
+problem_data_directory = 'default'
+if len(question_parameters['STATION_CONFIG'])>0:
+    problem_data_directory = question_parameters['STATION_CONFIG'][0]
+
+stations_filename = current_dir + os.sep + problem_data_directory + os.sep + 'STATIONS.CSV'
+domains_filename = current_dir + os.sep + problem_data_directory + os.sep + 'domains.csv'
+interference_filename = current_dir + os.sep + problem_data_directory + os.sep + 'interferences.csv'
+
+if question_parameters['BAND'][0]=='LVHF':
+    packing_channels = range(2,6+1)
+elif question_parameters['BAND'][0]=='HVHF':
+    packing_channels = range(7,13+1)
+elif question_parameters['BAND'][0]=='UHF':
+
+    highest_channel = 51
+    if len(question_parameters['HIGHEST'])>0:
+        try:
+            highest_channel = int(question_parameters['HIGHEST'][0])
+        except:
+            raise Exception('Unrecognized value for key HIGHEST in question csv file! (value ='+question_parameters['HIGHEST']+')')
+
+    packing_channels = range(14,min(highest_channel,51)+1)
+else:
+    raise Exception('Unrecognized value for key BAND in question csv file! (value = '+question_parameters['BAND']+')')
+packing_channels = ','.join(map(lambda c : str(c),packing_channels))
+
+try:
+    packing_stations = [int(line.split(',')[0]) for line in question_parameters['STATIONS']]
+except:
+    raise Exception('Unrecognized list of stations in question csv file! ('+question_parameters['STATIONS']+')')
+packing_stations = ','.join(map(lambda s : str(s),packing_stations))
+
+"""Fill in the SATFC options and launch it"""
+
+
+#Information kept through the process to be printed in the answer file.
+run_information = []
+
+print 'Creating the callstring to the feasibility checker...'
+
+solver = 'tunedclasp'
+
+options = {
+"-STATIONS_FILE":
+stations_filename,
+"-DOMAINS_FILE":
+domains_filename,
+"-CONSTRAINTS_FILE":
+interference_filename,
+"-CNF_DIR":
+cnf_dir,
+"-SOLVER":
+solver,
+"--execDir":
+"SATsolvers",
+"--algoExec":
+'"python solverwrapper.py"',
+"-CUTOFF":
+cutoff,
+"--cutoffTime":
+cutoff,
+"--logAllCallStrings":
+"true",
+"-PACKING_CHANNELS":
+packing_channels,
+"-PACKING_STATIONS":
+packing_stations
+}
+
+feas_check_exec = 'java -jar SATFC.jar'
+options_callstring = ' '.join(map(lambda (k,v) : k+' '+v,options.iteritems()))
+
+callstring = feas_check_exec+' '+options_callstring
+
+print 'Executing the feasibility checker...'
+print ''
+print callstring
+print ''
+
+temp_stdout = tempfile.NamedTemporaryFile(dir=current_dir,prefix='SATFC_stdout',delete=True)
+temp_stderr = tempfile.NamedTemporaryFile(dir=current_dir,prefix='SATFC_stderr',delete=True)
+
+execution = subprocess.Popen(callstring,shell=True,stdout=temp_stdout,stderr=temp_stderr)
+
+while(not execution.poll()):
+    time.sleep(1)
+    print temp_stdout
+
+#execution.wait()
+
+#TODO a print of SATFC execution's standard out every so often would be wonderful.
+
+temp_stdout.flush()
+temp_stderr.flush()
+
+print ''
+print 'Parsing output...'
+print ''
+
+stdout = open(temp_stdout.name,'r').readlines()
+stderr = open(temp_stderr.name,'r').readlines()
+
+found_result = False
+for line in stdout:
+    if line.startswith('Result for feasibility checker:'):
+        run_information.append(line.replace('\n',''))
+        line = line.replace('Result for feasibility checker:','').replace('\n','').replace(' ','').split(',')
+        satisfiability = line[0]
+        runtime = line[1]
+
+        if line[2]:
+            assignment = {s[0]:s[1].split('_') for s in [seg.split('-') for seg in line[2].split(';')]}
+        else:
+            assignment = {}
+            if satisfiability == 'SAT':
+               run_information.append('[ERROR] Found station set to be packable in given channels, but did not get an assignment back.')
+
+        found_result = True
+        break
+
+print 'Result:'
+if found_result:
+    print satisfiability
+    print runtime
+    print assignment
+else:
+    print "Couldn't parse output from feasibility checker!"
+    print ''.join(stdout)
+    print ''.join(stderr)
+
+"""Write results in FCC feas_check format"""
+
+print ''
+print 'Writing result to file '+str(answer_filename)+'...'
+print ''
+
+if satisfiability=='SAT':
+    answer = 'yes'
+elif satisfiability=='UNSAT':
+    answer = 'no'
+else:
+    answer = 'unknown'
+
+run_information.append('Took '+str(runtime)+' seconds with SATFC v'+version+' using '+solver+'.')
+
+answer_file = open(answer_filename,'w')
+answer_file.write('ANSWER,'+answer+'\n')
+for information_line in run_information:
+    answer_file.write('FC_INFO,'+information_line+'\n')
+for channel in assignment.keys():
+    for station in assignment[channel]:
+        answer_file.write(str(station)+','+str(channel)+'\n')
+answer_file.close()
+
+print 'DONE'
+sys.exit()
+

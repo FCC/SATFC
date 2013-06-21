@@ -19,10 +19,10 @@ public class RepackingDataParameters extends AbstractOptions{
 	@Parameter(names = "-STATIONS_FILE", description = "Station list filename.", required=true)
 	public String StationFilename;
 	
-	@Parameter(names = "-DOMAINS_FILE", description = "Stations' valid channel domains filename.", required=true)
+	@Parameter(names = "-DOMAINS_FILE", description = "Stations' valid channel domains filename (uses DAC formatting from March 2013).", required=true)
 	public String DomainFilename;
 	
-	@Parameter(names = "-CONSTRAINTS_FILE", description = "Constraints filename.", required=true)
+	@Parameter(names = "-CONSTRAINTS_FILE", description = "Constraints filename (uses DAC formatting from March 2013).", required=true)
 	public String ConstraintFilename;
 	
 	public DACStationManager getDACStationManager() throws Exception
