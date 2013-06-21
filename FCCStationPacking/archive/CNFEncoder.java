@@ -14,13 +14,13 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 
-public class CNFEncoder implements ICNFEncoder {
+public class CNFEncoder {
 
 	//Whenever a trivially UNSAT problem is detected, return this string
 	String fUNSAT_CNF = "1 0\n -1 0\n";
 
 	
-	@Override
+
 	/* NA - takes an Instance and a set of Constraints, and returns
 	 * the DIMACS CNF corresponding to this instance of SAT.
 	 */

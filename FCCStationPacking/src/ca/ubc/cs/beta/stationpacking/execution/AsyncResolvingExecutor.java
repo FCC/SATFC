@@ -116,9 +116,9 @@ public class AsyncResolvingExecutor {
 		
 		//Use the parameters to instantiate the experiment.
 		log.info("Getting data...");
-		DACStationManager aStationManager = new DACStationManager(aExecParameters.getRepackingDataParameters().getStationFilename(),aExecParameters.getRepackingDataParameters().getDomainFilename());
+		DACStationManager aStationManager = new DACStationManager(aExecParameters.getRepackingDataParameters().StationFilename,aExecParameters.getRepackingDataParameters().DomainFilename);
 	    Set<Station> aStations = aStationManager.getStations();
-		DACConstraintManager2 dCM = new DACConstraintManager2(aStations,aExecParameters.getRepackingDataParameters().getConstraintFilename());
+		DACConstraintManager2 dCM = new DACConstraintManager2(aStations,aExecParameters.getRepackingDataParameters().ConstraintFilename);
 		
 		//Set<Integer> aChannels = aExecParameters.getPackingChannels();
 		ICNFEncoder2 aCNFEncoder = new CNFEncoder2(aStations);

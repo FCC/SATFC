@@ -17,18 +17,11 @@ import ca.ubc.cs.beta.aclib.algorithmrun.RunResult;
 import ca.ubc.cs.beta.aclib.algorithmrun.kill.KillableAlgorithmRun;
 import ca.ubc.cs.beta.aclib.configspace.ParamConfigurationSpace;
 import ca.ubc.cs.beta.aclib.execconfig.AlgorithmExecutionConfig;
-import ca.ubc.cs.beta.aclib.options.AbstractOptions;
-import ca.ubc.cs.beta.aclib.options.TargetAlgorithmEvaluatorOptions;
 import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstance;
 import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstanceSeedPair;
 import ca.ubc.cs.beta.aclib.runconfig.RunConfig;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluator;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluatorRunObserver;
-import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.base.cli.CommandLineTargetAlgorithmEvaluatorOptions;
-import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorBuilder;
-import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
-
-import ca.ubc.cs.beta.stationpacking.datamanagers.DACConstraintManager2;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
 import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
@@ -36,11 +29,9 @@ import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
 import ca.ubc.cs.beta.stationpacking.solver.cnfwriter.CNFStringWriter;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
-import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.ConstraintGrouper;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponentGrouper;
 
 
@@ -51,11 +42,8 @@ import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponen
  */
 public class TAESolver implements ISolver{
 	
-	private final double fScenarioCutoff = 999999.0;
-	
 	private ParamConfigurationSpace fParamConfigurationSpace;
 	private TargetAlgorithmEvaluator fTargetAlgorithmEvaluator;
-	private long fSeed;
 	private IComponentGrouper fGrouper;
 	private IConstraintManager fManager;
 	private ICNFResultLookup fLookup;
@@ -63,54 +51,9 @@ public class TAESolver implements ISolver{
 	private CNFStringWriter fStringWriter;
 	
 	
-	/**
-	 * Construct a solver wrapper around a target algorithm evaluator.
-	 * @param aParamConfigurationSpaceFile - the location of the ParamILS formatted parameter configuration space file.
-	 * @param aAlgorithmExecutable - the execution string of the algorithm executable (<i> e.g. </i> "python SATwrapper.py").
-	 * @param aExecDir - the directory in which to execute the algorithm (<i> e.g. </i> "[...]/SolverWrapper/").
-	 * @param aTargetAlgorithmEvaluatorExecutionEnvironment - <i> e.g. </i> "CLI" command-line on system, "MYSQLDBTAE" plug-in for mySQL workers, ... 
-	 * @param aManager - constraint manager for the repacking instance.
-	 * @param aLookup - CNF & Result lookup object.
-	 * @param aEncoder - CNF encoder.
-	 * @param aMaximumConcurrentExecutions - number of concurrent executions that can be done with the TAE.
-	 * @deprecated
-	 */
-	public TAESolver(IConstraintManager aManager, ICNFResultLookup aLookup, ICNFEncoder2 aEncoder, CNFStringWriter aStringWriter, String aParamConfigurationSpaceFile, String aAlgorithmExecutable, String aExecDir, String aTargetAlgorithmEvaluatorExecutionEnvironment, int aMaximumConcurrentExecutions, long aSeed)
-	{
-		fSeed = aSeed;
-		fEncoder = aEncoder;
-		fManager = aManager;
-		fGrouper = new ConstraintGrouper();
-		fLookup = aLookup;
-		fStringWriter = aStringWriter;
-		//Parameter configuration space
-		fParamConfigurationSpace  = new ParamConfigurationSpace(new File(aParamConfigurationSpaceFile));
-		
-		//Algorithm Execution Config
-		AlgorithmExecutionConfig aAlgorithmExecutionConfig = new AlgorithmExecutionConfig(aAlgorithmExecutable, aExecDir, fParamConfigurationSpace, false, false, fScenarioCutoff);
-		
-		//Target Algorithm Evaluator
-		Map<String,AbstractOptions> aTargetAlgorithmEvaluatorOptionsMap = TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators();
-	
-		TargetAlgorithmEvaluatorOptions aTargetAlgorithmEvaluatorOptions = new TargetAlgorithmEvaluatorOptions();
-		aTargetAlgorithmEvaluatorOptions.retryCount = 0 ;
-		aTargetAlgorithmEvaluatorOptions.maxConcurrentAlgoExecs = aMaximumConcurrentExecutions;
-		aTargetAlgorithmEvaluatorOptions.targetAlgorithmEvaluator = aTargetAlgorithmEvaluatorExecutionEnvironment;
-		
-		//Setting CLI options.
-		CommandLineTargetAlgorithmEvaluatorOptions CLIopts = (CommandLineTargetAlgorithmEvaluatorOptions) aTargetAlgorithmEvaluatorOptionsMap.get("CLI");
-		CLIopts.logAllCallStrings = false;
-		CLIopts.logAllProcessOutput = false;
-		CLIopts.concurrentExecution = true;
-		
-		fTargetAlgorithmEvaluator = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(aTargetAlgorithmEvaluatorOptions, aAlgorithmExecutionConfig, false, aTargetAlgorithmEvaluatorOptionsMap);
-	}
-	
-	
-	public TAESolver(DACConstraintManager2 aConstraintManager, ICNFEncoder2 aCNFEncoder,
+	public TAESolver(IConstraintManager aConstraintManager, ICNFEncoder2 aCNFEncoder,
 			ICNFResultLookup aLookup, IComponentGrouper aGrouper, CNFStringWriter aStringWriter,
-			TargetAlgorithmEvaluator aTAE, AlgorithmExecutionConfig aTAEExecConfig, long aSeed) {
-		fSeed = aSeed;
+			TargetAlgorithmEvaluator aTAE, AlgorithmExecutionConfig aTAEExecConfig) {
 		fEncoder = aCNFEncoder;
 		fManager = aConstraintManager;
 		fGrouper = aGrouper;
@@ -162,7 +105,7 @@ public class TAESolver implements ISolver{
 	 * 
 	 */
 	@Override
-	public SolverResult solve(Instance aInstance, double aCutoff) throws Exception{
+	public SolverResult solve(Instance aInstance, double aCutoff, long aSeed) throws Exception{
 			
 		Set<Integer> aChannelRange = aInstance.getChannels();
 		
@@ -217,7 +160,7 @@ public class TAESolver implements ISolver{
 				}
 				//Create the run config and add it to the to-do list.
 				ProblemInstance aProblemInstance = new ProblemInstance(aCNFFileName);
-				ProblemInstanceSeedPair aProblemInstanceSeedPair = new ProblemInstanceSeedPair(aProblemInstance,fSeed);
+				ProblemInstanceSeedPair aProblemInstanceSeedPair = new ProblemInstanceSeedPair(aProblemInstance,aSeed);
 				RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aCutoff, fParamConfigurationSpace.getDefaultConfiguration());
 				
 				aToSolveInstances.put(aRunConfig,aComponentInstance);
@@ -341,6 +284,16 @@ public class TAESolver implements ISolver{
 		
 				
 		return new SolverResult(aSATResult,aRuntime,aAssignment);
+	}
+
+
+	@Override
+	public void notifyShutdown() {
+		if(fTargetAlgorithmEvaluator != null)
+		{
+			fTargetAlgorithmEvaluator.notifyShutdown();
+		}
+		
 	}
 	
 	

@@ -17,7 +17,8 @@ import com.beust.jcommander.ParameterException;
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.aclib.options.AlgorithmExecutionOptions;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.parsers.ReportParser;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.dataparser.ReportParser;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.validator.ImplementedSolverParameterValidator;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
@@ -44,63 +45,31 @@ public class InstanceGenerationParameters extends AbstractOptions {
 	public AlgorithmExecutionOptions getAlgorithmExecutionOptions() {
 		return fAlgorithmExecutionOptions;
 	}
-	/**
-	 * Deprecated TAE parameters.
-	 * 
-	@Parameter(names = "-TAE_EXEC_DIR", description = "Directory location of where to execute TAE.")
-	private String fExecutionDirectory = "SATsolvers/";
-	public String getTAEExecDirectory()
-	{
-		return fExecutionDirectory;
-	}
-	@Parameter(names = "-TAE_EXECUTABLE", description = "TAE callstring.")
-	private String fAlgorithmExecutable = "python solverwrapper.py";
-	public String getTAEExecutable()
-	{
-		return fAlgorithmExecutable;
-	}
-	@Parameter(names = "-TAE_TYPE", description = "TAE execution environment.")
-	private String fTAEType = "CLI";
-	public String getTAEType()
-	{
-		return fTAEType;
-	}
-	
-	@Parameter(names = "-TAE_CONC_EXEC_NUM", description = "Maximum number of concurrent TAE executions.")
-	private int fMaximumConcurrentExecutions = 1;
-	public int getTAEMaxConcurrentExec()
-	{
-		return fMaximumConcurrentExecutions;
-	}
-	
-	@Parameter(names = "-TAE_PARAM_CONF_SPACE", description = "TAE parameter configuration space, usually used to specify which solver should be executed out of the default multi-solver wrapper. Overrides the SOLVER option. By default not set, use the SOLVER option.")
-	private String fTAEParamConfSpace = "";
-	public String getTAEParamConfigSpace()
-	{
-		if(fTAEParamConfSpace.trim().equals(""))
-		{
-			return "SATsolvers/sw_parameterspaces/sw_"+fSolver+".txt";
-		}
-		else
-		{
-			return fTAEParamConfSpace;
-		}
-	}
-	
-	@Parameter(names = "-SOLVER_CUTOFF", description = "Solver CPU cutoff time in seconds.")
-	private double fSolverCutoff = 1800;
-	public double getSolverCutoff()
-	{
-		return fSolverCutoff;
-	}
 
-	**/
-
+	@Parameter(names = "-LIBRARY", description = "Path to incremental SAT library.")
+	private String fLibraryPath = "/SATsolvers/glueminisat/glueminisat-incremental/core/libglueminisat.so";
+	public String getIncrementalLibraryLocation(){
+		if(fLibraryPath.compareTo("/SATsolvers/glueminisat/glueminisat-incremental/core/libglueminisat.so")==0)
+		{
+			fLibraryPath = System.getProperty("user.dir")+fLibraryPath;
+		}
+		return fLibraryPath;
+	}
+	public boolean useIncrementalSolver(){
+		return getSolver().equals("glueminisat-incremental");
+	}
+	
 	@Parameter(names = "-SOLVER", description = "SAT solver to use.", required=true, validateWith = ImplementedSolverParameterValidator.class)
 	private String fSolver;
 	public String getSolver()
 	{
 		return fSolver;
+	}
+	
+	@Parameter(names = "-CUTOFF", description = "Algorithm cutoff time.")
+	private double fCutoff = 1800.0;
+	public double getCutoffTime(){
+		return fCutoff;
 	}
 	
 	//Experiment parameters

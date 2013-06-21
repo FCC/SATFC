@@ -2,9 +2,6 @@ package ca.ubc.cs.beta.stationpacking.execution;
 
 import java.io.File;
 import java.io.FileReader;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -99,9 +96,9 @@ public class CNFFromInstances {
 		}
 		
 		log.info("Getting data...");
-		DACStationManager aStationManager = new DACStationManager(aExecParameters.getRepackingDataParameters().getStationFilename(),aExecParameters.getRepackingDataParameters().getDomainFilename());
+		DACStationManager aStationManager = new DACStationManager(aExecParameters.getRepackingDataParameters().StationFilename,aExecParameters.getRepackingDataParameters().DomainFilename);
 	    Set<Station> aStations = aStationManager.getStations();
-		DACConstraintManager2 dCM = new DACConstraintManager2(aStations,aExecParameters.getRepackingDataParameters().getConstraintFilename());
+		DACConstraintManager2 dCM = new DACConstraintManager2(aStations,aExecParameters.getRepackingDataParameters().ConstraintFilename);
 	
 		log.info("Creating constraint grouper...");
 		IComponentGrouper aGrouper = new ConstraintGrouper();

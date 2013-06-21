@@ -21,6 +21,7 @@ public class SolveMessage implements IMessage {
 	private final HashSet<Integer> fStationIDs;
 	private final HashSet<Integer> fChannels;
 	private final double fCutoff;
+	private final long fSeed;
 	
 	/**
 	 * Solve message that embodies a SOLVE command paired with the required data to form a station packing instance (stations to pack, channels to pack in and cutoff time).
@@ -28,11 +29,12 @@ public class SolveMessage implements IMessage {
 	 * @param aChannels - a set of channels to pack in.
 	 * @param aCutoff - the allowed time to solve instance.
 	 */
-	public SolveMessage(Collection<Integer> aStations, Collection<Integer> aChannels, double aCutoff)
+	public SolveMessage(Collection<Integer> aStations, Collection<Integer> aChannels, double aCutoff, long aSeed)
 	{
 		fStationIDs = new HashSet<Integer>(aStations);
 		fChannels = new HashSet<Integer>(aChannels);
 		fCutoff = aCutoff;
+		fSeed = aSeed;
 	}
 	
 	/**
@@ -40,7 +42,7 @@ public class SolveMessage implements IMessage {
 	 * @param aInstance - the instance to solve.
 	 * @param aCutoff - the allowed time to solve instance.
 	 */
-	public SolveMessage(Instance aInstance, double aCutoff)
+	public SolveMessage(Instance aInstance, double aCutoff, long aSeed)
 	{
 		fStationIDs = new HashSet<Integer>();
 		for(Station aStation: aInstance.getStations())
@@ -49,6 +51,7 @@ public class SolveMessage implements IMessage {
 		}
 		fChannels = aInstance.getChannels();
 		fCutoff = aCutoff;
+		fSeed = aSeed;
 	}
 	
 	public HashSet<Integer> getStationIDs() {
@@ -57,9 +60,11 @@ public class SolveMessage implements IMessage {
 	public HashSet<Integer> getChannels() {
 		return fChannels;
 	}
-	public double getCutoff()
-	{
+	public double getCutoff() {
 		return fCutoff;
+	}
+	public long getSeed() {
+		return fSeed;
 	}
 	
 	@Override
