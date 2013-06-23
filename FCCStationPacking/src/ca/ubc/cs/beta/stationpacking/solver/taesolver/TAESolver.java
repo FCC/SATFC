@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aclib.algorithmrun.AlgorithmRun;
 import ca.ubc.cs.beta.aclib.algorithmrun.RunResult;
@@ -28,6 +30,7 @@ import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
+import ca.ubc.cs.beta.stationpacking.execution.SingleInstanceStatelessSolverExecutor;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
 import ca.ubc.cs.beta.stationpacking.solver.cnfwriter.CNFStringWriter;
@@ -42,18 +45,22 @@ import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponen
  */
 public class TAESolver implements ISolver{
 	
+	private static Logger log = LoggerFactory.getLogger(TAESolver.class);
+	
 	private ParamConfigurationSpace fParamConfigurationSpace;
 	private TargetAlgorithmEvaluator fTargetAlgorithmEvaluator;
-	private IComponentGrouper fGrouper;
+	
 	private IConstraintManager fManager;
 	private ICNFResultLookup fLookup;
 	private ICNFEncoder2 fEncoder;
 	private CNFStringWriter fStringWriter;
 	
+	private IComponentGrouper fGrouper;
 	
 	public TAESolver(IConstraintManager aConstraintManager, ICNFEncoder2 aCNFEncoder,
 			ICNFResultLookup aLookup, IComponentGrouper aGrouper, CNFStringWriter aStringWriter,
 			TargetAlgorithmEvaluator aTAE, AlgorithmExecutionConfig aTAEExecConfig) {
+		
 		fEncoder = aCNFEncoder;
 		fManager = aConstraintManager;
 		fGrouper = aGrouper;
@@ -75,6 +82,8 @@ public class TAESolver implements ISolver{
 			@Override
 			public void currentStatus(List<? extends KillableAlgorithmRun> runs) {
 				boolean aKill = false;
+				
+				//Check if one run has terminated without a SAT result.
 				for(KillableAlgorithmRun aRun : runs)
 				{
 					if(!aRun.getRunResult().equals(RunResult.SAT) && !aRun.getRunResult().equals(RunResult.RUNNING))
@@ -83,6 +92,24 @@ public class TAESolver implements ISolver{
 						break;
 					}
 				}
+				
+				//Check if the sum of the runtimes is less than each job's cutoff (which is assumed to be the same for every job).
+				if(!aKill)
+				{
+					double aCutoff = 0.0;
+					double aSumRuntimes = 0.0;
+					for(KillableAlgorithmRun aRun : runs)
+					{
+						aCutoff = aRun.getRunConfig().getCutoffTime();
+						aSumRuntimes += aRun.getRuntime();
+					}
+					//TODO Some cutoff management magic right here.
+					if(aSumRuntimes>1.05+aCutoff+1)
+					{
+						aKill = true;
+					}
+				}
+					
 				if(aKill)
 				{
 					for(KillableAlgorithmRun aRun : runs)
@@ -106,7 +133,9 @@ public class TAESolver implements ISolver{
 	 */
 	@Override
 	public SolverResult solve(Instance aInstance, double aCutoff, long aSeed) throws Exception{
-			
+		
+		log.info("Solving instance of {}",aInstance.getInfo());
+		
 		Set<Integer> aChannelRange = aInstance.getChannels();
 		
 		//Group stations
@@ -114,7 +143,8 @@ public class TAESolver implements ISolver{
 		
 		ArrayList<SolverResult> aComponentResults = new ArrayList<SolverResult>();
 		HashMap<RunConfig,Instance> aToSolveInstances = new HashMap<RunConfig,Instance>();
-	
+
+		//Create the runs to execute.
 		for(Set<Station> aStationComponent : aInstanceGroups){
 			//Create the component group instance.
 			Instance aComponentInstance = new Instance(aStationComponent,aChannelRange);
@@ -126,7 +156,6 @@ public class TAESolver implements ISolver{
 				//Early preemption if component is UNSAT,
 				if (!aSolverResult.getResult().equals(SATResult.SAT) )
 				{
-					System.out.println(aComponentInstance);
 					return new SolverResult(SATResult.UNSAT,0.0,new HashMap<Integer,Set<Station>>());
 				}
 				
@@ -146,7 +175,6 @@ public class TAESolver implements ISolver{
 					Set<Clause> aClauseSet = fEncoder.encode(aComponentInstance,fManager);
 					String aCNF = fStringWriter.clausesToString(aComponentInstance,aClauseSet);
 					
-					//System.out.println("When encoding, the two matched: "+aCNF.equals())
 					
 					//Write it to disk
 					try 
@@ -164,73 +192,88 @@ public class TAESolver implements ISolver{
 				RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aCutoff, fParamConfigurationSpace.getDefaultConfiguration());
 				
 				aToSolveInstances.put(aRunConfig,aComponentInstance);
-				//System.out.println("\n\n\n"+aToSolveInstances+" "+aToSolveInstances.size()+"\n\n\n");
 
 			}
 		}
-
-		//System.out.println("\n\n%%%%%%%%%%%%%%%%%%%%%%%% "+aToSolveInstances.size()+"\n\n");
-
-
+		
+		//Execute the runs
 		List<RunConfig> aRunConfigs = new ArrayList<RunConfig>(aToSolveInstances.keySet());
 		List<AlgorithmRun> aRuns = fTargetAlgorithmEvaluator.evaluateRun(aRunConfigs,getPreemptingObserver());
 		
-		
-		//if(!aRuns.isEmpty()) System.out.println("\n\n######################### \n\n");
-
-		
 		for(AlgorithmRun aRun : aRuns)
 		{
-
-			if(!aRun.getRunResult().equals(RunResult.KILLED))
-			{
-
-				double aRuntime = aRun.getRuntime();				
-				SATResult aResult;
-				Map<Integer,Set<Station>> aAssignment = new HashMap<Integer,Set<Station>>();
-				switch (aRun.getRunResult()){
-					case SAT:
-						aResult = SATResult.SAT;
-						
-						//Grab assignment
-						String aAdditionalRunData = aRun.getAdditionalRunData();
-						Instance aGroupInstance = aToSolveInstances.get(aRun.getRunConfig());
+			double aRuntime = aRun.getRuntime();				
+			SATResult aResult;
+			Map<Integer,Set<Station>> aAssignment = new HashMap<Integer,Set<Station>>();
+			switch (aRun.getRunResult()){
+				case KILLED:
+					aResult = SATResult.KILLED;
+					break;
+				case SAT:
+					aResult = SATResult.SAT;
 					
-						Clause aAssignmentClause = fStringWriter.stringToAssignmentClause(aGroupInstance, aAdditionalRunData);
-						aAssignment = fEncoder.decode(aGroupInstance, aAssignmentClause);
-		
-						break;
-					case UNSAT:
-						aResult = SATResult.UNSAT;
-						break;
-					case TIMEOUT:
-						aResult = SATResult.TIMEOUT;
-						break;
-					default:
-						aResult = SATResult.CRASHED;
-						throw new IllegalStateException("Run "+aRun+" crashed!");
-				}
-				
-				SolverResult aSolverResult = new SolverResult(aResult,aRuntime,aAssignment);
-				
-				//Save result if successfully computed
-
+					//Grab assignment
+					String aAdditionalRunData = aRun.getAdditionalRunData();
+					Instance aGroupInstance = aToSolveInstances.get(aRun.getRunConfig());
+					Clause aAssignmentClause = fStringWriter.stringToAssignmentClause(aGroupInstance, aAdditionalRunData);
+					aAssignment = fEncoder.decode(aGroupInstance, aAssignmentClause);
+	
+					break;
+				case UNSAT:
+					aResult = SATResult.UNSAT;
+					break;
+				case TIMEOUT:
+					aResult = SATResult.TIMEOUT;
+					break;
+				default:
+					aResult = SATResult.CRASHED;
+					throw new IllegalStateException("Run "+aRun+" crashed!");
+			}
+			
+			SolverResult aSolverResult = new SolverResult(aResult,aRuntime,aAssignment);
+			
+			//Save result if successfully computed
+			if(!(aResult.equals(SATResult.CRASHED) && aResult.equals(SATResult.KILLED)))
+			{
 				fLookup.putSolverResult(aToSolveInstances.get(aRun.getRunConfig()),aSolverResult);
-
-				
-				//Add result to component results
-				aComponentResults.add(aSolverResult);
-			}	
+			}
+			
+			//Add result to component results
+			aComponentResults.add(aSolverResult);
 		}
 		
-		
+		//Merge all the results
 		SolverResult aResult = mergeComponentResults(aComponentResults);
 		
-		//Check that assignment is indeed satisfiable.
-		if(!fManager.isSatisfyingAssignment(aResult.getAssignment())){
-			throw new Exception("When decoding station assignment, violated pairwise interference constraints found.");
-		} 
-
+		log.info("Terminated.");
+		
+		//Post-process the result for correctness.
+		if(aResult.getResult().equals(SATResult.SAT))
+		{
+			log.info("Independently verifying the veracity of returned assignment");
+			//Check assignment has the right number of stations
+			int aAssignmentSize = 0;
+			for(Integer aChannel : aResult.getAssignment().keySet())
+			{
+				aAssignmentSize += aResult.getAssignment().get(aChannel).size();
+			}
+			if(aAssignmentSize!=aInstance.getNumberofStations())
+			{
+				throw new IllegalStateException("Merged station assignment doesn't assign exactly the stations in the instance.");
+			}
+		
+			
+			//Check that assignment is indeed satisfiable.
+			if(!fManager.isSatisfyingAssignment(aResult.getAssignment())){
+				throw new IllegalStateException("Merged station assignment violates some pairwise interference constraint.");
+			}
+			else
+			{
+				log.info("Assignment was independently verified to be satisfiable.");
+			}
+		}
+		
+		log.info("Result : {}",aResult);
 		
 		return aResult;
 
@@ -247,10 +290,14 @@ public class TAESolver implements ISolver{
 			aSATResults.add(aSolverResult.getResult());
 		}
 		
-		//Merge SAT results 
-		SATResult aSATResult = SATResult.SAT;
+		//Merge SAT results		
+		SATResult aSATResult = SATResult.CRASHED;
 		
-		if(aSATResults.contains(SATResult.UNSAT))
+		if(aSATResults.size()==1)
+		{
+			aSATResult = aSATResults.iterator().next();
+		}
+		else if(aSATResults.contains(SATResult.UNSAT))
 		{
 			aSATResult = SATResult.UNSAT;
 		}
@@ -258,7 +305,7 @@ public class TAESolver implements ISolver{
 		{
 			aSATResult = SATResult.CRASHED;
 		}
-		else if(aSATResults.contains(SATResult.TIMEOUT))
+		else if(aSATResults.contains(SATResult.TIMEOUT) || aSATResults.contains(SATResult.KILLED))
 		{
 			aSATResult = SATResult.TIMEOUT;
 		}

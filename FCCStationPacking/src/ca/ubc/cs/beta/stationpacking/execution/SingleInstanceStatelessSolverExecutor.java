@@ -9,6 +9,7 @@ import ca.ubc.cs.beta.aclib.misc.jcommander.JCommanderHelper;
 import ca.ubc.cs.beta.aclib.misc.options.UsageSection;
 import ca.ubc.cs.beta.aclib.options.ConfigToLaTeX;
 import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
+import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.ExecutableSolverParameters;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
@@ -44,7 +45,9 @@ public class SingleInstanceStatelessSolverExecutor {
 				"--cutoffTime",
 				"1800",
 				"-CUTOFF",
-				"5",
+				"1800",
+//				"--logAllProcessOutput",
+//				"true",
 				"--logAllCallStrings",
 				"true",
 				"-PACKING_CHANNELS",
@@ -81,18 +84,14 @@ public class SingleInstanceStatelessSolverExecutor {
 		{
 			try 
 			{
-				
 				aSolver = aExecutableSolverParameter.getSolver();
+				
 				Instance aInstance = aExecutableSolverParameter.getInstance();
 				
-				log.info("Solving instance of {}",aInstance.getInfo());
-				
 				SolverResult aResult = aSolver.solve(aInstance, aExecutableSolverParameter.ProblemInstanceParameters.Cutoff, aExecutableSolverParameter.ProblemInstanceParameters.Seed);
-				
-				log.info("Solved.");
-				log.info("Result : {}",aResult);
-								
+		
 				System.out.println("Result for feasibility checker: "+aResult.toParsebleString());
+
 			} 
 			catch (Exception e) 
 			{

@@ -44,10 +44,7 @@ public class TAESolverParameters extends AbstractOptions {
 	public DataManagementParameters DataManagementParameters = new DataManagementParameters();
 	
 	@ParametersDelegate
-	private AlgorithmExecutionOptions AlgorithmExecutionOptions = new AlgorithmExecutionOptions();
-	public AlgorithmExecutionOptions getAlgorithmExecutionOptions() {
-		return AlgorithmExecutionOptions;
-	}
+	public AlgorithmExecutionOptions AlgorithmExecutionOptions = new AlgorithmExecutionOptions();
 
 	@Parameter(names = "-SOLVER", description = "SAT solver to use (from the implemented list of SAT solvers - can be circumvented by fully defining a valid TAE).", required=true, validateWith = ImplementedSolverParameterValidator.class)
 	private String Solver;
