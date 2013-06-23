@@ -15,17 +15,21 @@ Wrapper around the more parametrized java version of the feasibility checker
 to comform to Ladder Auction Algorithm Mini-Spec v2.1, June 2013 feasibility
 checker requirements.
 
+By Auctionomics [Alexandre Frechette, Nick Arnosti, Kevin Leyton-Brown]
+
+
 v0.9.1. - The current version has at its core a configured version (March 2013)
 of the clasp SAT solver.
 
 @author - Alexandre Frechette
 """
 
+start_time = time.time()
 
 if len(sys.argv)<=1:
     #Output usage.
     print 'SATFC '+date+', v'+version
-    print 'A SAT-based feasibility checker by A. Frechette, N. Arnosti, K. Leyton-Brown and Auctionomics.'
+    print 'A SAT-based feasibility checker by Auctionomics [A. Frechette, N. Arnosti, K. Leyton-Brown]'
     print 'Normal execution: "./feas_check question_csv_file_name answer_csv_file_name"'
     print 'For more usage see feasibility checker usage section of the Ladder Auction Algorithm Mini-Spec v2.1, June 2013.'
     sys.exit()
@@ -46,13 +50,9 @@ print """
           \/         \/              \/            \/
 
 
-A SAT-based feasibility checker for FCC's station
-repacking problem by
+A SAT-based feasibility checker for station repacking by
 
-Alexandre Frechette [UBC],
-Nick Arnosti [Stanford & Auctionomics],
-Kevin Leyton-Brown [UBC & Auctionomics], and
-Auctionomics.
+Auctionomics [A. Frechette, N. Arnosti, K. Leyton-Brown]
 
 """+date+""", v"""+version+"""
 =========================================================
@@ -86,8 +86,10 @@ for question_line in question_lines:
         raise Exception('Unrecognized problem instance data key in question csv file! ('+question_line+')')
 
 #Map to options for feasibility checker.
+#Current execution directory.
 current_dir = os.getcwd()
 
+#Directory to put CNF's an other SAT execution data.
 cnf_dir = current_dir + os.sep + 'CNFs'
 
 try:
@@ -95,14 +97,19 @@ try:
 except:
     raise Exception('Unrecognized value for key FC_TIMEOUT in question csv file!')
 
+#Directory to find problem setting data
 problem_data_directory = 'default'
 if len(question_parameters['STATION_CONFIG'])>0:
     problem_data_directory = question_parameters['STATION_CONFIG'][0]
 
+#Station data filename
 stations_filename = current_dir + os.sep + problem_data_directory + os.sep + 'STATIONS.CSV'
+#Domains data filename
 domains_filename = current_dir + os.sep + problem_data_directory + os.sep + 'domains.csv'
+#Interference constraint data filename.
 interference_filename = current_dir + os.sep + problem_data_directory + os.sep + 'interferences.csv'
 
+#Channels to pack into.
 if question_parameters['BAND'][0]=='LVHF':
     packing_channels = range(2,6+1)
 elif question_parameters['BAND'][0]=='HVHF':
@@ -117,18 +124,21 @@ elif question_parameters['BAND'][0]=='UHF':
             raise Exception('Unrecognized value for key HIGHEST in question csv file! (value ='+question_parameters['HIGHEST']+')')
 
     packing_channels = range(14,min(highest_channel,51)+1)
+    if 37 in packing_channels:
+        packing_channels.remove(37)
 else:
     raise Exception('Unrecognized value for key BAND in question csv file! (value = '+question_parameters['BAND']+')')
 packing_channels = ','.join(map(lambda c : str(c),packing_channels))
 
+#Stations to pack
 try:
     packing_stations = [int(line.split(',')[0]) for line in question_parameters['STATIONS']]
 except:
     raise Exception('Unrecognized list of stations in question csv file! ('+question_parameters['STATIONS']+')')
 packing_stations = ','.join(map(lambda s : str(s),packing_stations))
 
-"""Fill in the SATFC options and launch it"""
 
+"""Fill in the SATFC options and launch it"""
 
 #Information kept through the process to be printed in the answer file.
 run_information = []
@@ -177,11 +187,17 @@ print ''
 temp_stdout = tempfile.NamedTemporaryFile(dir=current_dir,prefix='SATFC_stdout',delete=True)
 temp_stderr = tempfile.NamedTemporaryFile(dir=current_dir,prefix='SATFC_stderr',delete=True)
 
+#TODO a print of SATFC execution's standard out every so often would be wonderful.
+#CWGT says : "Hacky to the max!"
+print '---------------------------------------------------------'
+printout = subprocess.Popen('tail -f '+temp_stdout.name,shell=True,stdout=sys.stdout)
+
 execution = subprocess.Popen(callstring,shell=True,stdout=temp_stdout,stderr=temp_stderr)
 
 execution.wait()
 
-#TODO a print of SATFC execution's standard out every so often would be wonderful.
+printout.kill()
+print '---------------------------------------------------------'
 
 temp_stdout.flush()
 temp_stderr.flush()
@@ -252,5 +268,6 @@ temp_stdout.close()
 temp_stderr.close()
 
 print 'DONE'
+print 'Total time taken '+str(time.time()-start_time)+' seconds'
 sys.exit()
 

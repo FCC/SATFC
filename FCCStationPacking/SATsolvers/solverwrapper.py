@@ -102,9 +102,13 @@ elif solvername == 'picosat':
 else:
     print 'ERROR, invalid solver name ',solvername
 
+
+(instance_name_head,instance_name_tail) = os.path.split(instance_name)
+
 #####################################################################################################
 #Make a new CNF where variables are named from 1 to n (where n is the total number of variables.
 #Highly undesirable fix - should use a better variable identification scheme inside the (java) solver.
+
 instance_file = open(instance_name)
 instance_lines = instance_file.readlines()
 
@@ -112,6 +116,13 @@ variables = []
 variables.append(0)
 
 formatted_lines = []
+
+print len(instance_lines)
+
+variable_map = dict()
+variable_index = 1
+
+t = time.time()
 for line in instance_lines:
     line = line.replace('\n','')
     if not (line[0]=='p' or line[0]=='c'):
@@ -122,18 +133,21 @@ for line in instance_lines:
         for litteral in litterals:
             negated = litteral < 0
             litteral = abs(litteral)
-            if litteral not in variables:
-                variables.append(litteral)
-            mapped_litterals.append((1-2*negated)*variables.index(litteral))
+            if litteral not in variable_map:
+                variable_map[litteral] = variable_index
+                variable_index = variable_index + 1 
+            mapped_litterals.append((1-2*negated)*variable_map[litteral])
         formatted_line = ' '.join(map(lambda l : str(l),mapped_litterals))+' 0\n'
         formatted_lines.append(formatted_line)
-formatted_lines.insert(0,'p cnf '+str(len(variables)-1)+' '+str(len(formatted_lines))+'\n')
 
-(instance_name_head,instance_name_tail) = os.path.split(instance_name)
+
+formatted_lines.insert(0,'p cnf '+str(len(variable_map))+' '+str(len(formatted_lines))+'\n')
+
 temp_CNF = tempfile.NamedTemporaryFile(dir=instance_name_head,delete=True)
 temp_CNF.write(''.join(formatted_lines))
 temp_CNF.flush()
 instance_name = temp_CNF.name
+print str(time.time()-t)
 ####################################################################################################
 
 temp_result = tempfile.NamedTemporaryFile(dir=instance_name_head, delete=True)
@@ -197,8 +211,9 @@ elif re.search(SATre,std_out):
         assignment.remove('0')
 
 ####################################################################################################
-    #Remap variables from temp CNF to variables provided by 
-    assignment = map(lambda l : str((1-2*(int(l)<0))*variables[abs(int(l))]),assignment)
+    #Remap temp variables from assignment to original variables
+    inv_variable_map = {v:k for k,v in variable_map.iteritems()}
+    assignment = map(lambda l : str((1-2*(int(l)<0))*inv_variable_map[abs(int(l))]),assignment)
 ####################################################################################################
 
     assignment = ';'.join(assignment)
