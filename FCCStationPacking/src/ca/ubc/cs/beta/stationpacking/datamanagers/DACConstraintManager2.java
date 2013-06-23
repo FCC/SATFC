@@ -38,6 +38,7 @@ public class DACConstraintManager2 implements IConstraintManager{
 		for(int i = LVHFmin; i<= LVHFmax; i++) LVHFChannels.add(i);
 		for(int i = UVHFmin; i<= UVHFmax; i++) UVHFChannels.add(i);
 		for(int i = UHFmin; i<= UHFmax; i++) UHFChannels.add(i);
+		UHFChannels.remove(37);
 
 		
 		ArrayList<HashMap<Station,Set<Station>>> aCOConstraints = new ArrayList<HashMap<Station,Set<Station>>>(3);
