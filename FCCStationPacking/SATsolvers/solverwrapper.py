@@ -123,21 +123,24 @@ variable_map = dict()
 variable_index = 1
 
 t = time.time()
+
 for line in instance_lines:
-    line = line.replace('\n','')
+    line = line.strip()
+    line = line[:-1]
+    line = line.rstrip()
     if not (line[0]=='p' or line[0]=='c'):
         litterals = line.split(' ')
-        litterals.remove('0')
-        litterals = map(lambda l : int(l), litterals)
+        #litterals.remove('0')
         mapped_litterals = []
         for litteral in litterals:
+            litteral = int(litteral)
             negated = litteral < 0
             litteral = abs(litteral)
             if litteral not in variable_map:
                 variable_map[litteral] = variable_index
                 variable_index = variable_index + 1 
             mapped_litterals.append((1-2*negated)*variable_map[litteral])
-        formatted_line = ' '.join(map(lambda l : str(l),mapped_litterals))+' 0\n'
+        formatted_line = ' '.join([str(l) for l in mapped_litterals])+' 0\n'
         formatted_lines.append(formatted_line)
 
 
@@ -146,8 +149,11 @@ formatted_lines.insert(0,'p cnf '+str(len(variable_map))+' '+str(len(formatted_l
 temp_CNF = tempfile.NamedTemporaryFile(dir=instance_name_head,delete=True)
 temp_CNF.write(''.join(formatted_lines))
 temp_CNF.flush()
+
 instance_name = temp_CNF.name
-print str(time.time()-t)
+
+preprotime = float(time.time()-t)
+print 'Time taken to pre-process CNF',str(preprotime)
 ####################################################################################################
 
 temp_result = tempfile.NamedTemporaryFile(dir=instance_name_head, delete=True)
@@ -223,6 +229,8 @@ else:
     output_runtime = str(time.time()-clock)
     print std_out
     print std_err
+
+#output_runtime = str(float(output_runtime)+preprotime)
 
 if output_solved == 'SAT':
     print 'Result for ParamILS: '+output_solved+', '+output_runtime+', '+output_runlength+', '+output_quality+', '+output_seed+', '+assignment+'\n'
