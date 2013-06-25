@@ -19,11 +19,11 @@ import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluator;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorBuilder;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 
-import ca.ubc.cs.beta.stationpacking.datamanagers.DACConstraintManager2;
-import ca.ubc.cs.beta.stationpacking.datamanagers.DACStationManager;
+import ca.ubc.cs.beta.stationpacking.datamanagers.DACConstraintManager;
+import ca.ubc.cs.beta.stationpacking.datamanagers.PopulatedDomainStationManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.InstanceGenerationParameters;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.experiment.InstanceGenerationParameters;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.AsynchronousLocalExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder2;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
@@ -116,9 +116,9 @@ public class AsyncResolvingExecutor {
 		
 		//Use the parameters to instantiate the experiment.
 		log.info("Getting data...");
-		DACStationManager aStationManager = new DACStationManager(aExecParameters.getRepackingDataParameters().StationFilename,aExecParameters.getRepackingDataParameters().DomainFilename);
+		PopulatedDomainStationManager aStationManager = new PopulatedDomainStationManager(aExecParameters.getRepackingDataParameters().StationFilename,aExecParameters.getRepackingDataParameters().DomainFilename);
 	    Set<Station> aStations = aStationManager.getStations();
-		DACConstraintManager2 dCM = new DACConstraintManager2(aStations,aExecParameters.getRepackingDataParameters().ConstraintFilename);
+		DACConstraintManager dCM = new DACConstraintManager(aStations,aExecParameters.getRepackingDataParameters().ConstraintFilename);
 		
 		//Set<Integer> aChannels = aExecParameters.getPackingChannels();
 		ICNFEncoder2 aCNFEncoder = new CNFEncoder2(aStations);

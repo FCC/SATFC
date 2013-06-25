@@ -21,12 +21,12 @@ import ca.ubc.cs.beta.aclib.misc.options.UsageSection;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.aclib.options.ConfigToLaTeX;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
-import ca.ubc.cs.beta.stationpacking.datamanagers.DACConstraintManager2;
-import ca.ubc.cs.beta.stationpacking.datamanagers.DACStationManager;
+import ca.ubc.cs.beta.stationpacking.datamanagers.DACConstraintManager;
+import ca.ubc.cs.beta.stationpacking.datamanagers.PopulatedDomainStationManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.execution.InstanceGenerationExecutor;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.InstanceGenerationParameters;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.experiment.InstanceGenerationParameters;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.HybridCNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.ConstraintGrouper;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponentGrouper;
@@ -96,9 +96,9 @@ public class CNFFromInstances {
 		}
 		
 		log.info("Getting data...");
-		DACStationManager aStationManager = new DACStationManager(aExecParameters.getRepackingDataParameters().StationFilename,aExecParameters.getRepackingDataParameters().DomainFilename);
+		PopulatedDomainStationManager aStationManager = new PopulatedDomainStationManager(aExecParameters.getRepackingDataParameters().StationFilename,aExecParameters.getRepackingDataParameters().DomainFilename);
 	    Set<Station> aStations = aStationManager.getStations();
-		DACConstraintManager2 dCM = new DACConstraintManager2(aStations,aExecParameters.getRepackingDataParameters().ConstraintFilename);
+		DACConstraintManager dCM = new DACConstraintManager(aStations,aExecParameters.getRepackingDataParameters().ConstraintFilename);
 	
 		log.info("Creating constraint grouper...");
 		IComponentGrouper aGrouper = new ConstraintGrouper();
@@ -110,7 +110,7 @@ public class CNFFromInstances {
 		
 		Set<Integer> aChannelRange = aExecParameters.getPackingChannels();
 		
-		CSVReader aReader = new CSVReader(new FileReader("/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Features/TunedClaspInstanceGeneration/InstanceGeneration_TunedClasp.csv"),',');
+		CSVReader aReader = new CSVReader(new FileReader("/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Features/TunedClaspInstanceGeneration/sorted_InstanceGeneration_TunedClasp_hard_testing_filtered.csv"),',');
 		String[] aLine;
 		while((aLine = aReader.readNext())!=null){
 			HashSet<Integer> aStationIDs = new HashSet<Integer>();
@@ -138,18 +138,20 @@ public class CNFFromInstances {
 			Set<Set<Station>> aInstanceGroups = aGrouper.group(aInstance,dCM);
 			for(Set<Station> aStationComponent : aInstanceGroups){
 			
-			
-				//Create the component group instance.
-				Instance aComponentInstance = new Instance(aStationComponent,aChannelRange);
-				String aCNFFileName = aCNFLookup.getCNFNameFor(aComponentInstance).split(File.separator)[aCNFLookup.getCNFNameFor(aComponentInstance).split(File.separator).length-1];
-				
-				//Save CNF name
-				aCNFNames.add(aCNFFileName);
+				if (aStationComponent.size()>1)
+				{
+					//Create the component group instance.
+					Instance aComponentInstance = new Instance(aStationComponent,aChannelRange);
+					String aCNFFileName = aCNFLookup.getCNFNameFor(aComponentInstance).split(File.separator)[aCNFLookup.getCNFNameFor(aComponentInstance).split(File.separator).length-1];
+					
+					//Save CNF name
+					aCNFNames.add(aCNFFileName);
+				}
 			}
 			
 		}
 		//Write the CNF names to file.
-		File aCNFFile = new File("/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Features/TunedClaspInstanceGeneration/InstanceGeneration_TunedClasp_CNFs.csv");
+		File aCNFFile = new File("/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Features/TunedClaspInstanceGeneration/sorted_InstanceGeneration_TunedClasp_hard_testing_CNFs.csv");
 		for(String aCNFName : aCNFNames)
 		{
 			FileUtils.write(aCNFFile, aCNFName+"\n",true);

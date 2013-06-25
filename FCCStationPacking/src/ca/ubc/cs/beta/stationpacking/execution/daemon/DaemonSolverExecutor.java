@@ -13,7 +13,7 @@ import ca.ubc.cs.beta.aclib.misc.options.UsageSection;
 import ca.ubc.cs.beta.aclib.options.ConfigToLaTeX;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.server.SolverServer;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.TAESolverParameters;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.TAESolverParameters;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 
 /**
