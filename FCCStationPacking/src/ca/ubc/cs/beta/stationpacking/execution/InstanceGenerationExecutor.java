@@ -21,10 +21,10 @@ import ca.ubc.cs.beta.aclib.options.ConfigToLaTeX;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluator;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorBuilder;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
-import ca.ubc.cs.beta.stationpacking.datamanagers.DACConstraintManager2;
-import ca.ubc.cs.beta.stationpacking.datamanagers.DACStationManager;
+import ca.ubc.cs.beta.stationpacking.datamanagers.DACConstraintManager;
+import ca.ubc.cs.beta.stationpacking.datamanagers.PopulatedDomainStationManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.InstanceGenerationParameters;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.experiment.InstanceGenerationParameters;
 import ca.ubc.cs.beta.stationpacking.experiment.InstanceGeneration;
 import ca.ubc.cs.beta.stationpacking.experiment.InversePopulationStationIterator;
 import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentReporter;
@@ -173,9 +173,9 @@ public class InstanceGenerationExecutor {
 		
 		//Use the parameters to instantiate the experiment.
 		log.info("Getting data...");
-		DACStationManager aStationManager = new DACStationManager(aExecParameters.getRepackingDataParameters().StationFilename,aExecParameters.getRepackingDataParameters().DomainFilename);
+		PopulatedDomainStationManager aStationManager = new PopulatedDomainStationManager(aExecParameters.getRepackingDataParameters().StationFilename,aExecParameters.getRepackingDataParameters().DomainFilename);
 	    Set<Station> aStations = aStationManager.getStations();
-		DACConstraintManager2 dCM = new DACConstraintManager2(aStations,aExecParameters.getRepackingDataParameters().ConstraintFilename);
+		DACConstraintManager dCM = new DACConstraintManager(aStations,aExecParameters.getRepackingDataParameters().ConstraintFilename);
 		Set<Integer> aChannels = aExecParameters.getPackingChannels();
 		
 		log.info("Creating constraint grouper...");

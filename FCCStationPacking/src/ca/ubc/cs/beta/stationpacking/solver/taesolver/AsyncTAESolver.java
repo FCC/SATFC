@@ -32,7 +32,7 @@ import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluatorRun
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorBuilder;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 
-import ca.ubc.cs.beta.stationpacking.datamanagers.DACConstraintManager2;
+import ca.ubc.cs.beta.stationpacking.datamanagers.DACConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
 import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
@@ -104,7 +104,7 @@ public class AsyncTAESolver {
 	}
 	
 	
-	public AsyncTAESolver(DACConstraintManager2 aConstraintManager, ICNFEncoder2 aCNFEncoder, CNFStringWriter aStringWriter,
+	public AsyncTAESolver(DACConstraintManager aConstraintManager, ICNFEncoder2 aCNFEncoder, CNFStringWriter aStringWriter,
 			String aCNFDirectory, TargetAlgorithmEvaluator aTAE, AlgorithmExecutionConfig aTAEExecConfig, long aSeed) {
 		fSeed = aSeed;
 		fEncoder = aCNFEncoder;

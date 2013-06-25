@@ -26,44 +26,12 @@ public class Station implements Comparable<Station>, Serializable{
 	private final Integer fPop;
 	private final Set<Integer> fDomain;
 	
-	/*
-	public Station(Integer aID)
-	{
-		fID = aID;
-		fPop = -1;
-		fDomain = new HashSet<Integer>();
-		try{ 
-			throw new Exception("No Domain given for station "+fID);
-		} catch(Exception e){
-			System.out.println(e.getMessage());
-			e.printStackTrace();
-		}
-	}
-	
-	public Station(Integer aID,Integer aPop){
-		fID = aID;
-		fPop = aPop;
-		fDomain = new HashSet<Integer>();
-		try{ 
-			throw new Exception("No Domain given for station "+fID);
-		} catch(Exception e){
-			System.out.println(e.getMessage());
-			e.printStackTrace();
-		}
-	}
-	*/
-	
+
 	public Station(Integer aID, Set<Integer> aDomain, Integer aPop){
 		fID = aID;
 		fPop = aPop;
 		fDomain = aDomain;
 	}
-	/*
-	public Station(Integer aID, Set<Integer> aDomain){
-		fID = aID;
-		fDomain = aDomain;
-	}
-	*/
 	
 	public int getID(){
 		return fID;
@@ -73,15 +41,6 @@ public class Station implements Comparable<Station>, Serializable{
 		return fPop;
 	}
 	
-	/*
-	public void setPop(Integer aPop){
-		if(fPop==null) fPop = aPop;
-		else{
-			try{ throw new Exception("Cannot modify population of Station "+fID+", which has population "+fPop); }
-			catch(Exception e){ e.printStackTrace(); }
-		}  
-	}
-	*/
 	
 	@Override
 	public String toString(){
