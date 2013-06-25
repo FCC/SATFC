@@ -134,6 +134,8 @@ public class TAESolver implements ISolver{
 	@Override
 	public SolverResult solve(Instance aInstance, double aCutoff, long aSeed) throws Exception{
 		
+		long aStartTime = System.nanoTime();
+		
 		log.info("Solving instance of {}",aInstance.getInfo());
 		
 		Set<Integer> aChannelRange = aInstance.getChannels();
@@ -192,9 +194,10 @@ public class TAESolver implements ISolver{
 				RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aCutoff, fParamConfigurationSpace.getDefaultConfiguration());
 				
 				aToSolveInstances.put(aRunConfig,aComponentInstance);
-
 			}
 		}
+		
+		log.info("Total time taken "+(System.nanoTime()-aStartTime)*Math.pow(10, -9)+" seconds");
 		
 		//Execute the runs
 		List<RunConfig> aRunConfigs = new ArrayList<RunConfig>(aToSolveInstances.keySet());
@@ -250,6 +253,7 @@ public class TAESolver implements ISolver{
 		//Post-process the result for correctness.
 		if(aResult.getResult().equals(SATResult.SAT))
 		{
+	
 			log.info("Independently verifying the veracity of returned assignment");
 			//Check assignment has the right number of stations
 			int aAssignmentSize = 0;
@@ -265,6 +269,13 @@ public class TAESolver implements ISolver{
 			
 			//Check that assignment is indeed satisfiable.
 			if(!fManager.isSatisfyingAssignment(aResult.getAssignment())){
+				
+				log.error("Bad assignment:");
+				for(Integer aChannel : aResult.getAssignment().keySet())
+				{
+					log.error(aChannel+','+aResult.getAssignment().get(aChannel).toString());
+				}
+				
 				throw new IllegalStateException("Merged station assignment violates some pairwise interference constraint.");
 			}
 			else
@@ -274,6 +285,7 @@ public class TAESolver implements ISolver{
 		}
 		
 		log.info("Result : {}",aResult);
+		log.info("Total time taken "+(System.nanoTime()-aStartTime)*Math.pow(10, -9)+" seconds");
 		
 		return aResult;
 

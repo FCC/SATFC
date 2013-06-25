@@ -86,8 +86,8 @@ for question_line in question_lines:
         raise Exception('Unrecognized problem instance data key in question csv file! ('+question_line+')')
 
 #Map to options for feasibility checker.
-#Current execution directory.
-current_dir = os.getcwd()
+#Execution directory of feas_check
+current_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
 
 #Directory to put CNF's an other SAT execution data.
 cnf_dir = current_dir + os.sep + 'CNFs'
@@ -159,7 +159,7 @@ cnf_dir,
 "-SOLVER":
 solver,
 "--execDir":
-"SATsolvers",
+current_dir+os.sep+"SATsolvers",
 "--algoExec":
 '"python solverwrapper.py"',
 "-CUTOFF":
@@ -174,7 +174,7 @@ packing_channels,
 packing_stations
 }
 
-feas_check_exec = 'java -jar SATFC.jar'
+feas_check_exec = 'java -jar '+current_dir+os.sep+'SATFC.jar'
 options_callstring = ' '.join(map(lambda (k,v) : k+' '+v,options.iteritems()))
 
 callstring = feas_check_exec+' '+options_callstring
@@ -250,7 +250,8 @@ elif satisfiability=='UNSAT':
 else:
     answer = 'unknown'
 
-run_information.append('Took '+str(runtime)+' seconds with SATFC v'+version+' using '+solver+'.')
+run_information.append('Total time is '+str(time.time()-start_time)+' seconds with SATFC v'+version+' using '+solver+'.')
+run_information.append('Total time spent SAT solving is '+str(runtime)+' seconds.')
 
 answer_file = open(answer_filename,'w')
 answer_file.write('ANSWER,'+answer+'\n')
