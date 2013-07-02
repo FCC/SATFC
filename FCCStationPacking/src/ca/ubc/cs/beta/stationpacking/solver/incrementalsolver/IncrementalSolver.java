@@ -11,12 +11,12 @@ import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
-import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
+import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries.IIncrementalSATLibrary;
 
 public class IncrementalSolver implements ISolver{
@@ -25,7 +25,7 @@ public class IncrementalSolver implements ISolver{
 	 * Used to encode the Instance
 	 */
 	IConstraintManager fConstraintManager;
-	ICNFEncoder2 fEncoder;
+	ICNFEncoder fEncoder;
 
 
 	/*
@@ -37,7 +37,7 @@ public class IncrementalSolver implements ISolver{
 	/*
 	 * The most recently solved instance - helps us decide whether we can use incremental capability.
 	 */
-	Instance fCurrentInstance;
+	StationPackingInstance fCurrentInstance;
 	/*
 	 * We keep fCurrentClauses around because it makes it easy to figure out which clauses 
 	 * are new and should be added to the IncrementalSATLibrary. Without fCurrentClauses, we would
@@ -77,7 +77,7 @@ public class IncrementalSolver implements ISolver{
 	/* 
 	 * The constructor. We may want to add other parameters indicating what "mode" to run the solver in.
 	 */
-	public IncrementalSolver(	IConstraintManager aConstraintManager, ICNFEncoder2 aCNFEncoder, 
+	public IncrementalSolver(	IConstraintManager aConstraintManager, ICNFEncoder aCNFEncoder, 
 								IIncrementalSATLibrary aIncrementalSATLibrary){
 		fConstraintManager = aConstraintManager;
 		fEncoder = aCNFEncoder;		
@@ -103,7 +103,7 @@ public class IncrementalSolver implements ISolver{
 	 */
 	
 	@Override
-	public SolverResult solve(Instance aInstance, double aCutoff, long aSeed) throws Exception {
+	public SolverResult solve(StationPackingInstance aInstance, double aCutoff, long aSeed) throws Exception {
 
 		//We can only go incremental if stations are superset and channels are subset; else reset
 		if(	(!aInstance.getStations().containsAll(fCurrentInstance.getStations())) ||
@@ -192,7 +192,7 @@ public class IncrementalSolver implements ISolver{
 	private void reset(){
 		log.info("Cannot use incremental capability, re-setting...");
 		fIncrementalSATLibrary.clear();
-		fCurrentInstance = new Instance();
+		fCurrentInstance = new StationPackingInstance();
 		fCurrentClauses = new HashSet<Clause>();
 		fAssumptions = new Clause();
 		curCount = 1;

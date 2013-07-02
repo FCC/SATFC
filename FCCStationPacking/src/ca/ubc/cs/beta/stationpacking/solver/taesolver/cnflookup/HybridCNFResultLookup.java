@@ -15,7 +15,7 @@ import org.apache.commons.io.FileUtils;
 
 
 
-import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
+import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 
@@ -57,20 +57,20 @@ public class HybridCNFResultLookup implements ICNFResultLookup{
 	}
 	
 	@Override
-	public boolean hasSolverResult(Instance aInstance) {
+	public boolean hasSolverResult(StationPackingInstance aInstance) {
 		String aInstanceHash = getCNFName(aInstance);
 		return fResultLookup.containsKey(aInstanceHash);
 	}
 
 	@Override
-	public String getCNFNameFor(Instance aInstance){
+	public String getCNFNameFor(StationPackingInstance aInstance){
 		return 	fCNFDirectory+File.separatorChar+getCNFName(aInstance)+".cnf";
 	}
 
 	
 	//NA - returns the saved SATResult value corresponding to aInstance, 
 	@Override
-	public SolverResult getSolverResult(Instance aInstance) throws Exception{
+	public SolverResult getSolverResult(StationPackingInstance aInstance) throws Exception{
 		if(hasSolverResult(aInstance))
 		{
 			String aInstanceHash = getCNFName(aInstance);
@@ -87,7 +87,7 @@ public class HybridCNFResultLookup implements ICNFResultLookup{
 	
 	//NA - returns true if the entry already existed
 	@Override
-	public boolean putSolverResult(Instance aInstance, SolverResult aResult){
+	public boolean putSolverResult(StationPackingInstance aInstance, SolverResult aResult){
 		//System.out.println("\n\n\n testing \n\n\n");
 
 		if(hasSolverResult(aInstance))
@@ -133,8 +133,8 @@ public class HybridCNFResultLookup implements ICNFResultLookup{
 		aWriter.close();
 	}
 			
-	private String getCNFName(Instance aInstance){
-		return hashforFilename(Station.hashStationSet(aInstance.getStations())+Instance.hashChannelSet(aInstance.getChannels()));
+	private String getCNFName(StationPackingInstance aInstance){
+		return hashforFilename(Station.hashStationSet(aInstance.getStations())+StationPackingInstance.hashChannelSet(aInstance.getChannels()));
 	}		
 	
 	private String hashforFilename(String aString)

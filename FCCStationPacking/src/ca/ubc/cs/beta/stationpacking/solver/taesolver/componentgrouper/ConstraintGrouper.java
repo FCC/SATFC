@@ -8,14 +8,14 @@ import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
-import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
+import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 
 public class ConstraintGrouper implements IComponentGrouper{
 	
 	
 	//NA - just assume that at least two feasible channels are adjacent (so that ADJ constraints are relevant).
-	public Set<Set<Station>> group(Instance aInstance, IConstraintManager aConstraintManager){
+	public Set<Set<Station>> group(StationPackingInstance aInstance, IConstraintManager aConstraintManager){
 		Set<Station> aStations = aInstance.getStations();
 		Set<Integer> aInstanceDomain = aInstance.getChannels();
 		SimpleGraph<Station,DefaultEdge> aConstraintGraph = new SimpleGraph<Station,DefaultEdge>(DefaultEdge.class);

@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
-import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
+import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 
@@ -30,7 +30,7 @@ public class ExecutableSolverParameters extends AbstractOptions {
 	@ParametersDelegate
 	public InstanceParameters ProblemInstanceParameters = new InstanceParameters();
 
-	public Instance getInstance() throws Exception
+	public StationPackingInstance getInstance() throws Exception
 	{
 		Logger log = LoggerFactory.getLogger(ExecutableSolverParameters.class);
 		log.info("Getting instance...");
@@ -49,7 +49,7 @@ public class ExecutableSolverParameters extends AbstractOptions {
 			}
 		}
 		
-		return new Instance(aPackingStations,aPackingChannels);	
+		return new StationPackingInstance(aPackingStations,aPackingChannels);	
 	}
 	
 	public ISolver getSolver() throws Exception
@@ -57,7 +57,7 @@ public class ExecutableSolverParameters extends AbstractOptions {
 		Logger log = LoggerFactory.getLogger(ExecutableSolverParameters.class);
 		log.info("Getting solver...");
 		
-		return SolverParameters.getTAESolver();
+		return SolverParameters.getSolver();
 	}
 	
 

@@ -26,13 +26,12 @@ import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluator;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluatorRunObserver;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
-import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
+import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
-import ca.ubc.cs.beta.stationpacking.execution.SingleInstanceStatelessSolverExecutor;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.cnfwriter.CNFStringWriter;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponentGrouper;
@@ -52,12 +51,22 @@ public class TAESolver implements ISolver{
 	
 	private IConstraintManager fManager;
 	private ICNFResultLookup fLookup;
-	private ICNFEncoder2 fEncoder;
+	private ICNFEncoder fEncoder;
 	private CNFStringWriter fStringWriter;
 	
 	private IComponentGrouper fGrouper;
 	
-	public TAESolver(IConstraintManager aConstraintManager, ICNFEncoder2 aCNFEncoder,
+	/**
+	 * 
+	 * @param aConstraintManager - the manager in charge of constraints.
+	 * @param aCNFEncoder - the encoder in charge of taking constraints and an instance and producing a CNF clause set.
+	 * @param aLookup - the CNF lookup in charge of monitoring CNFs.
+	 * @param aGrouper - the component grouper in charge of partitioning instance in subinstances.
+	 * @param aStringWriter - the writer in charge of transforming a CNF clause set in a string representation.
+	 * @param aTAE - an AClib Target Algorithm Evaluator in charge of running SAT solver.
+	 * @param aTAEExecConfig - the TAE's configuration.
+	 */
+	public TAESolver(IConstraintManager aConstraintManager, ICNFEncoder aCNFEncoder,
 			ICNFResultLookup aLookup, IComponentGrouper aGrouper, CNFStringWriter aStringWriter,
 			TargetAlgorithmEvaluator aTAE, AlgorithmExecutionConfig aTAEExecConfig) {
 		
@@ -104,7 +113,7 @@ public class TAESolver implements ISolver{
 						aSumRuntimes += aRun.getRuntime();
 					}
 					//TODO Some cutoff management magic right here.
-					if(aSumRuntimes>1.05+aCutoff+1)
+					if(aSumRuntimes>1.01+aCutoff+1)
 					{
 						aKill = true;
 					}
@@ -132,7 +141,7 @@ public class TAESolver implements ISolver{
 	 * 
 	 */
 	@Override
-	public SolverResult solve(Instance aInstance, double aCutoff, long aSeed) throws Exception{
+	public SolverResult solve(StationPackingInstance aInstance, double aCutoff, long aSeed) throws Exception{
 		
 		long aStartTime = System.nanoTime();
 		
@@ -144,12 +153,12 @@ public class TAESolver implements ISolver{
 		Set<Set<Station>> aInstanceGroups = fGrouper.group(aInstance,fManager);
 		
 		ArrayList<SolverResult> aComponentResults = new ArrayList<SolverResult>();
-		HashMap<RunConfig,Instance> aToSolveInstances = new HashMap<RunConfig,Instance>();
+		HashMap<RunConfig,StationPackingInstance> aToSolveInstances = new HashMap<RunConfig,StationPackingInstance>();
 
 		//Create the runs to execute.
 		for(Set<Station> aStationComponent : aInstanceGroups){
 			//Create the component group instance.
-			Instance aComponentInstance = new Instance(aStationComponent,aChannelRange);
+			StationPackingInstance aComponentInstance = new StationPackingInstance(aStationComponent,aChannelRange);
 			
 			//Check if present
 			if(fLookup.hasSolverResult(aComponentInstance))
@@ -197,11 +206,10 @@ public class TAESolver implements ISolver{
 			}
 		}
 		
-		log.info("Total time taken "+(System.nanoTime()-aStartTime)*Math.pow(10, -9)+" seconds");
-		
 		//Execute the runs
 		List<RunConfig> aRunConfigs = new ArrayList<RunConfig>(aToSolveInstances.keySet());
 		List<AlgorithmRun> aRuns = fTargetAlgorithmEvaluator.evaluateRun(aRunConfigs,getPreemptingObserver());
+		
 		
 		for(AlgorithmRun aRun : aRuns)
 		{
@@ -217,7 +225,7 @@ public class TAESolver implements ISolver{
 					
 					//Grab assignment
 					String aAdditionalRunData = aRun.getAdditionalRunData();
-					Instance aGroupInstance = aToSolveInstances.get(aRun.getRunConfig());
+					StationPackingInstance aGroupInstance = aToSolveInstances.get(aRun.getRunConfig());
 					Clause aAssignmentClause = fStringWriter.stringToAssignmentClause(aGroupInstance, aAdditionalRunData);
 					aAssignment = fEncoder.decode(aGroupInstance, aAssignmentClause);
 	
@@ -236,13 +244,18 @@ public class TAESolver implements ISolver{
 			SolverResult aSolverResult = new SolverResult(aResult,aRuntime,aAssignment);
 			
 			//Save result if successfully computed
-			if(!(aResult.equals(SATResult.CRASHED) && aResult.equals(SATResult.KILLED)))
+			if(!(aResult.equals(SATResult.CRASHED) || aResult.equals(SATResult.KILLED)))
 			{
 				fLookup.putSolverResult(aToSolveInstances.get(aRun.getRunConfig()),aSolverResult);
 			}
 			
 			//Add result to component results
 			aComponentResults.add(aSolverResult);
+		}
+		
+		if(aComponentResults.size()!=aInstanceGroups.size())
+		{
+			throw new IllegalStateException("Not as many results as there are instance groups!");
 		}
 		
 		//Merge all the results
@@ -321,6 +334,13 @@ public class TAESolver implements ISolver{
 		{
 			aSATResult = SATResult.TIMEOUT;
 		}
+		
+		//If all runs were killed, it is because we went over time. 
+		if(aSATResult.equals(SATResult.KILLED))
+		{
+			aSATResult = SATResult.TIMEOUT;
+		}
+		
 		
 		//Merge assignments
 		Map<Integer,Set<Station>> aAssignment = new HashMap<Integer,Set<Station>>();

@@ -4,7 +4,6 @@ import com.beust.jcommander.Parameter;
 
 public class IncrementalSolverParameters {
 	
-	//TODO
 	
 	@Parameter(names = "-LIBRARY", description = "Path to incremental SAT library.")
 	private String fLibraryPath;

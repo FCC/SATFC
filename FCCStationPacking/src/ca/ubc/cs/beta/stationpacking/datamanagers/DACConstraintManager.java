@@ -12,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
-import ca.ubc.cs.beta.stationpacking.solver.taesolver.TAESolver;
 
 
 import au.com.bytecode.opencsv.CSVReader;
@@ -133,52 +132,6 @@ public class DACConstraintManager implements IConstraintManager{
 			e.printStackTrace();
 		}
 		
-		/*
-		Integer aStationID = 9781;
-		Station aTestStation = fStations.get(aStationID);
-		if(aTestStation==null){
-			System.out.println("Station "+aStationID+" not found!!!.");
-		}
-		
-		try{
-			System.out.println(aTestStation+" co-channel constraints are: "+getCOInterferingStations(aTestStation,new HashSet<Integer>(14)));
-		} catch(Exception e){
-			e.printStackTrace();
-		}
-		*/
-		
-		/*
-		int aCount = 0;
-		for(int j = 0; j < 3; j++){
-			for(Station aStation1 : fCOConstraints.get(j).keySet()){
-				for(Station aStation2 : fCOConstraints.get(j).get(aStation1)){
-					if(! fCOConstraints.get(j).get(aStation2).contains(aStation1)) aCount++;
-				}
-			}
-		}
-		System.out.println("Number of asymmetric CO-channel constraints: "+aCount);	
-		*/
-		
-		
-//		int aCount = 0;
-//		for(Station aStation1 : aADJplusConstraints.get(2).keySet()){
-//			for(Station aStation2 : aADJplusConstraints.get(2).get(aStation1)){
-//				if(! aCOConstraints.get(2).get(aStation2).contains(aStation1)){
-//					aCount++;
-//				}
-//			}
-//		}
-		//System.out.println("Number of ADJ constraints without corresponding CO-channel constraints: "+aCount);	
-		
-//		aCount = 0;
-//		for(Station aStation1 : aADJplusConstraints.get(2).keySet()){
-//			for(Station aStation2 : aADJplusConstraints.get(2).get(aStation1)){
-//				if(! aADJplusConstraints.get(2).get(aStation2).contains(aStation1)){
-//					aCount++;
-//				}
-//			}
-//		}
-		//System.out.println("Number of asymmetric ADJ constraints: "+aCount);	
 		
 		fLowerVHFCOConstraints = aCOConstraints.get(0);
 		fUpperVHFCOConstraints = aCOConstraints.get(1);
@@ -192,7 +145,7 @@ public class DACConstraintManager implements IConstraintManager{
 	}
 
 
-	public Set<Station> getCOInterferingStations(Station aStation, Set<Integer> aChannelRange) throws Exception {
+	public Set<Station> getCOInterferingStations(Station aStation, Set<Integer> aChannelRange) {
 		Set<Station> aInterfering;
 		if(LVHFChannels.containsAll(aChannelRange)){
 			aInterfering = fLowerVHFCOConstraints.get(aStation);
@@ -201,13 +154,13 @@ public class DACConstraintManager implements IConstraintManager{
 		} else if(UHFChannels.containsAll(aChannelRange)) {
 			aInterfering = fUHFCOConstraints.get(aStation);
 		} else {
-			throw new Exception("Specified channel range contains channels from multiple bands.");
+			throw new IllegalStateException("Specified channel range contains channels from multiple bands.");
 		}
 		if(aInterfering==null) aInterfering = new HashSet<Station>();
 		return new HashSet<Station>(aInterfering);
 	}
 	
-	public Set<Station> getADJplusInterferingStations(Station aStation, Set<Integer> aChannelRange) throws Exception{
+	public Set<Station> getADJplusInterferingStations(Station aStation, Set<Integer> aChannelRange){
 		Set<Station> aInterfering;
 		if(LVHFChannels.containsAll(aChannelRange)){
 			aInterfering = fLowerVHFADJConstraints.get(aStation);
@@ -216,7 +169,7 @@ public class DACConstraintManager implements IConstraintManager{
 		} else if(UHFChannels.containsAll(aChannelRange)) {
 			aInterfering = fUHFADJConstraints.get(aStation);
 		} else {
-			throw new Exception("Specified channel range contains channels from multiple bands.");
+			throw new IllegalStateException("Specified channel range contains channels from multiple bands.");
 		}
 		if(aInterfering==null) aInterfering = new HashSet<Station>();
 		return new HashSet<Station>(aInterfering);
