@@ -103,7 +103,7 @@ if len(question_parameters['STATION_CONFIG'])>0:
     problem_data_directory = question_parameters['STATION_CONFIG'][0]
 
 #Station data filename
-stations_filename = current_dir + os.sep + problem_data_directory + os.sep + 'STATIONS.CSV'
+#stations_filename = current_dir + os.sep + problem_data_directory + os.sep + 'STATIONS.CSV'
 #Domains data filename
 domains_filename = current_dir + os.sep + problem_data_directory + os.sep + 'domains.csv'
 #Interference constraint data filename.
@@ -112,7 +112,7 @@ interference_filename = current_dir + os.sep + problem_data_directory + os.sep +
 #Channels to pack into.
 if question_parameters['BAND'][0]=='LVHF':
     packing_channels = range(2,6+1)
-elif question_parameters['BAND'][0]=='HVHF':
+elif question_parameters['BAND'][0]=='HVHF' or question_parameters['BAND'][0]=='UVHF':
     packing_channels = range(7,13+1)
 elif question_parameters['BAND'][0]=='UHF':
 
@@ -148,8 +148,6 @@ print 'Creating the callstring to the feasibility checker...'
 solver = 'tunedclasp'
 
 options = {
-"-STATIONS_FILE":
-stations_filename,
 "-DOMAINS_FILE":
 domains_filename,
 "-CONSTRAINTS_FILE":
@@ -184,8 +182,10 @@ print ''
 print callstring
 print ''
 
-temp_stdout = tempfile.NamedTemporaryFile(dir=current_dir,prefix='SATFC_stdout',delete=True)
-temp_stderr = tempfile.NamedTemporaryFile(dir=current_dir,prefix='SATFC_stderr',delete=True)
+
+pid = str(os.getpid())
+temp_stdout = tempfile.NamedTemporaryFile(dir=current_dir,prefix='SATFC_stdout_'+pid+'_',delete=True)
+temp_stderr = tempfile.NamedTemporaryFile(dir=current_dir,prefix='SATFC_stderr'+pid+'_',delete=True)
 
 #TODO a print of SATFC execution's standard out every so often would be wonderful.
 #CWGT says : "Hacky to the max!"
@@ -212,7 +212,6 @@ stderr = open(temp_stderr.name,'r').readlines()
 found_result = False
 for line in stdout:
     if line.startswith('Result for feasibility checker:'):
-        run_information.append(line.replace('\n',''))
         line = line.replace('Result for feasibility checker:','').replace('\n','').replace(' ','').split(',')
         satisfiability = line[0]
         runtime = line[1]
@@ -234,6 +233,7 @@ if found_result:
     print assignment
 else:
     print "Couldn't parse output from feasibility checker!"
+    run_information.append('[ERROR] Could not parse output from feasibility checker!')
     print ''.join(stdout)
     print ''.join(stderr)
 

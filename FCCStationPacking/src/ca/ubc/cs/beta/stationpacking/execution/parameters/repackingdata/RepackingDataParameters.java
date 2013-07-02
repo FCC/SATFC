@@ -13,7 +13,6 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.DACConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.DomainStationManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
-import ca.ubc.cs.beta.stationpacking.datamanagers.PopulatedDomainStationManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 
 @UsageTextField(title="FCC Station Packing Packing Data Options",description="Global parameters required in any station packing problem.")
@@ -25,11 +24,15 @@ public class RepackingDataParameters extends AbstractOptions{
 	@Parameter(names = "-CONSTRAINTS_FILE", description = "Constraints filename (uses DAC formatting from March 2013).", required=true)
 	public String ConstraintFilename;
 	
-	public IStationManager getDACStationManager() throws Exception
+	public IStationManager getDACStationManager()
 	{
 		Logger log = LoggerFactory.getLogger(RepackingDataParameters.class);
 		log.info("Creating a station manager...");
-		return new DomainStationManager(DomainFilename);
+		try {
+			return new DomainStationManager(DomainFilename);
+		} catch (Exception e) {
+			throw new IllegalArgumentException("Couldn't create station manager "+e.getMessage());
+		}
 	}
 	
 	public IConstraintManager getDACConstraintManager(Set<Station> aStations)

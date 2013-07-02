@@ -17,7 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
-import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
+import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.client.ClientCommunicationMechanism;
@@ -174,14 +174,14 @@ public class SolverServer {
 							if ((aStation = fStationManager.get(aID)) != null)
 								aStations.add(aStation);
 						}
-						Instance aInstance = null;
+						StationPackingInstance aInstance = null;
 						if (aStations.size() <= 0 || aChannels.size() <= 0) 
 						{
 							sendMessage(new ExceptionMessage(new IllegalArgumentException("Invalid Instance: recognized station set is: "+ aStations + ", channels are: "+ aChannels)),aSendPort);
 						} 
 						else 
 						{
-							aInstance = new Instance(aStations, aChannels);
+							aInstance = new StationPackingInstance(aStations, aChannels);
 							log.info("Solving the instance...");
 							SolverResult aSolverResult;
 							try {

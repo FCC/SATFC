@@ -1,6 +1,6 @@
 package ca.ubc.cs.beta.stationpacking.solver;
 
-import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
+import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 
 /**
@@ -11,7 +11,7 @@ import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
  */
 public interface ISolver {
 	
-	public SolverResult solve(Instance aInstance, double aCutoff, long aSeed) throws Exception;
+	public SolverResult solve(StationPackingInstance aInstance, double aCutoff, long aSeed) throws Exception;
 	
 	/**
 	 * Ask the solver to shutdown.

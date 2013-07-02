@@ -37,7 +37,7 @@ public class DomainStationManager implements IStationManager{
 					e.printStackTrace();
 				}
 			}
-			fStations.put(aID, new Station(aID,aChannelDomain,-1));
+			fStations.put(aID, new Station(aID,aChannelDomain));
 		}
 		aReader.close();	
 		
