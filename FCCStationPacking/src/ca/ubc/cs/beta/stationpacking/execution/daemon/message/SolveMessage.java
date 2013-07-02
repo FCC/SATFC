@@ -3,7 +3,7 @@ package ca.ubc.cs.beta.stationpacking.execution.daemon.message;
 import java.util.Collection;
 import java.util.HashSet;
 
-import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
+import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 
 /**
@@ -42,7 +42,7 @@ public class SolveMessage implements IMessage {
 	 * @param aInstance - the instance to solve.
 	 * @param aCutoff - the allowed time to solve instance.
 	 */
-	public SolveMessage(Instance aInstance, double aCutoff, long aSeed)
+	public SolveMessage(StationPackingInstance aInstance, double aCutoff, long aSeed)
 	{
 		fStationIDs = new HashSet<Integer>();
 		for(Station aStation: aInstance.getStations())

@@ -82,7 +82,7 @@ public class SolverResult implements Serializable {
 		return fResult+","+fRuntime+","+fAssignment;//toStringAssignment(fAssignment);
 	}
 	
-	public String toParsebleString()
+	public String toParsableString()
 	{
 		String aOutput = fResult.toString()+","+fRuntime+",";
 		
