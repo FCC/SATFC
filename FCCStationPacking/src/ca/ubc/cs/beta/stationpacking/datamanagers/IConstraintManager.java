@@ -10,9 +10,9 @@ public interface IConstraintManager {
 	
 	//public Set<Constraint> getPairwiseConstraints(Set<Integer> aChannels);
 		
-	public Set<Station> getCOInterferingStations(Station aStation, Set<Integer> aChannelRange) throws Exception;
+	public Set<Station> getCOInterferingStations(Station aStation, Set<Integer> aChannelRange);
 	
-	public Set<Station> getADJplusInterferingStations(Station aStation, Set<Integer> aChannelRange) throws Exception;
+	public Set<Station> getADJplusInterferingStations(Station aStation, Set<Integer> aChannelRange);
 	
 	//public Set<Station> getADJminusInterferingStations(Station aStation);
 	

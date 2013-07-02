@@ -2,8 +2,6 @@ package ca.ubc.cs.beta.stationpacking.solver.taesolver;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -12,109 +10,85 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.codec.binary.Hex;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aclib.algorithmrun.AlgorithmRun;
 import ca.ubc.cs.beta.aclib.algorithmrun.RunResult;
 import ca.ubc.cs.beta.aclib.algorithmrun.kill.KillableAlgorithmRun;
 import ca.ubc.cs.beta.aclib.configspace.ParamConfigurationSpace;
 import ca.ubc.cs.beta.aclib.execconfig.AlgorithmExecutionConfig;
-import ca.ubc.cs.beta.aclib.options.AbstractOptions;
-import ca.ubc.cs.beta.aclib.options.TargetAlgorithmEvaluatorOptions;
 import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstance;
 import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstanceSeedPair;
 import ca.ubc.cs.beta.aclib.runconfig.RunConfig;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluator;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluatorCallback;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluatorRunObserver;
-import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorBuilder;
-import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 
-import ca.ubc.cs.beta.stationpacking.datamanagers.DACConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
-import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
+import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
-import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentReporter;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder2;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.cnfwriter.CNFStringWriter;
-import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.ConstraintGrouper;
+import ca.ubc.cs.beta.stationpacking.solver.reporters.IExperimentReporter;
+import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.AsyncCachedCNFLookup;
+import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponentGrouper;
 
 /**
  * SAT solver wrapper that uses Steve Ramage's AClib Target Algorithm Evaluators for execution in an asynchronous way, particularly useful for parallel solving of many instances..
+ * 
  * @author afrechet
- *
+ * 
  */
 public class AsyncTAESolver {
 	
-	private final double fScenarioCutoff = 999999.0;
+	private static Logger log = LoggerFactory.getLogger(TAESolver.class);
 	
 	private ParamConfigurationSpace fParamConfigurationSpace;
 	private TargetAlgorithmEvaluator fTargetAlgorithmEvaluator;
-	private long fSeed;
 	private IComponentGrouper fGrouper;
 	private IConstraintManager fManager;
-	private ICNFEncoder2 fEncoder;
+	private ICNFEncoder fEncoder;
 	private CNFStringWriter fStringWriter;
 	
 	private AsyncCachedCNFLookup fLookup;
 	
-	
 	/**
-	 * Construct a solver wrapper around a target algorithm evaluator.
-	 * @param aParamConfigurationSpaceFile - the location of the ParamILS formatted parameter configuration space file.
-	 * @param aAlgorithmExecutable - the execution string of the algorithm executable (<i> e.g. </i> "python SATwrapper.py").
-	 * @param aExecDir - the directory in which to execute the algorithm (<i> e.g. </i> "[...]/SolverWrapper/").
-	 * @param aTargetAlgorithmEvaluatorExecutionEnvironment - <i> e.g. </i> "CLI" command-line on system, "MYSQLDBTAE" plug-in for mySQL workers, ... 
-	 * @param aManager - constraint manager for the repacking instance.
-	 * @param aCNFDirectory - a location for the CNF to be written to.
-	 * @param aLookup - CNF & Result lookup object.
-	 * @param aEncoder - CNF encoder.
-	 * @param aMaximumConcurrentExecutions - number of concurrent executions that can be done with the TAE.
-	 * @param aSeed 
-	 * @deprecated
+	 * 
+	 * @param aConstraintManager - the manager in charge of constraints.
+	 * @param aCNFEncoder - the encoder in charge of taking constraints and an instance and producing a CNF clause set.
+	 * @param aLookup - the CNF lookup in charge of monitoring CNFs.
+	 * @param aGrouper - the component grouper in charge of partitioning instance in subinstances.
+	 * @param aStringWriter - the writer in charge of transforming a CNF clause set in a string representation.
+	 * @param aTAE - an AClib Target Algorithm Evaluator in charge of running SAT solver.
+	 * @param aTAEExecConfig - the TAE's configuration.
 	 */
-	public AsyncTAESolver(IConstraintManager aManager, ICNFEncoder2 aEncoder, String aCNFDirectory, String aParamConfigurationSpaceFile, String aAlgorithmExecutable, String aExecDir, String aTargetAlgorithmEvaluatorExecutionEnvironment, int aMaximumConcurrentExecutions, long aSeed)
-	{
-		fEncoder = aEncoder;
-		fManager = aManager;
-		fGrouper = new ConstraintGrouper();
-		fLookup = new AsyncCachedCNFLookup(aCNFDirectory);
+	public AsyncTAESolver(IConstraintManager aConstraintManager, ICNFEncoder aCNFEncoder,
+			ICNFResultLookup aLookup, IComponentGrouper aGrouper, CNFStringWriter aStringWriter,
+			TargetAlgorithmEvaluator aTAE, AlgorithmExecutionConfig aTAEExecConfig) {
 		
-		//Parameter configuration space
-		fParamConfigurationSpace  = new ParamConfigurationSpace(new File(aParamConfigurationSpaceFile));
-		
-		//Algorithm Execution Config
-		AlgorithmExecutionConfig aAlgorithmExecutionConfig = new AlgorithmExecutionConfig(aAlgorithmExecutable, aExecDir, fParamConfigurationSpace, false, false, fScenarioCutoff);
-		
-		//Target Algorithm Evaluator
-		TargetAlgorithmEvaluatorOptions aTargetAlgorithmEvaluatorOptions = new TargetAlgorithmEvaluatorOptions();
-		aTargetAlgorithmEvaluatorOptions.retryCount = 0 ;
-		aTargetAlgorithmEvaluatorOptions.maxConcurrentAlgoExecs = aMaximumConcurrentExecutions;
-		aTargetAlgorithmEvaluatorOptions.targetAlgorithmEvaluator = aTargetAlgorithmEvaluatorExecutionEnvironment;
-		
-		Map<String,AbstractOptions> aTargetAlgorithmEvaluatorOptionsMap = TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators();
-		
-		fTargetAlgorithmEvaluator = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(aTargetAlgorithmEvaluatorOptions, aAlgorithmExecutionConfig, false, aTargetAlgorithmEvaluatorOptionsMap);
-	}
-	
-	
-	public AsyncTAESolver(DACConstraintManager aConstraintManager, ICNFEncoder2 aCNFEncoder, CNFStringWriter aStringWriter,
-			String aCNFDirectory, TargetAlgorithmEvaluator aTAE, AlgorithmExecutionConfig aTAEExecConfig, long aSeed) {
-		fSeed = aSeed;
 		fEncoder = aCNFEncoder;
 		fManager = aConstraintManager;
-		fGrouper = new ConstraintGrouper();
-		fLookup = new AsyncCachedCNFLookup(aCNFDirectory);
+		fGrouper = aGrouper;
+		try
+		{
+			fLookup = (AsyncCachedCNFLookup) aLookup;
+		}
+		catch(ClassCastException e)
+		{
+			throw new IllegalArgumentException("The CNF lookup must be asynchronous! "+e.getMessage());
+		}
 		fStringWriter = aStringWriter;
+		
 		fParamConfigurationSpace  = aTAEExecConfig.getParamFile();
 		fTargetAlgorithmEvaluator = aTAE;
 	}
+
 
 
 	/**
@@ -127,6 +101,8 @@ public class AsyncTAESolver {
 			@Override
 			public void currentStatus(List<? extends KillableAlgorithmRun> runs) {
 				boolean aKill = false;
+				
+				//Check if one run has terminated without a SAT result.
 				for(KillableAlgorithmRun aRun : runs)
 				{
 					if(!aRun.getRunResult().equals(RunResult.SAT) && !aRun.getRunResult().equals(RunResult.RUNNING))
@@ -135,6 +111,24 @@ public class AsyncTAESolver {
 						break;
 					}
 				}
+				
+				//Check if the sum of the runtimes is less than each job's cutoff (which is assumed to be the same for every job).
+				if(!aKill)
+				{
+					double aCutoff = 0.0;
+					double aSumRuntimes = 0.0;
+					for(KillableAlgorithmRun aRun : runs)
+					{
+						aCutoff = aRun.getRunConfig().getCutoffTime();
+						aSumRuntimes += aRun.getRuntime();
+					}
+					//TODO Some cutoff management magic right here.
+					if(aSumRuntimes>1.05+aCutoff+1)
+					{
+						aKill = true;
+					}
+				}
+					
 				if(aKill)
 				{
 					for(KillableAlgorithmRun aRun : runs)
@@ -146,7 +140,7 @@ public class AsyncTAESolver {
 		};
 	}
 	
-	private TargetAlgorithmEvaluatorCallback getCompilingCallback(final Instance aInstance,final IExperimentReporter aAsynchronousReporter,final HashMap<RunConfig,Instance> aToRunInstances)
+	private TargetAlgorithmEvaluatorCallback getCompilingCallback(final StationPackingInstance aInstance,final IExperimentReporter aAsynchronousReporter,final HashMap<RunConfig,StationPackingInstance> aToSolveInstances)
 	{
 		return new TargetAlgorithmEvaluatorCallback()
 		{
@@ -155,45 +149,91 @@ public class AsyncTAESolver {
 				HashSet<SolverResult> aComponentResults = new HashSet<SolverResult>();
 				for(AlgorithmRun aRun : runs)
 				{
-					if(!aRun.getRunResult().equals(RunResult.KILLED))
+					double aRuntime = aRun.getRuntime();				
+					SATResult aResult;
+					Map<Integer,Set<Station>> aAssignment = new HashMap<Integer,Set<Station>>();
+					switch (aRun.getRunResult()){
+						case KILLED:
+							aResult = SATResult.KILLED;
+							break;
+						case SAT:
+							aResult = SATResult.SAT;
+							
+							//Grab assignment
+							String aAdditionalRunData = aRun.getAdditionalRunData();
+							StationPackingInstance aGroupInstance = aToSolveInstances.get(aRun.getRunConfig());
+							Clause aAssignmentClause = fStringWriter.stringToAssignmentClause(aGroupInstance, aAdditionalRunData);
+							aAssignment = fEncoder.decode(aGroupInstance, aAssignmentClause);
+			
+							break;
+						case UNSAT:
+							aResult = SATResult.UNSAT;
+							break;
+						case TIMEOUT:
+							aResult = SATResult.TIMEOUT;
+							break;
+						default:
+							aResult = SATResult.CRASHED;
+							throw new IllegalStateException("Run "+aRun+" crashed!");
+					}
+					
+					SolverResult aSolverResult = new SolverResult(aResult,aRuntime,aAssignment);
+					
+					//Save result if successfully computed
+					if(!(aResult.equals(SATResult.CRASHED) && aResult.equals(SATResult.KILLED)))
 					{
-						double aRuntime = aRun.getRuntime();				
-						SATResult aResult;
-						Map<Integer,Set<Station>> aAssignment = new HashMap<Integer,Set<Station>>();
-						switch (aRun.getRunResult()){
-							case SAT:
-								aResult = SATResult.SAT;
-								
-								//Grab assignment
-								String aAdditionalRunData = aRun.getAdditionalRunData();
-								Instance aGroupInstance = aToRunInstances.get(aRun.getRunConfig());
-								try{
-									Clause aAssignmentClause = fStringWriter.stringToAssignmentClause(aGroupInstance, aAdditionalRunData);
-									aAssignment = fEncoder.decode(aGroupInstance, aAssignmentClause);
-								} catch(Exception e){
-									e.printStackTrace();
-								}
-
-								
-								break;
-							case UNSAT:
-								aResult = SATResult.UNSAT;
-								break;
-							case TIMEOUT:
-								aResult = SATResult.TIMEOUT;
-								break;
-							default:
-								aResult = SATResult.CRASHED;
-								break;
+						fLookup.putSolverResult(aToSolveInstances.get(aRun.getRunConfig()),aSolverResult);
+					}
+					
+					//Add result to component results
+					aComponentResults.add(aSolverResult);
+				}
+				
+				if(aComponentResults.size()!=aToSolveInstances.size())
+				{
+					throw new IllegalStateException("Not as many results as there are instance groups!");
+				}
+				
+				//Merge all the results
+				SolverResult aResult = mergeComponentResults(aComponentResults);
+				
+				log.info("Terminated.");
+				
+				//Post-process the result for correctness.
+				if(aResult.getResult().equals(SATResult.SAT))
+				{
+			
+					log.info("Independently verifying the veracity of returned assignment");
+					//Check assignment has the right number of stations
+					int aAssignmentSize = 0;
+					for(Integer aChannel : aResult.getAssignment().keySet())
+					{
+						aAssignmentSize += aResult.getAssignment().get(aChannel).size();
+					}
+					if(aAssignmentSize!=aInstance.getNumberofStations())
+					{
+						throw new IllegalStateException("Merged station assignment doesn't assign exactly the stations in the instance.");
+					}
+				
+					
+					//Check that assignment is indeed satisfiable.
+					if(!fManager.isSatisfyingAssignment(aResult.getAssignment())){
+						
+						log.error("Bad assignment:");
+						for(Integer aChannel : aResult.getAssignment().keySet())
+						{
+							log.error(aChannel+','+aResult.getAssignment().get(aChannel).toString());
 						}
 						
-						SolverResult aSolverResult = new SolverResult(aResult,aRuntime,aAssignment);
-
-						
-						//Add result to component results
-						aComponentResults.add(aSolverResult);
-					}	
+						throw new IllegalStateException("Merged station assignment violates some pairwise interference constraint.");
+					}
+					else
+					{
+						log.info("Assignment was independently verified to be satisfiable.");
+					}
 				}
+				
+				
 				try {
 					aAsynchronousReporter.report(aInstance, mergeComponentResults(aComponentResults));
 				} 
@@ -214,124 +254,64 @@ public class AsyncTAESolver {
 	}
 	
 	/**
-	 * A CNF (only) lookup for the asynchronous solver. 
-	 * <i> We do not use a standard CNF/Result lookup because we inherently will use asynchronous TAE with workers which contain they're own lookup process. </i>
-	 * @author afrechet
-	 *
-	 */
-	private class AsyncCachedCNFLookup
-	{
-		
-		private HashMap<Instance,String> fCNFMap;
-		private String fCNFDirectory;
-		/**
-		 * Construct an asynchronous cached CNF llookup.
-		 */
-		public AsyncCachedCNFLookup(String aCNFDirectory)
-		{
-			fCNFMap = new HashMap<Instance,String>();
-			fCNFDirectory = aCNFDirectory;
-		}
-		
-		//Private function to create hashed filenames for CNF.
-		private String hashforFilename(String aString)
-		{
-			MessageDigest aDigest = DigestUtils.getSha1Digest();
-			try {
-				byte[] aResult = aDigest.digest(aString.getBytes("UTF-8"));
-			    String aResultString = new String(Hex.encodeHex(aResult));	
-			    return aResultString;
-			}
-			catch (UnsupportedEncodingException e) {
-			    throw new IllegalStateException("Could not encode filename", e);
-			}
-		}
-		
-		private String getNameCNF(Instance aInstance)
-		{
-			return hashforFilename(Station.hashStationSet(aInstance.getStations())+Instance.hashChannelSet(aInstance.getChannels()));
-		}
-		
-		/**
-		 * Return the CNF name for an instance.
-		 * @param aInstance - problem instance to get CNF name for.
-		 * @return the string CNF name for the problem instance.
-		 */
-		public String getCNFNameFor(Instance aInstance)
-		{
-			return fCNFDirectory+File.separatorChar+getNameCNF(aInstance)+".cnf";
-		}
-		
-		/**
-		 * Return true if the instance was saved by the lookup.
-		 * @param aInstance - an instance to look for.
-		 * @return true if the instance is present in the lookup, false otherwise.
-		 */
-		public boolean hasCNFFor(Instance aInstance)
-		{
-			return fCNFMap.containsKey(aInstance);
-		}
-		
-		/**
-		 * Put an instance in the lookup.
-		 * @param aInstance - the instance to put in the lookup.
-		 * @return ture if the instance was already there, false otherwise.
-		 */
-		public boolean putCNFfor(Instance aInstance)
-		{
-			return (fCNFMap.put(aInstance, getNameCNF(aInstance))!=null);
-		}	
-	}
-	
-	/**
 	 * Solve the instance asynchronously, and give the result to the AsynchronousReporter once finished.
 	 * @param aInstance - the instance to solve.
 	 * @param aCutoff - the cutoff time.
-	 * @param aAsynchronousReporter - the reporter in charge of the results.
+	 * @param aSeed - the seed to run the solver with.
+	 * @param aAsynchronousReporter - the (asynchronous) reporter in charge of the results.
 	 * @throws Exception
 	 */
-	public void solve(Instance aInstance, double aCutoff, IExperimentReporter aAsynchronousReporter) throws Exception{
+	public void solve(StationPackingInstance aInstance, double aCutoff, long aSeed, IExperimentReporter aAsynchronousReporter) throws Exception{
 
+		log.info("Solving instance of {}",aInstance.getInfo());
+		
 		Set<Integer> aChannelRange = aInstance.getChannels();
 		
 		//Group stations
 		Set<Set<Station>> aInstanceGroups = fGrouper.group(aInstance,fManager);
 		
-		HashMap<RunConfig,Instance> aToSolveInstances = new HashMap<RunConfig,Instance>();
-	
+		HashMap<RunConfig,StationPackingInstance> aToSolveInstances = new HashMap<RunConfig,StationPackingInstance>();
+
+		//Create the runs to execute.
 		for(Set<Station> aStationComponent : aInstanceGroups){
-			//Create the component group instance.
-			Instance aComponentInstance = new Instance(aStationComponent,aChannelRange);
 			
+			//Create the component group instance.
+			StationPackingInstance aComponentInstance = new StationPackingInstance(aStationComponent,aChannelRange);
+			
+			
+			//Not present, CNF must be solved.
 			//Name the instance
 			String aCNFFileName = fLookup.getCNFNameFor(aComponentInstance);
 			
-			//Check if new CNF
-			if(!fLookup.hasCNFFor(aComponentInstance))
+			File aCNFFile = new File(aCNFFileName);
+			
+			if(!aCNFFile.exists())
 			{
 				//Encode the instance
 				Set<Clause> aClauseSet = fEncoder.encode(aComponentInstance,fManager);
 				String aCNF = fStringWriter.clausesToString(aComponentInstance,aClauseSet);
+				
+				
+				//Write it to disk
 				try 
 				{
-					FileUtils.writeStringToFile(new File(aCNFFileName), aCNF);
+					FileUtils.writeStringToFile(aCNFFile, aCNF);
 				} 
 				catch (IOException e) 
 				{
-					throw new IllegalStateException("Solver had a problem writing a CNF to file.",e);
+					e.printStackTrace();
 				}
-				//Save the CNF.
-				fLookup.putCNFfor(aInstance);
-			}	
-			
+			}
 			//Create the run config and add it to the to-do list.
 			ProblemInstance aProblemInstance = new ProblemInstance(aCNFFileName);
-			ProblemInstanceSeedPair aProblemInstanceSeedPair = new ProblemInstanceSeedPair(aProblemInstance,fSeed);
+			ProblemInstanceSeedPair aProblemInstanceSeedPair = new ProblemInstanceSeedPair(aProblemInstance,aSeed);
 			RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aCutoff, fParamConfigurationSpace.getDefaultConfiguration());
 			
-			aToSolveInstances.put(aRunConfig,aInstance);
+			aToSolveInstances.put(aRunConfig,aComponentInstance);
+		
 		}
 		
+		//Execute the runs
 		List<RunConfig> aRunConfigs = new ArrayList<RunConfig>(aToSolveInstances.keySet());
 		fTargetAlgorithmEvaluator.evaluateRunsAsync(aRunConfigs,getCompilingCallback(aInstance,aAsynchronousReporter,aToSolveInstances),getPreemptingObserver());
 		
@@ -348,10 +328,14 @@ public class AsyncTAESolver {
 			aSATResults.add(aSolverResult.getResult());
 		}
 		
-		//Merge SAT results 
-		SATResult aSATResult = SATResult.SAT;
+		//Merge SAT results		
+		SATResult aSATResult = SATResult.CRASHED;
 		
-		if(aSATResults.contains(SATResult.UNSAT))
+		if(aSATResults.size()==1)
+		{
+			aSATResult = aSATResults.iterator().next();
+		}
+		else if(aSATResults.contains(SATResult.UNSAT))
 		{
 			aSATResult = SATResult.UNSAT;
 		}
@@ -359,18 +343,26 @@ public class AsyncTAESolver {
 		{
 			aSATResult = SATResult.CRASHED;
 		}
-		else if(aSATResults.contains(SATResult.TIMEOUT))
+		else if(aSATResults.contains(SATResult.TIMEOUT) || aSATResults.contains(SATResult.KILLED))
 		{
 			aSATResult = SATResult.TIMEOUT;
 		}
 		
+		//If all runs were killed, it is because we went over time. 
+		if(aSATResult.equals(SATResult.KILLED))
+		{
+			aSATResult = SATResult.TIMEOUT;
+		}
+		
+		
 		//Merge assignments
-		HashMap<Integer,Set<Station>> aAssignment = new HashMap<Integer,Set<Station>>();
+		Map<Integer,Set<Station>> aAssignment = new HashMap<Integer,Set<Station>>();
 		if(aSATResult.equals(SATResult.SAT))
 		{
 			for(SolverResult aComponentResult : aComponentResults)
 			{
 				Map<Integer,Set<Station>> aComponentAssignment = aComponentResult.getAssignment();
+				
 				for(Integer aAssignedChannel : aComponentAssignment.keySet())
 				{
 					if(!aAssignment.containsKey(aAssignedChannel))
@@ -382,15 +374,25 @@ public class AsyncTAESolver {
 			}
 		}
 		
-		
+				
 		return new SolverResult(aSATResult,aRuntime,aAssignment);
 	}
+
 	
 	
 	public void waitForFinish()
 	{
 		fTargetAlgorithmEvaluator.waitForOutstandingEvaluations();
-		fTargetAlgorithmEvaluator.notifyShutdown();
+		notifyShutdown();
+	}
+	
+	
+	public void notifyShutdown() {
+		if(fTargetAlgorithmEvaluator != null)
+		{
+			fTargetAlgorithmEvaluator.notifyShutdown();
+		}
+		
 	}
 		
 }

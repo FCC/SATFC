@@ -6,12 +6,12 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
+import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
-import ca.ubc.cs.beta.stationpacking.experiment.experimentreport.IExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
+import ca.ubc.cs.beta.stationpacking.solver.reporters.IExperimentReporter;
 
 
 /**
@@ -40,7 +40,7 @@ public class InstanceGeneration {
 	 *
 	**/
 	public void run(Set<Station> aStartingStations, Iterator<Station> aStationIterator, Set<Integer> aChannelRange,double aCutoff, long aSeed){
-		Instance aInstance = new Instance(aStartingStations,aChannelRange);
+		StationPackingInstance aInstance = new StationPackingInstance(aStartingStations,aChannelRange);
 		while(aStationIterator.hasNext()) {
 			Station aStation = aStationIterator.next();
 			log.info("Trying to add {} to current set.",aStation);
@@ -60,6 +60,15 @@ public class InstanceGeneration {
 			catch (Exception e){ 
 				e.printStackTrace();
 			} 
+			log.info("-------------------------------------------------------------------------");
 		}
 	}	
+	
+	/**
+	 * @return the solver associated with the instance generation.
+	 */
+	public ISolver getSolver()
+	{
+		return fSolver;
+	}
 }

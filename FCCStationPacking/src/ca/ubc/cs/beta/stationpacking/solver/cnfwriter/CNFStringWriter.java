@@ -5,13 +5,13 @@ import java.util.HashSet;
 import java.util.Set;
 
 import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
-import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
+import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 
 public class CNFStringWriter {
 
 	
-	public String clausesToString(Instance aInstance,Set<Clause> aClauseSet) throws Exception{
+	public String clausesToString(StationPackingInstance aInstance,Set<Clause> aClauseSet) throws Exception{
 		StringBuilder aBuilder = new StringBuilder();
 		aBuilder.append("c Stations: ");
 		for(Station aStation : aInstance.getStations()){
@@ -44,14 +44,14 @@ public class CNFStringWriter {
 		aBuilder.append("0\n");
 	}
 	
-	public Clause stringToAssignmentClause(Instance aInstance, String aCNFAssignment) throws Exception{
+	public Clause stringToAssignmentClause(StationPackingInstance aInstance, String aCNFAssignment){
 		Clause aAssignmentClause = new Clause();
 		for(String aLiteral : aCNFAssignment.split(";"))
 		{
 			boolean aValue = !aLiteral.contains("-"); 
 			Integer aVariable = Integer.valueOf(aLiteral.replace("-", ""));
 			if(!aAssignmentClause.addLiteral(aVariable,aValue)){
-				throw new Exception("Variable "+aVariable+" assigned to multiple truth values.");
+				throw new IllegalStateException("Variable "+aVariable+" assigned to multiple truth values.");
 			}	
 		}
 		return aAssignmentClause;

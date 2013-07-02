@@ -18,7 +18,7 @@ public class InversePopulationStationIterator implements Iterator<Station>{
 	 * @param aRandomizer - random to use for sampling.
 	 * @throws Exception 
 	 */
-	public InversePopulationStationIterator(Collection<Station> aStationsCollection, long aSeed) throws Exception
+	public InversePopulationStationIterator(Collection<Station> aStationsCollection, long aSeed)
 	{
 		ArrayList<Station> aStations = new ArrayList<Station>(aStationsCollection);
 		Random aRandomizer = new Random(aSeed);		
@@ -26,7 +26,7 @@ public class InversePopulationStationIterator implements Iterator<Station>{
 		int aStationPop;
 		for(Station aStation : aStations) {
 			aStationPop = aStation.getPop();
-			if(aStationPop < 0) throw new Exception("Station with negative population found.");
+			if(aStationPop < 0) throw new IllegalArgumentException("Station with negative population found.");
 			else aPopulationSum += aStationPop;
 		}
 		

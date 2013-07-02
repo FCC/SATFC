@@ -2,6 +2,7 @@ package ca.ubc.cs.beta.stationpacking.execution.dev;
 
 import java.io.File;
 import java.io.FileReader;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -23,9 +24,9 @@ import ca.ubc.cs.beta.aclib.options.ConfigToLaTeX;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 import ca.ubc.cs.beta.stationpacking.datamanagers.DACConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.PopulatedDomainStationManager;
-import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
+import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
-import ca.ubc.cs.beta.stationpacking.execution.InstanceGenerationExecutor;
+import ca.ubc.cs.beta.stationpacking.execution.InstanceGenerationExecutor_old;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.experiment.InstanceGenerationParameters;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.HybridCNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.ConstraintGrouper;
@@ -38,7 +39,7 @@ import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponen
  */
 public class CNFFromInstances {
 
-	private static Logger log = LoggerFactory.getLogger(InstanceGenerationExecutor.class);
+	private static Logger log = LoggerFactory.getLogger(InstanceGenerationExecutor_old.class);
 	
 	public static void main(String[] args) throws Exception {
 	
@@ -76,7 +77,7 @@ public class CNFFromInstances {
 		Map<String,AbstractOptions> aAvailableTAEOptions = TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators();
 		
 		//Parse the command line arguments in a parameter object.
-		InstanceGenerationParameters aExecParameters = new InstanceGenerationParameters();
+		AsyncResolvingParameters aExecParameters = new AsyncResolvingParameters();
 		JCommander aParameterParser = JCommanderHelper.getJCommander(aExecParameters, aAvailableTAEOptions);
 		try
 		{
@@ -110,8 +111,11 @@ public class CNFFromInstances {
 		
 		Set<Integer> aChannelRange = aExecParameters.getPackingChannels();
 		
-		CSVReader aReader = new CSVReader(new FileReader("/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Features/TunedClaspInstanceGeneration/sorted_InstanceGeneration_TunedClasp_hard_testing_filtered.csv"),',');
+		CSVReader aReader = new CSVReader(new FileReader("/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Features/TunedClaspInstanceGeneration/sorted_InstanceGeneration_TunedClasp_hard_testing.csv"),',');
 		String[] aLine;
+		
+		HashMap<String,HashSet<String>> aInstancetoCNFs = new HashMap<String,HashSet<String>>();
+		
 		while((aLine = aReader.readNext())!=null){
 			HashSet<Integer> aStationIDs = new HashSet<Integer>();
 			int i=3;
@@ -131,21 +135,28 @@ public class CNFFromInstances {
 				}
 			}
 			
-			Instance aInstance = new Instance(aInstanceStations,aChannelRange);
+			StationPackingInstance aInstance = new StationPackingInstance(aInstanceStations,aChannelRange);
 
 
 				
 			Set<Set<Station>> aInstanceGroups = aGrouper.group(aInstance,dCM);
 			for(Set<Station> aStationComponent : aInstanceGroups){
 			
+				if(!aInstancetoCNFs.containsKey(aInstance.toString())){
+					aInstancetoCNFs.put(aInstance.toString(), new HashSet<String>());
+				}
+				
 				if (aStationComponent.size()>1)
 				{
 					//Create the component group instance.
-					Instance aComponentInstance = new Instance(aStationComponent,aChannelRange);
+					StationPackingInstance aComponentInstance = new StationPackingInstance(aStationComponent,aChannelRange);
 					String aCNFFileName = aCNFLookup.getCNFNameFor(aComponentInstance).split(File.separator)[aCNFLookup.getCNFNameFor(aComponentInstance).split(File.separator).length-1];
 					
 					//Save CNF name
 					aCNFNames.add(aCNFFileName);
+					
+					aInstancetoCNFs.get(aInstance.toString()).add(aCNFFileName);
+					
 				}
 			}
 			
@@ -156,6 +167,27 @@ public class CNFFromInstances {
 		{
 			FileUtils.write(aCNFFile, aCNFName+"\n",true);
 		}
+		
+		//Write the Instance to CNF Map
+//		File aCNFMapFile = new File("/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Features/TunedClaspInstanceGeneration/InstanceGeneration_TunedClasp_hard_testing_InstanceToCNF.csv");
+//		for(String aInstance : aInstancetoCNFs.keySet())
+//		{
+//			String aMapLine = aInstance+",";
+//			Iterator<String> aCNFIterator = aInstancetoCNFs.get(aInstance).iterator();
+//			while(aCNFIterator.hasNext())
+//			{
+//				aMapLine += aCNFIterator.next();
+//				
+//				if(aCNFIterator.hasNext())
+//				{
+//					aMapLine += ",";
+//				}
+//			}
+//			
+//			FileUtils.write(aCNFMapFile, aMapLine+"\n",true);
+//			
+//			
+//		}
 		
 	}
 

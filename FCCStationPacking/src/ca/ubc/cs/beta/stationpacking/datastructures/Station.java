@@ -23,13 +23,23 @@ public class Station implements Comparable<Station>, Serializable{
 	private static final long serialVersionUID = 1L;
 	
 	private final Integer fID;
-	private final Integer fPop;
+	private Integer fPop;
+	private boolean fSetPop;
+	
 	private final Set<Integer> fDomain;
 	
 
 	public Station(Integer aID, Set<Integer> aDomain, Integer aPop){
 		fID = aID;
 		fPop = aPop;
+		fSetPop = true;
+		fDomain = aDomain;
+	}
+	
+	public Station(Integer aID, Set<Integer> aDomain)
+	{
+		fID = aID;
+		fSetPop = false;
 		fDomain = aDomain;
 	}
 	
@@ -39,6 +49,23 @@ public class Station implements Comparable<Station>, Serializable{
 	
 	public int getPop(){
 		return fPop;
+	}
+	
+	/**
+	 * Set the station's population to the given population. May only be done once.
+	 * @param aPop - the value for the station's population.
+	 */
+	public void setPop(Integer aPop)
+	{
+		if(!fSetPop)
+		{
+			fPop = aPop;
+			fSetPop = true;
+		}
+		else
+		{
+			throw new UnsupportedOperationException("Cannot set the population of a station more than once");
+		}
 	}
 	
 	

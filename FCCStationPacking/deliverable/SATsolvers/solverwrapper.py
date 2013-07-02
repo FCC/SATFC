@@ -146,7 +146,8 @@ for line in instance_lines:
 
 formatted_lines.insert(0,'p cnf '+str(len(variable_map))+' '+str(len(formatted_lines))+'\n')
 
-temp_CNF = tempfile.NamedTemporaryFile(dir=instance_name_head,delete=True)
+pid = str(os.getpid())
+temp_CNF = tempfile.NamedTemporaryFile(dir=instance_name_head,prefix='temp_'+pid+'_',delete=True)
 temp_CNF.write(''.join(formatted_lines))
 temp_CNF.flush()
 
@@ -156,7 +157,7 @@ preprotime = float(time.time()-t)
 print 'Time taken to pre-process CNF',str(preprotime)
 ####################################################################################################
 
-temp_result = tempfile.NamedTemporaryFile(dir=instance_name_head, delete=True)
+temp_result = tempfile.NamedTemporaryFile(dir=instance_name_head,prefix='temp_'+pid+'_',delete=True)
 
 #Run solver
 mem_limit = str(1000)

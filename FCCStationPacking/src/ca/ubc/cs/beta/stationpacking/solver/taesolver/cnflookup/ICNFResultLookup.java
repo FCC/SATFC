@@ -3,7 +3,7 @@ package ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup;
 
 import java.io.IOException;
 
-import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
+import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 
 
@@ -22,7 +22,7 @@ public interface ICNFResultLookup {
 	 * @param aStations - a set of stations.
 	 * @return True if it contains a CNF for given station set.
 	 */
-	public boolean hasSolverResult(Instance aInstance);
+	public boolean hasSolverResult(StationPackingInstance aInstance);
 	
 	/**
 	 * Get solver result for a given problem instance.
@@ -30,7 +30,7 @@ public interface ICNFResultLookup {
 	 * @return The solver result recorded for the problem instance.  
 	 * @throws Exception Throws exception if instance not recorded.
 	 */
-	public SolverResult getSolverResult(Instance aInstance) throws Exception;
+	public SolverResult getSolverResult(StationPackingInstance aInstance) throws Exception;
 
 	/**
 	 * Save solver result for a given problem instance.
@@ -38,14 +38,14 @@ public interface ICNFResultLookup {
 	 * @param aResult - a solver result.
 	 * @return true if already present, false otherwise.
 	 */
-	public boolean putSolverResult(Instance aInstance, SolverResult aResult);
+	public boolean putSolverResult(StationPackingInstance aInstance, SolverResult aResult);
 	
 	/**
 	 * @param aStations - a set of stations.
 	 * @return CNF instance file name corresponding to input station set, if any.
 	 * @throws Exception - if input station set has no corresponding CNF name.
 	 */
-	public String getCNFNameFor(Instance aInstance);
+	public String getCNFNameFor(StationPackingInstance aInstance);
 	
 	public void writeToFile() throws IOException;
 

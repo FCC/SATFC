@@ -3,7 +3,7 @@ package ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper;
 import java.util.Set;
 
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
-import ca.ubc.cs.beta.stationpacking.datastructures.Instance;
+import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 
 
@@ -18,7 +18,7 @@ public interface IComponentGrouper {
 	 * @param aStations - a set of stations.
 	 * @return A partition of the input station sets (such that each station can be encoded separately).
 	 */
-	public Set<Set<Station>> group(Instance aInstance, IConstraintManager aConstraintManager);
+	public Set<Set<Station>> group(StationPackingInstance aInstance, IConstraintManager aConstraintManager);
 	
 	
 }
