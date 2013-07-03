@@ -15,8 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aclib.algorithmrun.AlgorithmRun;
-import ca.ubc.cs.beta.aclib.algorithmrun.RunResult;
-import ca.ubc.cs.beta.aclib.algorithmrun.kill.KillableAlgorithmRun;
 import ca.ubc.cs.beta.aclib.configspace.ParamConfigurationSpace;
 import ca.ubc.cs.beta.aclib.execconfig.AlgorithmExecutionConfig;
 import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstance;
@@ -24,7 +22,6 @@ import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstanceSeedPair;
 import ca.ubc.cs.beta.aclib.runconfig.RunConfig;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluator;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluatorCallback;
-import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluatorRunObserver;
 
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
@@ -90,56 +87,6 @@ public class AsyncTAESolver {
 	}
 
 
-
-	/**
-	 * Target algorithm run observer that kills runs when one UNSAT or TIMEOUT is found.
-	 * @return a preempting run status observer.
-	 */
-	private TargetAlgorithmEvaluatorRunObserver getPreemptingObserver()
-	{
-		return new TargetAlgorithmEvaluatorRunObserver(){		
-			@Override
-			public void currentStatus(List<? extends KillableAlgorithmRun> runs) {
-				boolean aKill = false;
-				
-				//Check if one run has terminated without a SAT result.
-				for(KillableAlgorithmRun aRun : runs)
-				{
-					if(!aRun.getRunResult().equals(RunResult.SAT) && !aRun.getRunResult().equals(RunResult.RUNNING))
-					{
-						aKill = true;
-						break;
-					}
-				}
-				
-				//Check if the sum of the runtimes is less than each job's cutoff (which is assumed to be the same for every job).
-				if(!aKill)
-				{
-					double aCutoff = 0.0;
-					double aSumRuntimes = 0.0;
-					for(KillableAlgorithmRun aRun : runs)
-					{
-						aCutoff = aRun.getRunConfig().getCutoffTime();
-						aSumRuntimes += aRun.getRuntime();
-					}
-					//TODO Some cutoff management magic right here.
-					if(aSumRuntimes>1.05+aCutoff+1)
-					{
-						aKill = true;
-					}
-				}
-					
-				if(aKill)
-				{
-					for(KillableAlgorithmRun aRun : runs)
-					{
-						aRun.kill();
-					}
-				}
-			}	
-		};
-	}
-	
 	private TargetAlgorithmEvaluatorCallback getCompilingCallback(final StationPackingInstance aInstance,final IExperimentReporter aAsynchronousReporter,final HashMap<RunConfig,StationPackingInstance> aToSolveInstances)
 	{
 		return new TargetAlgorithmEvaluatorCallback()
@@ -178,12 +125,6 @@ public class AsyncTAESolver {
 					}
 					
 					SolverResult aSolverResult = new SolverResult(aResult,aRuntime,aAssignment);
-					
-					//Save result if successfully computed
-					if(!(aResult.equals(SATResult.CRASHED) && aResult.equals(SATResult.KILLED)))
-					{
-						fLookup.putSolverResult(aToSolveInstances.get(aRun.getRunConfig()),aSolverResult);
-					}
 					
 					//Add result to component results
 					aComponentResults.add(aSolverResult);
@@ -313,7 +254,9 @@ public class AsyncTAESolver {
 		
 		//Execute the runs
 		List<RunConfig> aRunConfigs = new ArrayList<RunConfig>(aToSolveInstances.keySet());
-		fTargetAlgorithmEvaluator.evaluateRunsAsync(aRunConfigs,getCompilingCallback(aInstance,aAsynchronousReporter,aToSolveInstances),getPreemptingObserver());
+		
+		//We are not providing any preempting observer when doing async runs as we do not want to kill (possibly) shared instances.
+		fTargetAlgorithmEvaluator.evaluateRunsAsync(aRunConfigs,getCompilingCallback(aInstance,aAsynchronousReporter,aToSolveInstances));
 		
 	}
 	

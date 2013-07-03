@@ -9,7 +9,7 @@ public interface IStationManager {
 
 	public Set<Station> getStations();
 	
-	public Station get(Integer aID);
+	public Station getStationfromID(Integer aID);
 	//public Set<Station> getFixedStations();
 	
 	//public Set<Station> getUnfixedStations();
