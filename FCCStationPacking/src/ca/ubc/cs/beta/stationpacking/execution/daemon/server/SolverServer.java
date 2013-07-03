@@ -171,7 +171,7 @@ public class SolverServer {
 						Set<Station> aStations = new HashSet<Station>();
 						Station aStation;
 						for (Integer aID : aStationIDs) {
-							if ((aStation = fStationManager.get(aID)) != null)
+							if ((aStation = fStationManager.getStationfromID(aID)) != null)
 								aStations.add(aStation);
 						}
 						StationPackingInstance aInstance = null;

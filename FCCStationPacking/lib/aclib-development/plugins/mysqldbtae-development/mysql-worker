@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+EXEC=ca.ubc.cs.beta.mysqldbtae.worker.MySQLTAEWorker
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+for f in $DIR/*.jar
+do
+        jarconcat=$jarconcat:$f
+done
+
+jarconcat=${jarconcat:1}
+
+#exec java -Xmx"$SMACMEM"m -cp "$jarconcat" $EXEC "$@"
+
+exec java -cp "$DIR/conf/:$jarconcat" $EXEC "$@"

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration>
+
+<!-- <define name="logFile" class="ca.ubc.cs.beta.config."-->
+
+  
+  
+  
+  
+  <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+  <file>${LOG_LOCATION}</file>
+  <append>true</append>
+  <encoder>
+      <pattern>%d{HH:mm:ss.SSS} [%thread]  %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
+ 
+ 
+ 
+
+  
+  <!-- <logger name="ca.ubc.cs.beta.mysqldbtae.targetalgorithmevaluator" level="WARN"/>-->
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+    	<!--<pattern>%d{HH:mm:ss.SSS} [%thread]  %logger{36} - %msg%n</pattern>-->
+    	<!--RAW OUTPUT-->
+    	
+      <pattern>[%d{HH:mm:ss.SSS}] [%-5level] %msg%n</pattern>
+    </encoder>
+    
+  </appender>
+  
+  
+   <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender" target="System.err">
+      <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+  		<level>ERROR</level>
+  	</filter>
+    <encoder>
+    	<!--<pattern>%d{HH:mm:ss.SSS} [%thread]  %logger{36} - %msg%n</pattern>-->
+    	<!--RAW OUTPUT-->
+      <pattern>Error has occured please check output - %msg%n</pattern>
+    </encoder>
+    
+  </appender>
+  
+  
+  
+  <root level="DEBUG">
+    <appender-ref ref="STDOUT" />
+    <appender-ref ref="STDERR" />
+     <appender-ref ref="FILE" />
+  </root>
+    
+</configuration>
