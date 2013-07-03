@@ -2,10 +2,10 @@ package ca.ubc.cs.beta.stationpacking.execution.parameters.asyncresolving;
 
 import java.io.FileReader;
 import java.util.ArrayList;
-import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 
 import au.com.bytecode.opencsv.CSVReader;
 
@@ -14,11 +14,12 @@ import com.beust.jcommander.ParametersDelegate;
 
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
-import ca.ubc.cs.beta.stationpacking.datastructures.Station;
+import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.AsyncTAESolverParameters;
 import ca.ubc.cs.beta.stationpacking.solver.reporters.AsynchronousLocalExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.solver.reporters.IExperimentReporter;
+import ca.ubc.cs.beta.stationpacking.utils.Ticker;
 
 @UsageTextField(title="FCC Station Packing Instance Generation Options",description="Parameters required for an instance generation experiment.")
 public class AsyncResolvingParameters extends AbstractOptions {
@@ -44,7 +45,7 @@ public class AsyncResolvingParameters extends AbstractOptions {
 	@ParametersDelegate
 	public AsyncTAESolverParameters SolverParameters = new AsyncTAESolverParameters();
 	
-	public IExperimentReporter getExperimentReporter()
+	public AsynchronousLocalExperimentReporter getExperimentReporter()
 	{
 		Logger log = LoggerFactory.getLogger(AsyncResolvingParameters.class);
 		log.info("Getting the experiment reporter...");
@@ -54,11 +55,11 @@ public class AsyncResolvingParameters extends AbstractOptions {
 	public ArrayList<StationPackingInstance> getInstances()
 	{
 		Logger log = LoggerFactory.getLogger(AsyncResolvingParameters.class);
-		log.info("Getting instances to resolve...");
+		log.info("Getting instances to solve...");
 		
 		ArrayList<StationPackingInstance> aInstances = new ArrayList<StationPackingInstance>();
 		
-		Set<Station> aStations = SolverParameters.RepackingDataParameters.getDACStationManager().getStations();
+		IStationManager aStationManager = SolverParameters.RepackingDataParameters.getDACStationManager();
 		
 		try {
 			CSVReader aReader = new CSVReader(new FileReader(InstanceFile));
@@ -69,14 +70,14 @@ public class AsyncResolvingParameters extends AbstractOptions {
 			{
 				String aInstanceString = aLine[0];
 				
-				StationPackingInstance aInstance = StationPackingInstance.valueOf(aInstanceString, aStations);
+				StationPackingInstance aInstance = StationPackingInstance.valueOf(aInstanceString, aStationManager);
 				
 				aInstances.add(aInstance);
 				
 			}
 			
 		} catch (Exception e) {
-			throw new IllegalArgumentException("Couldn't read instances from "+InstanceFile+" "+e.getMessage());
+			throw new IllegalArgumentException("Couldn't read instances from "+InstanceFile+" ("+e.getMessage()+")");
 		}
 		
 		return aInstances;
