@@ -116,7 +116,7 @@ public class PopulatedDomainStationManager implements IStationManager{
 		return new HashSet<Station>(fStations.values());
 	}
 	
-	public Station get(Integer aID){
+	public Station getStationfromID(Integer aID){
 		return fStations.get(aID);
 	}
 

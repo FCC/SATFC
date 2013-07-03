@@ -1,0 +1,5 @@
+mysql-hostname=arrowdb.cs.ubc.ca
+mysql-password=october-127
+mysql-database=mysql_db_tae_junit
+mysql-username=mysql_db_tae
+mysql-port=4040

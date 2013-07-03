@@ -48,7 +48,13 @@ public class DomainStationManager implements IStationManager{
 		return new HashSet<Station>(fStations.values());
 	}
 	
-	public Station get(Integer aID){
+	public Station getStationfromID(Integer aID){
+		
+		if(!fStations.containsKey(aID))
+		{
+			throw new IllegalArgumentException("Station manager does not contain station for ID "+aID);
+		}
+		
 		return fStations.get(aID);
 	}
 
