@@ -10,9 +10,5 @@ public interface IStationManager {
 	public Set<Station> getStations();
 	
 	public Station getStationfromID(Integer aID);
-	//public Set<Station> getFixedStations();
 	
-	//public Set<Station> getUnfixedStations();
-	
-	//public HashMap<Station,Integer> getStationPopulation();
 }

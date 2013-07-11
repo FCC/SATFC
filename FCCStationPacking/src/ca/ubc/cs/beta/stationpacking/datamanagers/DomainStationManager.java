@@ -32,7 +32,7 @@ public class DomainStationManager implements IStationManager{
 			aID = Integer.valueOf(aLine[1].replaceAll("\\s", ""));
 			if(aChannelDomain.isEmpty()){
 				try{
-					throw new Exception("Station "+aID+" has empty domain.");
+					throw new IllegalStateException("Station "+aID+" has empty domain.");
 				} catch(Exception e) {
 					e.printStackTrace();
 				}
