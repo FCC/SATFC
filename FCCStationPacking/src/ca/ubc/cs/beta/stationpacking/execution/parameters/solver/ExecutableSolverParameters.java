@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
+import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
@@ -30,23 +31,21 @@ public class ExecutableSolverParameters extends AbstractOptions {
 	@ParametersDelegate
 	public InstanceParameters ProblemInstanceParameters = new InstanceParameters();
 
-	public StationPackingInstance getInstance() throws Exception
+	public StationPackingInstance getInstance()
 	{
 		Logger log = LoggerFactory.getLogger(ExecutableSolverParameters.class);
 		log.info("Getting instance...");
 		
 		Set<Integer> aPackingChannels = ProblemInstanceParameters.getPackingChannels();
 		
-		Set<Station> aStations = SolverParameters.RepackingDataParameters.getDACStationManager().getStations();
+		IStationManager aStationManager = SolverParameters.RepackingDataParameters.getDACStationManager();
 		Set<Integer> aStationIDs = ProblemInstanceParameters.getPackingStationIDs();
 		
 		Set<Station> aPackingStations = new HashSet<Station>();
-		for(Station aStation : aStations)
+		
+		for(Integer aStationID : aStationIDs)
 		{
-			if(aStationIDs.contains(aStation.getID()))
-			{
-				aPackingStations.add(aStation);
-			}
+			aPackingStations.add(aStationManager.getStationfromID(aStationID));
 		}
 		
 		return new StationPackingInstance(aPackingStations,aPackingChannels);	

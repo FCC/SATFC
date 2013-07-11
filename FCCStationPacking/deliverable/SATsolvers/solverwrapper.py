@@ -105,6 +105,8 @@ else:
 
 (instance_name_head,instance_name_tail) = os.path.split(instance_name)
 
+print 'Solving '+instance_name+'...'
+
 #####################################################################################################
 #Make a new CNF where variables are named from 1 to n (where n is the total number of variables.
 #Highly undesirable fix - should use a better variable identification scheme inside the (java) solver.
@@ -116,8 +118,6 @@ variables = []
 variables.append(0)
 
 formatted_lines = []
-
-print len(instance_lines)
 
 variable_map = dict()
 variable_index = 1
@@ -191,8 +191,6 @@ SATre = re.compile('\\bSATISFIABLE\\b')
 UNSATre = re.compile('\\bUNSATISFIABLE\\b')
 
 TIMEre = re.compile('CPU time \(s\)\: \d+\.*\d*')
-
-print std_out
 
 if re.search(TIMEOUTre,std_out):
     output_solved = 'TIMEOUT'

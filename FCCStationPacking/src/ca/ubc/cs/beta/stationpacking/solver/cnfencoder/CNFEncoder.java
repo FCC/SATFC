@@ -51,29 +51,6 @@ public class CNFEncoder implements ICNFEncoder {
 			}
 		}
 		
-		/*
-		Random r = new Random(1);
-		try{
-			int next;
-			int station = 301;
-			int channel = 25;
-			for(int i = 0; i < 100000; i++){
-				if( varToChannel(stationChannelPairToVar(station,channel)) !=channel) {					
-					throw new Exception("Error in decoding! Station: "+station+", Channel: "+channel+".\nGot Channel "+varToChannel(stationChannelPairToVar(station,channel)));
-				}
-				if(varToStationID(stationChannelPairToVar(station,channel)) != station) 
-					throw new Exception("Error in decoding! Station: "+station+", Channel: "+channel+".\nGot Station "+varToStationID(stationChannelPairToVar(station,channel)));
-				next = Math.abs(r.nextInt());
-				station = 1+new Double(next - 10000*Math.floor(next/10000)).intValue();
-				next = Math.abs(r.nextInt());
-				channel = 1+new Double(next - fMaxChannel*Math.floor(next/fMaxChannel)).intValue();
-			}
-			throw new Exception("100000 station-channel pairs decoded accurately.");
-		} catch(Exception e){
-			e.printStackTrace();
-		}
-		*/
-		
 	}
 	
 	/* NA - the new encode method
@@ -162,7 +139,7 @@ public class CNFEncoder implements ICNFEncoder {
 					}
 				}
 			} else {
-				throw new Exception("Station "+aStation+" has empty domian.");
+				throw new IllegalStateException("Station "+aStation+" has empty domian.");
 			}
 		}
 		return aBaseClauseSet;
@@ -218,19 +195,6 @@ public class CNFEncoder implements ICNFEncoder {
 	
 	//Nifty diagonalization trick - could also map to internalIDs if we wanted
 	private Integer stationChannelPairToVar(Integer aStationID, Integer aChannel){
-		/*
-		try{
-			if(0 < aChannel && aChannel < fMaxChannel+1){
-				if(getInternalStationID(aStationID)==null) throw new Exception("No internal ID for Station "+aStationID);
-				return getInternalStationID(aStationID)*(fMaxChannel+1)+aChannel;
-			} else {
-				throw new Exception("Channel "+aChannel+" out of range.");
-			} 
-		}catch(Exception e) {
-			e.printStackTrace();
-			return -1;
-		}
-		*/
 		
 		Integer aStationIDInternal = getInternalStationID(aStationID);
 		Integer aChannelInternal = getInternalChannel(aChannel);
@@ -275,7 +239,7 @@ public class CNFEncoder implements ICNFEncoder {
 			fExternalToInternal.put(aStationID,aInternalID);
 			fInternalToExternal.put(aInternalID, aStationID);
 			*/
-			throw new Exception("Station "+aStationID+" not recognized in CNFEncoder.");	
+			throw new IllegalArgumentException("Station "+aStationID+" not recognized in CNFEncoder.");	
 		} catch(Exception e){
 			e.printStackTrace();
 			System.out.println(fExternalToInternal);
@@ -286,7 +250,7 @@ public class CNFEncoder implements ICNFEncoder {
 	private Integer getExternalStationID(Integer aInternalStationID){
 		Integer aExternalID = fInternalToExternal.get(aInternalStationID);
 		if(aExternalID==null) try{
-			throw new Exception("Cannot decode internal ID "+aInternalStationID+" in CNFEncoder");	
+			throw new IllegalStateException("Cannot decode internal ID "+aInternalStationID+" in CNFEncoder");	
 		} catch(Exception e){
 			e.printStackTrace();
 			System.out.println(fExternalToInternal);

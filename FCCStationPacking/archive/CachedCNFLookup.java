@@ -51,7 +51,7 @@ public class CachedCNFLookup implements ICNFLookup{
 		
 		if(!hasCNFfor(aStations))
 		{
-			throw new Exception("Tried to lookup a CNF for a set of stations that is unavailable.");
+			throw new IllegalArgumentException("Tried to lookup a CNF for a set of stations that is unavailable.");
 		}
 		else
 		{
@@ -68,7 +68,7 @@ public class CachedCNFLookup implements ICNFLookup{
 	 */
 	public void addCNFfor(Set<Station> aStations, String aCNFFileName) throws Exception {
 		if(fStationsHashtoCNFName.containsKey(aStations)){
-			throw new Exception("Tried to update a CNF for a set of stations that is already present.");
+			throw new UnsupportedOperationException("Tried to update a CNF for a set of stations that is already present.");
 		}
 		else
 		{
@@ -82,7 +82,7 @@ public class CachedCNFLookup implements ICNFLookup{
 
 	public String addCNFfor(Set<Station> aStations, Integer ...aRange) throws Exception {
 		if(fStationsHashtoCNFName.containsKey(aStations)){
-			throw new Exception("Tried to update a CNF for a set of stations that is already present.");
+			throw new UnsupportedOperationException("Tried to update a CNF for a set of stations that is already present.");
 		}
 		else
 		{
@@ -95,7 +95,7 @@ public class CachedCNFLookup implements ICNFLookup{
 	@Override
 	public boolean hasSATResult(IInstance aInstance) {
 		try{
-			throw new Exception("Method hasSATResult is not implemented in class CachedCNFLookup.");
+			throw new UnsupportedOperationException("Method hasSATResult is not implemented in class CachedCNFLookup.");
 		} catch(Exception e){
 			e.printStackTrace();
 		}
@@ -105,7 +105,7 @@ public class CachedCNFLookup implements ICNFLookup{
 	@Override
 	public SATResult getSATResult(IInstance aInstance) {
 		try{
-			throw new Exception("Method getSATResult is not implemented in class CachedCNFLookup.");
+			throw new UnsupportedOperationException("Method getSATResult is not implemented in class CachedCNFLookup.");
 		} catch(Exception e){
 			e.printStackTrace();
 		}
@@ -115,7 +115,7 @@ public class CachedCNFLookup implements ICNFLookup{
 	@Override
 	public boolean putSATResult(IInstance aInstance, SATResult aResult) {
 		try{
-			throw new Exception("Method putSATResult is not implemented in class CachedCNFLookup.");
+			throw new UnsupportedOperationException("Method putSATResult is not implemented in class CachedCNFLookup.");
 		} catch(Exception e){
 			e.printStackTrace();
 		}		
@@ -125,7 +125,7 @@ public class CachedCNFLookup implements ICNFLookup{
 	@Override
 	public String getNameFor(IInstance aInstance) {
 		try{
-			throw new Exception("Method getNameFor is not implemented in class CachedCNFLookup.");
+			throw new UnsupportedOperationException("Method getNameFor is not implemented in class CachedCNFLookup.");
 		} catch(Exception e){
 			e.printStackTrace();
 		}
@@ -135,7 +135,7 @@ public class CachedCNFLookup implements ICNFLookup{
 	@Override
 	public void writeToFile() throws IOException {
 		try{
-			throw new Exception("Method writeToFile is not implemented in class CachedCNFLookup.");
+			throw new UnsupportedOperationException("Method writeToFile is not implemented in class CachedCNFLookup.");
 		} catch(Exception e){
 			e.printStackTrace();
 		}		
