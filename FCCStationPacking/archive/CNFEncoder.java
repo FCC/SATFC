@@ -100,16 +100,16 @@ public class CNFEncoder {
 								aSet.add(aStation);
 								aStationAssignment.put(aChannel,aSet);
 							}
-							if(aChannelAssignment != null) throw new Exception(aStation+" assigned to multiple channels.");
+							if(aChannelAssignment != null) throw new IllegalStateException(aStation+" assigned to multiple channels.");
 							aChannelAssignment = aChannel;
 						}	
 					}
-					if(aChannelAssignment == null) throw new Exception(aStation+" not assigned to a channel.");
+					if(aChannelAssignment == null) throw new IllegalStateException(aStation+" not assigned to a channel.");
 					else if(! aStation.getDomain().contains(aChannelAssignment)){
-						throw new Exception(aStation+"assigned channel "+aChannelAssignment+", which is not in its domain.");
+						throw new IllegalStateException(aStation+"assigned channel "+aChannelAssignment+", which is not in its domain.");
 					}
 				}
-			} else throw new Exception(	"CNF Assignment includes "+aNumCNFVars+" variables, but encoding this instance requires "
+			} else throw new IllegalStateException(	"CNF Assignment includes "+aNumCNFVars+" variables, but encoding this instance requires "
 										+aExpectedNumCNFVars+" variables.");
 		} catch(Exception e) {
 			aStationAssignment.clear();
@@ -186,7 +186,7 @@ public class CNFEncoder {
 				}
 			}	
 		} else try {
-			throw new Exception("Constraint Type must be either 'CO' or 'ADJ'.");
+			throw new IllegalArgumentException("Constraint Type must be either 'CO' or 'ADJ'.");
 		} catch(Exception e){
 			e.printStackTrace();
 		}
@@ -202,13 +202,13 @@ public class CNFEncoder {
 			if(!(a[i].equals("v")||a[i].isEmpty())){
 				if(a[i].startsWith("-")) {
 					if(aAssignment.put(Integer.parseInt(a[i].substring(1)),false)!=null)
-						throw new Exception("Variable assigned to multiple truth values.");
+						throw new IllegalStateException("Variable assigned to multiple truth values.");
 				} else 
 					if(aAssignment.put(Integer.parseInt(a[i]),true)!=null)
-						throw new Exception("Variable assigned to multiple truth values.");
+						throw new IllegalStateException("Variable assigned to multiple truth values.");
 			}
 		}
-		if(aAssignment.remove(0)==null) throw new Exception("No terminating 0 in CNF string.");
+		if(aAssignment.remove(0)==null) throw new IllegalArgumentException("No terminating 0 in CNF string.");
 		return aAssignment;
 	}
 	
@@ -228,7 +228,7 @@ public class CNFEncoder {
 			
 			if(aAssignment.containsKey(aVariable))
 			{
-				throw new Exception("Variable "+aVariable+" assigned to multiple truth values.");
+				throw new IllegalStateException("Variable "+aVariable+" assigned to multiple truth values.");
 			}
 			aAssignment.put(aVariable, aValue);
 			

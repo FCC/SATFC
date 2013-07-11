@@ -88,7 +88,7 @@ public class DACConstraintManager implements IConstraintManager{
 						aChannelType = 2;
 					} else {
 						aReader.close();
-						throw new Exception("Unexpected channel range "+aChannelLower+"-"+aChannelUpper+" found for Station "+aID+".");
+						throw new IllegalArgumentException("Unexpected channel range "+aChannelLower+"-"+aChannelUpper+" found for Station "+aID+".");
 					} 
 					if(aLine[0].replaceAll("\\s", "").equals("CO")){ //NA - handle CO constraints
 						for(int i = 4; i < aLine.length; i++){
@@ -99,7 +99,7 @@ public class DACConstraintManager implements IConstraintManager{
 									aCOConstraints.get(aChannelType).get(aStation).add(fStations.get(aID2)); 
 								} else {
 									aReader.close();
-									throw new Exception("Station "+aID2+" not fount in fStations.");
+									throw new IllegalStateException("Station "+aID2+" not fount in fStations.");
 								}
 							}
 						}
@@ -113,24 +113,42 @@ public class DACConstraintManager implements IConstraintManager{
 									aADJplusConstraints.get(aChannelType).get(fStations.get(aID2)).add(aStation);
 								} else {
 									aReader.close();
-									throw new Exception("Station "+aID2+" not fount in fStations.");
+									throw new IllegalArgumentException("Station "+aID2+" not fount in fStations.");
 								}
 							}
 						}
-					} else {
-						aReader.close();
-						throw new Exception("ERROR reading constraint file: constraint type could not be determined.");	
 					}
-				} else {
+					else if(aLine[0].replaceAll("\\s", "").equals("ADJ-1")){ //NA - handle ADJ constraints
+					for(int i = 4; i < aLine.length; i++){
+						aString = aLine[i].replaceAll("\\s", "");
+						if(aString.length()>0){
+							Integer aID2 = Integer.valueOf(aString);
+							if(fStations.containsKey(aID2)){ //NA - ADJ+1 constraints are asymmetric
+								aADJminusConstraints.get(aChannelType).get(fStations.get(aID2)).add(aStation);
+								aADJplusConstraints.get(aChannelType).get(aStation).add(fStations.get(aID2)); 
+							} else {
+								aReader.close();
+								throw new IllegalArgumentException("Station "+aID2+" not fount in fStations.");
+							}
+						}
+					}
+				}
+					else {
+						aReader.close();
+						throw new IllegalArgumentException("Error reading constraint file: unrecognized constraint type "+aLine[0].replaceAll("\\s", "")+".");	
+					}
+				} 
+				else 
+				{
 					aReader.close();
-					throw new Exception("Station "+aID+" not found in fStations.");
+					throw new IllegalArgumentException("Station "+aID+" not found in manager's stations.");
 				}
 			}
 			aReader.close();
 		} catch(Exception e){
-			log.error("Exception in DACConstraintManager constructor: "+e.getMessage());
-			e.printStackTrace();
+			throw new  IllegalStateException("Exception in DACConstraintManager constructor "+e.getMessage());
 		}
+		
 		
 		
 		fLowerVHFCOConstraints = aCOConstraints.get(0);

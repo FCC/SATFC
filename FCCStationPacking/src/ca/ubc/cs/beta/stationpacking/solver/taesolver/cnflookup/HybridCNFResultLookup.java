@@ -34,26 +34,7 @@ public class HybridCNFResultLookup implements ICNFResultLookup{
 		
 		fOutputName = aOutputName;
 		fCNFDirectory = aCNFDirectory;
-		
-		/*
-		try{
-			File aOutputFile = new File(fCNFDirectory+File.separatorChar+fOutputName);
-			String[] aLine;
-			if(aOutputFile.exists()){
-				CSVReader aReader = new CSVReader(new FileReader(aOutputFile),',');
-				while((aLine = aReader.readNext())!=null){	//NA - perform some sanity checks
-					if(aLine.length != 3) {
-						aReader.close();
-						throw new Exception("Output file exists but is not in the correct format. Continuing without reading past results.");
-					}
-					else fResultLookup.put(aLine[0], new SolverResult(SATResult.valueOf(aLine[1]),Double.parseDouble(aLine[2])));
-				}
-				aReader.close();
-			}		
-		} catch(Exception e){
-			e.printStackTrace();
-		}
-		*/
+	
 	}
 	
 	@Override

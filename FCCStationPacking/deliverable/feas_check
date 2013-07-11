@@ -7,7 +7,7 @@ import os
 import tempfile
 import time
 
-version = '0.9.1'
+version = '0.9.2'
 date = 'June 2013'
 """
 SAT-based Feasibility checker for FCC's station repacking problem.
@@ -35,36 +35,59 @@ if len(sys.argv)<=1:
     sys.exit()
 elif sys.argv[1]=='-init':
     #Perform initialization
-    print 'No initialization to perform.'
+    #print 'No initialization to perform.'
+    sys.exit()
+elif len(sys.argv)!=3:
+    print 'Unrecognized usage, try ./feas_check for some info.'
     sys.exit()
 
+#print """
+#=========================================================
+#
+#    _________   ____________________________________
+#   /   _____/  /  _  \__    ___/\_   _____/\_   ___ \\
+#   \_____  \  /  /_\  \|    |    |    __)  /    \  \/
+#   /        \/    |    \    |    |     \   \     \____
+#  /_______  /\____|__  /____|    \___  /    \______  /
+#          \/         \/              \/            \/
+#
+#
+#A SAT-based feasibility checker for station repacking by
+#
+#Auctionomics [A. Frechette, N. Arnosti, K. Leyton-Brown]
+#
+#"""+date+""", v"""+version+"""
+#=========================================================
+#"""
 
-print """
-=========================================================
+"""Environment variables and external settings"""
+#Execution directory of feas_check
+current_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
 
-    _________   ____________________________________
-   /   _____/  /  _  \__    ___/\_   _____/\_   ___ \\
-   \_____  \  /  /_\  \|    |    |    __)  /    \  \/
-   /        \/    |    \    |    |     \   \     \____
-  /_______  /\____|__  /____|    \___  /    \______  /
-          \/         \/              \/            \/
+#Get the necessary environment variables
+environment_variables = os.environ
+if 'FC_STATION_DATA_PATH' in environment_variables:
+    environment_data_location = environment_variables['FC_STATION_DATA_PATH']
+else:
+    print '[WARNING] FC_STATION_DATA_PATH environment variable has not been set, resolving to default current directory.'
+    environment_data_location = current_dir
+environment_data_location = environment_data_location.rstrip(os.sep)
 
-
-A SAT-based feasibility checker for station repacking by
-
-Auctionomics [A. Frechette, N. Arnosti, K. Leyton-Brown]
-
-"""+date+""", v"""+version+"""
-=========================================================
-"""
+if 'FC_WORKING_PATH' in environment_variables:
+    environment_execution_dir = environment_variables['FC_WORKING_PATH']
+else:
+    print '[WARNING] FC_WORKING_PATH environment variable has not been set, resolving to default current directory.'
+    environment_execution_dir = current_dir
+environment_execution_dir = environment_execution_dir.rstrip(os.sep)
 
 
 """Parse FCC feas_check parameters"""
+#print 'Parsing the parameters...'
 
-print 'Parsing the parameters...'
-
-question_filename = sys.argv[1]
-answer_filename = sys.argv[2]
+question_filename = environment_execution_dir+os.sep+sys.argv[1]
+#question_filename = sys.argv[1]
+answer_filename = environment_execution_dir+os.sep+sys.argv[2]
+#answer_filename = sys.argv[2]
 
 #Parse the question parameters
 question_parameters = {}
@@ -86,11 +109,14 @@ for question_line in question_lines:
         raise Exception('Unrecognized problem instance data key in question csv file! ('+question_line+')')
 
 #Map to options for feasibility checker.
-#Execution directory of feas_check
-current_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
+
 
 #Directory to put CNF's an other SAT execution data.
-cnf_dir = current_dir + os.sep + 'CNFs'
+cnf_dir = environment_execution_dir + os.sep + 'CNFs'
+#Check if the cnf folder exists, if not create it
+if not os.path.exists(cnf_dir):
+    print '[WARNING] There was no CNF folder in the provided execution directory, created one.'
+    os.makedirs(cnf_dir)
 
 try:
     cutoff = str(float(question_parameters['FC_TIMEOUT'][0])/1000.0)
@@ -101,13 +127,15 @@ except:
 problem_data_directory = 'default'
 if len(question_parameters['STATION_CONFIG'])>0:
     problem_data_directory = question_parameters['STATION_CONFIG'][0]
+problem_data_directory = environment_data_location+os.sep+problem_data_directory
+
 
 #Station data filename
 #stations_filename = current_dir + os.sep + problem_data_directory + os.sep + 'STATIONS.CSV'
 #Domains data filename
-domains_filename = current_dir + os.sep + problem_data_directory + os.sep + 'domains.csv'
+domains_filename = problem_data_directory + os.sep + 'domains.csv'
 #Interference constraint data filename.
-interference_filename = current_dir + os.sep + problem_data_directory + os.sep + 'interferences.csv'
+interference_filename = problem_data_directory + os.sep + 'interferences.csv'
 
 #Channels to pack into.
 if question_parameters['BAND'][0]=='LVHF':
@@ -143,7 +171,7 @@ packing_stations = ','.join(map(lambda s : str(s),packing_stations))
 #Information kept through the process to be printed in the answer file.
 run_information = []
 
-print 'Creating the callstring to the feasibility checker...'
+#print 'Creating the callstring to the feasibility checker...'
 
 solver = 'tunedclasp'
 
@@ -177,34 +205,34 @@ options_callstring = ' '.join(map(lambda (k,v) : k+' '+v,options.iteritems()))
 
 callstring = feas_check_exec+' '+options_callstring
 
-print 'Executing the feasibility checker...'
-print ''
+#print 'Executing the feasibility checker...'
+#print ''
 print callstring
-print ''
+#print ''
 
 
 pid = str(os.getpid())
-temp_stdout = tempfile.NamedTemporaryFile(dir=current_dir,prefix='SATFC_stdout_'+pid+'_',delete=True)
-temp_stderr = tempfile.NamedTemporaryFile(dir=current_dir,prefix='SATFC_stderr'+pid+'_',delete=True)
+temp_stdout = tempfile.NamedTemporaryFile(dir=environment_execution_dir,prefix='SATFC_stdout_'+pid+'_',delete=True)
+temp_stderr = tempfile.NamedTemporaryFile(dir=environment_execution_dir,prefix='SATFC_stderr'+pid+'_',delete=True)
 
 #TODO a print of SATFC execution's standard out every so often would be wonderful.
 #CWGT says : "Hacky to the max!"
-print '---------------------------------------------------------'
-printout = subprocess.Popen('tail -f '+temp_stdout.name,shell=True,stdout=sys.stdout)
+#print '---------------------------------------------------------'
+#printout = subprocess.Popen('tail -f '+temp_stdout.name,shell=True,stdout=sys.stdout)
 
 execution = subprocess.Popen(callstring,shell=True,stdout=temp_stdout,stderr=temp_stderr)
 
 execution.wait()
 
-printout.kill()
-print '---------------------------------------------------------'
+#printout.kill()
+#print '---------------------------------------------------------'
 
 temp_stdout.flush()
 temp_stderr.flush()
 
-print ''
-print 'Parsing output...'
-print ''
+#print ''
+#print 'Parsing output...'
+#print ''
 
 stdout = open(temp_stdout.name,'r').readlines()
 stderr = open(temp_stderr.name,'r').readlines()
@@ -226,35 +254,38 @@ for line in stdout:
         found_result = True
         break
 
+
 print 'Result:'
-if found_result:
+if not found_result:
+    print "Couldn't parse output from feasibility checker."
+    run_information.append('[ERROR] Could not parse output from feasibility checker.')
+    print ''.join(stdout)
+    print ''.join(stderr)
+else:
+    #Post-process the result
+    runtime = "%0.4f" % float(runtime)
+
+    if satisfiability=='SAT':
+        satisfiability = 'yes'
+    elif satisfiability=='UNSAT':
+        satisfiability = 'no'
+    else:
+        satisfiability = 'unknown'
+
     print satisfiability
     print runtime
     print assignment
-else:
-    print "Couldn't parse output from feasibility checker!"
-    run_information.append('[ERROR] Could not parse output from feasibility checker!')
-    print ''.join(stdout)
-    print ''.join(stderr)
 
 """Write results in FCC feas_check format"""
-
-print ''
+#print ''
 print 'Writing result to file '+str(answer_filename)+'...'
-print ''
-
-if satisfiability=='SAT':
-    answer = 'yes'
-elif satisfiability=='UNSAT':
-    answer = 'no'
-else:
-    answer = 'unknown'
+#print ''
 
 run_information.append('Total time is '+str(time.time()-start_time)+' seconds with SATFC v'+version+' using '+solver+'.')
 run_information.append('Total time spent SAT solving is '+str(runtime)+' seconds.')
 
 answer_file = open(answer_filename,'w')
-answer_file.write('ANSWER,'+answer+'\n')
+answer_file.write('ANSWER,'+satisfiability+'\n')
 for information_line in run_information:
     answer_file.write('FC_INFO,'+information_line+'\n')
 for channel in assignment.keys():
@@ -269,6 +300,6 @@ temp_stdout.close()
 temp_stderr.close()
 
 print 'DONE'
-print 'Total time taken '+str(time.time()-start_time)+' seconds'
+print 'Total time taken '+'%0.4f' % float(time.time()-start_time)+' seconds'
 sys.exit()
 

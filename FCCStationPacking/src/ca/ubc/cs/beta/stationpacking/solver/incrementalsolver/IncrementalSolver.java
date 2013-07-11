@@ -152,18 +152,18 @@ public class IncrementalSolver implements ISolver{
 			try{
 				//Check to make sure that all assumptions are satisfied
 				for(Integer aVar : fAssumptions.getVars()){
-					if(!aAssignment.removeLiteral(aVar, true)) throw new Exception("Assumption Not Satisfied: tried to remove "+aVar);
+					if(!aAssignment.removeLiteral(aVar, true)) throw new IllegalStateException("Assumption Not Satisfied: tried to remove "+aVar);
 				}
 				for(Integer aNegatedVar : fAssumptions.getNegatedVars()){
 					if(!aAssignment.removeLiteral(aNegatedVar, false)){
-						throw new Exception("Assumption Not Satisfied: tried to remove -"+aNegatedVar);
+						throw new IllegalStateException("Assumption Not Satisfied: tried to remove -"+aNegatedVar);
 					}
 				}
 				
 				//Decode the assignment
 				aStationAssignment = fEncoder.decode(aInstance, aAssignment);
 				if(!fConstraintManager.isSatisfyingAssignment(aStationAssignment)){
-					throw new Exception("When decoding station assignment, violated pairwise interference constraints found.");
+					throw new IllegalStateException("When decoding station assignment, violated pairwise interference constraints found.");
 				} else {
 					log.info("Successfully verified feasibility of assignment.");
 				}
