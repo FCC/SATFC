@@ -56,7 +56,7 @@ public class AsyncInstanceResolvingExecutor {
 				"resolving_july"
 				};
 		
-		//args = aPaxosTargetArgs;
+		args = aPaxosTargetArgs;
 		
 		//Parse the command line arguments in a parameter object.
 		AsyncResolvingParameters aInstanceResolvingParameters = new AsyncResolvingParameters();
@@ -86,18 +86,16 @@ public class AsyncInstanceResolvingExecutor {
 		int aNumberOfBatches = 100;
 		
 		ArrayList<StationPackingInstance> aInstances = aInstanceResolvingParameters.getInstances();
-		//Batching evaluate run asyncs to not run out of memory when submitting instances (thread creation for every evaluate run async starves memory).
-		for(int aBatchIndex =0;aBatchIndex<aNumberOfBatches;aBatchIndex++)
-		{
-			log.info("Writing batch {} out of {}...",aBatchIndex,aNumberOfBatches);
+//		//Batching evaluate run asyncs to not run out of memory when submitting instances (thread creation for every evaluate run async starves memory).
+//		for(int aBatchIndex =0;aBatchIndex<aNumberOfBatches;aBatchIndex++)
+//		{
+//			log.info("Writing batch {} out of {}...",aBatchIndex,aNumberOfBatches);
 			AsyncTAESolver aSolver = null;
 			try
 			{
 				try 
 				{
 					aSolver = aInstanceResolvingParameters.SolverParameters.getSolver();
-									
-					
 					
 					
 					log.info("Submitting the instances...");
@@ -105,10 +103,10 @@ public class AsyncInstanceResolvingExecutor {
 					for(int aInstanceIndex = 0; aInstanceIndex < aInstances.size(); aInstanceIndex++)
 					{
 						StationPackingInstance aInstance = aInstances.get(aInstanceIndex);
-						if(aInstanceIndex%aNumberOfBatches == aBatchIndex)
-						{
+//						if(aInstanceIndex%aNumberOfBatches == aBatchIndex)
+//						{
 							aSolver.solve(aInstance, aInstanceResolvingParameters.Cutoff, aInstanceResolvingParameters.Seed, aReporter);
-						}
+//						}
 						
 						
 					}
@@ -128,10 +126,9 @@ public class AsyncInstanceResolvingExecutor {
 			}
 			finally{
 				
-				
 				aSolver.notifyShutdown();
 			}
-		}
+//		}
 		
 		//Kill report writing process
 		log.info("Done! Shutting down EVERYTHING!");

@@ -97,7 +97,6 @@ public class AsynchronousLocalExperimentReporter implements IExperimentReporter 
 						try 
 						{
 							AsynchronousResult aResult = fReportQueue.take();
-							log.debug("Got result to write to disk {}",aResult);
 							//Checking if we're pulling the poison pill and must die.
 							if(aResult == POISON_PILL)
 							{
@@ -105,6 +104,7 @@ public class AsynchronousLocalExperimentReporter implements IExperimentReporter 
 								fThreadPool.shutdown();
 								return;
 							}
+							log.debug("Got result to write to disk {}",aResult);
 							//Write object to file 
 							String aLine = aResult.getInstance().toString()+","+aResult.getResult().toString()+"\n";
 							

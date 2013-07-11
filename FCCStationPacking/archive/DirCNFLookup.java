@@ -56,7 +56,7 @@ public class DirCNFLookup implements ICNFLookup{
 		File aCNFFile = new File(aCNFFilename);
 		if(!aCNFFile.exists()) {
 			try{
-				throw new Exception("Tried to lookup a CNF for a set of stations that is unavailable.");
+				throw new IllegalStateException("Tried to lookup a CNF for a set of stations that is unavailable.");
 			} catch(Exception e){
 				e.printStackTrace();
 			}
@@ -78,7 +78,7 @@ public class DirCNFLookup implements ICNFLookup{
 	@Override
 	public boolean hasSATResult(IInstance aInstance) {
 		try{
-			throw new Exception("Method hasSATResult is not implemented in class DirCNFLookup.");
+			throw new UnsupportedOperationException("Method hasSATResult is not implemented in class DirCNFLookup.");
 		} catch(Exception e){
 			e.printStackTrace();
 		}
@@ -88,7 +88,7 @@ public class DirCNFLookup implements ICNFLookup{
 	@Override
 	public SATResult getSATResult(IInstance aInstance) {
 		try{
-			throw new Exception("Method getSATResult is not implemented in class DirCNFLookup.");
+			throw new UnsupportedOperationException("Method getSATResult is not implemented in class DirCNFLookup.");
 		} catch(Exception e){
 			e.printStackTrace();
 		}
@@ -98,7 +98,7 @@ public class DirCNFLookup implements ICNFLookup{
 	@Override
 	public boolean putSATResult(IInstance aInstance, SATResult aResult) {
 		try{
-			throw new Exception("Method putSATResult is not implemented in class DirCNFLookup.");
+			throw new UnsupportedOperationException("Method putSATResult is not implemented in class DirCNFLookup.");
 		} catch(Exception e){
 			e.printStackTrace();
 		}
@@ -108,7 +108,7 @@ public class DirCNFLookup implements ICNFLookup{
 	@Override
 	public String getNameFor(IInstance aInstance) {
 		try{
-			throw new Exception("Method getNameFor is not implemented in class DirCNFLookup.");
+			throw new UnsupportedOperationException("Method getNameFor is not implemented in class DirCNFLookup.");
 		} catch(Exception e){
 			e.printStackTrace();
 		}
@@ -118,7 +118,7 @@ public class DirCNFLookup implements ICNFLookup{
 	@Override
 	public void writeToFile() throws IOException {
 		try{
-			throw new Exception("Method writeToFile is not implemented in class DirCNFLookup.");
+			throw new UnsupportedOperationException("Method writeToFile is not implemented in class DirCNFLookup.");
 		} catch(Exception e){
 			e.printStackTrace();
 		}		
