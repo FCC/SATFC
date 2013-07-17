@@ -83,13 +83,8 @@ public class AsyncInstanceResolvingExecutor {
 		aReporter.startWritingReport();
 		
 		
-		int aNumberOfBatches = 100;
 		
 		ArrayList<StationPackingInstance> aInstances = aInstanceResolvingParameters.getInstances();
-//		//Batching evaluate run asyncs to not run out of memory when submitting instances (thread creation for every evaluate run async starves memory).
-//		for(int aBatchIndex =0;aBatchIndex<aNumberOfBatches;aBatchIndex++)
-//		{
-//			log.info("Writing batch {} out of {}...",aBatchIndex,aNumberOfBatches);
 			AsyncTAESolver aSolver = null;
 			try
 			{
@@ -97,27 +92,16 @@ public class AsyncInstanceResolvingExecutor {
 				{
 					aSolver = aInstanceResolvingParameters.SolverParameters.getSolver();
 					
-					
 					log.info("Submitting the instances...");
 					
 					for(int aInstanceIndex = 0; aInstanceIndex < aInstances.size(); aInstanceIndex++)
 					{
 						StationPackingInstance aInstance = aInstances.get(aInstanceIndex);
-//						if(aInstanceIndex%aNumberOfBatches == aBatchIndex)
-//						{
-							aSolver.solve(aInstance, aInstanceResolvingParameters.Cutoff, aInstanceResolvingParameters.Seed, aReporter);
-//						}
-						
+						aSolver.solve(aInstance, aInstanceResolvingParameters.Cutoff, aInstanceResolvingParameters.Seed, aReporter);
 						
 					}
 					
-					
-//					log.info("All instances submitted, waiting for completion...");
-//					aSolver.waitForFinish();
-					
-					
-	
-				} 
+				}
 				catch (Exception e) 
 				{
 					e.printStackTrace();
@@ -130,7 +114,6 @@ public class AsyncInstanceResolvingExecutor {
 			}
 //		}
 		
-		//Kill report writing process
 		log.info("Done! Shutting down EVERYTHING!");
 		aReporter.stopWritingReport();
 		
