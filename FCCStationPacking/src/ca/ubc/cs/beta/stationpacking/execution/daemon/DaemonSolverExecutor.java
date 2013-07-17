@@ -89,7 +89,7 @@ public class DaemonSolverExecutor {
 			try 
 			{
 				
-				aSolver = aExecutableSolverParameters.getTAESolver();
+				aSolver = aExecutableSolverParameters.getSolver();
 				IStationManager aStationManager = aExecutableSolverParameters.RepackingDataParameters.getDACStationManager();
 				log.info("Creating solver server...");
 				//Create and start the solver server.
