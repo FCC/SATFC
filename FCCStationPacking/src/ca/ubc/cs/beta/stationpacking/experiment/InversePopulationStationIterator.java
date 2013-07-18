@@ -3,8 +3,12 @@ package ca.ubc.cs.beta.stationpacking.experiment;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Random;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 
@@ -18,16 +22,37 @@ public class InversePopulationStationIterator implements Iterator<Station>{
 	 * @param aRandomizer - random to use for sampling.
 	 * @throws Exception 
 	 */
-	public InversePopulationStationIterator(Collection<Station> aStationsCollection, long aSeed)
+	public InversePopulationStationIterator(Collection<Station> aStationsCollection, HashMap<Station,Integer> aStationPopulation, long aSeed)
 	{
+		Logger log = LoggerFactory.getLogger(InversePopulationStationIterator.class);
 		ArrayList<Station> aStations = new ArrayList<Station>(aStationsCollection);
-		Random aRandomizer = new Random(aSeed);		
+		Random aRandomizer = new Random(aSeed);
+		
+		HashMap<Station,Integer> aModifiedStationPop = new HashMap<Station,Integer>();
+		
 		long aPopulationSum = 0;
 		int aStationPop;
 		for(Station aStation : aStations) {
-			aStationPop = aStation.getPop();
-			if(aStationPop < 0) throw new IllegalArgumentException("Station with negative population found.");
-			else aPopulationSum += aStationPop;
+			if(!aStationPopulation.containsKey(aStation))
+			{
+				//throw new IllegalArgumentException("Provided station population contains no population for station "+aStation);
+				log.warn("Provided station population contains no population for station "+aStation+", assigning population 0.");
+				aStationPop = 0;
+			}
+			else
+			{
+				aStationPop = aStationPopulation.get(aStation);
+			}
+			if(aStationPop < 0) 
+			{
+				throw new IllegalArgumentException("Station with negative population found.");
+			}
+			else
+			{
+				aModifiedStationPop.put(aStation, aStationPop);
+				aPopulationSum += aStationPop;
+			}
+			
 		}
 		
 		ArrayList<Station> aOrderedStations = new ArrayList<Station>();
@@ -37,7 +62,7 @@ public class InversePopulationStationIterator implements Iterator<Station>{
 			Iterator<Station> aStationIterator = aStations.iterator();
 			while(aStationIterator.hasNext()){
 				Station aCandidateStation = aStationIterator.next();
-				aStationPop = aCandidateStation.getPop();
+				aStationPop = aModifiedStationPop.get(aCandidateStation);
 				if(aStationPop >= aCandidateAggregatePopulation){
 					aStationIterator.remove();
 					aPopulationSum -= aStationPop;
