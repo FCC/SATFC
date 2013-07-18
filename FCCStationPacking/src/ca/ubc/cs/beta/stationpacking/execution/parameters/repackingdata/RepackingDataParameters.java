@@ -35,11 +35,11 @@ public class RepackingDataParameters extends AbstractOptions{
 		}
 	}
 	
-	public IConstraintManager getDACConstraintManager(Set<Station> aStations)
+	public IConstraintManager getDACConstraintManager(IStationManager aStationManager)
 	{
 		Logger log = LoggerFactory.getLogger(RepackingDataParameters.class);
 		log.info("Constraint a constraint manager for the given stations...");
-		return new DACConstraintManager(aStations,ConstraintFilename);
+		return new DACConstraintManager(aStationManager,ConstraintFilename);
 	}
 	
 
