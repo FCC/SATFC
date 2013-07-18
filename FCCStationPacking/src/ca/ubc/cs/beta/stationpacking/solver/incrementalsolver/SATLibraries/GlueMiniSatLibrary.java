@@ -98,10 +98,17 @@ public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 		}
 	
     	public GlueMiniSatLibrary(String aLibraryPath){
-    		fLibraryPath = aLibraryPath;
-    		fGMSsolver = (GMSLibrary) Native.loadLibrary(fLibraryPath, GMSLibrary.class);
-    		fSolverPointer = fGMSsolver.createSolver();
-    		runBasicTests(); //Prints the output of basic tests to stdout; used for debugging
+    		try
+    		{
+	    		fLibraryPath = aLibraryPath;
+	    		fGMSsolver = (GMSLibrary) Native.loadLibrary(fLibraryPath, GMSLibrary.class);
+	    		fSolverPointer = fGMSsolver.createSolver();
+	    		runBasicTests(); //Prints the output of basic tests to stdout; used for debugging
+    		}
+    		catch(Exception e)
+    		{
+    			throw new IllegalArgumentException("Could not create a glueminisat library from "+aLibraryPath+" ("+e.getMessage()+").");
+    		}
     	}
 		 
 		public SATResult solve(Clause aAssumptions){
