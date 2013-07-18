@@ -22,39 +22,7 @@ public class InstanceGenerationExecutor {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		
-		
-		String[] aPaxosTargetArgs = {
-				"-EXPERIMENT_NAME",
-				"InstanceGenerationTest",
-				"-STATION_POPULATIONS_FILE",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/station-pops.csv",
-				"-EXPERIMENT_DIR",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Results/TestExperiment",
-				"-DOMAINS_FILE",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/NewDACData/Domain-041813.csv",
-				"-CONSTRAINTS_FILE",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/NewDACData/Interferences-041813.csv",
-				"-CNF_DIR",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/CNFs",
-				"-SOLVER",
-				"tunedclasp",
-				"--execDir",
-				"SATsolvers",
-				"--algoExec",
-				"python solverwrapper.py",
-				"--cutoffTime",
-				"1800",
-				"--cores",
-				"6",
-				"-CUTOFF",
-				"1800",
-				"-PACKING_CHANNELS",
-				"14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30",
-				};
-		
-		args = aPaxosTargetArgs;
-		
+
 		//Parse the command line arguments in a parameter object.
 		InstanceGenerationParameters aInstanceGenerationParameters = new InstanceGenerationParameters();
 		JCommander aParameterParser = JCommanderHelper.getJCommander(aInstanceGenerationParameters, aInstanceGenerationParameters.SolverParameters.AvailableTAEOptions);
