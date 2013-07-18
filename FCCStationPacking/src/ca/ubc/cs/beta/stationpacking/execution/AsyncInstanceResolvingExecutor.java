@@ -26,38 +26,6 @@ public class AsyncInstanceResolvingExecutor {
 	 */
 	public static void main(String[] args) {
 		
-		
-		String[] aPaxosTargetArgs = {
-				"-EXPERIMENT_NAME",
-				"ResolvingInstances",
-				"-INSTANCE_FILE",
-				"/ubc/cs/home/a/afrechet/arrow-space/downloads/FC_compare/ResolveInstances.csv",
-				"-EXPERIMENT_DIR",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Results/Resolving",
-				"-DOMAINS_FILE",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/NewDACData/Domain-041813.csv",
-				"-CONSTRAINTS_FILE",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/NewDACData/Interferences-041813.csv",
-				"-CNF_DIR",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/CNFs",
-				"-SOLVER",
-				"tunedclasp",
-				"--execDir",
-				"/ubc/cs/home/a/afrechet/arrow-space/git/fcc-station-packing/FCCStationPacking/SATsolvers",
-				"--algoExec",
-				"python solverwrapper.py",
-				"--cutoffTime",
-				"1800",
-				"-CUTOFF",
-				"1800",
-				"--tae",
-				"MYSQLDB",
-				"--mysqldbtae-pool",
-				"resolving_july"
-				};
-		
-		args = aPaxosTargetArgs;
-		
 		//Parse the command line arguments in a parameter object.
 		AsyncResolvingParameters aInstanceResolvingParameters = new AsyncResolvingParameters();
 		JCommander aParameterParser = JCommanderHelper.getJCommander(aInstanceResolvingParameters, aInstanceResolvingParameters.SolverParameters.AvailableTAEOptions);
