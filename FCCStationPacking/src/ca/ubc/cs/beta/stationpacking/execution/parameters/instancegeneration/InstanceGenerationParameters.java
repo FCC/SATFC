@@ -20,9 +20,11 @@ import com.beust.jcommander.ParametersDelegate;
 
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
+import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.parser.ReportParser;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.repackingdata.RepackingDataParameters;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.TAESolverParameters;
 import ca.ubc.cs.beta.stationpacking.experiment.InstanceGeneration;
 import ca.ubc.cs.beta.stationpacking.experiment.InversePopulationStationIterator;
@@ -134,7 +136,7 @@ public class InstanceGenerationParameters extends AbstractOptions {
 	
 		HashSet<Integer> aStartingStationIDs = getStartingStationsIDs();
 		
-		IStationManager aStationManager = SolverParameters.RepackingDataParameters.getDACStationManager();
+		IStationManager aStationManager = RepackingDataParameters.getDACStationManager();
 		
 		HashSet<Station> aToConsiderStations = new HashSet<Station>();
 		
@@ -159,7 +161,7 @@ public class InstanceGenerationParameters extends AbstractOptions {
 		
 		HashSet<Integer> aStartingStationIDs = getStartingStationsIDs();
 		
-		Set<Station> aStations = SolverParameters.RepackingDataParameters.getDACStationManager().getStations();
+		Set<Station> aStations = RepackingDataParameters.getDACStationManager().getStations();
 		
 		HashSet<Station> aStartingStations = new HashSet<Station>();
 		
@@ -204,6 +206,10 @@ public class InstanceGenerationParameters extends AbstractOptions {
 	@ParametersDelegate
 	public TAESolverParameters SolverParameters = new TAESolverParameters();
 	
+	//(Global) Data parameters
+	@ParametersDelegate
+	public RepackingDataParameters RepackingDataParameters = new RepackingDataParameters();
+	
 	public IExperimentReporter getExperimentReporter()
 	{
 		Logger log = LoggerFactory.getLogger(InstanceGenerationParameters.class);
@@ -215,6 +221,10 @@ public class InstanceGenerationParameters extends AbstractOptions {
 	{
 		Logger log = LoggerFactory.getLogger(InstanceGenerationParameters.class);
 		log.info("Getting the instance generation experiment...");
-		return new InstanceGeneration(SolverParameters.getSolver(), getExperimentReporter());
+		
+		IStationManager aStationManager = RepackingDataParameters.getDACStationManager();
+		IConstraintManager aConstraintManager = RepackingDataParameters.getDACConstraintManager(aStationManager); 
+		
+		return new InstanceGeneration(SolverParameters.getSolver(aStationManager,aConstraintManager), getExperimentReporter());
 	}
 }

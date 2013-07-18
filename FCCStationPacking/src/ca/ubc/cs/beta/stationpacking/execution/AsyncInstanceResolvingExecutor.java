@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 import ca.ubc.cs.beta.aclib.misc.jcommander.JCommanderHelper;
 import ca.ubc.cs.beta.aclib.misc.options.UsageSection;
 import ca.ubc.cs.beta.aclib.options.ConfigToLaTeX;
+import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
+import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.asyncresolving.AsyncResolvingParameters;
 import ca.ubc.cs.beta.stationpacking.solver.reporters.AsynchronousLocalExperimentReporter;
@@ -58,7 +60,9 @@ public class AsyncInstanceResolvingExecutor {
 			{
 				try 
 				{
-					aSolver = aInstanceResolvingParameters.SolverParameters.getSolver();
+					IStationManager aStationManager = aInstanceResolvingParameters.RepackingDataParameters.getDACStationManager();
+					IConstraintManager aConstraintManager = aInstanceResolvingParameters.RepackingDataParameters.getDACConstraintManager(aStationManager); 
+					aSolver = aInstanceResolvingParameters.SolverParameters.getSolver(aStationManager,aConstraintManager);
 					
 					log.info("Submitting the instances...");
 					
