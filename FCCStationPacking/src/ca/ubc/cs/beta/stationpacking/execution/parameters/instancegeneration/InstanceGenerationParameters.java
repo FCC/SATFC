@@ -20,6 +20,7 @@ import com.beust.jcommander.ParametersDelegate;
 
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
+import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.parser.ReportParser;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.TAESolverParameters;
@@ -86,9 +87,12 @@ public class InstanceGenerationParameters extends AbstractOptions {
 	
 	@Parameter(names = "-STATION_POPULATIONS_FILE", description = "File containing the list of populations.",required =true)
 	private String fStationPopFile;
-	private HashMap<Integer,Integer> getStationPopulationMap()
+	private HashMap<Station,Integer> getStationPopulationMap(IStationManager aStationManager)
 	{
-		HashMap<Integer,Integer> aStationPopulationMap = new HashMap<Integer,Integer>();
+		HashMap<Station,Integer> aStationPopulationMap = new HashMap<Station,Integer>();
+		
+		Logger log = LoggerFactory.getLogger(InstanceGenerationParameters.class);
+		log.info("Assigning populations to stations...");
 		
 		try 
 		{
@@ -101,8 +105,18 @@ public class InstanceGenerationParameters extends AbstractOptions {
 			{
 				Integer aStationID = Integer.valueOf(aLine[0]);
 				Integer aPopulation = Integer.valueOf(aLine[1]);
+				try
+				{
+					Station aStation = aStationManager.getStationfromID(aStationID);
+					aStationPopulationMap.put(aStation, aPopulation);
+					
+				}
+				catch(IllegalArgumentException e)
+				{
+					log.debug("Couldn't assign population to station with ID "+aStationID+" ("+e.getMessage()+").");
+					continue;
+				}
 				
-				aStationPopulationMap.put(aStationID, aPopulation);
 			}
 			
 			return aStationPopulationMap;
@@ -111,42 +125,31 @@ public class InstanceGenerationParameters extends AbstractOptions {
 		{
 			throw new IllegalArgumentException("Could not read populations from station population file "+fStationPopFile+" "+e.getMessage());
 		}
-		
-		
 	}
 	
 	public Iterator<Station> getStationIterator()
 	{
-		
 		Logger log = LoggerFactory.getLogger(InstanceGenerationParameters.class);
 		log.info("Getting the station iterator...");
 	
 		HashSet<Integer> aStartingStationIDs = getStartingStationsIDs();
 		
-		Set<Station> aStations = SolverParameters.RepackingDataParameters.getDACStationManager().getStations();
+		IStationManager aStationManager = SolverParameters.RepackingDataParameters.getDACStationManager();
 		
 		HashSet<Station> aToConsiderStations = new HashSet<Station>();
 		
-		HashMap<Integer,Integer> aStationPopulations = getStationPopulationMap();
-		
-		for(Station aStation : aStations)
+		for(Station aStation : aStationManager.getStations())
 		{
 			if(!aStartingStationIDs.contains(aStation.getID()))
 			{
-				if(aStationPopulations.containsKey(aStation.getID()))
-				{
-					aStation.setPop(aStationPopulations.get(aStation.getID()));
-				}
-				else
-				{
-					log.warn("Unavailable required population for station {} from station population file {}. Assigning zero.", aStation.getID(),fStationPopFile);
-					aStation.setPop(0);
-				}
 				aToConsiderStations.add(aStation);
 			}
 		}
 		
-		return new InversePopulationStationIterator(aToConsiderStations, Seed);
+		
+		HashMap<Station,Integer> aStationPopulations = getStationPopulationMap(aStationManager);
+		
+		return new InversePopulationStationIterator(aToConsiderStations,aStationPopulations, Seed);
 	}
 	
 	public HashSet<Station> getStartingStations()

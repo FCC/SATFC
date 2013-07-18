@@ -41,12 +41,14 @@ public class InstanceGeneration {
 	**/
 	public void run(Set<Station> aStartingStations, Iterator<Station> aStationIterator, Set<Integer> aChannelRange,double aCutoff, long aSeed){
 		StationPackingInstance aInstance = new StationPackingInstance(aStartingStations,aChannelRange);
+		int i = 0;
 		while(aStationIterator.hasNext()) {
+			log.info("Iteration "+i);
+			i++;
 			Station aStation = aStationIterator.next();
 			log.info("Trying to add {} to current set.",aStation);
 			aInstance.addStation(aStation);
 			try {
-				log.info("Solving instance of size {}.",aInstance.getNumberofStations());
 				SolverResult aRunResult = fSolver.solve(aInstance,aCutoff,aSeed);
 				log.info("Result: {}",aRunResult);
 				fExperimentReporter.report(aInstance, aRunResult);
