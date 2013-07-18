@@ -16,6 +16,7 @@ import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.repackingdata.RepackingDataParameters;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.AsyncTAESolverParameters;
 import ca.ubc.cs.beta.stationpacking.solver.reporters.AsynchronousLocalExperimentReporter;
 
@@ -39,6 +40,10 @@ public class AsyncResolvingParameters extends AbstractOptions {
 	@Parameter(names = "-SEED", description = "(Random) seed given to the feasibility checker.")
 	public long Seed = 1;
 	
+	//(Global) Data parameters
+	@ParametersDelegate
+	public RepackingDataParameters RepackingDataParameters = new RepackingDataParameters();
+	
 	//Solver parameters
 	@ParametersDelegate
 	public AsyncTAESolverParameters SolverParameters = new AsyncTAESolverParameters();
@@ -57,7 +62,7 @@ public class AsyncResolvingParameters extends AbstractOptions {
 		
 		ArrayList<StationPackingInstance> aInstances = new ArrayList<StationPackingInstance>();
 		
-		IStationManager aStationManager = SolverParameters.RepackingDataParameters.getDACStationManager();
+		IStationManager aStationManager = RepackingDataParameters.getDACStationManager();
 		
 		try {
 			CSVReader aReader = new CSVReader(new FileReader(InstanceFile));

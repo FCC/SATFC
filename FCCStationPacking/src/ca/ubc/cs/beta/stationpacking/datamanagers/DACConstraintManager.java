@@ -37,7 +37,9 @@ public class DACConstraintManager implements IConstraintManager{
 	static final Integer LVHFmin = 2, LVHFmax = 6, UVHFmin=7, UVHFmax = 13, UHFmin = 14, UHFmax = 51;
 	Set<Integer> LVHFChannels = new HashSet<Integer>(), UVHFChannels = new HashSet<Integer>(), UHFChannels = new HashSet<Integer>();
 	
-	public DACConstraintManager(Set<Station> aStations, String aPairwiseConstraintsFilename){	
+	public DACConstraintManager(IStationManager aStationManager, String aPairwiseConstraintsFilename){	
+		
+		Set<Station> aStations = aStationManager.getStations();
 		
 		LVHFChannels = new HashSet<Integer>();
 		for(int i = LVHFmin; i<= LVHFmax; i++) LVHFChannels.add(i);

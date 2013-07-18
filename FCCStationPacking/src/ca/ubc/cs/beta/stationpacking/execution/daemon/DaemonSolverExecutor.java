@@ -13,6 +13,7 @@ import ca.ubc.cs.beta.aclib.misc.options.UsageSection;
 import ca.ubc.cs.beta.aclib.options.ConfigToLaTeX;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.server.SolverServer;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.ExecutableSolverParameters;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.TAESolverParameters;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 
@@ -32,8 +33,6 @@ public class DaemonSolverExecutor {
 		 */
 		
 		String[] aPaxosTargetArgs = {
-				"-STATIONS_FILE",
-				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/stations2.csv",
 				"-DOMAINS_FILE",
 				"/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingExperimentDir/Data/NewDACData/Domain-041813.csv",
 				"-CONSTRAINTS_FILE",
@@ -63,15 +62,15 @@ public class DaemonSolverExecutor {
 		args = aPaxosTargetArgs;
 		
 		//Parse the command line arguments in a parameter object.
-		TAESolverParameters aExecutableSolverParameters = new TAESolverParameters();
-		JCommander aParameterParser = JCommanderHelper.getJCommander(aExecutableSolverParameters, aExecutableSolverParameters.AvailableTAEOptions);
+		ExecutableSolverParameters aExecutableSolverParameters = new ExecutableSolverParameters();
+		JCommander aParameterParser = JCommanderHelper.getJCommander(aExecutableSolverParameters, aExecutableSolverParameters.SolverParameters.AvailableTAEOptions);
 		try
 		{
 			aParameterParser.parse(args);
 		}
 		catch (ParameterException aParameterException)
 		{
-			List<UsageSection> sections = ConfigToLaTeX.getParameters(aExecutableSolverParameters, aExecutableSolverParameters.AvailableTAEOptions);
+			List<UsageSection> sections = ConfigToLaTeX.getParameters(aExecutableSolverParameters, aExecutableSolverParameters.SolverParameters.AvailableTAEOptions);
 			
 			boolean showHiddenParameters = false;
 			
