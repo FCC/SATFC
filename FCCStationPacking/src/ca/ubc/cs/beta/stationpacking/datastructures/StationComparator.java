@@ -12,7 +12,7 @@ public class StationComparator implements Comparator<Station> {
 	
 	@Override
 	public int compare(Station o1, Station o2) {
-		return Integer.compare(o1.getID(),o2.getID());
+		return Integer.valueOf(o1.getID()).compareTo(Integer.valueOf(o2.getID()));
 	}
 
 }
