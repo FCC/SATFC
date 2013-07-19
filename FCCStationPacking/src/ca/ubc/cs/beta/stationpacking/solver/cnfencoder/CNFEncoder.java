@@ -30,6 +30,7 @@ public class CNFEncoder implements ICNFEncoder {
 	Integer fMaxChannel = 100;
 	
 	public CNFEncoder(Set<Station> aStations){
+		
 		//Set<Station> aStations = aInstance.getStations();
 		//Set<Integer> aChannels = aInstance.getChannels();
 		Set<Integer> aSingleVar = new HashSet<Integer>();
