@@ -118,13 +118,12 @@ public class IncrementalSolverExecutor {
             try
             {
 
-                IStationManager aStationManager = ataeParams
-                        .RepackingDataParameters.getDACStationManager();
+                IStationManager aStationManager = aExecParams.RepackingDataParameters.getDACStationManager();
 
                 Set<Station> aStations = aStationManager.getStations();
 
-                IConstraintManager iCM = ataeParams
-                        .RepackingDataParameters.getDACConstraintManager(aStations);
+                IConstraintManager iCM = aExecParams
+                        .RepackingDataParameters.getDACConstraintManager(aStationManager);
 
                 log.info("Creating CNF encoder...");
                 ICNFEncoder aCNFEncoder = new CNFEncoder(aStations);

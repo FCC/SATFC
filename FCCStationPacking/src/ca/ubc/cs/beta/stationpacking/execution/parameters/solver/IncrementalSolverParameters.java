@@ -1,8 +1,7 @@
 package ca.ubc.cs.beta.stationpacking.execution.parameters.solver;
 
-<<<<<<< HEAD
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
-=======
+
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,27 +14,24 @@ import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.IncrementalSolver;
 import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries.GlueMiniSatLibrary;
 
->>>>>>> bb62b121321ea6a18ddba11d5b59dbaf2e930cc2
+
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
-<<<<<<< HEAD
-public class IncrementalSolverParameters extends AbstractOptions {
 
+public class IncrementalSolverParameters extends AbstractOptions {
 
     //ExecutableSolver parameters
     @ParametersDelegate
     public ExecutableSolverParameters ExecutableSolverParameters = new ExecutableSolverParameters();
 
+
     @Parameter(names = "-LIBRARY", description = "Path to incremental SAT library.")
-=======
-public class IncrementalSolverParameters implements ISolverParameters {
-	
-	
-	@Parameter(names = "-LIBRARY", description = "Path to incremental SAT library.")
->>>>>>> bb62b121321ea6a18ddba11d5b59dbaf2e930cc2
 	private String fLibraryPath;
-	
+
+    public String getIncrementalLibraryLocation(){
+          return fLibraryPath;
+    }
 	
 	public ISolver getSolver(IStationManager aStationManager, IConstraintManager aConstraintManager)
 	{
