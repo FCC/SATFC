@@ -26,6 +26,7 @@ public class SingleInstanceStatelessSolverExecutor {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+<<<<<<< HEAD
 		
 		
 		String[] aPaxosTargetArgs = {
@@ -70,6 +71,9 @@ public class SingleInstanceStatelessSolverExecutor {
 				};
 		
 		args = aPaxosTargetArgs;
+=======
+
+>>>>>>> bb62b121321ea6a18ddba11d5b59dbaf2e930cc2
 		ISolver aSolver = null;
 		try
 		{
@@ -111,7 +115,10 @@ public class SingleInstanceStatelessSolverExecutor {
 				}
 		}
 		finally{
-			aSolver.notifyShutdown();
+			if(aSolver!=null)
+			{
+				aSolver.notifyShutdown();
+			}
 		}
 		
 		

@@ -8,9 +8,11 @@ import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
+import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.repackingdata.RepackingDataParameters;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 
 import com.beust.jcommander.ParametersDelegate;
@@ -31,6 +33,10 @@ public class ExecutableSolverParameters extends AbstractOptions {
 	@ParametersDelegate
 	public InstanceParameters ProblemInstanceParameters = new InstanceParameters();
 
+	//(Global) Data parameters
+	@ParametersDelegate
+	public RepackingDataParameters RepackingDataParameters = new RepackingDataParameters();
+	
 	public StationPackingInstance getInstance()
 	{
 		Logger log = LoggerFactory.getLogger(ExecutableSolverParameters.class);
@@ -38,7 +44,7 @@ public class ExecutableSolverParameters extends AbstractOptions {
 		
 		Set<Integer> aPackingChannels = ProblemInstanceParameters.getPackingChannels();
 		
-		IStationManager aStationManager = SolverParameters.RepackingDataParameters.getDACStationManager();
+		IStationManager aStationManager = RepackingDataParameters.getDACStationManager();
 		Set<Integer> aStationIDs = ProblemInstanceParameters.getPackingStationIDs();
 		
 		Set<Station> aPackingStations = new HashSet<Station>();
@@ -51,12 +57,15 @@ public class ExecutableSolverParameters extends AbstractOptions {
 		return new StationPackingInstance(aPackingStations,aPackingChannels);	
 	}
 	
-	public ISolver getSolver() throws Exception
+	public ISolver getSolver()
 	{
 		Logger log = LoggerFactory.getLogger(ExecutableSolverParameters.class);
 		log.info("Getting solver...");
 		
-		return SolverParameters.getSolver();
+		IStationManager aStationManager = RepackingDataParameters.getDACStationManager();
+		IConstraintManager aConstraintManager = RepackingDataParameters.getDACConstraintManager(aStationManager);
+		
+		return SolverParameters.getSolver(aStationManager,aConstraintManager);
 	}
 	
 

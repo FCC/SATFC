@@ -2,7 +2,6 @@ package ca.ubc.cs.beta.stationpacking.execution.parameters.solver;
 
 import java.io.File;
 import java.util.Map;
-import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,15 +13,13 @@ import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluat
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
-import ca.ubc.cs.beta.stationpacking.datastructures.Station;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.datamanagement.DataManagementParameters;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.validator.ImplementedSolverParameterValidator;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.repackingdata.RepackingDataParameters;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.cnfwriter.CNFStringWriter;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.TAESolver;
+import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.HybridCNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.ConstraintGrouper;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponentGrouper;
@@ -32,18 +29,10 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 @UsageTextField(title="FCC Station Packing Packing ACLib's TAE Solver Options",description="Parameters defining a TAE based feasibility checker.")
-public class TAESolverParameters extends AbstractOptions {
+public class TAESolverParameters extends AbstractOptions implements ISolverParameters{
 	
 	/*DON'T MAKE THIS A PARAMETER.*/
 	public final Map<String,AbstractOptions> AvailableTAEOptions = TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators();
-	
-	//(Global) Data parameters
-	@ParametersDelegate
-	public RepackingDataParameters RepackingDataParameters = new RepackingDataParameters();
-	
-	//Data management parameters
-	@ParametersDelegate
-	public DataManagementParameters DataManagementParameters = new DataManagementParameters();
 	
 	@ParametersDelegate
 	public AlgorithmExecutionOptions AlgorithmExecutionOptions = new AlgorithmExecutionOptions();
@@ -51,31 +40,26 @@ public class TAESolverParameters extends AbstractOptions {
 	@Parameter(names = "-SOLVER", description = "SAT solver to use (from the implemented list of SAT solvers - can be circumvented by fully defining a valid TAE).", required=true, validateWith = ImplementedSolverParameterValidator.class)
 	private String Solver;
 	
-	public ISolver getSolver()
+	@Parameter(names = "-CNF_DIR", description = "Directory location where to write CNFs. Will be created if inexistant.",required=true)
+	public String CNFDirectory;
+	
+	@Parameter(names = "-CNFLOOKUP_OUTPUT_FILE", description = "Name of the file to store CNF results (the file is saved in the CNF directory).")
+	public String CNFOutputName = "CNFOutput";
+	
+	@Override
+	public ISolver getSolver(IStationManager aStationManager, IConstraintManager aConstraintManager)
 	{
+		Logger log = LoggerFactory.getLogger(TAESolverParameters.class);
+		
 		AlgorithmExecutionOptions.paramFileDelegate.paramFile = AlgorithmExecutionOptions.algoExecDir+File.separatorChar+"sw_parameterspaces"+File.separatorChar+"sw_"+Solver+".txt";
 		//Ugly parameter config extraction thanks to Steve's programming.
 		TargetAlgorithmEvaluator aTAE = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(AlgorithmExecutionOptions.taeOpts, AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null), false, AvailableTAEOptions);
 		
-		return getTAESolver(aTAE);
-	}
-
-	
-	private TAESolver getTAESolver(TargetAlgorithmEvaluator aTAE)
-	{
-		Logger log = LoggerFactory.getLogger(TAESolverParameters.class);
-	
-		
-		IStationManager aStationManager = RepackingDataParameters.getDACStationManager();
-	
-		Set<Station> aStations = aStationManager.getStations();
-		IConstraintManager aConstraintManager = RepackingDataParameters.getDACConstraintManager(aStations);
-		
 		log.info("Creating CNF encoder...");
-		ICNFEncoder aCNFEncoder = new CNFEncoder(aStations);
+		ICNFEncoder aCNFEncoder = new CNFEncoder(aStationManager.getStations());
 		
 		log.info("Creating CNF lookup...");
-		ICNFResultLookup aCNFLookup = DataManagementParameters.getHybridCNFResultLookup();
+		ICNFResultLookup aCNFLookup = new HybridCNFResultLookup(CNFDirectory, CNFOutputName);
 		
 		log.info("Creating constraint grouper...");
 		IComponentGrouper aGrouper = new ConstraintGrouper();
@@ -85,6 +69,7 @@ public class TAESolverParameters extends AbstractOptions {
 		
 		return aSolver;
 	}
+
 	
 
 }
