@@ -43,6 +43,9 @@ public class TAESolverParameters extends AbstractOptions implements ISolverParam
 	@Parameter(names = "-CNF_DIR", description = "Directory location where to write CNFs. Will be created if inexistant.",required=true)
 	public String CNFDirectory;
 	
+	@Parameter(names = "-KEEP_CNF", description = "True if and only if the CNF files must be preserved.")
+	public boolean KeepCNF = false;
+	
 	@Parameter(names = "-CNFLOOKUP_OUTPUT_FILE", description = "Name of the file to store CNF results (the file is saved in the CNF directory).")
 	public String CNFOutputName = "CNFOutput";
 	
@@ -65,7 +68,7 @@ public class TAESolverParameters extends AbstractOptions implements ISolverParam
 		IComponentGrouper aGrouper = new ConstraintGrouper();
 		
 		log.info("Creating solver...");
-		TAESolver aSolver = new TAESolver(aConstraintManager, aCNFEncoder, aCNFLookup, aGrouper, new CNFStringWriter(), aTAE, AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null));
+		TAESolver aSolver = new TAESolver(aConstraintManager, aCNFEncoder, aCNFLookup, aGrouper, new CNFStringWriter(), aTAE, AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null),KeepCNF);
 		
 		return aSolver;
 	}

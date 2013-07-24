@@ -7,8 +7,8 @@ import os
 import tempfile
 import time
 
-version = '0.9.2'
-date = 'June 2013'
+version = '0.9.3'
+date = 'July 2013'
 """
 SAT-based Feasibility checker for FCC's station repacking problem.
 Wrapper around the more parametrized java version of the feasibility checker
@@ -281,7 +281,8 @@ else:
 print 'Writing result to file '+str(answer_filename)+'...'
 #print ''
 
-run_information.append('Total time is '+str(time.time()-start_time)+' seconds with SATFC v'+version+' using '+solver+'.')
+run_information.append('SATFC v'+version+' using '+solver+'.')
+run_information.append('Total time taken '+str(time.time()-start_time)+' seconds.')
 run_information.append('Total time spent SAT solving is '+str(runtime)+' seconds.')
 
 answer_file = open(answer_filename,'w')
