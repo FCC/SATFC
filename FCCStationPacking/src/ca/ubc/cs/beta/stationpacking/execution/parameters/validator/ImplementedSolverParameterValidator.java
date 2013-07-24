@@ -8,7 +8,7 @@ import com.beust.jcommander.IParameterValidator;
 import com.beust.jcommander.ParameterException;
 
 public class ImplementedSolverParameterValidator implements IParameterValidator {
-	private Set<String> fImplementedSolvers = new HashSet<String>(Arrays.asList("picosat","clasp","plingeling","tunedclasp","glueminisat-incremental","glueminisat"));
+	private Set<String> fImplementedSolvers = new HashSet<String>(Arrays.asList("picosat","clasp","plingeling","tunedclasp","glueminisat"));
 	
 	@Override
 	public void validate(String name, String value)

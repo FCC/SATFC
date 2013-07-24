@@ -18,11 +18,4 @@ public interface ISolver {
 	 */
 	public void notifyShutdown();
 	
-	/*
-	public void flagState();
-	
-	public void resetToFlaggedState();
-	
-	public void addClause();
-	*/
 }
