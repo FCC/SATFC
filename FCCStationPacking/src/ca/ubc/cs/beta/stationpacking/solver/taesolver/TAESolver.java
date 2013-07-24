@@ -56,6 +56,8 @@ public class TAESolver implements ISolver{
 	
 	private IComponentGrouper fGrouper;
 	
+	private final boolean fKeepCNFs;
+	
 	/**
 	 * 
 	 * @param aConstraintManager - the manager in charge of constraints.
@@ -68,7 +70,7 @@ public class TAESolver implements ISolver{
 	 */
 	public TAESolver(IConstraintManager aConstraintManager, ICNFEncoder aCNFEncoder,
 			ICNFResultLookup aLookup, IComponentGrouper aGrouper, CNFStringWriter aStringWriter,
-			TargetAlgorithmEvaluator aTAE, AlgorithmExecutionConfig aTAEExecConfig) {
+			TargetAlgorithmEvaluator aTAE, AlgorithmExecutionConfig aTAEExecConfig, boolean aKeepCNFs) {
 		
 		fEncoder = aCNFEncoder;
 		fManager = aConstraintManager;
@@ -78,6 +80,8 @@ public class TAESolver implements ISolver{
 		
 		fParamConfigurationSpace  = aTAEExecConfig.getParamFile();
 		fTargetAlgorithmEvaluator = aTAE;
+		
+		fKeepCNFs = aKeepCNFs;
 	}
 
 
@@ -154,7 +158,8 @@ public class TAESolver implements ISolver{
 		
 		ArrayList<SolverResult> aComponentResults = new ArrayList<SolverResult>();
 		HashMap<RunConfig,StationPackingInstance> aToSolveInstances = new HashMap<RunConfig,StationPackingInstance>();
-
+		
+		HashSet<String> aCNFs = new HashSet<String>();
 		//Create the runs to execute.
 		for(Set<Station> aStationComponent : aInstanceGroups){
 			//Create the component group instance.
@@ -177,6 +182,7 @@ public class TAESolver implements ISolver{
 				//Not present, CNF must be solved.
 				//Name the instance
 				String aCNFFileName = fLookup.getCNFNameFor(aComponentInstance);
+				aCNFs.add(aCNFFileName);
 				
 				File aCNFFile = new File(aCNFFileName);
 				
@@ -299,6 +305,22 @@ public class TAESolver implements ISolver{
 		
 		log.info("Result : {}",aResult);
 		log.info("Total time taken "+(System.nanoTime()-aStartTime)*Math.pow(10, -9)+" seconds");
+		
+		log.info("Cleaning up.");
+		if(!fKeepCNFs)
+		{	
+			log.info("Deleting CNFs.");
+			for(String aCNFFileName : aCNFs)
+			{
+				File aCNFFile = new File(aCNFFileName);
+				
+				if(aCNFFile.exists())
+				{
+					aCNFFile.delete();
+				}
+			}
+		}
+		log.info("Done.");
 		
 		return aResult;
 
