@@ -47,7 +47,7 @@ public class TAESolverParameters extends AbstractOptions implements ISolverParam
 	public boolean KeepCNF = false;
 	
 	@Parameter(names = "-CNFLOOKUP_OUTPUT_FILE", description = "Name of the file to store CNF results (the file is saved in the CNF directory).")
-	public String CNFOutputName = "CNFOutput";
+	public String CNFOutputName = "ComponentInstanceResultsArchive.csv";
 	
 	@Override
 	public ISolver getSolver(IStationManager aStationManager, IConstraintManager aConstraintManager)

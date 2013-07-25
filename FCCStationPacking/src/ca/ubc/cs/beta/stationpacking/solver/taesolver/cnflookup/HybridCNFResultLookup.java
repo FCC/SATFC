@@ -6,6 +6,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,9 +31,11 @@ public class HybridCNFResultLookup implements ICNFResultLookup{
 	
 	private final String fOutputName;
 	private String fCNFDirectory;
-	private Map<String,SolverResult> fResultLookup = new HashMap<String,SolverResult>();
+	private Map<StationPackingInstance,SolverResult> fResultLookup = new HashMap<StationPackingInstance,SolverResult>();
 	
 	public HybridCNFResultLookup(String aCNFDirectory, String aOutputName){
+		
+		//TODO Load the CNF Result lookup if already present?
 		
 		fOutputName = aOutputName;
 		fCNFDirectory = aCNFDirectory;
@@ -69,7 +74,6 @@ public class HybridCNFResultLookup implements ICNFResultLookup{
 	//NA - returns true if the entry already existed
 	@Override
 	public boolean putSolverResult(StationPackingInstance aInstance, SolverResult aResult){
-		//System.out.println("\n\n\n testing \n\n\n");
 
 		if(hasSolverResult(aInstance))
 		{
@@ -82,7 +86,7 @@ public class HybridCNFResultLookup implements ICNFResultLookup{
 				}
 				else
 				{
-					fResultLookup.put(getCNFName(aInstance), aResult);
+					fResultLookup.put(aInstance, aResult);
 				}
 			}
 			catch (Exception e) {
@@ -92,13 +96,7 @@ public class HybridCNFResultLookup implements ICNFResultLookup{
 		}
 		else
 		{
-			fResultLookup.put(getCNFName(aInstance), aResult);
-			try{
-				String aOutputFilename = fCNFDirectory+File.separatorChar+fOutputName;
-				FileUtils.write(new File(aOutputFilename), getCNFName(aInstance)+".cnf,"+aResult+"\n",true);
-			} catch(Exception e){
-				e.printStackTrace();
-			}
+			fResultLookup.put(aInstance, aResult);
 
 			return false;
 		} 
@@ -106,10 +104,14 @@ public class HybridCNFResultLookup implements ICNFResultLookup{
 	
 	@Override
 	public void writeToFile() throws IOException{
+		
+		DateFormat aDateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+		Date aDate = new Date();
+		
 		String aOutputFilename = fCNFDirectory+File.separatorChar+fOutputName;
-		BufferedWriter aWriter = new BufferedWriter(new FileWriter(aOutputFilename));
-		for(Map.Entry<String, SolverResult> aEntry : fResultLookup.entrySet()){
-			aWriter.write(aEntry.getKey()+","+aEntry.getValue()+"\n");	
+		BufferedWriter aWriter = new BufferedWriter(new FileWriter(aOutputFilename,true));
+		for(Map.Entry<StationPackingInstance, SolverResult> aEntry : fResultLookup.entrySet()){
+			aWriter.write(aDateFormat.format(aDate)+","+aEntry.getKey().toString()+","+aEntry.getValue()+"\n");	
 		}
 		aWriter.close();
 	}
