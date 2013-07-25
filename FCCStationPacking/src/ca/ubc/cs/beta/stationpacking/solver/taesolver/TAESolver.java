@@ -1,9 +1,14 @@
 package ca.ubc.cs.beta.stationpacking.solver.taesolver;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -33,6 +38,7 @@ import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.cnfwriter.CNFStringWriter;
+import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.HybridCNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponentGrouper;
 
@@ -146,7 +152,6 @@ public class TAESolver implements ISolver{
 	 */
 	@Override
 	public SolverResult solve(StationPackingInstance aInstance, double aCutoff, long aSeed) throws Exception{
-		
 		long aStartTime = System.nanoTime();
 		
 		log.info("Solving instance of {}",aInstance.getInfo());
@@ -320,6 +325,9 @@ public class TAESolver implements ISolver{
 				}
 			}
 		}
+		log.info("Writing results to file.");
+		fLookup.writeToFile();
+		
 		log.info("Done.");
 		
 		return aResult;
