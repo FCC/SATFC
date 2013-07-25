@@ -1,6 +1,13 @@
 package ca.ubc.cs.beta.stationpacking.execution;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +19,7 @@ import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.ExecutableSolverParameters;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
+import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.HybridCNFResultLookup;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;
@@ -58,10 +66,21 @@ public class SingleInstanceStatelessSolverExecutor {
 					SolverResult aResult = aSolver.solve(aInstance, aExecutableSolverParameter.ProblemInstanceParameters.Cutoff, aExecutableSolverParameter.ProblemInstanceParameters.Seed);
 			
 					System.out.println("Result for feasibility checker: "+aResult.toParsableString());
-	
+					
+					
+					//Save the result of the single instance execution.
+					DateFormat aDateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+					Date aDate = new Date();
+					
+					String aOutputFilename = aExecutableSolverParameter.SolverParameters.CNFDirectory+File.separatorChar+"InstanceResultArchive.csv";
+					BufferedWriter aWriter = new BufferedWriter(new FileWriter(aOutputFilename,true));
+					aWriter.write(aDateFormat.format(aDate)+","+aInstance+","+aResult.toParsableString()+"\n");
+					aWriter.close();
+					
 				} 
 				catch (Exception e) 
 				{
+					log.warn("Caught an error during execution ({}).",e.getMessage());
 					e.printStackTrace();
 				}
 		}
