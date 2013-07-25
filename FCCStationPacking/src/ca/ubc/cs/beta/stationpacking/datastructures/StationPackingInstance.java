@@ -15,9 +15,7 @@ public class StationPackingInstance {
 	
 	private HashMap<Integer,Station> fStations = new HashMap<Integer,Station>();
 
-	
 	private final Set<Integer> fChannels;
-	//private final Set<Station> fStations = new HashSet<Station>(); 
 	
 	public StationPackingInstance(){
 		fChannels = new HashSet<Integer>();
@@ -86,6 +84,38 @@ public class StationPackingInstance {
 		return new StationPackingInstance(aInstanceStations, aInstanceChannels);
 	}
 
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result
+				+ ((fChannels == null) ? 0 : fChannels.hashCode());
+		result = prime * result
+				+ ((fStations == null) ? 0 : fStations.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		StationPackingInstance other = (StationPackingInstance) obj;
+		if (fChannels == null) {
+			if (other.fChannels != null)
+				return false;
+		} else if (!fChannels.equals(other.fChannels))
+			return false;
+		if (fStations == null) {
+			if (other.fStations != null)
+				return false;
+		} else if (!fStations.equals(other.fStations))
+			return false;
+		return true;
+	}
 	
 	public int getNumberofStations() {
 		return fStations.size();
