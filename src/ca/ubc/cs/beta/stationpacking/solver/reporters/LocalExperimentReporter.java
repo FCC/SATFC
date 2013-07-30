@@ -5,8 +5,8 @@ import java.io.IOException;
 
 import org.apache.commons.io.FileUtils;
 
-import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
+import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 
 public class LocalExperimentReporter implements IExperimentReporter{
 
