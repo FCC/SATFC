@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import ca.ubc.cs.beta.aclib.misc.jcommander.JCommanderHelper;
 import ca.ubc.cs.beta.aclib.misc.options.UsageSection;
 import ca.ubc.cs.beta.aclib.options.ConfigToLaTeX;
+import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.instancegeneration.InstanceGenerationParameters;
 import ca.ubc.cs.beta.stationpacking.experiment.InstanceGeneration;
 
@@ -25,14 +26,14 @@ public class InstanceGenerationExecutor {
 
 		//Parse the command line arguments in a parameter object.
 		InstanceGenerationParameters aInstanceGenerationParameters = new InstanceGenerationParameters();
-		JCommander aParameterParser = JCommanderHelper.getJCommander(aInstanceGenerationParameters, aInstanceGenerationParameters.SolverParameters.TAESolverParameters.AvailableTAEOptions);
+		JCommander aParameterParser = JCommanderHelper.getJCommander(aInstanceGenerationParameters, TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators());
 		try
 		{
 			aParameterParser.parse(args);
 		}
 		catch (ParameterException aParameterException)
 		{
-			List<UsageSection> sections = ConfigToLaTeX.getParameters(aInstanceGenerationParameters,aInstanceGenerationParameters.SolverParameters.TAESolverParameters.AvailableTAEOptions);
+			List<UsageSection> sections = ConfigToLaTeX.getParameters(aInstanceGenerationParameters, TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators());
 			
 			boolean showHiddenParameters = false;
 			
