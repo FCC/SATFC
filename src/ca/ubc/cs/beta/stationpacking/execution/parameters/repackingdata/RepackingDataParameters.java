@@ -3,14 +3,14 @@ package ca.ubc.cs.beta.stationpacking.execution.parameters.repackingdata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.beust.jcommander.Parameter;
-
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.stationpacking.datamanagers.DACConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.DomainStationManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
+
+import com.beust.jcommander.Parameter;
 
 @UsageTextField(title="FCC Station Packing Packing Data Options",description="Global parameters required in any station packing problem.")
 public class RepackingDataParameters extends AbstractOptions{
