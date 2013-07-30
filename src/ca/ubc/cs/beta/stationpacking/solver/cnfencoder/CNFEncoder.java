@@ -12,8 +12,8 @@ import java.util.Set;
 
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
-import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
+import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 
 
 //NA - I use LinkedHashSet because I want to get a consistent ordering for debugging purposes

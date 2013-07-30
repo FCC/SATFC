@@ -22,13 +22,12 @@ import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstanceSeedPair;
 import ca.ubc.cs.beta.aclib.runconfig.RunConfig;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluator;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluatorCallback;
-
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
-import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
+import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.cnfwriter.CNFStringWriter;
 import ca.ubc.cs.beta.stationpacking.solver.reporters.IExperimentReporter;

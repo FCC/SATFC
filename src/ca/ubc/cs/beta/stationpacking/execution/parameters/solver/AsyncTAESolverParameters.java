@@ -6,6 +6,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ca.ubc.cs.beta.aclib.execconfig.AlgorithmExecutionOptions;
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluator;
@@ -22,7 +23,6 @@ import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.AsyncCachedCNFLo
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.ConstraintGrouper;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponentGrouper;
-import ca.ubc.cs.beta.aclib.execconfig.AlgorithmExecutionOptions;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;

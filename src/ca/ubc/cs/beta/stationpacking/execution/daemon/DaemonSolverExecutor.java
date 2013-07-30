@@ -1,11 +1,9 @@
 package ca.ubc.cs.beta.stationpacking.execution.daemon;
 
 import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.beust.jcommander.JCommander;
-import com.beust.jcommander.ParameterException;
 
 import ca.ubc.cs.beta.aclib.misc.jcommander.JCommanderHelper;
 import ca.ubc.cs.beta.aclib.misc.options.UsageSection;
@@ -14,6 +12,9 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.server.SolverServer;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.ExecutableSolverParameters;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
+
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.ParameterException;
 
 /**
  * Solver that listens for messages and executes corresponding commands. 
