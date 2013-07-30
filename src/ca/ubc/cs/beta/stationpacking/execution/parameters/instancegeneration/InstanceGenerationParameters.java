@@ -25,6 +25,7 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.parser.ReportParser;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.repackingdata.RepackingDataParameters;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.IncrementalSolverParameters;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.TAESolverParameters;
 import ca.ubc.cs.beta.stationpacking.experiment.InstanceGeneration;
 import ca.ubc.cs.beta.stationpacking.experiment.InversePopulationStationIterator;
@@ -211,8 +212,9 @@ public class InstanceGenerationParameters extends AbstractOptions {
 	public long Seed = 1;
 	
 	//Solver parameters
+	// change for solver parameters if not incremental // broken branching
 	@ParametersDelegate
-	public SolverParameters SolverParameters = new SolverParameters();
+	public IncrementalSolverParameters SolverParameters = new IncrementalSolverParameters();
 	
 	//(Global) Data parameters
 	@ParametersDelegate
