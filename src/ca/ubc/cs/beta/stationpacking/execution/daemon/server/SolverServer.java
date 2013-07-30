@@ -17,9 +17,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
-import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
+import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.client.ClientCommunicationMechanism;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.message.CommandMessage;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.message.CommandMessage.Command;

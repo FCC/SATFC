@@ -14,10 +14,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import au.com.bytecode.opencsv.CSVReader;
-
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
@@ -25,13 +21,14 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.parser.ReportParser;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.repackingdata.RepackingDataParameters;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.IncrementalSolverParameters;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.TAESolverParameters;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.SolverParameters;
 import ca.ubc.cs.beta.stationpacking.experiment.InstanceGeneration;
 import ca.ubc.cs.beta.stationpacking.experiment.InversePopulationStationIterator;
 import ca.ubc.cs.beta.stationpacking.solver.reporters.IExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.solver.reporters.LocalExperimentReporter;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.SolverParameters;
+
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 @UsageTextField(title="FCC Station Packing Instance Generation Options",description="Parameters required for an instance generation experiment.")
 public class InstanceGenerationParameters extends AbstractOptions {
@@ -212,9 +209,11 @@ public class InstanceGenerationParameters extends AbstractOptions {
 	public long Seed = 1;
 	
 	//Solver parameters
-	// change for solver parameters if not incremental // broken branching
+	// change for SolverParameters if not incremental // broken branching
+	// for incremental use IncrementalSolverParameters
 	@ParametersDelegate
-	public IncrementalSolverParameters SolverParameters = new IncrementalSolverParameters();
+	public SolverParameters SolverParameters = new SolverParameters(); // Normal
+	//public IncrementalSolverParameters SolverParameters = new IncrementalSolverParameters(); // Incremental
 	
 	//(Global) Data parameters
 	@ParametersDelegate

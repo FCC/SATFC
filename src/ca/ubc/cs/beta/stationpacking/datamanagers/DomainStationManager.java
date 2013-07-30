@@ -6,7 +6,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 import au.com.bytecode.opencsv.CSVReader;
-
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 
 public class DomainStationManager implements IStationManager{
