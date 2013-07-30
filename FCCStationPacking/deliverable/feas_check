@@ -7,7 +7,7 @@ import os
 import tempfile
 import time
 
-version = '0.9.3'
+version = '0.9.4'
 date = 'July 2013'
 """
 SAT-based Feasibility checker for FCC's station repacking problem.
