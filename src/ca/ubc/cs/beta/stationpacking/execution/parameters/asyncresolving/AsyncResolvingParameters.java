@@ -6,12 +6,7 @@ import java.util.ArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 import au.com.bytecode.opencsv.CSVReader;
-
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
@@ -19,6 +14,9 @@ import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.repackingdata.RepackingDataParameters;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.AsyncTAESolverParameters;
 import ca.ubc.cs.beta.stationpacking.solver.reporters.AsynchronousLocalExperimentReporter;
+
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 @UsageTextField(title="FCC Station Packing Instance Generation Options",description="Parameters required for an instance generation experiment.")
 public class AsyncResolvingParameters extends AbstractOptions {

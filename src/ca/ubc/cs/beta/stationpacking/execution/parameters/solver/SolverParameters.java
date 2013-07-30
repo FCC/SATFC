@@ -1,15 +1,15 @@
 package ca.ubc.cs.beta.stationpacking.execution.parameters.solver;
 
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParameterException;
-import com.beust.jcommander.ParametersDelegate;
-
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
+
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParameterException;
+import com.beust.jcommander.ParametersDelegate;
 
 /**
  * Parameter class to merge different types of solvers (TAE and Incremental).

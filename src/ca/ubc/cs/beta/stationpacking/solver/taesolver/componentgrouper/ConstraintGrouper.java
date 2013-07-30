@@ -8,8 +8,8 @@ import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 
 import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
-import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datastructures.Station;
+import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 
 public class ConstraintGrouper implements IComponentGrouper{
 	
