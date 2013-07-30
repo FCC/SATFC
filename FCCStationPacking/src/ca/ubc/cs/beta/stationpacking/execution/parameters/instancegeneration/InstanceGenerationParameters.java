@@ -30,6 +30,7 @@ import ca.ubc.cs.beta.stationpacking.experiment.InstanceGeneration;
 import ca.ubc.cs.beta.stationpacking.experiment.InversePopulationStationIterator;
 import ca.ubc.cs.beta.stationpacking.solver.reporters.IExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.solver.reporters.LocalExperimentReporter;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.SolverParameters;
 
 @UsageTextField(title="FCC Station Packing Instance Generation Options",description="Parameters required for an instance generation experiment.")
 public class InstanceGenerationParameters extends AbstractOptions {
@@ -99,29 +100,36 @@ public class InstanceGenerationParameters extends AbstractOptions {
 		try 
 		{
 			CSVReader aReader = new CSVReader(new FileReader(fStationPopFile));
-			//Skip header
-			aReader.readNext();
-			String[] aLine;
-			
-			while((aLine = aReader.readNext())!=null)
+			try
 			{
-				Integer aStationID = Integer.valueOf(aLine[0]);
-				Integer aPopulation = Integer.valueOf(aLine[1]);
-				try
+				//Skip header
+				aReader.readNext();
+				String[] aLine;
+				
+				while((aLine = aReader.readNext())!=null)
 				{
-					Station aStation = aStationManager.getStationfromID(aStationID);
-					aStationPopulationMap.put(aStation, aPopulation);
+					Integer aStationID = Integer.valueOf(aLine[0]);
+					Integer aPopulation = Integer.valueOf(aLine[1]);
+					try
+					{
+						Station aStation = aStationManager.getStationfromID(aStationID);
+						aStationPopulationMap.put(aStation, aPopulation);
+						
+					}
+					catch(IllegalArgumentException e)
+					{
+						log.debug("Couldn't assign population to station with ID "+aStationID+" ("+e.getMessage()+").");
+						continue;
+					}
 					
 				}
-				catch(IllegalArgumentException e)
-				{
-					log.debug("Couldn't assign population to station with ID "+aStationID+" ("+e.getMessage()+").");
-					continue;
-				}
 				
+				return aStationPopulationMap;
 			}
-			
-			return aStationPopulationMap;
+			finally
+			{
+				aReader.close();
+			}
 		} 
 		catch (IOException e) 
 		{
@@ -204,7 +212,7 @@ public class InstanceGenerationParameters extends AbstractOptions {
 	
 	//Solver parameters
 	@ParametersDelegate
-	public TAESolverParameters SolverParameters = new TAESolverParameters();
+	public SolverParameters SolverParameters = new SolverParameters();
 	
 	//(Global) Data parameters
 	@ParametersDelegate

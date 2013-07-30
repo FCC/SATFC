@@ -1,5 +1,6 @@
 package ca.ubc.cs.beta.stationpacking.execution.parameters.solver;
 
+import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 
 
@@ -16,15 +17,9 @@ import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries.GlueM
 
 
 import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
 
-
+@UsageTextField(title="FCC Station Packing Incremental Solver Options",description="Parameters defining an incremental SAT solver feasibility checker.")
 public class IncrementalSolverParameters extends AbstractOptions {
-
-    //ExecutableSolver parameters
-    @ParametersDelegate
-    public ExecutableSolverParameters ExecutableSolverParameters = new ExecutableSolverParameters();
-
 
     @Parameter(names = "-LIBRARY", description = "Path to incremental SAT library.")
 	private String fLibraryPath;
