@@ -1,7 +1,6 @@
 package ca.ubc.cs.beta.stationpacking.datamanagers;
 
-import java.io.*;
-
+import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,10 +10,8 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.ubc.cs.beta.stationpacking.datastructures.Station;
-
-
 import au.com.bytecode.opencsv.CSVReader;
+import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 
 /* NA - Code to read the new DAC file format
  * 
