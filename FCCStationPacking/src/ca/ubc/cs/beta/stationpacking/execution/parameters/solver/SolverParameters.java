@@ -16,7 +16,7 @@ import ca.ubc.cs.beta.stationpacking.solver.ISolver;
  * @author afrechet
  * TODO for future usage.
  */
-@UsageTextField(title="FCC Station Packing Packing Solver Options",description="Parameters defining a feasibility checker SAT solver.")
+@UsageTextField(title="FCC Station Packing Solver Options",description="Parameters defining a feasibility checker SAT solver.")
 public class SolverParameters extends AbstractOptions implements ISolverParameters{
 	
 	public static enum SolverChoice
@@ -24,14 +24,14 @@ public class SolverParameters extends AbstractOptions implements ISolverParamete
 		INCREMENTAL,TAE;
 	};
 
-	@Parameter(names = "--solver-type",description = "the type of solver that will be executed.", required=true)
+	@Parameter(names = "-SOLVER-TYPE",description = "the type of solver that will be executed.", required=true)
 	public SolverChoice SolverChoice;
 	
 	@ParametersDelegate
-	private TAESolverParameters TAESolverParameters = new TAESolverParameters();
+	public TAESolverParameters TAESolverParameters = new TAESolverParameters();
 	
 	@ParametersDelegate
-	private IncrementalSolverParameters IncrementalSolverParameters = new IncrementalSolverParameters();
+	public IncrementalSolverParameters IncrementalSolverParameters = new IncrementalSolverParameters();
 	
 	@Override
 	public ISolver getSolver(IStationManager aStationManager, IConstraintManager aConstraintManager)

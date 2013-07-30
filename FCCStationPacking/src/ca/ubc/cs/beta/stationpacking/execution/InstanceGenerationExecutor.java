@@ -25,14 +25,14 @@ public class InstanceGenerationExecutor {
 
 		//Parse the command line arguments in a parameter object.
 		InstanceGenerationParameters aInstanceGenerationParameters = new InstanceGenerationParameters();
-		JCommander aParameterParser = JCommanderHelper.getJCommander(aInstanceGenerationParameters, aInstanceGenerationParameters.SolverParameters.AvailableTAEOptions);
+		JCommander aParameterParser = JCommanderHelper.getJCommander(aInstanceGenerationParameters, aInstanceGenerationParameters.SolverParameters.TAESolverParameters.AvailableTAEOptions);
 		try
 		{
 			aParameterParser.parse(args);
 		}
 		catch (ParameterException aParameterException)
 		{
-			List<UsageSection> sections = ConfigToLaTeX.getParameters(aInstanceGenerationParameters,aInstanceGenerationParameters.SolverParameters.AvailableTAEOptions);
+			List<UsageSection> sections = ConfigToLaTeX.getParameters(aInstanceGenerationParameters,aInstanceGenerationParameters.SolverParameters.TAESolverParameters.AvailableTAEOptions);
 			
 			boolean showHiddenParameters = false;
 			
