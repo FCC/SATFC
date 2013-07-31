@@ -64,23 +64,21 @@ public class AsyncResolvingParameters extends AbstractOptions {
 		
 		try {
 			CSVReader aReader = new CSVReader(new FileReader(InstanceFile));
-			
-			String[] aLine;
-			
-			while((aLine = aReader.readNext())!=null)
-			{
-				String aInstanceString = aLine[0];
-				
-				StationPackingInstance aInstance = StationPackingInstance.valueOf(aInstanceString, aStationManager);
-				
-				aInstances.add(aInstance);
-				
+			try {
+				String[] aLine;
+				while((aLine = aReader.readNext())!=null) {
+					String aInstanceString = aLine[0];
+					StationPackingInstance aInstance = StationPackingInstance.valueOf(aInstanceString, aStationManager);
+					aInstances.add(aInstance);
+				}
 			}
-			
-		} catch (Exception e) {
-			throw new IllegalArgumentException("Couldn't read instances from "+InstanceFile+" ("+e.getMessage()+")");
+			finally {
+				aReader.close();
+			}
 		}
-		
+		catch (Exception e) {
+			throw new IllegalArgumentException("Couldn't read instances from "+InstanceFile+" ("+e.getMessage()+")");
+		} 
 		return aInstances;
 		
 	}
