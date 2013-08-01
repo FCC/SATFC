@@ -3,6 +3,8 @@ package ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
 import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
@@ -17,7 +19,7 @@ import com.sun.jna.Pointer;
  * this interface, there is a corresponding function (i.e. same signature) in the Solver.cc
  * file in the glueminisat-2.2.5/core/ folder. 
  * 
- * Author: narnosti
+ * Author: narnosti, gsauln
  */
 
 public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
@@ -87,14 +89,31 @@ public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 		   	/* Returns the value of the variable var in the last model.
 		   	 * Meaningless output if the last call to solve() returned false.
 		   	 */
-		   	public int value(Pointer solver, int var);
+		   	public boolean value(Pointer solver, int var);
 		   	
 		   	// Returns true if the solver is not in a conflicting state
 		   	public boolean okay(Pointer solver);
 
 		    // Other function that exists in Solver.cc but is not needed.
 		   	public boolean solveWithOneAssumption(Pointer solver, int var, boolean state);
-
+		   	
+		   	/**
+		   	 * Set the interrupt flag to true in the GlueMiniSAT solver.  It will then exit at the next check.
+		   	 * @param solver solver to set the flag for.
+		   	 */
+		   	public void interrupt(Pointer solver);
+		   	
+		   	/**
+		   	 * Clears the interrupt flag (set to false) of the GlueMiniSAT solver.
+		   	 * @param solver solver to clear the interrupt flag for.
+		   	 */
+		   	public void clearInterrupt(Pointer solver);
+		   	
+		   	/**
+		   	 * Return the interrupt flag state.
+		   	 * @param solver solver to return the interrupt flag state for.
+		   	 */
+		   	public boolean getInterruptState(Pointer solver);
 		}
 	
     	public GlueMiniSatLibrary(String aLibraryPath){
@@ -111,7 +130,7 @@ public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
     		}
     	}
 		 
-		public SATResult solve(Clause aAssumptions){
+		public SATResult solve(Clause aAssumptions, double aCutOff){
 			
 			//Create a pointer to a vector of assumptions corresponding to aAssumptions
 			Pointer vecAssumptions = fGMSsolver.createVecLit();
@@ -122,20 +141,44 @@ public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 				fGMSsolver.addLitToVec(vecAssumptions,getInternalVariable(aVar),false);
 			}
 			
-			
-			SATResult aResult;
-			if(fGMSsolver.solveWithAssumptions(fSolverPointer,vecAssumptions)){
-				aResult = SATResult.SAT;
-			} else {
-				aResult =  SATResult.UNSAT;
-			}
+			// Clears the interrupt state to make sure it wont stop at the beginning of the solve command
+			fGMSsolver.clearInterrupt(fSolverPointer);
+
+			// Launches a timer that will set the interrupt flag of the solve to true after aCutOff seconds.
+			Timer timer = new Timer();
+			timer.schedule(new TimerTask() {
 				
+				@Override
+				public void run() {
+					fGMSsolver.interrupt(fSolverPointer);
+				}
+			}, (long)(aCutOff*1000));
+			
+			// Start solving
+			boolean output = fGMSsolver.solveWithAssumptions(fSolverPointer,vecAssumptions);
+			timer.cancel();
+
+			// Set the correct SAT result
+			SATResult aResult;
+			if (fGMSsolver.getInterruptState(fSolverPointer))
+			{
+				aResult = SATResult.TIMEOUT;
+			}
+			else
+			{
+				if(output){
+					aResult = SATResult.SAT;
+				} else {
+					aResult =  SATResult.UNSAT;
+				}
+			}
+			
 			fGMSsolver.destroyVecLit(vecAssumptions);
 			return aResult;
 		}
 		
-		public SATResult solve(){
-			return solve(new Clause());
+		public SATResult solve(double aCutOff){
+			return solve(new Clause(), aCutOff);
 		}
 		
 		public boolean addClause(Clause aClause){
@@ -161,8 +204,10 @@ public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 					/* For some reason, when passing booleans from c to java there were problems.
 					 * By returning an int and then testing (b>0), these problems were resolved.
 					 */	
-					int b = fGMSsolver.value(fSolverPointer,i);
-					aAssignment.addLiteral(fInternalToExternal.get(i),(b>0));
+					//int b = fGMSsolver.value(fSolverPointer,i);
+					//aAssignment.addLiteral(fInternalToExternal.get(i),(b>0));
+					boolean b = fGMSsolver.value(fSolverPointer,i);
+					aAssignment.addLiteral(fInternalToExternal.get(i),b);
 				}
 			}
 			return aAssignment;
@@ -200,8 +245,8 @@ public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 		}
 		*/
 		
-		private void printResult(Clause aAssumptions){
-	        if(solve(aAssumptions)!=SATResult.SAT){
+		private void printResult(Clause aAssumptions, double aCutOff){
+	        if(solve(aAssumptions, aCutOff)!=SATResult.SAT){
 	            System.out.println("Solver result is UNSAT.");
 	        } else{
 	        	System.out.println("Solver result is SAT, with assignment: "+getAssignment());
@@ -220,15 +265,15 @@ public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 	        aClause.addLiteral(2,false);
 	        addClause(aClause);
 	        aClause = new Clause();
-	        printResult(aClause); 
+	        printResult(aClause, 1); 
 	        
 	        System.out.println("Testing trivial UNSAT instance...");
 	        aClause.addLiteral(1,true);
-	        printResult(aClause);
+	        printResult(aClause, 1);
 	        	        
 	        System.out.println("Testing trivial UNSAT instance...");
 	        addClause(aClause);
-	        printResult(new Clause());
+	        printResult(new Clause(), 1);
 	        clear();
 	        
 			System.out.println("Testing slightly more complicated SAT instance...");
@@ -256,23 +301,24 @@ public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 	        aClause = new Clause();
 	        aClause.addLiteral(2,false);
 	        addClause(aClause);
-	        printResult(new Clause());
+	        printResult(new Clause(), 1);
 	        
 	        System.out.println("Now variable 4 should be true.");
 	        aClause = new Clause();
 	        aClause.addLiteral(4,true);
-	        printResult(aClause);
+	        printResult(aClause, 1);
 	        
 	        System.out.println("Now the problem should be UNSAT...");
 	        aClause.addLiteral(2,true);
-	        printResult(aClause);
+	        printResult(aClause, 1);
 	        
 	        System.out.println("Now the problem should really, really be UNSAT.");
 	        aClause = new Clause();
 	        aClause.addLiteral(2,true);
 	        addClause(aClause);
-	        printResult(new Clause());
+	        printResult(new Clause(), 1);
 	        
 	        clear();	//Important to clear; otherwise the clauses inserted above remain in the problem.
 		}
+		
 }

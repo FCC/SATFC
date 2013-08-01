@@ -32,6 +32,9 @@ public class IncrementalSolverParameters extends AbstractOptions {
 		log.info("Creating CNF encoder...");
 		ICNFEncoder aCNFEncoder = new CNFEncoder(aStationManager.getStations());
 		
-		return new IncrementalSolver(aConstraintManager, aCNFEncoder, new GlueMiniSatLibrary(fLibraryPath));
+		GlueMiniSatLibrary aGMSlibrary = new GlueMiniSatLibrary(fLibraryPath);
+		ISolver aSolver = new IncrementalSolver(aConstraintManager, aCNFEncoder, aGMSlibrary);
+		
+		return aSolver;
 	}
 }

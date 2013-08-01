@@ -129,7 +129,7 @@ public class IncrementalSolver implements ISolver{
 			}
 		}
 		
-		log.info("Solving instance: "+aInstance.getStations()+","+aInstance.getChannels());
+		//log.info("Solving instance: "+aInstance.getStations()+","+aInstance.getChannels());
 		
 		//Set fAssumptions to "activate" the newly added clauses and solve
 		fAssumptions.addLiteral(-curCount,true);
@@ -137,7 +137,7 @@ public class IncrementalSolver implements ISolver{
 		
 
 		long startTime = System.currentTimeMillis();
-		SATResult aResult = fIncrementalSATLibrary.solve(fAssumptions);
+		SATResult aResult = fIncrementalSATLibrary.solve(fAssumptions, aCutoff);
 		double elapsedTime = new Double(System.currentTimeMillis()-startTime)/1000;
 		
 		Map<Integer,Set<Station>> aStationAssignment = new HashMap<Integer,Set<Station>>();

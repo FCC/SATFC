@@ -24,6 +24,7 @@ import ca.ubc.cs.beta.stationpacking.execution.parameters.repackingdata.Repackin
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.SolverParameters;
 import ca.ubc.cs.beta.stationpacking.experiment.InstanceGeneration;
 import ca.ubc.cs.beta.stationpacking.experiment.InversePopulationStationIterator;
+import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.solver.reporters.IExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.solver.reporters.LocalExperimentReporter;
 
@@ -234,6 +235,8 @@ public class InstanceGenerationParameters extends AbstractOptions {
 		IStationManager aStationManager = RepackingDataParameters.getDACStationManager();
 		IConstraintManager aConstraintManager = RepackingDataParameters.getDACConstraintManager(aStationManager); 
 		
-		return new InstanceGeneration(SolverParameters.getSolver(aStationManager,aConstraintManager), getExperimentReporter());
+		ISolver aSolver = SolverParameters.getSolver(aStationManager,aConstraintManager);
+		
+		return new InstanceGeneration(aSolver, getExperimentReporter());
 	}
 }
