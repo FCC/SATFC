@@ -11,6 +11,7 @@ import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
  * 
  * Possible methods to add to the library:
  * -Something that returns the result of the last call to solve()
+ * @authors: narnosti, gsauln
  */
 
 public interface IIncrementalSATLibrary {
@@ -22,12 +23,14 @@ public interface IIncrementalSATLibrary {
 	/* Asks whether the current problem is satisfiable in the context of the specified assumptions.
 	 * aAssumptions.getVars() is the set of variables that should be assumed true
 	 * aAssumptions.getNegatedVars() is the set of variables that should be assumed false
+	 * aCutOff cut off time for the call.
 	 */
-	public SATResult solve(Clause aAssumptions);
+	public SATResult solve(Clause aAssumptions, double aCutOff);
 
 	/* Solve the current problem without assumptions; should behave identically to solve(new Clause());
+	 * aCutOff cut off time for the call.
 	 */
-	public SATResult solve();
+	public SATResult solve(double aCutOff);
 
 	/* If the last call to solve() returned SAT, this function returns the corresponding assignment.
 	 * If the last call to solve() did not return SAT, returns an empty Clause.

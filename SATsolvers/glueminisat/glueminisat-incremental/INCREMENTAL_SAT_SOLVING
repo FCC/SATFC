@@ -1,1 +1,0 @@
-Libraries must be compiled for incremental SAT solving to be used. This is done by going into /core and doing make slibs (or make slibr). The required libraries should then be created.
