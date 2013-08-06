@@ -60,12 +60,21 @@ public interface GlueMiniSATLibrary extends Library
   	public boolean addClause(Pointer solver, Pointer vecLiterals);
    	
   	/**
-  	 * Solve the CNF contained in the solver.
+  	 * Solve the CNF contained in the solver according to the assumptions.
   	 * @param solver solver for which to solve the CNF.
   	 * @param vecAssumptions assumptions on the values contained in the CNF.
   	 * @return true if the current CNF is SAT according to the assumptions, false otherwise.
   	 */
   	public boolean solveWithAssumptions(Pointer solver, Pointer vecAssumptions);
+  	
+  	/**
+  	 * Solve the CNF contained in the solver according to the single assumption.
+  	 * @param solver solver for which to solve the CNF.
+  	 * @param variable variable on which the assumption is held.
+  	 * @param state (true = positive literal, false = negative literal) is assumed to be true.
+  	 * @return true if the current CNF is SAT according to the single assumption, false otherwise.
+  	 */
+    int solveWithOneAssumption(Pointer solver, int variable, boolean state);
   	
   	/**
   	 * Returns true if the CNF contained in the solver is SAT, false otherwise.
