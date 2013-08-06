@@ -8,8 +8,8 @@ import java.util.TimerTask;
 
 import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
 import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
+import ca.ubc.cs.beta.stationpacking.solver.jnalibraries.GlueMiniSATLibrary;
 
-import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 
@@ -22,7 +22,7 @@ import com.sun.jna.Pointer;
  * Author: narnosti, gsauln
  */
 
-public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
+public class GlueMiniSatSolver implements IIncrementalSATSolver{
 	
 	
 	/* The path to the library to be loaded.
@@ -31,7 +31,7 @@ public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 	
 	/* A set of function calls provided in Solver.cc (interface listed below)
 	 */
-	GMSLibrary fGMSsolver;
+	GlueMiniSATLibrary fGMSsolver;
 	
 	/* A call to createSolver() returns a pointer to a location in memory where the
 	 * GlueMiniSat Solver object is stored. Any time we want to use any methods in the
@@ -54,73 +54,11 @@ public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 	private Map<Integer,Integer> fInternalToExternal = new HashMap<Integer,Integer>();
 
 	
-	private interface GMSLibrary extends Library {
-
-			//Provides a pointer to a glueminisat Solver object
-			public Pointer createSolver();
-			
-			//Frees the memory used for the Solver pointer
-			public void destroySolver(Pointer solver);	
-			
-		   	//Creates a pointer to a vector of literals
-		  	public Pointer createVecLit();
-		  	
-		  	//Frees the memory used for the vector of literals
-		  	public void destroyVecLit(Pointer vecLiterals);
-		  	
-		  	//Adds the literal (num, state) to the vector pointed to by vec
-		  	public void addLitToVec(Pointer vec, int num, boolean state);
-		  	
-			//Creates a new variable, returning the value of the new variable
-		   	public int newVar(Pointer solver);
-
-			//Returns the number of variables used by the Solver
-		   	public int nVars(Pointer solver);
-
-		  	//Adds the clause associated with the vector of literals vecLiterals
-		  	public boolean addClause(Pointer Solver, Pointer vecLiterals);
-		   	
-		  	//Returns true if the current problem is satisfiable given the assumptions in vecAssumptions
-		  	public boolean solveWithAssumptions(Pointer solver, Pointer vecAssumptions);
-		  	
-		  	//Returns true if the current problem is satisfiable.
-		   	public boolean solve(Pointer solver);
-		   	
-		   	/* Returns the value of the variable var in the last model.
-		   	 * Meaningless output if the last call to solve() returned false.
-		   	 */
-		   	public boolean value(Pointer solver, int var);
-		   	
-		   	// Returns true if the solver is not in a conflicting state
-		   	public boolean okay(Pointer solver);
-
-		    // Other function that exists in Solver.cc but is not needed.
-		   	public boolean solveWithOneAssumption(Pointer solver, int var, boolean state);
-		   	
-		   	/**
-		   	 * Set the interrupt flag to true in the GlueMiniSAT solver.  It will then exit at the next check.
-		   	 * @param solver solver to set the flag for.
-		   	 */
-		   	public void interrupt(Pointer solver);
-		   	
-		   	/**
-		   	 * Clears the interrupt flag (set to false) of the GlueMiniSAT solver.
-		   	 * @param solver solver to clear the interrupt flag for.
-		   	 */
-		   	public void clearInterrupt(Pointer solver);
-		   	
-		   	/**
-		   	 * Return the interrupt flag state.
-		   	 * @param solver solver to return the interrupt flag state for.
-		   	 */
-		   	public boolean getInterruptState(Pointer solver);
-		}
-	
-    	public GlueMiniSatLibrary(String aLibraryPath){
+   	public GlueMiniSatSolver(String aLibraryPath){
     		try
     		{
 	    		fLibraryPath = aLibraryPath;
-	    		fGMSsolver = (GMSLibrary) Native.loadLibrary(fLibraryPath, GMSLibrary.class);
+	    		fGMSsolver = (GlueMiniSATLibrary) Native.loadLibrary(fLibraryPath, GlueMiniSATLibrary.class);
 	    		fSolverPointer = fGMSsolver.createSolver();
 	    		runBasicTests(); //Prints the output of basic tests to stdout; used for debugging
     		}
@@ -217,7 +155,7 @@ public class GlueMiniSatLibrary implements IIncrementalSATLibrary{
 			fGMSsolver.destroySolver(fSolverPointer);
 			fExternalToInternal.clear();
 			fInternalToExternal.clear();
-			fGMSsolver = (GMSLibrary) Native.loadLibrary(fLibraryPath, GMSLibrary.class);
+			fGMSsolver = (GlueMiniSATLibrary) Native.loadLibrary(fLibraryPath, GlueMiniSATLibrary.class);
 			fSolverPointer = fGMSsolver.createSolver();
 		}
 		

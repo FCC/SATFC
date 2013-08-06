@@ -14,7 +14,7 @@ import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
  * @authors: narnosti, gsauln
  */
 
-public interface IIncrementalSATLibrary {
+public interface IIncrementalSATSolver {
 
 	/* Tries to add the specified clause to the SAT problem, returns true upon success.
 	 */
