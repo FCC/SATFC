@@ -16,7 +16,7 @@ import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
-import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries.IIncrementalSATLibrary;
+import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries.IIncrementalSATSolver;
 
 public class IncrementalSolver implements ISolver{
 	
@@ -67,7 +67,7 @@ public class IncrementalSolver implements ISolver{
 	/*
 	 * Used to solve the Instance
 	 */
-	IIncrementalSATLibrary fIncrementalSATLibrary;
+	IIncrementalSATSolver fIncrementalSATLibrary;
 	
 	private static Logger log = LoggerFactory.getLogger(IncrementalSolver.class);
 
@@ -77,7 +77,7 @@ public class IncrementalSolver implements ISolver{
 	 * The constructor. We may want to add other parameters indicating what "mode" to run the solver in.
 	 */
 	public IncrementalSolver(	IConstraintManager aConstraintManager, ICNFEncoder aCNFEncoder, 
-								IIncrementalSATLibrary aIncrementalSATLibrary){
+								IIncrementalSATSolver aIncrementalSATLibrary){
 		fConstraintManager = aConstraintManager;
 		fEncoder = aCNFEncoder;		
 		fIncrementalSATLibrary = aIncrementalSATLibrary;
