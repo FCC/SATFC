@@ -67,7 +67,7 @@ public class GlueMiniSatSolver implements IIncrementalSATSolver{
     			throw new IllegalArgumentException("Could not create a glueminisat library from "+aLibraryPath+" ("+e.getMessage()+").");
     		}
     	}
-		 
+   	
 		public SATResult solve(Clause aAssumptions, double aCutOff){
 			
 			//Create a pointer to a vector of assumptions corresponding to aAssumptions
@@ -257,6 +257,12 @@ public class GlueMiniSatSolver implements IIncrementalSATSolver{
 	        printResult(new Clause(), 1);
 	        
 	        clear();	//Important to clear; otherwise the clauses inserted above remain in the problem.
+		}
+		
+		public static void main(String[] args)
+		{
+			System.out.println("Loading: "+args[0]);
+			Native.loadLibrary(args[0], GlueMiniSATLibrary.class);
 		}
 		
 }
