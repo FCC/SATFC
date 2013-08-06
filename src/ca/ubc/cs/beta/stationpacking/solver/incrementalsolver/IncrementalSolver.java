@@ -16,7 +16,7 @@ import ca.ubc.cs.beta.stationpacking.datastructures.Station;
 import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
-import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries.IIncrementalSATSolver;
+import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATSolver.IIncrementalSATSolver;
 
 public class IncrementalSolver implements ISolver{
 	
