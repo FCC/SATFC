@@ -11,7 +11,7 @@ import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.IncrementalSolver;
-import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries.GlueMiniSatLibrary;
+import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATLibraries.GlueMiniSatSolver;
 
 import com.beust.jcommander.Parameter;
 
@@ -32,7 +32,7 @@ public class IncrementalSolverParameters extends AbstractOptions {
 		log.info("Creating CNF encoder...");
 		ICNFEncoder aCNFEncoder = new CNFEncoder(aStationManager.getStations());
 		
-		GlueMiniSatLibrary aGMSlibrary = new GlueMiniSatLibrary(fLibraryPath);
+		GlueMiniSatSolver aGMSlibrary = new GlueMiniSatSolver(fLibraryPath);
 		ISolver aSolver = new IncrementalSolver(aConstraintManager, aCNFEncoder, aGMSlibrary);
 		
 		return aSolver;
