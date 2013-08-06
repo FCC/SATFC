@@ -28,7 +28,8 @@ claspx64osx_path = clasp_dir + 'claspx64osx/build/release/bin/clasp'
 tunedclasp_path = clasp_dir + 'tunedclasp/claspCMarch13'
 
 glueminisat_dir = solver_dir + 'glueminisat/'
-glueminisatx64_path = glueminisat_dir + 'glueminisatx64/glueminisat'
+#glueminisatx64_path = glueminisat_dir + 'glueminisatx64/glueminisat'
+glueminisatx64_path = glueminisat_dir + 'old/glueminisatx64/glueminisat'
 
 runsolver_dir = solver_dir + 'runsolver/'
 runsolverx64_path = runsolver_dir+'runsolverx64/runsolver'
