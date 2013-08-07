@@ -1,0 +1,16 @@
+solve_algorithms.o: ../../../libclasp/src/solve_algorithms.cpp \
+ ../../../libclasp/clasp/solve_algorithms.h \
+ ../../../libclasp/clasp/solver_strategies.h \
+ ../../../libclasp/clasp/constraint.h ../../../libclasp/clasp/literal.h \
+ ../../../libclasp/clasp/util/platform.h \
+ ../../../libclasp/clasp/pod_vector.h \
+ ../../../libclasp/clasp/util/pod_vector.h \
+ ../../../libclasp/clasp/util/type_manip.h \
+ ../../../libclasp/clasp/util/misc_types.h \
+ ../../../libclasp/clasp/solver.h ../../../libclasp/clasp/solver_types.h \
+ ../../../libclasp/clasp/util/left_right_sequence.h \
+ ../../../libclasp/clasp/util/type_manip.h \
+ ../../../libclasp/clasp/shared_context.h \
+ ../../../libclasp/clasp/util/atomic.h \
+ ../../../libclasp/clasp/enumerator.h ../../../libclasp/clasp/lookahead.h \
+ ../../../libclasp/clasp/util/timer.h
