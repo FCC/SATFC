@@ -16,6 +16,6 @@ public interface IExperimentReporter {
 	 * @param aRunResult - the result of solving the given instance.
 	 * @throws InterruptedException 
 	 */
-	public void report(StationPackingInstance aInstance, SolverResult aRunResult) throws InterruptedException;
+	public void report(StationPackingInstance aInstance, SolverResult aRunResult);
 	
 }

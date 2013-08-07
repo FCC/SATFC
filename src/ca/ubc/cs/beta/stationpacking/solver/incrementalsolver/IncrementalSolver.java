@@ -102,7 +102,7 @@ public class IncrementalSolver implements ISolver{
 	 */
 	
 	@Override
-	public SolverResult solve(StationPackingInstance aInstance, double aCutoff, long aSeed) throws Exception {
+	public SolverResult solve(StationPackingInstance aInstance, double aCutoff, long aSeed) {
 
 		//We can only go incremental if stations are superset and channels are subset; else reset
 		if(	(!aInstance.getStations().containsAll(fCurrentInstance.getStations())) ||
