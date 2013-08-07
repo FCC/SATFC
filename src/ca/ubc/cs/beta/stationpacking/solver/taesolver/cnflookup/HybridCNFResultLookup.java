@@ -53,7 +53,7 @@ public class HybridCNFResultLookup implements ICNFResultLookup{
 	
 	//NA - returns the saved SATResult value corresponding to aInstance, 
 	@Override
-	public SolverResult getSolverResult(StationPackingInstance aInstance) throws Exception{
+	public SolverResult getSolverResult(StationPackingInstance aInstance){
 		if(hasSolverResult(aInstance))
 		{
 			String aInstanceHash = getCNFName(aInstance);
@@ -62,7 +62,7 @@ public class HybridCNFResultLookup implements ICNFResultLookup{
 		}
 		else
 		{
-			throw new Exception("Required a solver result for an instance that was not previously recorded.");
+			throw new IllegalArgumentException("Required a solver result for an instance that was not previously recorded.");
 		}
 		
 	

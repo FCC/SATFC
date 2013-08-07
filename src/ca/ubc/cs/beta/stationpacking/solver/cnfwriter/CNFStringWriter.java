@@ -11,7 +11,7 @@ import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 public class CNFStringWriter {
 
 	
-	public String clausesToString(StationPackingInstance aInstance,Set<Clause> aClauseSet) throws Exception{
+	public String clausesToString(StationPackingInstance aInstance,Set<Clause> aClauseSet){
 		StringBuilder aBuilder = new StringBuilder();
 		aBuilder.append("c Stations: ");
 		for(Station aStation : aInstance.getStations()){

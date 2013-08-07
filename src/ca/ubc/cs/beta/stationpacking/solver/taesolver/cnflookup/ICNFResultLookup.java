@@ -30,7 +30,7 @@ public interface ICNFResultLookup {
 	 * @return The solver result recorded for the problem instance.  
 	 * @throws Exception Throws exception if instance not recorded.
 	 */
-	public SolverResult getSolverResult(StationPackingInstance aInstance) throws Exception;
+	public SolverResult getSolverResult(StationPackingInstance aInstance);
 
 	/**
 	 * Save solver result for a given problem instance.

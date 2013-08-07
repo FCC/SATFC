@@ -47,23 +47,17 @@ public class InstanceGenerationExecutor {
 		InstanceGeneration aInstanceGeneration = null;
 		try
 		{
-			try 
-			{
-				aInstanceGeneration = aInstanceGenerationParameters.getInstanceGeneration();
+		
+			aInstanceGeneration = aInstanceGenerationParameters.getInstanceGeneration();
 				
-				aInstanceGeneration.run(aInstanceGenerationParameters.getStartingStations(), aInstanceGenerationParameters.getStationIterator(), aInstanceGenerationParameters.getPackingChannels(), aInstanceGenerationParameters.Cutoff, aInstanceGenerationParameters.Seed);
+			aInstanceGeneration.run(aInstanceGenerationParameters.getStartingStations(), aInstanceGenerationParameters.getStationIterator(), aInstanceGenerationParameters.getPackingChannels(), aInstanceGenerationParameters.Cutoff, aInstanceGenerationParameters.Seed);
 
-			} 
-			catch (Exception e) 
-			{
-				e.printStackTrace();
-			}
-			
 		}
 		finally{
-			aInstanceGeneration.getSolver().notifyShutdown();
+			
+				aInstanceGeneration.getSolver().notifyShutdown();
+			
 		}
-		
 		
 		
 		
