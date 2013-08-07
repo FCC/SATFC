@@ -1,0 +1,2 @@
+timer.o: ../../../libclasp/src/timer.cpp \
+ ../../../libclasp/clasp/util/timer.h
