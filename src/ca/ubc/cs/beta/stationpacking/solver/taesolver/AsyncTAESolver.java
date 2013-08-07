@@ -174,13 +174,8 @@ public class AsyncTAESolver {
 				}
 				
 				
-				try {
-					aAsynchronousReporter.report(aInstance, mergeComponentResults(aComponentResults));
-				} 
-				catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					return;
-				}
+				
+				aAsynchronousReporter.report(aInstance, mergeComponentResults(aComponentResults));
 				
 			}
 
@@ -188,7 +183,6 @@ public class AsyncTAESolver {
 			public void onFailure(RuntimeException t) {
 				t.printStackTrace();
 				System.exit(1);
-				
 			}
 		};
 	}

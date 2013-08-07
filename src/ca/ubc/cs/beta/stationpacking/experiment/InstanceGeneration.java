@@ -48,7 +48,7 @@ public class InstanceGeneration {
 			Station aStation = aStationIterator.next();
 			log.info("Trying to add {} to current set.",aStation);
 			aInstance.addStation(aStation);
-			try {
+			
 				SolverResult aRunResult = fSolver.solve(aInstance,aCutoff,aSeed);
 				log.info("Result: {}",aRunResult);
 				fExperimentReporter.report(aInstance, aRunResult);
@@ -58,10 +58,7 @@ public class InstanceGeneration {
 				} /*else {
 					log.info("Instance was SAT, with assignment "+aRunResult.getAssignment());
 				}	*/			
-			} 
-			catch (Exception e){ 
-				e.printStackTrace();
-			} 
+		
 			log.info("-------------------------------------------------------------------------");
 		}
 	}	

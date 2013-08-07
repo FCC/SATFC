@@ -65,9 +65,22 @@ public class AsynchronousLocalExperimentReporter implements IExperimentReporter 
 	}
 
 	@Override
-	public void report(StationPackingInstance aInstance, SolverResult aRunResult) throws InterruptedException {
+	public void report(StationPackingInstance aInstance, SolverResult aRunResult){
 		
-		fReportQueue.put(new AsynchronousResult(aInstance, aRunResult));
+		
+		for(int interruptcount=0;interruptcount<10;interruptcount++)
+		{
+			try
+			{
+				fReportQueue.put(new AsynchronousResult(aInstance, aRunResult));
+				return;
+			}
+			catch(InterruptedException e)
+			{
+				log.warn("Asynchronous reporter was interrupted when queuing result {} for instance {}. Trying again... ",aRunResult,aInstance);
+			}
+		}	
+		throw new IllegalStateException("Asynchronous reporter was interrupted too many times when trying to queue a result.");
 	}
 	
 	public void stopWritingReport()
