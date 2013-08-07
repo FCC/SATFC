@@ -87,8 +87,7 @@ import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
 		}
 
 		@Override
-		public SolverResult getSolverResult(StationPackingInstance aInstance)
-				throws Exception {
+		public SolverResult getSolverResult(StationPackingInstance aInstance){
 			throw new UnsupportedOperationException("Async cached CNF lookup is not a result lookup.");
 		}
 

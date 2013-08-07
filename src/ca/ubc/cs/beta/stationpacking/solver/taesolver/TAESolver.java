@@ -145,7 +145,7 @@ public class TAESolver implements ISolver{
 	 * 
 	 */
 	@Override
-	public SolverResult solve(StationPackingInstance aInstance, double aCutoff, long aSeed) throws Exception{
+	public SolverResult solve(StationPackingInstance aInstance, double aCutoff, long aSeed){
 		long aStartTime = System.nanoTime();
 		
 		log.info("Solving instance of {}",aInstance.getInfo());
@@ -320,7 +320,11 @@ public class TAESolver implements ISolver{
 			}
 		}
 		log.info("Writing results to file.");
-		fLookup.writeToFile();
+		try {
+			fLookup.writeToFile();
+		} catch (IOException e) {
+			log.error("Could not write result to file ({})",e.getMessage());
+		}
 		
 		log.info("Done.");
 		
