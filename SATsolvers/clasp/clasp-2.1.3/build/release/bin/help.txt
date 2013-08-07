@@ -1,0 +1,225 @@
+clasp version 2.1.3
+usage: clasp [number] [options] [file]
+
+Clasp - General Options:
+
+  --configuration=<arg>   : Configure default configuration [frumpy]
+      <arg>: {frumpy|jumpy|handy|crafty|trendy}
+        frumpy: Use conservative defaults
+        jumpy : Use aggressive defaults
+        handy : Use defaults geared towards large problems
+        crafty: Use defaults geared towards crafted problems
+        trendy: Use defaults geared towards industrial problems
+
+  --solve-limit=<n>[,<m>] : Stop search after <n> conflicts or <m> restarts
+
+  --enum-mode,-e <arg>    : Configure enumeration algorithm [auto]
+      <arg>: {bt|record|brave|cautious|auto}
+        bt      : Backtrack decision literals from solutions
+        record  : Add nogoods for computed solutions
+        brave   : Compute brave consequences (union of models)
+        cautious: Compute cautious consequences (intersection of models)
+        auto    : Use bt for enumeration and record for optimization
+  --number,-n <n>         : Compute at most <n> models (0 for all)
+  --restart-on-model      : Restart after each model
+  --project               : Project models to named atoms in enumeration mode
+
+  --project-opt=<arg>     : Additional options for projection as octal digit
+  --opt-ignore            : Ignore optimize statements
+  --opt-sat               : Treat DIMACS input as MaxSAT optimization problem
+  --opt-hierarch[={0..3}] : Process optimize statements in order of priority
+    For each criterion use:
+      1: fixed step size of one
+      2: exponentially increasing step sizes
+      3: exponentially decreasing step sizes
+  --opt-all=<opt>...      : Compute models <= <opt>...
+  --opt-value=<opt>...    : Initialize objective function(s)
+
+  --sat-prepro[=<arg>]    : Run SatELite-like preprocessing (Implicit: -1)
+      <arg>: <n1>[,...][,<n5 {0..2}>] (-1=no limit)
+        <n1>: Run for at most <n1> iterations
+        <n2>: Run variable elimination with cutoff <n2>              [-1]
+        <n3>: Run for at most <n3> seconds                           [-1]
+        <n4>: Disable if <n4>% of vars are frozen                    [-1]
+        <n5>: Run blocked clause elimination  {0=no,1=limited,2=full} [1]
+  --learn-explicit        : Do not use Short Implication Graph for learning
+
+Clasp - ASP Options:
+
+  --pre                   : Run ASP preprocessing and exit
+  --supp-models           : Compute supported models (no unfounded set check)
+  --eq=<n>                : Configure equivalence preprocessing
+      Run for at most <n> iterations (-1=run to fixpoint)
+  --[no-]backprop         : Use backpropagation in ASP-preprocessing
+  --eq-dfs                : Enable df-order in eq-preprocessing
+  --trans-ext=<arg>|no    : Configure handling of Lparse-like extended rules
+      <arg>: {all|choice|card|weight|integ|dynamic}
+        all    : Transform all extended rules to basic rules
+        choice : Transform choice rules, but keep cardinality and weight rules
+        card   : Transform cardinality rules, but keep choice and weight rules
+        weight : Transform cardinality and weight rules, but keep choice rules
+        integ  : Transform cardinality integrity constraints
+        dynamic: Transform "simple" extended rules, but keep more complex ones
+
+Clasp - Search Options:
+
+  --heuristic=<arg>       : Configure decision heuristic
+      <arg>: {Berkmin|Vmtf|Vsids|Unit|None}
+        Berkmin: Apply BerkMin-like heuristic
+        Vmtf   : Apply Siege-like heuristic
+        Vsids  : Apply Chaff-like heuristic
+        Unit   : Apply Smodels-like heuristic (Default if --no-lookback)
+        None   : Select the first free variable
+  --[no-]init-moms        : Initialize heuristic with MOMS-score
+  --score-other=<n>       : Score {0=no|1=loop|2=all} other learnt nogoods
+  --sign-def=<n>          : Default sign: {0=type|1=no|2=yes|3=rnd}
+  --[no-]sign-fix         : Disable sign heuristics and use default signs only
+  --berk-max=<n>          : Consider at most <n> nogoods in Berkmin heuristic
+  --[no-]berk-huang       : Enable/Disable Huang-scoring in Berkmin
+  --[no-]berk-once        : Score sets (instead of multisets) in Berkmin
+  --vmtf-mtf=<n>          : In Vmtf move <n> conflict-literals to the front
+  --vsids-decay=<n>       : In Vsids use 1.0/0.<n> as decay factor
+  --[no-]nant             : In Unit count only atoms in NAnt(P)
+  --opt-heuristic[={0..3}]: Use opt. in {1=sign|2=model|3=both} heuristics
+  --save-progress[=<n>]   : Use RSat-like progress saving on backjumps > <n>
+  --rand-freq=<p>         : Make random decisions with probability <p>
+  --init-watches={0..2}   : Configure watched literal initialization [1]
+      Watch {0=first|1=random|2=least watched} literals in nogoods
+  --seed=<n>              : Set random number generator's seed to <n>
+
+  --lookahead[=<arg>|no]  : Configure failed-literal detection (fld)
+      <arg>: <type>[,<n {1..umax}>] / Implicit: atom
+        <type>: Run fld via {atom|body|hybrid} lookahead
+        <n>   : Disable fld after <n> applications ([-1]=no limit)
+      --lookahead=atom is default if --no-lookback is used
+
+  --rand-prob[=<arg>|no]  : Configure random probing (Implicit: 10,100)
+      <arg>: <n1>[,<n2>]
+        Run <n1> random passes with at most <n2> conflicts each
+
+Clasp - Lookback Options:
+
+  --no-lookback           : Disable all lookback strategies
+
+  --restarts,-r <sched>|no: Configure restart policy
+      <sched>: <type {D|F|L|x|+}>,<n {1..umax}>[,<args>][,<lim>]
+        F,<n>    : Run fixed sequence of <n> conflicts
+        L,<n>    : Run Luby et al.'s sequence with unit length <n>
+        x,<n>,<f>: Run geometric seq. of <n>*(<f>^i) conflicts  (<f> >= 1.0)
+        +,<n>,<m>: Run arithmetic seq. of <n>+(<m>*i) conflicts (<m {0..umax}>)
+        ...,<lim>: Repeat seq. every <lim>+j restarts           (<type> != F)
+        D,<n>,<f>: Restart based on moving LBD average over last <n> conflicts
+                   Mavg(<n>,LBD)*<f> > avg(LBD)
+                   use conflict level average if <lim> > 0 and avg(LBD) > <lim>
+      no|0       : Disable restarts
+  --local-restarts        : Use Ryvchin et al.'s local restarts
+  --bounded-restarts      : Use (bounded) restarts during model enumeration
+  --counter-restarts=<n>  : Do a counter implication restart every <n> restarts
+  --counter-bump=<n>      : Set CIR bump factor to <n>
+  --reset-restarts        : Reset restart strategy during model enumeration
+  --shuffle=<n1>,<n2>|no  : Shuffle problem after <n1>+(<n2>*i) restarts
+
+  --deletion,-d <arg>|no  : Configure deletion strategy [1,75,3.0]
+      <arg>: <s {1..3}>[,<n {1..100}>][,<f>]
+        <s>: Enable {1=size-based|2=conflict-based|3=combined} strategy
+        <n>: Delete at most <n>% of nogoods on reduction       [75]
+        <f>: Set initial limit to P=estimated problem size/<f> [3.0]
+      no   : Disable nogood deletion
+  --del-init-r=<n>,<o>    : Clamp initial limit to the range [<n>,<n>+<o>]
+  --del-estimate          : Use estimated problem complexity in limits
+  --del-max=<n>,<X>       : Keep at most <n> learnt nogoods taking up to <X> MB
+  --del-grow=<arg>        : Configure size-based deletion policy
+      <arg>: <f>[,<g>][,<sched>] (<f> >= 1.0 / deletion.<s> in {1|3})
+        <f>     : Keep at most T = X*(<f>^i) learnt nogoods with X being the
+                  initial limit and i the number of times <sched> fired
+        <g>     : Stop growth once T > P*<g> (0=no limit)      [3.0]
+        <sched> : Set grow schedule (<type {F|L|x|+}>) [grow on restart]
+  --del-cfl=<sched>       : Configure conflict-based deletion policy
+      <sched>:   <t {F|L|x|+}>,<n {1..umax}>[,<args>][,<lim>] (see restarts)
+      condition: deletion.<s> in {2|3}
+  --del-algo=<arg>        : Configure nogood deletion algorithm
+      <arg>: <algo>[,<sc {0..2}>]
+        <algo>: Use {basic|sort|inp_sort|inp_heap} algorithm
+        <sc>  : Use {0=activity|1=lbd|2=combined} nogood scores [0]
+  --del-glue=<arg>        : Configure glue clause handling
+      <arg>: <n {0..127}>[,<m {0|1}>]
+        <n>: Do not delete nogoods with LBD <= <n>
+        <m>: Count (0) or ignore (1) glue clauses in size limit [0]
+  --del-on-restart[=<n>]  : Delete <n>% of learnt nogoods on each restart
+
+  --strengthen=<arg>|no   : Use MiniSAT-like conflict nogood strengthening
+      <arg>: <mode>[,<type>]
+        <mode>: Use {local|recursive} self-subsumption check
+        <type>: Follow {0=all|1=short|2=binary} antecedents  [0]
+  --otfs[={0..2}]         : Enable {1=partial|2=full} on-the-fly subsumption
+  --update-lbd[={0..3}]   : Update LBDs of learnt nogoods {1=<|2=strict<|3=+1<}
+  --update-act            : Enable LBD-based activity bumping
+  --reverse-arcs[={0..3}] : Enable ManySAT-like inverse-arc learning
+  --contraction=<n>|no    : Contract learnt nogoods of size > <n> (0=disable)
+
+  --loops=<arg>           : Configure learning of loop nogoods
+      <arg>: {common|distinct|shared|no}
+        common  : Create loop nogoods for atoms in an unfounded set
+        distinct: Create distinct loop nogood for each atom in an unfounded set
+        shared  : Create loop formula for a whole unfounded set
+        no      : Do not learn loop formulas
+
+Basic Options:
+
+  --help[=<n>],-h         : Print {1=basic|2=more|3=full} help and exit
+  --version,-v            : Print version information and exit
+  --verbose[=<n>],-V      : Set verbosity level to <n>
+  --stats[={0..2}],-s     : Print {0=no|1=basic|2=extended} statistics
+  --quiet[=<m>,<o>],-q    : Configure printing of models and optimize values
+      <m>: print {0=all|1=last|2=no} models
+      <o>: print {0=all|1=last|2=no} optimize values [<m>]
+  --time-limit=<n>        : Set time limit to <n> seconds (0=no limit)
+  --outf=<n>              : Use {0=default|1=competition|2=JSON} output
+  --lemma-out=<file>      : Write learnt lemmas to <file> on exit
+  --lemma-out-lbd=<n>     : Only write lemmas with lbd <= <n>
+  --lemma-in=<file>       : Read additional lemmas from <file>
+  --lemma-in-lbd=<n>      : Initialize lbd of additional lemmas to <n>
+  --fast-exit             : Force fast exit (do not call dtors)
+  --ifs=<arg>             : Internal field separator
+  --file,-f <arg>         : Input files
+
+
+usage: clasp [number] [options] [file]
+Default command-line:
+clasp --configuration=frumpy --enum-mode=auto --init-watches=1 
+      --deletion=1,75,3.0 --verbose=1 
+[asp] --eq=5
+[cnf] --sat-prepro=20,25,120
+[opb] --sat-prepro=20,25,120
+
+Default configurations:
+[frumpy]:
+ --heuristic=Berkmin --restarts=x,100,1.5 --deletion=1,75
+ --del-init-r=200,40000 --del-max=400000 --del-algo=basic --contraction=250
+ --loops=common --save-p=180 --del-grow=1.1 --strengthen=local
+[jumpy]:
+ --sat-p=20,25,240,-1,1 --trans-ext=dynamic --heuristic=Vsids --restarts=L,100
+ --del-init-r=1000,20000 --del-algo=basic,2 --deletion=3,75
+ --del-grow=1.1,25,x,100,1.5 --del-cfl=x,10000,1.1 --del-glue=2 --update-lbd=3
+ --strengthen=recursive --otfs=2 --save-p=70
+[handy]:
+ --sat-p=10,25,240,-1,1 --trans-ext=dynamic --backprop --heuristic=Vsids
+ --restarts=D,100,0.7 --deletion=2,50,20.0 --del-max=200000 --del-algo=sort,2
+ --del-init-r=1000,14000 --del-cfl=+,4000,600 --del-glue=2 --update-lbd
+ --strengthen=recursive --otfs=2 --save-p=20 --contraction=600 --loops=distinct
+ --counter-restarts=7 --counter-bump=1023 --reverse-arcs=2
+[crafty]:
+ --sat-p=10,25,240,-1,1 --trans-ext=dynamic --backprop --heuristic=Vsids
+ --restarts=x,128,1.5 --deletion=3,75,10.0 --del-init-r=1000,9000
+ --del-grow=1.1,20.0 --del-cfl=+,10000,1000 --del-algo=basic --del-glue=2
+ --otfs=2 --reverse-arcs=1 --counter-restarts=3 --contraction=250 --save-p=180
+[trendy]:
+ --sat-p=20,25,240,-1,1 --trans-ext=dynamic --heuristic=Vsids
+ --restarts=D,100,0.7 --deletion=3,50 --del-init=500,19500
+ --del-grow=1.1,20.0,x,100,1.5 --del-cfl=+,10000,2000 --del-algo=basic
+ --del-glue=2 --strengthen=recursive --update-lbd --otfs=2 --save-p=75
+ --counter-restarts=3 --counter-bump=1023 --reverse-arcs=2  --contraction=250
+ --loops=common
+
+clasp is part of Potassco: http://potassco.sourceforge.net/#clasp
+Get help/report bugs via : http://sourceforge.net/projects/potassco/support
