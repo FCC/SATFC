@@ -3,9 +3,9 @@ package ca.ubc.cs.beta.stationpacking.execution.daemon.message;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
-import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
-import ca.ubc.cs.beta.stationpacking.datastructures.Station;
+import ca.ubc.cs.beta.stationpacking.base.Station;
+import ca.ubc.cs.beta.stationpacking.solver.SATResult;
+import ca.ubc.cs.beta.stationpacking.solver.SolverResult;
 
 /**
  * Message containing solver result. Note the need to change the representation of the solver result in a mememto object to reduce

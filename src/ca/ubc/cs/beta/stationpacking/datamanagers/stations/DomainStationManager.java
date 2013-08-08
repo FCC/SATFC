@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.datamanagers;
+package ca.ubc.cs.beta.stationpacking.datamanagers.stations;
 
 import java.io.FileReader;
 import java.util.HashMap;
@@ -6,8 +6,12 @@ import java.util.HashSet;
 import java.util.Set;
 
 import au.com.bytecode.opencsv.CSVReader;
-import ca.ubc.cs.beta.stationpacking.datastructures.Station;
+import ca.ubc.cs.beta.stationpacking.base.Station;
 
+/**
+ * Station manager that is populated from a channel domain file.
+ * @author afrechet
+ */
 public class DomainStationManager implements IStationManager{
 
 	private HashMap<Integer,Station> fStations = new HashMap<Integer,Station>();

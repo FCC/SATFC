@@ -6,8 +6,8 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
-import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
+import ca.ubc.cs.beta.stationpacking.solver.SATResult;
+import ca.ubc.cs.beta.stationpacking.solver.sat.Clause_old;
 
 import com.sun.jna.Library;
 import com.sun.jna.Native;
@@ -130,7 +130,7 @@ public class GlueMiniSatSolver implements IIncrementalSATSolver{
     		}
     	}
 		 
-		public SATResult solve(Clause aAssumptions, double aCutOff){
+		public SATResult solve(Clause_old aAssumptions, double aCutOff){
 			
 			//Create a pointer to a vector of assumptions corresponding to aAssumptions
 			Pointer vecAssumptions = fGMSsolver.createVecLit();
@@ -178,10 +178,10 @@ public class GlueMiniSatSolver implements IIncrementalSATSolver{
 		}
 		
 		public SATResult solve(double aCutOff){
-			return solve(new Clause(), aCutOff);
+			return solve(new Clause_old(), aCutOff);
 		}
 		
-		public boolean addClause(Clause aClause){
+		public boolean addClause(Clause_old aClause){
 			
 			//Create a pointer to a vector of Literals corresponding to aClause
 			Pointer vecLiterals = fGMSsolver.createVecLit();			
@@ -197,8 +197,8 @@ public class GlueMiniSatSolver implements IIncrementalSATSolver{
 			return added;
 		}
 		
-		public Clause getAssignment(){
-			Clause aAssignment = new Clause();
+		public Clause_old getAssignment(){
+			Clause_old aAssignment = new Clause_old();
 			if(fGMSsolver.okay(fSolverPointer)){
 				for(int i = 0; i < fGMSsolver.nVars(fSolverPointer); i++){
 					/* For some reason, when passing booleans from c to java there were problems.
@@ -245,7 +245,7 @@ public class GlueMiniSatSolver implements IIncrementalSATSolver{
 		}
 		*/
 		
-		private void printResult(Clause aAssumptions, double aCutOff){
+		private void printResult(Clause_old aAssumptions, double aCutOff){
 	        if(solve(aAssumptions, aCutOff)!=SATResult.SAT){
 	            System.out.println("Solver result is UNSAT.");
 	        } else{
@@ -254,17 +254,17 @@ public class GlueMiniSatSolver implements IIncrementalSATSolver{
 		}
 
 		private void runBasicTests(){
-			Clause aClause;
+			Clause_old aClause;
 	        
 	        System.out.println("Testing trivial SAT instance...");
-	        aClause = new Clause();
+	        aClause = new Clause_old();
 	        aClause.addLiteral(1,false);
 	        aClause.addLiteral(2, true);
 	        addClause(aClause);
-	        aClause = new Clause();
+	        aClause = new Clause_old();
 	        aClause.addLiteral(2,false);
 	        addClause(aClause);
-	        aClause = new Clause();
+	        aClause = new Clause_old();
 	        printResult(aClause, 1); 
 	        
 	        System.out.println("Testing trivial UNSAT instance...");
@@ -273,38 +273,38 @@ public class GlueMiniSatSolver implements IIncrementalSATSolver{
 	        	        
 	        System.out.println("Testing trivial UNSAT instance...");
 	        addClause(aClause);
-	        printResult(new Clause(), 1);
+	        printResult(new Clause_old(), 1);
 	        clear();
 	        
 			System.out.println("Testing slightly more complicated SAT instance...");
-	        aClause = new Clause();
+	        aClause = new Clause_old();
 	        aClause.addLiteral(1,true);
 	        aClause.addLiteral(2,true);
 	        aClause.addLiteral(3,true);
 	        aClause.addLiteral(4,false);
 	        addClause(aClause);
-	        aClause = new Clause();
+	        aClause = new Clause_old();
 	        aClause.addLiteral(1,false);
 	        aClause.addLiteral(2,false);
 	        aClause.addLiteral(4,false);
 	        addClause(aClause);
-	        aClause = new Clause();
+	        aClause = new Clause_old();
 	        aClause.addLiteral(1,false);
 	        aClause.addLiteral(3,false);
 	        aClause.addLiteral(4,false);
 	        addClause(aClause);
-	        aClause = new Clause();
+	        aClause = new Clause_old();
 	        aClause.addLiteral(2,false);
 	        aClause.addLiteral(3,false);
 	        aClause.addLiteral(4,false);
 	        addClause(aClause);
-	        aClause = new Clause();
+	        aClause = new Clause_old();
 	        aClause.addLiteral(2,false);
 	        addClause(aClause);
-	        printResult(new Clause(), 1);
+	        printResult(new Clause_old(), 1);
 	        
 	        System.out.println("Now variable 4 should be true.");
-	        aClause = new Clause();
+	        aClause = new Clause_old();
 	        aClause.addLiteral(4,true);
 	        printResult(aClause, 1);
 	        
@@ -313,10 +313,10 @@ public class GlueMiniSatSolver implements IIncrementalSATSolver{
 	        printResult(aClause, 1);
 	        
 	        System.out.println("Now the problem should really, really be UNSAT.");
-	        aClause = new Clause();
+	        aClause = new Clause_old();
 	        aClause.addLiteral(2,true);
 	        addClause(aClause);
-	        printResult(new Clause(), 1);
+	        printResult(new Clause_old(), 1);
 	        
 	        clear();	//Important to clear; otherwise the clauses inserted above remain in the problem.
 		}

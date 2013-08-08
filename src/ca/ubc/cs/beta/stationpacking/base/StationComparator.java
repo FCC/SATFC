@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.datastructures;
+package ca.ubc.cs.beta.stationpacking.base;
 
 import java.util.Comparator;
 
