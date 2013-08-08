@@ -3,8 +3,8 @@ package ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup;
 
 import java.io.IOException;
 
-import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
-import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.solver.SolverResult;
 
 
 /**
