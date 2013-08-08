@@ -8,15 +8,15 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
-import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
-import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
-import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
-import ca.ubc.cs.beta.stationpacking.datastructures.Station;
-import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.base.Station;
+import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
+import ca.ubc.cs.beta.stationpacking.solver.SATResult;
+import ca.ubc.cs.beta.stationpacking.solver.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder_old;
 import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATSolver.IIncrementalSATSolver;
+import ca.ubc.cs.beta.stationpacking.solver.sat.Clause_old;
 
 public class IncrementalSolver implements ISolver{
 	
@@ -24,7 +24,7 @@ public class IncrementalSolver implements ISolver{
 	 * Used to encode the Instance
 	 */
 	IConstraintManager fConstraintManager;
-	ICNFEncoder fEncoder;
+	ICNFEncoder_old fEncoder;
 
 
 	/*
@@ -45,12 +45,12 @@ public class IncrementalSolver implements ISolver{
 	 * Note that Clauses in fCurrentClauses DO NOT include the dummy variables 
 	 * (so that we can compare them to clauses produced by the CNFEncoder).
 	 */
-	Set<Clause> fCurrentClauses;
+	Set<Clause_old> fCurrentClauses;
 	
 	/*
 	 * When we solve with assumptions, we "activate" clauses for which the corresponding variable is true
 	 */
-	Clause fAssumptions;
+	Clause_old fAssumptions;
 	
 	/* 
 	 * For resetting to a flagged state (Not yet implemented)
@@ -76,7 +76,7 @@ public class IncrementalSolver implements ISolver{
 	/* 
 	 * The constructor. We may want to add other parameters indicating what "mode" to run the solver in.
 	 */
-	public IncrementalSolver(	IConstraintManager aConstraintManager, ICNFEncoder aCNFEncoder, 
+	public IncrementalSolver(	IConstraintManager aConstraintManager, ICNFEncoder_old aCNFEncoder, 
 								IIncrementalSATSolver aIncrementalSATLibrary){
 		fConstraintManager = aConstraintManager;
 		fEncoder = aCNFEncoder;		
@@ -111,7 +111,7 @@ public class IncrementalSolver implements ISolver{
 		}
 		
 		//Get clauses associated with the new instance
-		Set<Clause> aNewClauses = fEncoder.encode(aInstance, fConstraintManager);
+		Set<Clause_old> aNewClauses = fEncoder.encode(aInstance, fConstraintManager);
 				
 		/*
 		 * Add all NEW clauses to our clause set (including a dummy variable to "toggle" them).
@@ -119,11 +119,11 @@ public class IncrementalSolver implements ISolver{
 		 * the original (no dummy variable, possibly added to fCurrentClauses), and
 		 * the copy (including the dummy variable, added to the solver)
 		 */
-		Set<Clause> aNewlyAddedClauses = new HashSet<Clause>();
-		for(Clause aClause : aNewClauses){
+		Set<Clause_old> aNewlyAddedClauses = new HashSet<Clause_old>();
+		for(Clause_old aClause : aNewClauses){
 			if(!fCurrentClauses.contains(aClause)){
 				aNewlyAddedClauses.add(aClause);
-				Clause aCopyClause = new Clause(aClause.getVars(),aClause.getNegatedVars());
+				Clause_old aCopyClause = new Clause_old(aClause.getVars(),aClause.getNegatedVars());
 				aCopyClause.addLiteral(-curCount, false);
 				fIncrementalSATLibrary.addClause(aCopyClause);
 			}
@@ -146,7 +146,7 @@ public class IncrementalSolver implements ISolver{
 		if(aResult == SATResult.SAT){
 
 			//Get the assignment from the IncrementalSATLibrary
-			Clause aAssignment = fIncrementalSATLibrary.getAssignment();	
+			Clause_old aAssignment = fIncrementalSATLibrary.getAssignment();	
 
 			try{
 				//Check to make sure that all assumptions are satisfied
@@ -192,8 +192,8 @@ public class IncrementalSolver implements ISolver{
 		log.info("Cannot use incremental capability, re-setting...");
 		fIncrementalSATLibrary.clear();
 		fCurrentInstance = new StationPackingInstance();
-		fCurrentClauses = new HashSet<Clause>();
-		fAssumptions = new Clause();
+		fCurrentClauses = new HashSet<Clause_old>();
+		fAssumptions = new Clause_old();
 		curCount = 1;
 		//fResetFlag = true; //Will be used when solver interface is extended
 	}

@@ -1,18 +1,18 @@
-package ca.ubc.cs.beta.stationpacking.datastructures;
+package ca.ubc.cs.beta.stationpacking.solver.sat;
 
 import java.util.HashSet;
 import java.util.Set;
 
-public class Clause {
+public class Clause_old {
 	
 	private Set<Integer> fVars, fNegatedVars;
 	
-	public Clause(Set<Integer> aVars, Set<Integer> aNegatedVars){
+	public Clause_old(Set<Integer> aVars, Set<Integer> aNegatedVars){
 		fVars = aVars;
 		fNegatedVars = aNegatedVars;
 	}
 	
-	public Clause(){
+	public Clause_old(){
 		fVars = new HashSet<Integer>();
 		fNegatedVars = new HashSet<Integer>();
 	}
@@ -48,8 +48,8 @@ public class Clause {
 	
 	@Override
 	public boolean equals(Object o){
-		if(! (o instanceof Clause)) return false;
-		Clause c = (Clause) o;
+		if(! (o instanceof Clause_old)) return false;
+		Clause_old c = (Clause_old) o;
 		return (getVars().equals(c.getVars())&&getNegatedVars().equals(c.getNegatedVars()));
 	}
 

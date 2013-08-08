@@ -16,10 +16,9 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
-import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
-import ca.ubc.cs.beta.stationpacking.datastructures.Station;
-import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.base.Station;
+import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.client.ClientCommunicationMechanism;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.message.CommandMessage;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.message.CommandMessage.Command;
@@ -29,6 +28,7 @@ import ca.ubc.cs.beta.stationpacking.execution.daemon.message.SolveMessage;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.message.SolverResultMessage;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.message.StatusMessage;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
+import ca.ubc.cs.beta.stationpacking.solver.SolverResult;
 
 /**
  * Wrapper around an ISolver and a StationManager that takes care of receiving problem instances and various misc commands from UDP localhost, and communicate

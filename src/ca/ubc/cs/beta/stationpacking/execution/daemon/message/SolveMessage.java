@@ -3,8 +3,8 @@ package ca.ubc.cs.beta.stationpacking.execution.daemon.message;
 import java.util.Collection;
 import java.util.HashSet;
 
-import ca.ubc.cs.beta.stationpacking.datastructures.Station;
-import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.base.Station;
+import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 
 /**
  * A message corresponding to a solve request.
