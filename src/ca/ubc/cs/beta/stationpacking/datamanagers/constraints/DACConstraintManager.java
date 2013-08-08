@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.datamanagers;
+package ca.ubc.cs.beta.stationpacking.datamanagers.constraints;
 
 import java.io.FileReader;
 import java.util.ArrayList;
@@ -11,7 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import au.com.bytecode.opencsv.CSVReader;
-import ca.ubc.cs.beta.stationpacking.datastructures.Station;
+import ca.ubc.cs.beta.stationpacking.base.Station;
+import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 
 /* NA - Code to read the new DAC file format
  * 
@@ -122,7 +123,7 @@ public class DACConstraintManager implements IConstraintManager{
 						aString = aLine[i].replaceAll("\\s", "");
 						if(aString.length()>0){
 							Integer aID2 = Integer.valueOf(aString);
-							if(fStations.containsKey(aID2)){ //NA - ADJ+1 constraints are asymmetric
+							if(fStations.containsKey(aID2)){ //NA - ADJ-1 constraints are asymmetric
 								aADJminusConstraints.get(aChannelType).get(fStations.get(aID2)).add(aStation);
 								aADJplusConstraints.get(aChannelType).get(aStation).add(fStations.get(aID2)); 
 							} else {
@@ -192,19 +193,20 @@ public class DACConstraintManager implements IConstraintManager{
 		return new HashSet<Station>(aInterfering);
 	}
 	
-	private Set<Station> getADJplusInterferingStations(Station aStation, Integer aChannel) throws Exception{
+	
+	private Set<Station> getADJplusInterferingStations(Station aStation, Integer aChannel){
 		Set<Integer> aChannelSet = new HashSet<Integer>();
 		aChannelSet.add(aChannel);
 		return getADJplusInterferingStations(aStation,aChannelSet);
 	}
 	
-	private Set<Station> getCOInterferingStations(Station aStation, Integer aChannel) throws Exception{
+	private Set<Station> getCOInterferingStations(Station aStation, Integer aChannel){
 		Set<Integer> aChannelSet = new HashSet<Integer>();
 		aChannelSet.add(aChannel);
 		return getCOInterferingStations(aStation,aChannelSet);
 	}
 	
-	
+	@Override
 	public Boolean isSatisfyingAssignment(Map<Integer,Set<Station>> aAssignment){
 		try{
 			Set<Station> aStations;
@@ -235,111 +237,4 @@ public class DACConstraintManager implements IConstraintManager{
 	}
 	
 	
-	/*
-	public Set<Station> getADJminusInterferingStations(Station aStation) {
-		Set<Station> aInterfering = fUHFADJminusConstraints.get(aStation);
-		if(aInterfering==null) aInterfering = new HashSet<Station>();
-		return new HashSet<Station>(aInterfering);	
-	}
-	*/
-
-	/*
->>>>>>> branch 'master' of https://afrechet@bitbucket.org/afrechet/fcc-station-packing.git
-	public boolean writeConstraints(String fileName, Set<Integer> aChannels){
-		try{
-			Integer aMinChannel = Integer.MAX_VALUE;
-			Integer aMaxChannel = 0;
-			for(Integer aChannel : aChannels){
-				if(aChannel < aMinChannel) aMinChannel = aChannel;
-				if(aChannel > aMaxChannel) aMaxChannel = aChannel;
-			}
-			BufferedWriter writer = new BufferedWriter(new FileWriter(fileName));
-			Station aStation;
-			for(Integer aID : fStations.keySet()){
-				writer.write("CO,"+aMinChannel+","+aMaxChannel+","+aID+",");
-				aStation = fStations.get(aID);
-				for(Station aStation2 : getCOInterferingStations(aStation)){
-					Integer aID2 = aStation2.getID();
-					if(aID<aID2) writer.write(aID2+",");
-				}
-				writer.write("\n");
-				writer.write("ADJ+1,"+aMinChannel+","+aMaxChannel+","+aID+",");
-				for(Station aStation2 : getADJminusInterferingStations(aStation)){
-					writer.write(aStation2.getID()+",");
-				}	
-				writer.write("\n");
-			}
-			writer.close();
-			return true;
-		} catch(IOException e) {
-			System.out.println("IOException in writeConstraints "+e.getStackTrace());
-			return false;
-		}
-	}
-	*/
-	
-	/*
-	public boolean writePairwiseConstraints(String fileName){
-		try{
-			BufferedWriter writer = new BufferedWriter(new FileWriter(fileName));
-			for(Integer aID : fStations.keySet()){
-				for(Station aStation2 : getCOInterferingStations(fStations.get(aID))){
-					Integer aID2 = aStation2.getID();
-					if(aID<aID2) writer.write("CO,"+aID+","+aID2+",\n");
-				}
-				for(Station aStation2 : getADJminusInterferingStations(fStations.get(aID))){
-					writer.write("ADJ+1,"+aID+","+","+aStation2.getID()+",\n");
-				}	
-			}
-			writer.close();
-			return true;
-		} catch(IOException e){
-			e.printStackTrace();
-			return false;
-		}
-	}
-	*/
-
-	/*
-	public Set<Constraint> getPairwiseConstraints(Set<Integer> aChannels) {
-		Set<Constraint> pairwiseConstraints = new HashSet<Constraint>();
-		Station aStation;
-		for(Integer aID : fStations.keySet()){
-			aStation = fStations.get(aID);
-			for(Station aStation2 : getCOInterferingStations(aStation)){
-				if(aID<aStation2.getID()) 
-					for(Integer aChannel : aChannels){
-						pairwiseConstraints.add(new Constraint(	new StationChannelPair(aStation,aChannel),
-																new StationChannelPair(aStation2,aChannel)));
-					}
-			}
-			
-			for(Station aStation2 : getADJplusInterferingStations(aStation)){
-				for(Integer aChannel : aChannels){
-					pairwiseConstraints.add(new Constraint(	new StationChannelPair(aStation,aChannel),
-															new StationChannelPair(aStation2,aChannel+1)));
-				}	
-			}
-			
-			
-		}
-		return(pairwiseConstraints);
-	}
-	*/
-
-	/*
-	public boolean matchesConstraints(IConstraintManager aOtherManager, Set<Integer> aChannels){
-		//return this.getPairwiseConstraints().equals(aOtherManager.getPairwiseConstraints());
-		Set<Constraint> myConstraints = this.getPairwiseConstraints(aChannels);
-		Set<Constraint> theirConstraints = aOtherManager.getPairwiseConstraints(aChannels);
-		if( myConstraints.equals(theirConstraints) ){
-			return true;
-		} else {
-			int aOrigSize = myConstraints.size();
-			myConstraints.retainAll(theirConstraints);
-			System.out.println("I had "+aOrigSize+" constraints, they had "+theirConstraints.size()+" constraints, there are "+myConstraints.size()+" in the intersection.");
-			return false;
-		}
-	}
-	*/
 }

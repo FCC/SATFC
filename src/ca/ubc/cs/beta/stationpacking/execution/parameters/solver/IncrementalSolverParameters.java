@@ -5,11 +5,11 @@ import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
-import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
-import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
+import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
+import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder_old;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder_old;
 import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.IncrementalSolver;
 import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATSolver.GlueMiniSatSolver;
 
@@ -30,7 +30,7 @@ public class IncrementalSolverParameters extends AbstractOptions {
 		Logger log = LoggerFactory.getLogger(IncrementalSolverParameters.class);
 		
 		log.info("Creating CNF encoder...");
-		ICNFEncoder aCNFEncoder = new CNFEncoder(aStationManager.getStations());
+		ICNFEncoder_old aCNFEncoder = new CNFEncoder_old(aStationManager.getStations());
 		
 		log.info("Creating library...");
 		GlueMiniSatSolver aGMSlibrary = new GlueMiniSatSolver(fLibraryPath);

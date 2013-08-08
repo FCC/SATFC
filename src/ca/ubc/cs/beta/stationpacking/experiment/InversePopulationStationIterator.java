@@ -10,7 +10,7 @@ import java.util.Random;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.ubc.cs.beta.stationpacking.datastructures.Station;
+import ca.ubc.cs.beta.stationpacking.base.Station;
 
 public class InversePopulationStationIterator implements Iterator<Station>{
 

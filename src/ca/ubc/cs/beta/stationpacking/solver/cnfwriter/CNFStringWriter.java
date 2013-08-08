@@ -4,14 +4,14 @@ package ca.ubc.cs.beta.stationpacking.solver.cnfwriter;
 import java.util.HashSet;
 import java.util.Set;
 
-import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
-import ca.ubc.cs.beta.stationpacking.datastructures.Station;
-import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.base.Station;
+import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.solver.sat.Clause_old;
 
 public class CNFStringWriter {
 
 	
-	public String clausesToString(StationPackingInstance aInstance,Set<Clause> aClauseSet){
+	public String clausesToString(StationPackingInstance aInstance,Set<Clause_old> aClauseSet){
 		StringBuilder aBuilder = new StringBuilder();
 		aBuilder.append("c Stations: ");
 		for(Station aStation : aInstance.getStations()){
@@ -23,7 +23,7 @@ public class CNFStringWriter {
 		}
 		aBuilder.append("\n");
 		Set<Integer> aVars = new HashSet<Integer>();
-		for(Clause aClause : aClauseSet){
+		for(Clause_old aClause : aClauseSet){
 			writeClause(aClause,aBuilder,aVars);
 		}
 		int maxVar = 0; for(Integer aVar : aVars) if(aVar > maxVar) maxVar = aVar;
@@ -32,7 +32,7 @@ public class CNFStringWriter {
 		return aBuilder.toString();
 	}
 	
-	private void writeClause(Clause aClause, StringBuilder aBuilder, Set<Integer> aVars){
+	private void writeClause(Clause_old aClause, StringBuilder aBuilder, Set<Integer> aVars){
 		for(Integer aVar : aClause.getVars()){ 
 			aBuilder.append(aVar+" "); 
 			aVars.add(aVar);
@@ -44,8 +44,8 @@ public class CNFStringWriter {
 		aBuilder.append("0\n");
 	}
 	
-	public Clause stringToAssignmentClause(StationPackingInstance aInstance, String aCNFAssignment){
-		Clause aAssignmentClause = new Clause();
+	public Clause_old stringToAssignmentClause(StationPackingInstance aInstance, String aCNFAssignment){
+		Clause_old aAssignmentClause = new Clause_old();
 		for(String aLiteral : aCNFAssignment.split(";"))
 		{
 			boolean aValue = !aLiteral.contains("-"); 

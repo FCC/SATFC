@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.datastructures;
+package ca.ubc.cs.beta.stationpacking.base;
 
 
 import java.util.Collections;
@@ -8,7 +8,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Set;
 
-import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
+import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 
 
 public class StationPackingInstance {

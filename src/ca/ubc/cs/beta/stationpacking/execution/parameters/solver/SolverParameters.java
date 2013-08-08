@@ -3,8 +3,8 @@ package ca.ubc.cs.beta.stationpacking.execution.parameters.solver;
 
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
-import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
-import ca.ubc.cs.beta.stationpacking.datamanagers.IStationManager;
+import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
+import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 
 import com.beust.jcommander.Parameter;

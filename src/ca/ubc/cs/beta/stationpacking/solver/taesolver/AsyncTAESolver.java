@@ -22,15 +22,15 @@ import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstanceSeedPair;
 import ca.ubc.cs.beta.aclib.runconfig.RunConfig;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluator;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluatorCallback;
-import ca.ubc.cs.beta.stationpacking.datamanagers.IConstraintManager;
-import ca.ubc.cs.beta.stationpacking.datastructures.Clause;
-import ca.ubc.cs.beta.stationpacking.datastructures.SATResult;
-import ca.ubc.cs.beta.stationpacking.datastructures.SolverResult;
-import ca.ubc.cs.beta.stationpacking.datastructures.Station;
-import ca.ubc.cs.beta.stationpacking.datastructures.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder;
+import ca.ubc.cs.beta.stationpacking.base.Station;
+import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
+import ca.ubc.cs.beta.stationpacking.solver.SATResult;
+import ca.ubc.cs.beta.stationpacking.solver.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder_old;
 import ca.ubc.cs.beta.stationpacking.solver.cnfwriter.CNFStringWriter;
 import ca.ubc.cs.beta.stationpacking.solver.reporters.IExperimentReporter;
+import ca.ubc.cs.beta.stationpacking.solver.sat.Clause_old;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.AsyncCachedCNFLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponentGrouper;
@@ -49,7 +49,7 @@ public class AsyncTAESolver {
 	private TargetAlgorithmEvaluator fTargetAlgorithmEvaluator;
 	private IComponentGrouper fGrouper;
 	private IConstraintManager fManager;
-	private ICNFEncoder fEncoder;
+	private ICNFEncoder_old fEncoder;
 	private CNFStringWriter fStringWriter;
 	
 	private AsyncCachedCNFLookup fLookup;
@@ -64,7 +64,7 @@ public class AsyncTAESolver {
 	 * @param aTAE - an AClib Target Algorithm Evaluator in charge of running SAT solver.
 	 * @param aTAEExecConfig - the TAE's configuration.
 	 */
-	public AsyncTAESolver(IConstraintManager aConstraintManager, ICNFEncoder aCNFEncoder,
+	public AsyncTAESolver(IConstraintManager aConstraintManager, ICNFEncoder_old aCNFEncoder,
 			ICNFResultLookup aLookup, IComponentGrouper aGrouper, CNFStringWriter aStringWriter,
 			TargetAlgorithmEvaluator aTAE, AlgorithmExecutionConfig aTAEExecConfig) {
 		
@@ -108,7 +108,7 @@ public class AsyncTAESolver {
 							//Grab assignment
 							String aAdditionalRunData = aRun.getAdditionalRunData();
 							StationPackingInstance aGroupInstance = aToSolveInstances.get(aRun.getRunConfig());
-							Clause aAssignmentClause = fStringWriter.stringToAssignmentClause(aGroupInstance, aAdditionalRunData);
+							Clause_old aAssignmentClause = fStringWriter.stringToAssignmentClause(aGroupInstance, aAdditionalRunData);
 							aAssignment = fEncoder.decode(aGroupInstance, aAssignmentClause);
 			
 							break;
@@ -222,7 +222,7 @@ public class AsyncTAESolver {
 			if(!aCNFFile.exists())
 			{
 				//Encode the instance
-				Set<Clause> aClauseSet = fEncoder.encode(aComponentInstance,fManager);
+				Set<Clause_old> aClauseSet = fEncoder.encode(aComponentInstance,fManager);
 				String aCNF = fStringWriter.clausesToString(aComponentInstance,aClauseSet);
 				
 				
