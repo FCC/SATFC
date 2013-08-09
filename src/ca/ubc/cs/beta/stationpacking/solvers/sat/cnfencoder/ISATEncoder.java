@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solvers.cnfencoder;
+package ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder;
 
 import org.apache.commons.math3.util.Pair;
 

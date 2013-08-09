@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aclib.concurrent.threadfactory.SequentiallyNamedThreadFactory;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.solvers.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 
 public class AsynchronousLocalExperimentReporter implements IExperimentReporter {
 	

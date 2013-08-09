@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers;
+package ca.ubc.cs.beta.stationpacking.solvers.base;
 
 import java.io.Serializable;
 
