@@ -27,11 +27,15 @@ function compileShared ()
 }
 
 #configure clasp
+echo -n "Cleaning previous make... "
+make clean
+echo "Done."
 echo "CLASP----------------------------------------------"
 cd $CLASP
 if [ "$1" == "1" ]
 then
-	./configure.sh --config=jna CXXFLAGS="-O3 -DNDEBUG -fPIC"
+#	./configure.sh --config=jna CXXFLAGS="-O3 -DNDEBUG -fPIC"
+	./configure.sh --config=jna CXXFLAGS="-g -fPIC"
 fi
 cd build/jna
 make
