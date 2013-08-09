@@ -15,13 +15,13 @@ import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluat
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.validator.ImplementedSolverParameterValidator;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ISATEncoder;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.SATEncoder;
-import ca.ubc.cs.beta.stationpacking.solver.taesolver.AsyncTAESolver;
-import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.AsyncCachedCNFLookup;
-import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
-import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.ConstraintGrouper;
-import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponentGrouper;
+import ca.ubc.cs.beta.stationpacking.solvers.AsyncTAESolver;
+import ca.ubc.cs.beta.stationpacking.solvers.cnfencoder.ISATEncoder;
+import ca.ubc.cs.beta.stationpacking.solvers.cnfencoder.SATEncoder;
+import ca.ubc.cs.beta.stationpacking.solvers.cnflookup.AsyncCachedCNFLookup;
+import ca.ubc.cs.beta.stationpacking.solvers.cnflookup.ICNFResultLookup;
+import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.ConstraintGrouper;
+import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
