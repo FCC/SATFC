@@ -13,11 +13,11 @@ import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
-import ca.ubc.cs.beta.stationpacking.solvers.SolverResult;
-import ca.ubc.cs.beta.stationpacking.solvers.cnfencoder.ISATEncoder;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Clause;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Litteral;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.SATResult;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental.SATSolver.IIncrementalSATSolver;
 
 public class IncrementalSolver implements ISolver{

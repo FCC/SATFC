@@ -1,6 +1,7 @@
 package ca.ubc.cs.beta.stationpacking.solvers;
 
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 
 /**
  * Solves station packing problem instance.

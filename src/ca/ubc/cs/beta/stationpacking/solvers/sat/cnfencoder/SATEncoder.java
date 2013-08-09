@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solvers.cnfencoder;
+package ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -202,19 +202,24 @@ public class SATEncoder implements ISATEncoder {
 	{
 		long a = (long) (z-Math.pow(Math.floor(Math.sqrt(z)),2));
 		long b =(long) Math.floor(Math.sqrt(z));
-		
-		if(a>Integer.MAX_VALUE || a<Integer.MIN_VALUE || b>Integer.MAX_VALUE || b<Integer.MIN_VALUE || (a-b) > Integer.MAX_VALUE || (a-b) < Integer.MAX_VALUE)
-		{
-			throw new IllegalArgumentException("Cannot unpair "+z+" to integer pairing components.");
-		}
+	
 		
 		if(a<b)
 		{
-			return new Pair<Integer,Integer>((int)a,(int)b);
+			if(a>Integer.MAX_VALUE || a<Integer.MIN_VALUE || b > Integer.MAX_VALUE || b<Integer.MIN_VALUE)
+			{
+				throw new IllegalArgumentException("Cannot unpair "+z+" to integer pairing components.");
+			}
 			
+			return new Pair<Integer,Integer>((int)a,(int)b);
 		}
 		else
 		{
+			if(b>Integer.MAX_VALUE || b<Integer.MIN_VALUE || (a-b) > Integer.MAX_VALUE || (a-b)<Integer.MIN_VALUE)
+			{
+				throw new IllegalArgumentException("Cannot unpair "+z+" to integer pairing components.");
+			}
+			
 			return new Pair<Integer,Integer>((int)b,(int)(a-b));
 		}
 		

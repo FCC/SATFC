@@ -17,7 +17,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.solvers.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 
 /**
  * CNF lookup that searches a particular directory for CNFs, and keeps a cached map around for solver results.

@@ -1,8 +1,8 @@
 package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental.SATSolver;
 
 
+import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Clause;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.SATResult;
 
 
 /* This interface should provide a unified way to interact with the SATSolver.

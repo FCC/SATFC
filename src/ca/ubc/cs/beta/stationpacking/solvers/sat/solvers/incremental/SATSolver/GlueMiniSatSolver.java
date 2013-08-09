@@ -6,9 +6,9 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Clause;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Litteral;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.SATResult;
 
 import com.sun.jna.Library;
 import com.sun.jna.Native;

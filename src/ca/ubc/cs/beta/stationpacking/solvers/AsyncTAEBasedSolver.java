@@ -3,7 +3,6 @@ package ca.ubc.cs.beta.stationpacking.solvers;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -26,14 +25,15 @@ import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluatorCal
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
-import ca.ubc.cs.beta.stationpacking.solvers.cnfencoder.CNFCompressor;
-import ca.ubc.cs.beta.stationpacking.solvers.cnfencoder.ISATEncoder;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.cnflookup.AsyncCachedCNFLookup;
 import ca.ubc.cs.beta.stationpacking.solvers.cnflookup.ICNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.reporters.IExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.SATResult;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.CNFCompressor;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
 
 /**
  * SAT solver wrapper that uses Steve Ramage's AClib Target Algorithm Evaluators for execution in an asynchronous way, particularly useful for parallel solving of many instances..
@@ -41,9 +41,9 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.SATResult;
  * @author afrechet
  * 
  */
-public class AsyncTAESolver {
+public class AsyncTAEBasedSolver {
 	
-	private static Logger log = LoggerFactory.getLogger(TAESolver.class);
+	private static Logger log = LoggerFactory.getLogger(TAEBasedSolver.class);
 	
 	private ParamConfigurationSpace fParamConfigurationSpace;
 	private TargetAlgorithmEvaluator fTargetAlgorithmEvaluator;
@@ -62,7 +62,7 @@ public class AsyncTAESolver {
 	 * @param aTAE - an AClib Target Algorithm Evaluator in charge of running SAT solver.
 	 * @param aTAEExecConfig - the TAE's configuration.
 	 */
-	public AsyncTAESolver(IConstraintManager aConstraintManager, ISATEncoder aCNFEncoder,
+	public AsyncTAEBasedSolver(IConstraintManager aConstraintManager, ISATEncoder aCNFEncoder,
 			ICNFResultLookup aLookup, IComponentGrouper aGrouper, TargetAlgorithmEvaluator aTAE, AlgorithmExecutionConfig aTAEExecConfig) {
 		
 		fEncoder = aCNFEncoder;
@@ -82,7 +82,7 @@ public class AsyncTAESolver {
 	}
 
 
-	private TargetAlgorithmEvaluatorCallback getCompilingCallback(final StationPackingInstance aInstance,final IExperimentReporter aAsynchronousReporter,final HashMap<RunConfig,StationPackingInstance> aToSolveInstances, final HashMap<RunConfig,ISATEncoder> aComponentEncoders)
+	private TargetAlgorithmEvaluatorCallback getCompilingCallback(final StationPackingInstance aInstance,final IExperimentReporter aAsynchronousReporter,final HashMap<RunConfig,StationPackingInstance> aToSolveInstances, final HashMap<RunConfig,CNFCompressor> aComponentEncoders)
 	{
 		return new TargetAlgorithmEvaluatorCallback()
 		{
@@ -104,7 +104,7 @@ public class AsyncTAESolver {
 							//Grab assignment
 							String aAdditionalRunData = aRun.getAdditionalRunData();
 							StationPackingInstance aComponentInstance = aToSolveInstances.get(aRun.getRunConfig());
-							ISATEncoder aComponentEncoder = aComponentEncoders.get(aRun.getRunConfig());
+							CNFCompressor aComponentEncoder = aComponentEncoders.get(aRun.getRunConfig());
 							
 							//The TAE wrapper is assumed to return a ';'-separated string of litterals, one litteral for each variable of the SAT problem.
 							HashMap<Long,Boolean> aLitteralChecker = new HashMap<Long,Boolean>();
@@ -129,7 +129,7 @@ public class AsyncTAESolver {
 								//If the litteral is positive, then we keep it as it is an assigned station to a channel.
 								if(aSign)
 								{
-									Pair<Station,Integer> aStationChannelPair = aComponentEncoder.decode(aVariable);
+									Pair<Station,Integer> aStationChannelPair = fEncoder.decode(aComponentEncoder.decompress(aVariable));
 									Station aStation = aStationChannelPair.getKey();
 									Integer aChannel = aStationChannelPair.getValue();
 									
@@ -170,7 +170,7 @@ public class AsyncTAESolver {
 				}
 				
 				//Merge all the results
-				SolverResult aResult = mergeComponentResults(aComponentResults);
+				SolverResult aResult = SolverHelper.mergeComponentResults(aComponentResults);
 				
 				log.info("Terminated.");
 				
@@ -210,7 +210,7 @@ public class AsyncTAESolver {
 				
 				
 				
-				aAsynchronousReporter.report(aInstance, mergeComponentResults(aComponentResults));
+				aAsynchronousReporter.report(aInstance, aResult);
 				
 			}
 
@@ -240,13 +240,13 @@ public class AsyncTAESolver {
 		Set<Set<Station>> aInstanceGroups = fGrouper.group(aInstance,fManager);
 		
 		HashMap<RunConfig,StationPackingInstance> aToSolveInstances = new HashMap<RunConfig,StationPackingInstance>();
-		HashMap<RunConfig,ISATEncoder> aComponentEncoders = new HashMap<RunConfig,ISATEncoder>();	
+		HashMap<RunConfig,CNFCompressor> aComponentEncoders = new HashMap<RunConfig,CNFCompressor>();	
 		
 		//Create the runs to execute.
 		for(Set<Station> aStationComponent : aInstanceGroups){
 			
 			//Wrap the encoder in a compressor for this component.
-			ISATEncoder aComponentEncoder = new CNFCompressor(fEncoder);
+			CNFCompressor aComponentEncoder = new CNFCompressor();
 			
 			//Create the component group instance.
 			StationPackingInstance aComponentInstance = new StationPackingInstance(aStationComponent,aChannelRange);
@@ -261,9 +261,10 @@ public class AsyncTAESolver {
 			if(!aCNFFile.exists())
 			{
 				//Encode the instance
-				CNF aCNF = aComponentEncoder.encode(aComponentInstance);
+				CNF aCNF = fEncoder.encode(aComponentInstance);
+				CNF aCompressedCNF = aComponentEncoder.compress(aCNF);
 				
-				String aCNFString = aCNF.toDIMACS(new String[]{"FCC Station packing instance.","[Channels]_[Stations] ",aComponentInstance.toString()});
+				String aCNFString = aCompressedCNF.toDIMACS(new String[]{"FCC Station packing instance.","[Channels]_[Stations] ",aComponentInstance.toString()});
 				
 				//Write it to disk
 				try 
@@ -292,68 +293,6 @@ public class AsyncTAESolver {
 		fTargetAlgorithmEvaluator.evaluateRunsAsync(aRunConfigs,getCompilingCallback(aInstance,aAsynchronousReporter,aToSolveInstances,aComponentEncoders));
 		
 	}
-	
-	private SolverResult mergeComponentResults(Collection<SolverResult> aComponentResults){
-		double aRuntime = 0.0;
-		
-		//Merge runtimes as sum of times.
-		HashSet<SATResult> aSATResults = new HashSet<SATResult>();
-		for(SolverResult aSolverResult : aComponentResults)
-		{
-			aRuntime += aSolverResult.getRuntime();
-			aSATResults.add(aSolverResult.getResult());
-		}
-		
-		//Merge SAT results		
-		SATResult aSATResult = SATResult.CRASHED;
-		
-		if(aSATResults.size()==1)
-		{
-			aSATResult = aSATResults.iterator().next();
-		}
-		else if(aSATResults.contains(SATResult.UNSAT))
-		{
-			aSATResult = SATResult.UNSAT;
-		}
-		else if(aSATResults.contains(SATResult.CRASHED))
-		{
-			aSATResult = SATResult.CRASHED;
-		}
-		else if(aSATResults.contains(SATResult.TIMEOUT) || aSATResults.contains(SATResult.KILLED))
-		{
-			aSATResult = SATResult.TIMEOUT;
-		}
-		
-		//If all runs were killed, it is because we went over time. 
-		if(aSATResult.equals(SATResult.KILLED))
-		{
-			aSATResult = SATResult.TIMEOUT;
-		}
-		
-		
-		//Merge assignments
-		Map<Integer,Set<Station>> aAssignment = new HashMap<Integer,Set<Station>>();
-		if(aSATResult.equals(SATResult.SAT))
-		{
-			for(SolverResult aComponentResult : aComponentResults)
-			{
-				Map<Integer,Set<Station>> aComponentAssignment = aComponentResult.getAssignment();
-				
-				for(Integer aAssignedChannel : aComponentAssignment.keySet())
-				{
-					if(!aAssignment.containsKey(aAssignedChannel))
-					{
-						aAssignment.put(aAssignedChannel, new HashSet<Station>());
-					}
-					aAssignment.get(aAssignedChannel).addAll(aComponentAssignment.get(aAssignedChannel));
-				}
-			}
-		}
-		
-				
-		return new SolverResult(aSATResult,aRuntime,aAssignment);
-	}
-
 	
 	
 	public void waitForFinish()
