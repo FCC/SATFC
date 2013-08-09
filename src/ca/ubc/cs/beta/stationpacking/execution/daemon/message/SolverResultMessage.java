@@ -4,8 +4,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 import ca.ubc.cs.beta.stationpacking.base.Station;
-import ca.ubc.cs.beta.stationpacking.solver.SATResult;
-import ca.ubc.cs.beta.stationpacking.solver.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.SATResult;
 
 /**
  * Message containing solver result. Note the need to change the representation of the solver result in a mememto object to reduce
