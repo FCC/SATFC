@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solver.cnfwriter;
+package ca.ubc.cs.beta.stationpacking.solver.sat.cnfwriter;
 
 
 import java.util.HashSet;
@@ -6,8 +6,11 @@ import java.util.Set;
 
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.solver.sat.Clause_old;
+import ca.ubc.cs.beta.stationpacking.solver.sat.base.Clause_old;
 
+/**
+ * @deprecated
+ */
 public class CNFStringWriter {
 
 	
