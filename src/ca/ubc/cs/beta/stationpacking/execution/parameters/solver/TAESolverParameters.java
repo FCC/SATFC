@@ -18,6 +18,8 @@ import ca.ubc.cs.beta.stationpacking.execution.parameters.validator.ImplementedS
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder_old;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder_old;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ISATEncoder;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.SATEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.cnfwriter.CNFStringWriter;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.TAESolver;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.HybridCNFResultLookup;
@@ -59,7 +61,7 @@ public class TAESolverParameters extends AbstractOptions implements ISolverParam
 		TargetAlgorithmEvaluator aTAE = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(AlgorithmExecutionOptions.taeOpts, AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null), false, AvailableTAEOptions);
 		
 		log.info("Creating CNF encoder...");
-		ICNFEncoder_old aCNFEncoder = new CNFEncoder_old(aStationManager.getStations());
+		ISATEncoder aCNFEncoder = new SATEncoder(aStationManager, aConstraintManager);
 		
 		log.info("Creating CNF lookup...");
 		ICNFResultLookup aCNFLookup = new HybridCNFResultLookup(CNFDirectory, CNFOutputName);
@@ -68,7 +70,7 @@ public class TAESolverParameters extends AbstractOptions implements ISolverParam
 		IComponentGrouper aGrouper = new ConstraintGrouper();
 		
 		log.info("Creating solver...");
-		TAESolver aSolver = new TAESolver(aConstraintManager, aCNFEncoder, aCNFLookup, aGrouper, new CNFStringWriter(), aTAE, AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null),KeepCNF);
+		TAESolver aSolver = new TAESolver(aConstraintManager, aCNFEncoder, aCNFLookup, aGrouper, aTAE, AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null),KeepCNF);
 		
 		return aSolver;
 	}
