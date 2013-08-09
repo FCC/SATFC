@@ -1,0 +1,14 @@
+weight_constraint.o: ../../../libclasp/src/weight_constraint.cpp \
+ ../../../libclasp/clasp/weight_constraint.h \
+ ../../../libclasp/clasp/constraint.h ../../../libclasp/clasp/literal.h \
+ ../../../libclasp/clasp/util/platform.h \
+ ../../../libclasp/clasp/pod_vector.h \
+ ../../../libclasp/clasp/util/pod_vector.h \
+ ../../../libclasp/clasp/util/type_manip.h \
+ ../../../libclasp/clasp/clause.h ../../../libclasp/clasp/solver_types.h \
+ ../../../libclasp/clasp/util/left_right_sequence.h \
+ ../../../libclasp/clasp/util/misc_types.h \
+ ../../../libclasp/clasp/util/type_manip.h \
+ ../../../libclasp/clasp/util/atomic.h ../../../libclasp/clasp/solver.h \
+ ../../../libclasp/clasp/solver_strategies.h \
+ ../../../libclasp/clasp/shared_context.h

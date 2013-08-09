@@ -1,0 +1,3 @@
+value_parser.o: ../../../libprogram_opts/src/value_parser.cpp \
+ ../../../libprogram_opts/program_opts/value_parser.h \
+ ../../../libprogram_opts/program_opts/detail/input_stream.h
