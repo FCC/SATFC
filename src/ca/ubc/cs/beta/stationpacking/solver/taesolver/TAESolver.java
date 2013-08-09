@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,8 +32,11 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager
 import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.solver.SATResult;
 import ca.ubc.cs.beta.stationpacking.solver.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFCompressor;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder_old;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ISATEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.cnfwriter.CNFStringWriter;
+import ca.ubc.cs.beta.stationpacking.solver.sat.CNF;
 import ca.ubc.cs.beta.stationpacking.solver.sat.Clause_old;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponentGrouper;
@@ -51,8 +56,7 @@ public class TAESolver implements ISolver{
 	
 	private IConstraintManager fManager;
 	private ICNFResultLookup fLookup;
-	private ICNFEncoder_old fEncoder;
-	private CNFStringWriter fStringWriter;
+	private ISATEncoder fEncoder;
 	
 	private IComponentGrouper fGrouper;
 	
@@ -61,22 +65,19 @@ public class TAESolver implements ISolver{
 	/**
 	 * 
 	 * @param aConstraintManager - the manager in charge of constraints.
-	 * @param aCNFEncoder - the encoder in charge of taking constraints and an instance and producing a CNF clause set.
+	 * @param aSATEncoder - the encoder in charge of taking constraints and an instance and producing a CNF clause set.
 	 * @param aLookup - the CNF lookup in charge of monitoring CNFs.
 	 * @param aGrouper - the component grouper in charge of partitioning instance in subinstances.
-	 * @param aStringWriter - the writer in charge of transforming a CNF clause set in a string representation.
 	 * @param aTAE - an AClib Target Algorithm Evaluator in charge of running SAT solver.
 	 * @param aTAEExecConfig - the TAE's configuration.
 	 */
-	public TAESolver(IConstraintManager aConstraintManager, ICNFEncoder_old aCNFEncoder,
-			ICNFResultLookup aLookup, IComponentGrouper aGrouper, CNFStringWriter aStringWriter,
-			TargetAlgorithmEvaluator aTAE, AlgorithmExecutionConfig aTAEExecConfig, boolean aKeepCNFs) {
+	public TAESolver(IConstraintManager aConstraintManager, ISATEncoder aSATEncoder,
+			ICNFResultLookup aLookup, IComponentGrouper aGrouper, TargetAlgorithmEvaluator aTAE, AlgorithmExecutionConfig aTAEExecConfig, boolean aKeepCNFs) {
 		
-		fEncoder = aCNFEncoder;
+		fEncoder = aSATEncoder;
 		fManager = aConstraintManager;
 		fGrouper = aGrouper;
 		fLookup = aLookup;
-		fStringWriter = aStringWriter;
 		
 		fParamConfigurationSpace  = aTAEExecConfig.getParamFile();
 		fTargetAlgorithmEvaluator = aTAE;
@@ -116,7 +117,6 @@ public class TAESolver implements ISolver{
 						aCutoff = aRun.getRunConfig().getCutoffTime();
 						aSumRuntimes += aRun.getRuntime();
 					}
-					//TODO Some cutoff management magic right here.
 					if(aSumRuntimes>1.01+aCutoff+1)
 					{
 						aKill = true;
@@ -157,10 +157,16 @@ public class TAESolver implements ISolver{
 		
 		ArrayList<SolverResult> aComponentResults = new ArrayList<SolverResult>();
 		HashMap<RunConfig,StationPackingInstance> aToSolveInstances = new HashMap<RunConfig,StationPackingInstance>();
+		HashMap<RunConfig,ISATEncoder> aComponentEncoders = new HashMap<RunConfig,ISATEncoder>();
+		
 		
 		HashSet<String> aCNFs = new HashSet<String>();
 		//Create the runs to execute.
 		for(Set<Station> aStationComponent : aInstanceGroups){
+			
+			//Wrap the encoder in a compressor for this component.
+			ISATEncoder aComponentEncoder = new CNFCompressor(fEncoder);
+			
 			//Create the component group instance.
 			StationPackingInstance aComponentInstance = new StationPackingInstance(aStationComponent,aChannelRange);
 			
@@ -188,18 +194,18 @@ public class TAESolver implements ISolver{
 				if(!aCNFFile.exists())
 				{
 					//Encode the instance
-					Set<Clause_old> aClauseSet = fEncoder.encode(aComponentInstance,fManager);
-					String aCNF = fStringWriter.clausesToString(aComponentInstance,aClauseSet);
+					CNF aCNF = aComponentEncoder.encode(aComponentInstance);
 					
+					String aCNFString = aCNF.toDIMACS(new String[]{"FCC Station packing instance.","[Channels]_[Stations] ",aComponentInstance.toString()});
 					
 					//Write it to disk
 					try 
 					{
-						FileUtils.writeStringToFile(aCNFFile, aCNF);
+						FileUtils.writeStringToFile(aCNFFile, aCNFString);
 					} 
 					catch (IOException e) 
 					{
-						e.printStackTrace();
+						throw new IllegalStateException("Could not write CNF to file ("+e.getMessage()+").");
 					}
 				}
 				//Create the run config and add it to the to-do list.
@@ -208,6 +214,8 @@ public class TAESolver implements ISolver{
 				RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aCutoff, fParamConfigurationSpace.getDefaultConfiguration());
 				
 				aToSolveInstances.put(aRunConfig,aComponentInstance);
+				aComponentEncoders.put(aRunConfig, aComponentEncoder);
+				
 			}
 		}
 		
@@ -230,9 +238,48 @@ public class TAESolver implements ISolver{
 					
 					//Grab assignment
 					String aAdditionalRunData = aRun.getAdditionalRunData();
-					StationPackingInstance aGroupInstance = aToSolveInstances.get(aRun.getRunConfig());
-					Clause_old aAssignmentClause = fStringWriter.stringToAssignmentClause(aGroupInstance, aAdditionalRunData);
-					aAssignment = fEncoder.decode(aGroupInstance, aAssignmentClause);
+					StationPackingInstance aComponentInstance = aToSolveInstances.get(aRun.getRunConfig());
+					ISATEncoder aComponentEncoder = aComponentEncoders.get(aRun.getRunConfig());
+					
+					//The TAE wrapper is assumed to return a ';'-separated string of litterals, one litteral for each variable of the SAT problem.
+					HashMap<Long,Boolean> aLitteralChecker = new HashMap<Long,Boolean>();
+					for(String aLiteral : aAdditionalRunData.split(";"))
+					{
+						boolean aSign = !aLiteral.contains("-"); 
+						long aVariable = Long.valueOf(aLiteral.replace("-", ""));
+						
+						if(aLitteralChecker.containsKey(aVariable))
+						{
+							log.warn("A variable was present twice in a SAT assignment.");
+							if(!aLitteralChecker.get(aVariable).equals(aSign))
+							{
+								throw new IllegalStateException("SAT assignment from TAE wrapper assigns a variable to true AND false.");
+							}
+						}
+						else
+						{
+							aLitteralChecker.put(aVariable, aSign);
+						}
+						
+						//If the litteral is positive, then we keep it as it is an assigned station to a channel.
+						if(aSign)
+						{
+							Pair<Station,Integer> aStationChannelPair = aComponentEncoder.decode(aVariable);
+							Station aStation = aStationChannelPair.getKey();
+							Integer aChannel = aStationChannelPair.getValue();
+							
+							if(!aComponentInstance.getStations().contains(aStation) || !aComponentInstance.getChannels().contains(aChannel))
+							{
+								throw new IllegalStateException("A decoded station and channel from a component SAT assignment is not in that component's problem instance.");
+							}
+							
+							if(!aAssignment.containsKey(aChannel))
+							{
+								aAssignment.put(aChannel, new HashSet<Station>());
+							}
+							aAssignment.get(aChannel).add(aStation);
+						}
+					}
 	
 					break;
 				case UNSAT:
