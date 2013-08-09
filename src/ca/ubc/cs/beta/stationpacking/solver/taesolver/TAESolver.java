@@ -33,11 +33,8 @@ import ca.ubc.cs.beta.stationpacking.solver.ISolver;
 import ca.ubc.cs.beta.stationpacking.solver.SATResult;
 import ca.ubc.cs.beta.stationpacking.solver.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFCompressor;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder_old;
 import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ISATEncoder;
-import ca.ubc.cs.beta.stationpacking.solver.cnfwriter.CNFStringWriter;
 import ca.ubc.cs.beta.stationpacking.solver.sat.CNF;
-import ca.ubc.cs.beta.stationpacking.solver.sat.Clause_old;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.componentgrouper.IComponentGrouper;
 
@@ -158,7 +155,6 @@ public class TAESolver implements ISolver{
 		ArrayList<SolverResult> aComponentResults = new ArrayList<SolverResult>();
 		HashMap<RunConfig,StationPackingInstance> aToSolveInstances = new HashMap<RunConfig,StationPackingInstance>();
 		HashMap<RunConfig,ISATEncoder> aComponentEncoders = new HashMap<RunConfig,ISATEncoder>();
-		
 		
 		HashSet<String> aCNFs = new HashSet<String>();
 		//Create the runs to execute.
