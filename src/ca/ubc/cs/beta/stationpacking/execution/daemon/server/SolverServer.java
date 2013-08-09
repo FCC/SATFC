@@ -27,8 +27,8 @@ import ca.ubc.cs.beta.stationpacking.execution.daemon.message.IMessage;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.message.SolveMessage;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.message.SolverResultMessage;
 import ca.ubc.cs.beta.stationpacking.execution.daemon.message.StatusMessage;
-import ca.ubc.cs.beta.stationpacking.solver.ISolver;
-import ca.ubc.cs.beta.stationpacking.solver.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 
 /**
  * Wrapper around an ISolver and a StationManager that takes care of receiving problem instances and various misc commands from UDP localhost, and communicate
