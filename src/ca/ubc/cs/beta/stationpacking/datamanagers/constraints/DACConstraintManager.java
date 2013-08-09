@@ -208,31 +208,37 @@ public class DACConstraintManager implements IConstraintManager{
 	
 	@Override
 	public Boolean isSatisfyingAssignment(Map<Integer,Set<Station>> aAssignment){
-		try{
-			Set<Station> aStations;
-			for(Integer aChannel : aAssignment.keySet()){ //For each channel
-				aStations = aAssignment.get(aChannel);
-				for(Station aStation1 : aStations){ //Look at all stations on that channel
-					for(Station aStation2 : aStations){ //Check to see if aStaion violates a co-channel constraint
-						if(getCOInterferingStations(aStation1,aChannel).contains(aStation2)){
-							log.error("\n"+aStation1 + " and "+aStation2+" share channel "+aChannel+", on which they interfere.\n");
-							return false; 
-						}
+		
+		Set<Station> aAllStations = new HashSet<Station>();
+		
+		Set<Station> aStations;
+		for(Integer aChannel : aAssignment.keySet()){ //For each channel
+			aStations = aAssignment.get(aChannel);
+			for(Station aStation1 : aStations){ //Look at all stations on that channel
+				if(aAllStations.contains(aStation1))
+				{
+					log.error("Station {} appears twice in the assignment.",aStation1);
+					return false;
+				}
+				
+				for(Station aStation2 : aStations){ //Check to see if aStaion violates a co-channel constraint
+					if(getCOInterferingStations(aStation1,aChannel).contains(aStation2)){
+						log.error("\n"+aStation1 + " and "+aStation2+" share channel "+aChannel+", on which they interfere.\n");
+						return false; 
 					}
-					if(aAssignment.containsKey(aChannel+1)){ //Check to see if aStation violates an adj-channel constraint
-						for(Station aStation2 : aAssignment.get(aChannel+1)){
-							if(getADJplusInterferingStations(aStation1,aChannel).contains(aStation2)){
-								log.error("\n"+aStation1 + " is on channel "+aChannel+", while "+aStation2+" is on channel "+(aChannel+1)+", causing them to interfere.\n");
-								return false;
-							}
+				}
+				if(aAssignment.containsKey(aChannel+1)){ //Check to see if aStation violates an adj-channel constraint
+					for(Station aStation2 : aAssignment.get(aChannel+1)){
+						if(getADJplusInterferingStations(aStation1,aChannel).contains(aStation2)){
+							log.error("\n"+aStation1 + " is on channel "+aChannel+", while "+aStation2+" is on channel "+(aChannel+1)+", causing them to interfere.\n");
+							return false;
 						}
 					}
 				}
 			}
-		} catch(Exception e){
-			log.error("\nStation assigned to channel not in the range 2-51.\n");
-			return false; //Station assigned to a channel not in the range 2-51; should we throw an exception?
+			aAllStations.addAll(aStations);
 		}
+		
 		return true;
 	}
 	

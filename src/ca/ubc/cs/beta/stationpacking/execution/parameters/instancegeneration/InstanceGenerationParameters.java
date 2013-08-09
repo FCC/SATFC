@@ -24,9 +24,9 @@ import ca.ubc.cs.beta.stationpacking.execution.parameters.repackingdata.Repackin
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.SolverParameters;
 import ca.ubc.cs.beta.stationpacking.experiment.InstanceGeneration;
 import ca.ubc.cs.beta.stationpacking.experiment.InversePopulationStationIterator;
-import ca.ubc.cs.beta.stationpacking.solver.ISolver;
-import ca.ubc.cs.beta.stationpacking.solver.reporters.IExperimentReporter;
-import ca.ubc.cs.beta.stationpacking.solver.reporters.LocalExperimentReporter;
+import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
+import ca.ubc.cs.beta.stationpacking.solvers.reporters.IExperimentReporter;
+import ca.ubc.cs.beta.stationpacking.solvers.reporters.LocalExperimentReporter;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;

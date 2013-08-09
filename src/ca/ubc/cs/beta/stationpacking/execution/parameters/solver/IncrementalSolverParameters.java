@@ -7,11 +7,11 @@ import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
-import ca.ubc.cs.beta.stationpacking.solver.ISolver;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder_old;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder_old;
-import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.IncrementalSolver;
-import ca.ubc.cs.beta.stationpacking.solver.incrementalsolver.SATSolver.GlueMiniSatSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATEncoder;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental.IncrementalSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental.SATSolver.GlueMiniSatSolver;
 
 import com.beust.jcommander.Parameter;
 
@@ -30,7 +30,7 @@ public class IncrementalSolverParameters extends AbstractOptions {
 		Logger log = LoggerFactory.getLogger(IncrementalSolverParameters.class);
 		
 		log.info("Creating CNF encoder...");
-		ICNFEncoder_old aCNFEncoder = new CNFEncoder_old(aStationManager.getStations());
+		ISATEncoder aCNFEncoder = new SATEncoder(aStationManager,aConstraintManager);
 		
 		log.info("Creating library...");
 		GlueMiniSatSolver aGMSlibrary = new GlueMiniSatSolver(fLibraryPath);
