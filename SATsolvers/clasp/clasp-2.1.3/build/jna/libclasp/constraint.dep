@@ -1,0 +1,6 @@
+constraint.o: ../../../libclasp/src/constraint.cpp \
+ ../../../libclasp/clasp/constraint.h ../../../libclasp/clasp/literal.h \
+ ../../../libclasp/clasp/util/platform.h \
+ ../../../libclasp/clasp/pod_vector.h \
+ ../../../libclasp/clasp/util/pod_vector.h \
+ ../../../libclasp/clasp/util/type_manip.h

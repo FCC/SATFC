@@ -1,0 +1,3 @@
+value_store.o: ../../../libprogram_opts/src/value_store.cpp \
+ ../../../libprogram_opts/program_opts/value_store.h \
+ ../../../libprogram_opts/program_opts/detail/value_store.h

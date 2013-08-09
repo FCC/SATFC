@@ -1,0 +1,11 @@
+app_options.o: ../../../libprogram_opts/src/app_options.cpp \
+ ../../../libprogram_opts/program_opts/app_options.h \
+ ../../../libprogram_opts/program_opts/program_options.h \
+ ../../../libprogram_opts/program_opts/value.h \
+ ../../../libprogram_opts/program_opts/detail/refcountable.h \
+ ../../../libprogram_opts/program_opts/typed_value.h \
+ ../../../libprogram_opts/program_opts/value_parser.h \
+ ../../../libprogram_opts/program_opts/detail/input_stream.h \
+ ../../../libprogram_opts/program_opts/detail/notifier.h \
+ ../../../libprogram_opts/program_opts/errors.h \
+ ../../../libprogram_opts/program_opts/composite_value_parser.h
