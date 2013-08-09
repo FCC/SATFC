@@ -13,8 +13,8 @@ import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.asyncresolving.AsyncResolvingParameters;
-import ca.ubc.cs.beta.stationpacking.solver.reporters.AsynchronousLocalExperimentReporter;
-import ca.ubc.cs.beta.stationpacking.solver.taesolver.AsyncTAESolver;
+import ca.ubc.cs.beta.stationpacking.solvers.AsyncTAEBasedSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.reporters.AsynchronousLocalExperimentReporter;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;
@@ -55,7 +55,7 @@ public class AsyncInstanceResolvingExecutor {
 		
 		
 		ArrayList<StationPackingInstance> aInstances = aInstanceResolvingParameters.getInstances();
-			AsyncTAESolver aSolver = null;
+			AsyncTAEBasedSolver aSolver = null;
 			try
 			{
 				try 
