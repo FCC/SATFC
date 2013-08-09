@@ -15,9 +15,8 @@ import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluat
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.validator.ImplementedSolverParameterValidator;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.CNFEncoder_old;
-import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ICNFEncoder_old;
-import ca.ubc.cs.beta.stationpacking.solver.cnfwriter.CNFStringWriter;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.ISATEncoder;
+import ca.ubc.cs.beta.stationpacking.solver.cnfencoder.SATEncoder;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.AsyncTAESolver;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.AsyncCachedCNFLookup;
 import ca.ubc.cs.beta.stationpacking.solver.taesolver.cnflookup.ICNFResultLookup;
@@ -49,7 +48,7 @@ public class AsyncTAESolverParameters extends AbstractOptions{
 		AlgorithmExecutionOptions.paramFileDelegate.paramFile = AlgorithmExecutionOptions.algoExecDir+File.separatorChar+"sw_parameterspaces"+File.separatorChar+"sw_"+Solver+".txt";
 		
 		log.info("Creating CNF encoder...");
-		ICNFEncoder_old aCNFEncoder = new CNFEncoder_old(aStationManager.getStations());
+		ISATEncoder aCNFEncoder = new SATEncoder(aStationManager,aConstraintManager);
 		
 		log.info("Creating CNF lookup...");
 		ICNFResultLookup aCNFLookup = new AsyncCachedCNFLookup(CNFDirectory);
@@ -60,7 +59,7 @@ public class AsyncTAESolverParameters extends AbstractOptions{
 		TargetAlgorithmEvaluator aTAE = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(AlgorithmExecutionOptions.taeOpts, AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null), false, AvailableTAEOptions);
 		
 		log.info("Creating solver...");
-		AsyncTAESolver aSolver = new AsyncTAESolver(aConstraintManager, aCNFEncoder, aCNFLookup, aGrouper, new CNFStringWriter(), aTAE, AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null));
+		AsyncTAESolver aSolver = new AsyncTAESolver(aConstraintManager, aCNFEncoder, aCNFLookup, aGrouper, aTAE, AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null));
 		
 		return aSolver;
 	}
