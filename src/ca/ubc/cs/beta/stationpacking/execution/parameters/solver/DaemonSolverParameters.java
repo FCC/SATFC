@@ -9,7 +9,7 @@ import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.repackingdata.RepackingDataParameters;
-import ca.ubc.cs.beta.stationpacking.solver.ISolver;
+import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 
 import com.beust.jcommander.ParametersDelegate;
 
