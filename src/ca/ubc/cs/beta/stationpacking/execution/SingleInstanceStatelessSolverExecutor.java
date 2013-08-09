@@ -16,8 +16,8 @@ import ca.ubc.cs.beta.aclib.misc.options.UsageSection;
 import ca.ubc.cs.beta.aclib.options.ConfigToLaTeX;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.ExecutableSolverParameters;
-import ca.ubc.cs.beta.stationpacking.solver.ISolver;
-import ca.ubc.cs.beta.stationpacking.solver.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;

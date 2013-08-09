@@ -1,6 +1,6 @@
 package ca.ubc.cs.beta.stationpacking;
 
-import ca.ubc.cs.beta.stationpacking.solver.jnalibraries.GlueMiniSATLibrary;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.jnalibraries.GlueMiniSATLibrary;
 
 import com.sun.jna.Native;
 
