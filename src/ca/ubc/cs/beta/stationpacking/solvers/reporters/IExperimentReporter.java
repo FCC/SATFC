@@ -1,7 +1,7 @@
 package ca.ubc.cs.beta.stationpacking.solvers.reporters;
 
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.solvers.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 
 /**
  * Report and record experiment results.

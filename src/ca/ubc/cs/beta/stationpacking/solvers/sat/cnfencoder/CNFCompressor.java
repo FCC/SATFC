@@ -1,12 +1,9 @@
-package ca.ubc.cs.beta.stationpacking.solvers.cnfencoder;
+package ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder;
 
-import org.apache.commons.math3.util.Pair;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 
-import ca.ubc.cs.beta.stationpacking.base.Station;
-import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Clause;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Litteral;
@@ -17,32 +14,26 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Litteral;
  * @author afrechet
  *
  */
-public class CNFCompressor implements ISATEncoder {
+public class CNFCompressor{
 
-	private final ISATEncoder fSATEncoder;
-	
 	private final HashBiMap<Long,Long> fCompressionMap;
 	private long fCompressionMapMax = 1;
 	
-	public CNFCompressor(ISATEncoder aSATEncoder)
+	public CNFCompressor()
 	{
-		fSATEncoder = aSATEncoder;
 		fCompressionMap = HashBiMap.create();
 	}
 	
-	@Override
-	public CNF encode(StationPackingInstance aInstance) {
+	public CNF compress(CNF aCNF) {
 		
-		CNF aEncodedCNF = fSATEncoder.encode(aInstance);
-		
-		if(!aEncodedCNF.getVariables().containsAll(fCompressionMap.keySet()))
+		if(!aCNF.getVariables().containsAll(fCompressionMap.keySet()))
 		{
 			throw new IllegalArgumentException("Multiple encodings with the CNF compressor must be done on supersets of variables.");
 		}
 		
 		CNF aCompressedCNF = new CNF();
 		
-		for(Clause aClause : aEncodedCNF)
+		for(Clause aClause : aCNF)
 		{
 			Clause aCompressedClause = new Clause();
 			
@@ -67,13 +58,12 @@ public class CNFCompressor implements ISATEncoder {
 		return aCompressedCNF;
 	}
 
-	@Override
-	public Pair<Station, Integer> decode(long aVariable) {
+	public long decompress(long aVariable) {
 		
 		BiMap<Long,Long> aInverseCompressionMap = fCompressionMap.inverse();
 		if(aInverseCompressionMap.containsKey(aVariable))
 		{
-			return fSATEncoder.decode(aInverseCompressionMap.get(aVariable));
+			return aInverseCompressionMap.get(aVariable);
 		}
 		else
 		{

@@ -8,8 +8,8 @@ import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
-import ca.ubc.cs.beta.stationpacking.solvers.cnfencoder.ISATEncoder;
-import ca.ubc.cs.beta.stationpacking.solvers.cnfencoder.SATEncoder;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental.IncrementalSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental.SATSolver.GlueMiniSatSolver;
 
