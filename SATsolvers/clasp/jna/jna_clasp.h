@@ -54,7 +54,7 @@ public:
 	bool	read(ApiPtr api, uint32 properties);
 	void	addMinimize(Clasp::MinimizeBuilder&, ApiPtr) {}
 	void	getAssumptions(Clasp::LitVec&) {}
-	bool	getStatus(); // returns the status of the problem after solve has been called
+	bool	getStatus(); // returns the output of the read function after solve has been called on the problem
 private:
 	std::string problem_;
 	bool status_;
@@ -62,10 +62,14 @@ private:
 
 // Callback to set up the required information (i.e. results)
 
-class JNAResults : public Clasp::ClaspFacade::Callback {
+class JNAResult : public Clasp::ClaspFacade::Callback {
 public:
-	// called when a state is entered or left
-	void state(Event e, ClaspFacade& f) {};
+	JNAResult();	
+
+	// redefine the event to make it easier while writing code
+	typedef Clasp::ClaspFacade::Event Event;
+	// called when a state is entered or left it checks for the interrupt flag, if true facade.terminate() is called.
+	void state(Event e, ClaspFacade& f);
 
 	// Some operation triggered an important event.
 	/*
@@ -78,11 +82,16 @@ public:
 	void warning(const char* msg);
 
 	bool getInterrupt();
-	bool setInterrupt();
-	bool unsetInterrupt();
-private:
-	bool interupt_;
+	void setInterrupt();
+	void unsetInterrupt();
 
+	std::string getWarning();
+
+	std::string getAssignment();
+private:
+	bool interrupt_;
+	std::string warning_; // warning message if any.
+	std::string assignment_; // contains the true literals.
 };
 
 
