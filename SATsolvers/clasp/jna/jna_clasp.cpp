@@ -92,12 +92,62 @@ bool JNAProblem::getStatus()
 }
 
 
+// JNAResults
 
+JNAResult::JNAResult() : interrupt_(false) {}
 
+void JNAResult::state(Event e, ClaspFacade& f)
+{
+	if (interrupt_)
+	{
+		f.terminate();
+	}
+}
 
+// save the last result in a string object.
+void JNAResult::event(const Solver& s, Event e, ClaspFacade&f)
+{
+	if (e == Clasp::ClaspFacade::event_model) {
+		assignment_.clear();
+		std::ostringstream ostr;
+		const Clasp::SymbolTable& index = s.sharedContext()->symTab();
+		for (Var v = 1; v < index.size(); ++v)
+		{
+			ostr << (s.value(v) == value_false ? "-":"") << v << ";";
+		}
+		assignment_ = ostr.str();
+		assignment_.erase(assignment_.size()-1);
+	}
+}
 
+void JNAResult::warning(const char* msg)
+{
+	warning_.assign(msg);
+}
 
+bool JNAResult::getInterrupt()
+{
+	return interrupt_;
+}
 
+void JNAResult::setInterrupt()
+{
+	interrupt_ = true;
+}
 
+void JNAResult:: unsetInterrupt()
+{
+	interrupt_ = false;
+}
+
+std::string JNAResult::getWarning()
+{
+	return warning_;
+}
+
+std::string JNAResult::getAssignment()
+{
+	return assignment_;
+}
 
 }
