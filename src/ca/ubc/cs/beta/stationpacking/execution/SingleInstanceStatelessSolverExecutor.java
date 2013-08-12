@@ -3,6 +3,7 @@ package ca.ubc.cs.beta.stationpacking.execution;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -36,14 +37,14 @@ public class SingleInstanceStatelessSolverExecutor {
 		{
 			//Parse the command line arguments in a parameter object.
 			ExecutableSolverParameters aExecutableSolverParameter = new ExecutableSolverParameters();
-			JCommander aParameterParser = JCommanderHelper.getJCommander(aExecutableSolverParameter, aExecutableSolverParameter.SolverParameters.AvailableTAEOptions);
+			JCommander aParameterParser = JCommanderHelper.getJCommander(aExecutableSolverParameter, aExecutableSolverParameter.SolverParameters.TAESATSolverParameters.AvailableTAEOptions);
 			try
 			{
 				aParameterParser.parse(args);
 			}
 			catch (ParameterException aParameterException)
 			{
-				List<UsageSection> sections = ConfigToLaTeX.getParameters(aExecutableSolverParameter,aExecutableSolverParameter.SolverParameters.AvailableTAEOptions);
+				List<UsageSection> sections = ConfigToLaTeX.getParameters(aExecutableSolverParameter,aExecutableSolverParameter.SolverParameters.TAESATSolverParameters.AvailableTAEOptions);
 				
 				boolean showHiddenParameters = false;
 				
@@ -55,32 +56,31 @@ public class SingleInstanceStatelessSolverExecutor {
 			}
 			
 			
-				try 
-				{
-					aSolver = aExecutableSolverParameter.getSolver();
-					
-					StationPackingInstance aInstance = aExecutableSolverParameter.getInstance();
-					
-					SolverResult aResult = aSolver.solve(aInstance, aExecutableSolverParameter.ProblemInstanceParameters.Cutoff, aExecutableSolverParameter.ProblemInstanceParameters.Seed);
+			aSolver = aExecutableSolverParameter.getSolver();
 			
-					System.out.println("Result for feasibility checker: "+aResult.toParsableString());
-					
-					
-					//Save the result of the single instance execution.
-					DateFormat aDateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-					Date aDate = new Date();
-					
-					String aOutputFilename = aExecutableSolverParameter.SolverParameters.CNFDirectory+File.separatorChar+"InstanceResultArchive.csv";
-					BufferedWriter aWriter = new BufferedWriter(new FileWriter(aOutputFilename,true));
-					aWriter.write(aDateFormat.format(aDate)+","+aInstance+","+aResult.toParsableString()+"\n");
-					aWriter.close();
-					
-				} 
-				catch (Exception e) 
-				{
-					log.warn("Caught an error during execution ({}).",e.getMessage());
-					e.printStackTrace();
-				}
+			StationPackingInstance aInstance = aExecutableSolverParameter.getInstance();
+			
+			SolverResult aResult = aSolver.solve(aInstance, aExecutableSolverParameter.ProblemInstanceParameters.Cutoff, aExecutableSolverParameter.ProblemInstanceParameters.Seed);
+	
+			System.out.println("Result for feasibility checker: "+aResult.toParsableString());
+			
+			//Save the result of the single instance execution.
+			try
+			{
+				String aOutputFilename = System.getProperty("user.dir")+File.separator+"InstanceResultArchive.csv";
+				BufferedWriter aWriter = new BufferedWriter(new FileWriter(aOutputFilename,true));
+				
+				DateFormat aDateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+				Date aDate = new Date();
+				aWriter.write(aDateFormat.format(aDate)+","+aInstance+","+aResult.toParsableString()+"\n");
+				
+				aWriter.close();
+			}
+			catch(IOException e)
+			{
+				log.error("There was an error while trying to save the execution result to file ({}).",e.getMessage());
+			}
+			
 		}
 		finally{
 			if(aSolver!=null)
@@ -88,9 +88,6 @@ public class SingleInstanceStatelessSolverExecutor {
 				aSolver.notifyShutdown();
 			}
 		}
-		
-		
-		
 		
 
 	}
