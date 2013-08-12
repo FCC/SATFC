@@ -148,7 +148,7 @@ public class SATEncoder implements ISATEncoder {
 				for(Integer aChannel : aInstanceChannels)
 				{
 					Integer aInterferingChannel = aChannel+1;
-					if(aStation.getDomain().contains(aChannel) && aInterferingStation.getDomain().contains(aInterferingChannel))
+					if(aStation.getDomain().contains(aChannel) && aInterferingStation.getDomain().contains(aInterferingChannel) && aInstanceChannels.contains(aInterferingChannel))
 					{
 						Clause aAdjChannelClause = new Clause();
 						aAdjChannelClause.add(new Litteral(Pair(aStation.getID(),aChannel),false));

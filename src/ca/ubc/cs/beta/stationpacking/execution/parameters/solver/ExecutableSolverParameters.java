@@ -13,6 +13,7 @@ import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.repackingdata.RepackingDataParameters;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.base.InstanceParameters;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 
 import com.beust.jcommander.ParametersDelegate;
@@ -27,7 +28,7 @@ public class ExecutableSolverParameters extends AbstractOptions {
 	
 	//Solver parameters
 	@ParametersDelegate
-	public TAESolverParameters SolverParameters = new TAESolverParameters();
+	public SATBasedSolverParameters SolverParameters = new SATBasedSolverParameters();
 
 	//Problem instance parameters.
 	@ParametersDelegate

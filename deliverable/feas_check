@@ -7,15 +7,15 @@ import os
 import tempfile
 import time
 
-version = '0.9.4'
-date = 'July 2013'
+version = '0.9.5a'
+date = 'August 2013'
 """
 SAT-based Feasibility checker for FCC's station repacking problem.
 Wrapper around the more parametrized java version of the feasibility checker
 to comform to Ladder Auction Algorithm Mini-Spec v2.1, June 2013 feasibility
 checker requirements.
 
-By Auctionomics [Alexandre Frechette, Nick Arnosti, Kevin Leyton-Brown]
+By Auctionomics [Alexandre Frechette, Nick Arnosti, Guillaume Saulnier-Comte,  Kevin Leyton-Brown]
 
 
 v0.9.1. - The current version has at its core a configured version (March 2013)
@@ -29,7 +29,7 @@ start_time = time.time()
 if len(sys.argv)<=1:
     #Output usage.
     print 'SATFC '+date+', v'+version
-    print 'A SAT-based feasibility checker by Auctionomics [A. Frechette, N. Arnosti, K. Leyton-Brown]'
+    print 'A SAT-based feasibility checker by Auctionomics [A. Frechette, N. Arnosti, G. Saulnier-Comte, K. Leyton-Brown]'
     print 'Normal execution: "./feas_check question_csv_file_name answer_csv_file_name"'
     print 'For more usage see feasibility checker usage section of the Ladder Auction Algorithm Mini-Spec v2.1, June 2013.'
     sys.exit()
@@ -41,24 +41,6 @@ elif len(sys.argv)!=3:
     print 'Unrecognized usage, try ./feas_check for some info.'
     sys.exit()
 
-#print """
-#=========================================================
-#
-#    _________   ____________________________________
-#   /   _____/  /  _  \__    ___/\_   _____/\_   ___ \\
-#   \_____  \  /  /_\  \|    |    |    __)  /    \  \/
-#   /        \/    |    \    |    |     \   \     \____
-#  /_______  /\____|__  /____|    \___  /    \______  /
-#          \/         \/              \/            \/
-#
-#
-#A SAT-based feasibility checker for station repacking by
-#
-#Auctionomics [A. Frechette, N. Arnosti, K. Leyton-Brown]
-#
-#"""+date+""", v"""+version+"""
-#=========================================================
-#"""
 
 """Environment variables and external settings"""
 #Execution directory of feas_check
@@ -182,6 +164,8 @@ domains_filename,
 interference_filename,
 "-CNF_DIR":
 cnf_dir,
+"-SAT-SOLVER-TYPE":
+"TAE",
 "-SOLVER":
 solver,
 "--execDir":
@@ -197,7 +181,9 @@ cutoff,
 "-PACKING_CHANNELS":
 packing_channels,
 "-PACKING_STATIONS":
-packing_stations
+packing_stations,
+"--logAllCallStrings":
+"true"
 }
 
 feas_check_exec = 'java -jar '+current_dir+os.sep+'SATFC.jar'

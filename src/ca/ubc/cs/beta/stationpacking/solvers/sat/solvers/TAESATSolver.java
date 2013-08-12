@@ -41,7 +41,6 @@ public class TAESATSolver implements ISATSolver{
 		fTAE = aTAE;
 		fParamConfiguration = aParamConfiguration;
 		fCNFDir = aCNFDir;
-		
 	}
 	
 	
@@ -51,8 +50,13 @@ public class TAESATSolver implements ISATSolver{
 		CNFCompressor aCompressor = new CNFCompressor();
 		
 		//Setup the CNF file and filename.
-		String aCNFFilename = fCNFDir + File.separator + RandomStringUtils.randomAlphabetic(15)+".cnf"; 
+		String aCNFFilename = fCNFDir + File.separator + RandomStringUtils.randomAlphabetic(15)+".cnf";
 		File aCNFFile = new File(aCNFFilename);
+		while(aCNFFile.exists())
+		{
+			aCNFFilename = fCNFDir + File.separator + RandomStringUtils.randomAlphabetic(15)+".cnf";
+			aCNFFile = new File(aCNFFilename);
+		}
 
 		String aCNFString = aCompressor.compress(aCNF).toDIMACS(new String[]{"FCC Station packing instance."});
 		
