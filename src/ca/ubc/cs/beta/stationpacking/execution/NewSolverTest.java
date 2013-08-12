@@ -18,7 +18,7 @@ import ca.ubc.cs.beta.stationpacking.execution.parameters.instancegeneration.Ins
 import ca.ubc.cs.beta.stationpacking.experiment.InstanceGeneration;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.SATBasedSolver;
-import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.ConstraintGrouper;
+import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.NoGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ISATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.TAESATSolver;
@@ -63,16 +63,11 @@ public class NewSolverTest {
 			IConstraintManager aConstraintManager = aInstanceGenerationParameters.RepackingDataParameters.getDACConstraintManager(aStationManager);
 			
 			
-			
 			String aCNFDir = aInstanceGenerationParameters.SolverParameters.TAESolverParameters.CNFDirectory;
 			String aSolver = aInstanceGenerationParameters.SolverParameters.TAESolverParameters.Solver;
 			AlgorithmExecutionOptions aAlgorithmExecutionOptions = aInstanceGenerationParameters.SolverParameters.TAESolverParameters.AlgorithmExecutionOptions;
 			
 			aAlgorithmExecutionOptions.paramFileDelegate.paramFile = aAlgorithmExecutionOptions.algoExecDir+File.separatorChar+"sw_parameterspaces"+File.separatorChar+"sw_"+aSolver+".txt";
-			ISATSolver aSATSolver = new TAESATSolver(TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(aAlgorithmExecutionOptions.taeOpts, aAlgorithmExecutionOptions.getAlgorithmExecutionConfig(null), false, aInstanceGenerationParameters.SolverParameters.TAESolverParameters.AvailableTAEOptions),
-					aAlgorithmExecutionOptions.getAlgorithmExecutionConfig(null).getParamFile().getDefaultConfiguration(),
-					aCNFDir);
-			
 			
 			/*
 			 * SET YOUR SAT SOLVER RIGHT HERE MY FRIEND.
@@ -80,7 +75,15 @@ public class NewSolverTest {
 			 * I used some of the TAE options from the parameter object to set up a TAE based SAT solver, you should set up your "library" based SAT solver.
 			 */
 			
-			ISolver aSATBasedSolver = new SATBasedSolver(aSATSolver, new SATEncoder(aStationManager, aConstraintManager), aConstraintManager, new ConstraintGrouper());
+			ISATSolver aSATSolver = new TAESATSolver(TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(aAlgorithmExecutionOptions.taeOpts, aAlgorithmExecutionOptions.getAlgorithmExecutionConfig(null), false, aInstanceGenerationParameters.SolverParameters.TAESolverParameters.AvailableTAEOptions),
+					aAlgorithmExecutionOptions.getAlgorithmExecutionConfig(null).getParamFile().getDefaultConfiguration(),
+					aCNFDir);
+			
+			/*
+			 * 
+			 */
+			
+			ISolver aSATBasedSolver = new SATBasedSolver(aSATSolver, new SATEncoder(aStationManager, aConstraintManager), aConstraintManager, new NoGrouper());
 			
 		
 			aInstanceGeneration = new InstanceGeneration(aSATBasedSolver,aInstanceGenerationParameters.getExperimentReporter());

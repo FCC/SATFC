@@ -1,6 +1,7 @@
 package ca.ubc.cs.beta.stationpacking.datamanagers.constraints;
 
 import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -64,7 +65,6 @@ public class DACConstraintManager implements IConstraintManager{
 				aADJminusConstraints.get(j).put(aStation,new HashSet<Station>());
 			}
 		}
-		
 
 		try{
 			int aChannelType;
@@ -145,11 +145,9 @@ public class DACConstraintManager implements IConstraintManager{
 				}
 			}
 			aReader.close();
-		} catch(Exception e){
-			throw new  IllegalStateException("Exception in DACConstraintManager constructor "+e.getMessage());
+		} catch(IOException e){
+			throw new  IllegalStateException("IOException in DACConstraintManager constructor "+e.getMessage());
 		}
-		
-		
 		
 		fLowerVHFCOConstraints = aCOConstraints.get(0);
 		fUpperVHFCOConstraints = aCOConstraints.get(1);
@@ -162,7 +160,7 @@ public class DACConstraintManager implements IConstraintManager{
 		fUHFADJminusConstraints = aADJminusConstraints.get(2);
 	}
 
-
+	@Override
 	public Set<Station> getCOInterferingStations(Station aStation, Set<Integer> aChannelRange) {
 		Set<Station> aInterfering;
 		if(LVHFChannels.containsAll(aChannelRange)){
@@ -178,6 +176,7 @@ public class DACConstraintManager implements IConstraintManager{
 		return new HashSet<Station>(aInterfering);
 	}
 	
+	@Override
 	public Set<Station> getADJplusInterferingStations(Station aStation, Set<Integer> aChannelRange){
 		Set<Station> aInterfering;
 		if(LVHFChannels.containsAll(aChannelRange)){

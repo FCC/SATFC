@@ -40,11 +40,6 @@ public class ConstraintGrouper implements IComponentGrouper{
 		
 			for(Set<Station> aConnectedComponent : aConnectivityInspector.connectedSets())
 			{
-				//Early optimization - we wouldn't need to add groups of size 1.
-//				if(aConnectedComponent.size()>1)
-//				{
-//					aGroups.add(aConnectedComponent);	
-//				}
 				aGroups.add(aConnectedComponent);
 			}
 		} catch(Exception e){
