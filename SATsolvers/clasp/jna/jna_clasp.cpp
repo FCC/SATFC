@@ -35,6 +35,10 @@ void JNAConfig::configure(char* args, int maxArgs)
 	}
 	err_message_ = "No error.";
 	// first we need to simulate the argc and argv that are given to the run function in clasp_app.h run().
+	//char args[(sizeof args_)/(sizeof(char))];
+//	strcpy(args, args_);
+//std::cout <<"\"" << args_ << "\"" << std::endl;
+//std::cout <<"\"" << args << "\"" << std::endl;
 	int argc = 1;
 	char* argv[maxArgs];
 	
@@ -94,7 +98,7 @@ bool JNAProblem::getStatus()
 
 // JNAResults
 
-JNAResult::JNAResult() : interrupt_(false) {}
+JNAResult::JNAResult() : interrupt_(false), valid_(true) {}
 
 void JNAResult::state(Event e, ClaspFacade& f)
 {
@@ -117,6 +121,7 @@ void JNAResult::event(const Solver& s, Event e, ClaspFacade&f)
 		}
 		assignment_ = ostr.str();
 		assignment_.erase(assignment_.size()-1);
+		valid_ = true;
 	}
 }
 
@@ -150,4 +155,118 @@ std::string JNAResult::getAssignment()
 	return assignment_;
 }
 
+bool JNAResult::isValid()
+{
+	return valid_;
+}
+
+} // end JNA namespace
+
+// C functions for the JNA library interface
+
+void* createConfig(const char* _params, int _maxArgs)
+{
+	char args[(sizeof _params)/(sizeof(char))];
+	strcpy(args, _params);
+	JNA::JNAConfig* config = new JNA::JNAConfig();
+	config->configure(args, _maxArgs);
+	return config;
+}
+
+void destroyConfig(void* _config)
+{
+	delete reinterpret_cast<JNA::JNAConfig*>(_config);
+}
+
+int getConfigStatus(void* _config)
+{
+	JNA::JNAConfig* config = reinterpret_cast<JNA::JNAConfig*>(_config);
+	return config->getStatus();
+}
+
+const char* getConfigErrorMessage(void* _config)
+{
+	JNA::JNAConfig* config = reinterpret_cast<JNA::JNAConfig*>(_config);
+	return config->getErrorMessage().c_str();
+}
+
+const char* getConfigClaspErrorMessage(void* _config)
+{
+	JNA::JNAConfig* config = reinterpret_cast<JNA::JNAConfig*>(_config);
+	return config->getClaspErrorMessage().c_str();
+}
+
+void* createProblem(const char* _problem)
+{
+	std::string problem_str(_problem);
+	JNA::JNAProblem* problem = new JNA::JNAProblem(problem_str);
+	return problem;
+}
+
+void destroyProblem(void* _problem)
+{
+	delete reinterpret_cast<JNA::JNAProblem*>(_problem);
+}
+
+int getProblemStatus(void* _problem)
+{
+	JNA::JNAProblem* problem = reinterpret_cast<JNA::JNAProblem*>(_problem);
+	return problem->getStatus();
+}
+
+void* createResult()
+{
+	JNA::JNAResult* result = new JNA::JNAResult();
+	return result;
+}
+
+void destroyResult(void* _result)
+{
+	JNA::JNAResult* result = reinterpret_cast<JNA::JNAResult*>(_result);
+	delete result;
+}
+
+int getResultInterrupt(void* _result)
+{
+	JNA::JNAResult* result = reinterpret_cast<JNA::JNAResult*>(_result);
+	return result->getInterrupt();
+}
+
+void setResultInterrupt(void* _result)
+{
+	JNA::JNAResult* result = reinterpret_cast<JNA::JNAResult*>(_result);
+	result->setInterrupt();
+}
+
+void unsetResultInterrupt(void* _result)
+{
+	JNA::JNAResult* result = reinterpret_cast<JNA::JNAResult*>(_result);
+	result->unsetInterrupt();
+}
+
+int isResultValid(void* _result)
+{
+	JNA::JNAResult* result = reinterpret_cast<JNA::JNAResult*>(_result);
+	return result->isValid();
+}
+
+const char* getResultWarning(void* _result)
+{
+	JNA::JNAResult* result = reinterpret_cast<JNA::JNAResult*>(_result);
+	return result->getWarning().c_str();
+}
+
+const char* getResultAssignment(void* _result)
+{
+	JNA::JNAResult* result = reinterpret_cast<JNA::JNAResult*>(_result);
+	return result->getAssignment().c_str();
+}
+
+void jnasolve(void* _problem, void* _config, void* _result)
+{
+	JNA::JNAProblem* problem = reinterpret_cast<JNA::JNAProblem*>(_problem);
+	JNA::JNAConfig* config = reinterpret_cast<JNA::JNAConfig*>(_config);
+	JNA::JNAResult* result = reinterpret_cast<JNA::JNAResult*>(_result);
+	Clasp::ClaspFacade libclasp;
+	libclasp.solve(*problem, *(config->getConfig()), result);
 }
