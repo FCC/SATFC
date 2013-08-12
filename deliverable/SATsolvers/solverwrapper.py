@@ -28,7 +28,8 @@ claspx64osx_path = clasp_dir + 'claspx64osx/build/release/bin/clasp'
 tunedclasp_path = clasp_dir + 'tunedclasp/claspCMarch13'
 
 glueminisat_dir = solver_dir + 'glueminisat/'
-glueminisatx64_path = glueminisat_dir + 'glueminisatx64/glueminisat'
+#glueminisatx64_path = glueminisat_dir + 'glueminisatx64/glueminisat'
+glueminisatx64_path = glueminisat_dir + 'old/glueminisatx64/glueminisat'
 
 runsolver_dir = solver_dir + 'runsolver/'
 runsolverx64_path = runsolver_dir+'runsolverx64/runsolver'
@@ -105,57 +106,9 @@ else:
 
 (instance_name_head,instance_name_tail) = os.path.split(instance_name)
 
-print 'Solving '+instance_name+'...'
-
-#####################################################################################################
-#Make a new CNF where variables are named from 1 to n (where n is the total number of variables.
-#Highly undesirable fix - should use a better variable identification scheme inside the (java) solver.
-
-instance_file = open(instance_name)
-instance_lines = instance_file.readlines()
-
-variables = []
-variables.append(0)
-
-formatted_lines = []
-
-variable_map = dict()
-variable_index = 1
-
-t = time.time()
-
-for line in instance_lines:
-    line = line.strip()
-    line = line[:-1]
-    line = line.rstrip()
-    if not (line[0]=='p' or line[0]=='c'):
-        litterals = line.split(' ')
-        #litterals.remove('0')
-        mapped_litterals = []
-        for litteral in litterals:
-            litteral = int(litteral)
-            negated = litteral < 0
-            litteral = abs(litteral)
-            if litteral not in variable_map:
-                variable_map[litteral] = variable_index
-                variable_index = variable_index + 1 
-            mapped_litterals.append((1-2*negated)*variable_map[litteral])
-        formatted_line = ' '.join([str(l) for l in mapped_litterals])+' 0\n'
-        formatted_lines.append(formatted_line)
-
-
-formatted_lines.insert(0,'p cnf '+str(len(variable_map))+' '+str(len(formatted_lines))+'\n')
-
 pid = str(os.getpid())
-temp_CNF = tempfile.NamedTemporaryFile(dir=instance_name_head,prefix='temp_'+pid+'_',delete=True)
-temp_CNF.write(''.join(formatted_lines))
-temp_CNF.flush()
 
-instance_name = temp_CNF.name
-
-preprotime = float(time.time()-t)
-print 'Time taken to pre-process CNF',str(preprotime)
-####################################################################################################
+print 'Solving '+instance_name+'...'
 
 temp_result = tempfile.NamedTemporaryFile(dir=instance_name_head,prefix='temp_'+pid+'_',delete=True)
 
@@ -215,12 +168,6 @@ elif re.search(SATre,std_out):
         assignment = reduce(lambda x,y : x+y,ASSIGNMENTre.findall(std_out)).lstrip().rstrip().split()
         assignment.remove('0')
 
-####################################################################################################
-    #Remap temp variables from assignment to original variables
-    inv_variable_map = {v:k for k,v in variable_map.iteritems()}
-    assignment = map(lambda l : str((1-2*(int(l)<0))*inv_variable_map[abs(int(l))]),assignment)
-####################################################################################################
-
     assignment = ';'.join(assignment)
     
 else:
@@ -236,6 +183,5 @@ if output_solved == 'SAT':
 else:
     print 'Result for ParamILS: '+output_solved+', '+output_runtime+', '+output_runlength+', '+output_quality+', '+output_seed+'\n'
 
-temp_CNF.close()
 temp_result.close()
 sys.exit()
