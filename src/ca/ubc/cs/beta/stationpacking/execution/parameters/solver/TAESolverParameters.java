@@ -54,7 +54,7 @@ public class TAESolverParameters extends AbstractOptions implements ISolverParam
 		Logger log = LoggerFactory.getLogger(TAESolverParameters.class);
 		
 		AlgorithmExecutionOptions.paramFileDelegate.paramFile = AlgorithmExecutionOptions.algoExecDir+File.separatorChar+"sw_parameterspaces"+File.separatorChar+"sw_"+Solver+".txt";
-		//Ugly parameter config extraction thanks to Steve's programming.
+		
 		TargetAlgorithmEvaluator aTAE = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(AlgorithmExecutionOptions.taeOpts, AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null), false, AvailableTAEOptions);
 		
 		log.info("Creating CNF encoder...");

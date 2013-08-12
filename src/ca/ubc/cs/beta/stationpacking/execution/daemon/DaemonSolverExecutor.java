@@ -62,14 +62,14 @@ public class DaemonSolverExecutor {
 		
 		//Parse the command line arguments in a parameter object.
 		ExecutableSolverParameters aExecutableSolverParameters = new ExecutableSolverParameters();
-		JCommander aParameterParser = JCommanderHelper.getJCommander(aExecutableSolverParameters, aExecutableSolverParameters.SolverParameters.AvailableTAEOptions);
+		JCommander aParameterParser = JCommanderHelper.getJCommander(aExecutableSolverParameters, aExecutableSolverParameters.SolverParameters.TAESATSolverParameters.AvailableTAEOptions);
 		try
 		{
 			aParameterParser.parse(args);
 		}
 		catch (ParameterException aParameterException)
 		{
-			List<UsageSection> sections = ConfigToLaTeX.getParameters(aExecutableSolverParameters, aExecutableSolverParameters.SolverParameters.AvailableTAEOptions);
+			List<UsageSection> sections = ConfigToLaTeX.getParameters(aExecutableSolverParameters, aExecutableSolverParameters.SolverParameters.TAESATSolverParameters.AvailableTAEOptions);
 			
 			boolean showHiddenParameters = false;
 			
