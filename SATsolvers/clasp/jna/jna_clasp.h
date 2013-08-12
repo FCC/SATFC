@@ -15,11 +15,11 @@ class JNAConfig : public ProgramOptions::AppOptions {
 public:
 	JNAConfig();
 	// status of the ClaspConfig object
-	enum Conf_Status { c_not_configured, c_valid, c_error };
+	enum Conf_Status { c_not_configured=0, c_valid=1, c_error=2 };
 
 	Conf_Status getStatus(); //return the status of the JNA Config
-	std::string getErrorMessage();
-	std::string getClaspErrorMessage();
+	std::string getErrorMessage(); //return error message of ClaspConfig
+	std::string getClaspErrorMessage(); //return error message of ClaspOptions
 	void configure(char* args, int maxArgs=128); // use the args to configure config_
 
 	ClaspConfig* getConfig();
@@ -49,11 +49,12 @@ private:
 // JNAProblem holder
 class JNAProblem : public Clasp::Input {
 public:
-	JNAProblem(std::string problem);
+	JNAProblem(std::string problem);// problem mus be a string in dimacs format
 	Format format() const { return DIMACS; }
 	bool	read(ApiPtr api, uint32 properties);
 	void	addMinimize(Clasp::MinimizeBuilder&, ApiPtr) {}
 	void	getAssumptions(Clasp::LitVec&) {}
+
 	bool	getStatus(); // returns the output of the read function after solve has been called on the problem
 private:
 	std::string problem_;
@@ -81,20 +82,55 @@ public:
 	//! Some configuration option is unsafe/unreasonable w.r.t the current problem.
 	void warning(const char* msg);
 
+	// function to control the interruption of the solver
 	bool getInterrupt();
 	void setInterrupt();
 	void unsetInterrupt();
+
+	// will return true if an assigment was found ans is contained in assignment_
+	bool isValid();
 
 	std::string getWarning();
 
 	std::string getAssignment();
 private:
 	bool interrupt_;
+	bool valid_;
 	std::string warning_; // warning message if any.
 	std::string assignment_; // contains the true literals.
 };
 
 
+
+}// end JNA namespace
+
+// JNA Library
+extern "C"
+{
+	// Configuration of clasp
+	void* createConfig(const char* _params, int _maxArgs);
+	void destroyConfig(void* _config);
+	int getConfigStatus(void* _config); //return the status of the JNA Config
+	const char* getConfigErrorMessage(void* _config); //return error message of ClaspConfig
+	const char* getConfigClaspErrorMessage(void* _config); //return error message of ClaspOptions
+
+	// Configuration of the problem instance
+	void* createProblem(const char* _problem);
+	void destroyProblem(void* _problem);
+	int getProblemStatus(void* _problem);
+
+	// functions of the result class
+	void* createResult();
+	void destroyResult(void* _result);
+        int getResultInterrupt(void* _result);
+        void setResultInterrupt(void* _result);
+        void unsetResultInterrupt(void* _result);
+        int isResultValid(void* _result);
+        const char* getResultWarning(void* _result);
+        const char* getResultAssignment(void* _result);
+
+	// solves the problem given the configuration.  Results are stored into results.
+	void jnasolve(void* _problem, void* _config, void* _result);
 
 }
 #endif
