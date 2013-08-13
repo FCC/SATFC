@@ -15,13 +15,15 @@ cd build/jna
 make clean
 
 # copy my modified headers and code to handle interrupts
-mv $CLASP/libclasp/clasp/solve_algorithms.h $CLASP/libclasp/clasp/solve_algorithms.h.bak
-mv $CLASP/libclasp/src/solve_algorithms.cpp $CLASP/libclasp/src/solve_algorithms.cpp.bak
-cp $CURRENT/solve_algorithms.h $CLASP/libclasp/clasp/solve_algorithms.h
-cp $CURRENT/solve_algorithms.cpp $CLASP/libclasp/src/solve_algorithms.h
+origh=$CURRENT/$CLASP/libclasp/clasp/solve_algorithms.h
+origc=$CURRENT/$CLASP/libclasp/src/solve_algorithms.cpp
+cp $origh $origh.bak
+cp $origc $origc.bak
+cp $CURRENT/solve_algorithms.h $origh
+cp $CURRENT/solve_algorithms.cpp $origc
 make
-mv $CLASP/libclasp/clasp/solve_algorithms.h.bak $CLASP/libclasp/clasp/solve_algorithms.h
-mv $CLASP/libclasp/src/solve_algorithms.cpp.bak $CLASP/libclasp/src/solve_algorithms.cpp
+mv $origh.bak $origh
+mv $origc.bak $origc
 echo "---------------------------------------------------"
 echo "JNA_CLASP------------------------------------------"
 cd $CURRENT

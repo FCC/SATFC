@@ -274,12 +274,11 @@ protected:
 	const LitVec& getInitialPath()     const { return assumptions_; }
 	const SolveLimits& getSolveLimits()const { return limits_; }
 	void               setSolveLimits(const SolveLimits& x) { limits_ = x; }
-	bool interrupt_; // added in order to handle terminate - gsauln
 private:
 	SolveAlgorithm(const SolveAlgorithm&);
 	SolveAlgorithm& operator=(const SolveAlgorithm&);
-	LitVec         assumptions_;
 	SolveLimits    limits_;
+	LitVec         assumptions_;
 };
 //! A basic algorithm for single-threaded sequential solving.
 class SimpleSolve : public SolveAlgorithm {

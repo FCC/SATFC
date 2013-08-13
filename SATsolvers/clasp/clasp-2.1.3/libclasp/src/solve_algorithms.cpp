@@ -109,7 +109,7 @@ bool solve(SharedContext& ctx, const SolveParams& p, const LitVec& assumptions, 
 /////////////////////////////////////////////////////////////////////////////////////////
 // SolveAlgorithm
 /////////////////////////////////////////////////////////////////////////////////////////
-SolveAlgorithm::SolveAlgorithm(const SolveLimits& lim) : limits_(lim), interrupt_(false)  {
+SolveAlgorithm::SolveAlgorithm(const SolveLimits& lim) : limits_(lim)  {
 }
 SolveAlgorithm::~SolveAlgorithm() {}
 
@@ -172,7 +172,6 @@ bool SolveAlgorithm::initPath(Solver& s, const LitVec& path, InitParams& params)
 ValueRep SolveAlgorithm::solvePath(Solver& s, const SolveParams& p, SolveLimits& lim) {
 	if (s.hasConflict()) return value_false;
 	if (lim.reached())   return value_free;
-	if (interrupt_) return value_false;
 	struct  ConflictLimits {
 		uint64 restart; // current restart limit
 		uint64 reduce;  // current reduce limit
@@ -225,7 +224,7 @@ ValueRep SolveAlgorithm::solvePath(Solver& s, const SolveParams& p, SolveLimits&
 		rsLimit     = nextUp;
 	}
 	EventType progress(s, SolvePathEvent::event_restart, 0, 0);
-	while (result == value_free && cLimit.global && !interrupt_) {// added interrupt_ in order to handle terminate
+	while (result == value_free && cLimit.global) {
 		uint64 minLimit = cLimit.min(); assert(minLimit);
 		sLimit.learnts  = (uint32)dbSizeLimit.clamp(dbMax + (db.pinned*p.reduce.strategy.noGlue));
 		sLimit.conflicts= minLimit;
@@ -323,7 +322,7 @@ ValueRep SolveAlgorithm::solvePath(Solver& s, const SolveParams& p, SolveLimits&
 /////////////////////////////////////////////////////////////////////////////////////////
 // SimpleSolve
 /////////////////////////////////////////////////////////////////////////////////////////
-bool SimpleSolve::terminate() { interrupt_ = true; return true; } // sets the interrupt flag to true to terminate the algorithm.
+bool SimpleSolve::terminate() { return false; }
 bool SimpleSolve::doSolve(Solver& s, const SolveParams& p) {
 	s.stats.reset();
 	Enumerator*  enumerator = s.sharedContext()->enumerator();
