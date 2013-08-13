@@ -55,9 +55,12 @@ public class CNF implements Set<Clause>{
 		
 		aStringBuilder.insert(0, "p cnf "+aMaxVariable+" "+aNumClauses+"\n");
 		
-		for(int i=aComments.length-1;i>=0;i--)
+		if (aComments != null)
 		{
-			aStringBuilder.insert(0, "c "+aComments[i].trim()+"\n");
+			for(int i=aComments.length-1;i>=0;i--)
+			{
+				aStringBuilder.insert(0, "c "+aComments[i].trim()+"\n");
+			}
 		}
 		
 		return aStringBuilder.toString();

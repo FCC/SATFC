@@ -15,7 +15,7 @@ OBJECTS	     := $(filter-out $(PROJECT_ROOT)/build/jna/app/main.o, $(wildcard $(
 
 -include $(FLAGS)
 
-test.out: jna_clasp.o test.o
+test.out: jna_clasp.o test.o $(TARGET)
 	$(CXX) $(WARNFLAGS) $(CXXFLAGS) $(LDFLAGS) $(OBJECTS) jna_clasp.o $(LIBS) $(LDLIBS) test.o -o test.out
 
 test.o: test.cpp
