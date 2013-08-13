@@ -9,7 +9,8 @@ INCLUDE_DIR  := "./"
 OUT_DIR      := "./"
 INCLUDES     := -I$(PROJECT_ROOT)/libclasp -I$(PROJECT_ROOT)/libprogram_opts -I$(PROJECT_ROOT)/app -I$(PROJECT_ROOT)
 SUBDIRS      := 
-LIBS         := libclasp.so libprogram_opts.so
+#LIBS         := libclasp.so libprogram_opts.so
+LIBS         := libclasp.a libprogram_opts.a
 INSTALL_DIR  := "./"
 OBJECTS	     := $(filter-out $(PROJECT_ROOT)/build/jna/app/main.o, $(wildcard $(PROJECT_ROOT)/build/jna/app/*.o))
 
@@ -28,5 +29,5 @@ jna_clasp.o: jna_clasp.cpp
 	$(CXX) $(INCLUDES) $(WARNFLAGS) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm *.so *.o *.out
+	rm *.so *.o *.out *.a
 

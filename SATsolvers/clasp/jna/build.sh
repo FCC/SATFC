@@ -46,8 +46,10 @@ cd $CURRENT
 #first create a templib folder
 #static2shared $CLASP/build/jna/libclasp/lib/libclasp.a
 #static2shared $CLASP/build/jna/libprogram_opts/lib/libprogram_opts.a
-compileShared $CLASP/build/jna/libclasp
-compileShared $CLASP/build/jna/libprogram_opts
+#compileShared $CLASP/build/jna/libclasp
+#compileShared $CLASP/build/jna/libprogram_opts
+cp $CLASP/build/jna/libclasp/lib/libclasp.a ./
+cp $CLASP/build/jna/libprogram_opts/lib/libprogram_opts.a ./
 
 cd $CURRENT
 #use the FLAGS that were set in the clasp configure.sh
