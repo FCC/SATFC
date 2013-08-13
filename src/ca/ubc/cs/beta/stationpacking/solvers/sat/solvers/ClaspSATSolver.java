@@ -70,6 +70,19 @@ public class ClaspSATSolver implements ISATSolver
 		}
 	}
 	
+	protected class Interrupt
+	{
+		private boolean fInterrupted = false;
+		public void setInterrupt()
+		{
+			fInterrupted = true;
+		}
+		public boolean getInterrupt()
+		{
+			return fInterrupted;
+		}
+	}
+	
 	@Override
 	public SATSolverResult solve(CNF aCNF, double aCutoff, long aSeed) {
 		
@@ -88,17 +101,16 @@ public class ClaspSATSolver implements ISATSolver
 		CNFCompressor compressor = new CNFCompressor();
 		Pointer problem = fClaspLibrary.createProblem(compressor.compress(aCNF).toDIMACS(null));
 		final Pointer result = fClaspLibrary.createResult();
-		
+		final Interrupt interrupt = new Interrupt();
 		// Launches a timer that will set the interrupt flag of the result object to true after aCutOff seconds.
 		Timer timer = new Timer();
 		timer.schedule(new TimerTask() {
 			@Override
 			public void run() {
-				boolean value = fClaspLibrary.interrupt(facade);
-				log.error("Interrupt: "+value);
-				System.exit(0);
+				fClaspLibrary.interrupt(facade);
+				interrupt.setInterrupt();
 			}
-		}, (long)(0.01*1000));
+		}, (long)(aCutoff*1000));
 		
 
 		// Start solving
@@ -108,25 +120,28 @@ public class ClaspSATSolver implements ISATSolver
 		SATResult satResult;
 		HashSet<Litteral> assignment = new HashSet<Litteral>();
 		int state = fClaspLibrary.getResultState(result);
-		if (state == 0)
-		{
-			satResult = SATResult.UNSAT;
-		}
-		else if (state == 1)
-		{
-			satResult = SATResult.SAT;
-			assignment = parseAssignment(fClaspLibrary.getResultAssignment(result), compressor);
-		}
-		else if (state == 2) 
+		if (interrupt.getInterrupt())
 		{
 			satResult = SATResult.TIMEOUT;
 		}
-		else 
+		else
 		{
-			satResult = SATResult.CRASHED;
-			log.error("Clasp crashed!");
+			if (state == 0)
+			{
+				satResult = SATResult.UNSAT;
+			}
+			else if (state == 1)
+			{
+				satResult = SATResult.SAT;
+				assignment = parseAssignment(fClaspLibrary.getResultAssignment(result), compressor);
+			}
+			else 
+			{
+				satResult = SATResult.CRASHED;
+				log.error("Clasp crashed!");
+			}
 		}
-		
+
 		//clears memory
 		fClaspLibrary.destroyFacade(facade);
 		fClaspLibrary.destroyConfig(config);
