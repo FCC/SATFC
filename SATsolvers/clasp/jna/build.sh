@@ -3,51 +3,29 @@
 CLASP=../clasp-2.1.3
 CURRENT=`pwd`
 
-function static2shared ()
-{
-	mkdir tmp
-	cd tmp
-	cp $CURRENT/$1 ./
-	name=`basename $1 .a`
-	ar -x $name.a
-	rm $name.a
-	g++ -fPIC -shared *.o -o $name.so
-	rm *.o
-	mv $name.so ../
-	cd ../
-	rmdir tmp
-}
-
-function compileShared ()
-{
-	name=`basename $1`
-	echo -n "Compiling shared library $name.so ..."
-	g++ -fPIC -shared $CURRENT/$1/*.o -o $name.so
-	echo  "	Done."
-}
-
 #configure clasp
 echo -n "Cleaning previous make... "
 make clean
 echo "Done."
 echo "CLASP----------------------------------------------"
 cd $CLASP
-if [ "$1" == "1" ]
-then
-#	./configure.sh --config=jna CXXFLAGS="-O3 -DNDEBUG -fPIC"
-	./configure.sh --config=jna CXXFLAGS="-g -fPIC"
-fi
+./configure.sh --config=jna CXXFLAGS="-O3 -DNDEBUG -fPIC"
+#./configure.sh --config=jna CXXFLAGS="-g -fPIC"
 cd build/jna
+make clean
+
+# copy my modified headers and code to handle interrupts
+mv $CLASP/libclasp/clasp/solve_algorithms.h $CLASP/libclasp/clasp/solve_algorithms.h.bak
+mv $CLASP/libclasp/src/solve_algorithms.cpp $CLASP/libclasp/src/solve_algorithms.cpp.bak
+cp $CURRENT/solve_algorithms.h $CLASP/libclasp/clasp/solve_algorithms.h
+cp $CURRENT/solve_algorithms.cpp $CLASP/libclasp/src/solve_algorithms.h
 make
+mv $CLASP/libclasp/clasp/solve_algorithms.h.bak $CLASP/libclasp/clasp/solve_algorithms.h
+mv $CLASP/libclasp/src/solve_algorithms.cpp.bak $CLASP/libclasp/src/solve_algorithms.cpp
 echo "---------------------------------------------------"
 echo "JNA_CLASP------------------------------------------"
 cd $CURRENT
-# we now need to convert static libraries to shared libraries
-#first create a templib folder
-#static2shared $CLASP/build/jna/libclasp/lib/libclasp.a
-#static2shared $CLASP/build/jna/libprogram_opts/lib/libprogram_opts.a
-#compileShared $CLASP/build/jna/libclasp
-#compileShared $CLASP/build/jna/libprogram_opts
+# copy the libs
 cp $CLASP/build/jna/libclasp/lib/libclasp.a ./
 cp $CLASP/build/jna/libprogram_opts/lib/libprogram_opts.a ./
 
@@ -58,12 +36,7 @@ echo "PROJECT_ROOT := $CLASP" > PROJECT_ROOT
 
 make
 
-
-
-
 #make clean
-
-
 
 rm CLASP_CONFIG
 rm PROJECT_ROOT

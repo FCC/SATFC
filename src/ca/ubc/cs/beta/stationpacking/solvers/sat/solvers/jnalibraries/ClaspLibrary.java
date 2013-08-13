@@ -116,7 +116,7 @@ public interface ClaspLibrary extends Library
      * @return true if the call to solve was interrupted.
      */
     boolean interrupt(Pointer facade);
-
+    
 	/**
 	 * Solves the problem using the given configuration and stores the results in the given results object.
 	 * @param facade facade object used to call solve and interrupt.
