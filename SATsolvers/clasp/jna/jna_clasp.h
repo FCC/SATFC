@@ -22,6 +22,7 @@ public:
 	std::string getClaspErrorMessage(); //return error message of ClaspOptions
 	void configure(char* args, int maxArgs=128); // use the args to configure config_
 
+
 	ClaspConfig* getConfig();
 
 private:
@@ -69,7 +70,7 @@ public:
 
 	// redefine the event to make it easier while writing code
 	typedef Clasp::ClaspFacade::Event Event;
-	// called when a state is entered or left it checks for the interrupt flag, if true facade.terminate() is called.
+	// called when a state is entered or left, it checks for the interrupt flag, if true facade.terminate() is called.
 	void state(Event e, ClaspFacade& f);
 
 	// Some operation triggered an important event.
@@ -87,20 +88,26 @@ public:
 	void setInterrupt();
 	void unsetInterrupt();
 
-	// will return true if an assigment was found ans is contained in assignment_
-	bool isValid();
+	enum Result_State { r_UNSAT=0, r_SAT=1, r_INTERRUPT=2, r_UNKNOWN=3 };
+
+	// will return the state of the call to solve.  if r_SAT, assignment_ contains the true litterals.
+	Result_State getState();
+
+	// used by the solve function to set the result to unsat, set the state of the solver.
+	void setState(Result_State state);
 
 	std::string getWarning();
 
 	std::string getAssignment();
 private:
 	bool interrupt_;
-	bool valid_;
+	Result_State state_;
 	std::string warning_; // warning message if any.
 	std::string assignment_; // contains the true literals.
 };
 
-
+// solves the problem given the config storing the state of the call and the assignment in result if the problem is SAT.
+void solve(JNAProblem& problem, JNAConfig& config, JNAResult& result);
 
 }// end JNA namespace
 
@@ -108,7 +115,7 @@ private:
 extern "C"
 {
 	// Configuration of clasp
-	void* createConfig(const char* _params, int _maxArgs);
+	void* createConfig(const char* _params, int _params_strlen, int _maxArgs);
 	void destroyConfig(void* _config);
 	int getConfigStatus(void* _config); //return the status of the JNA Config
 	const char* getConfigErrorMessage(void* _config); //return error message of ClaspConfig
@@ -125,7 +132,7 @@ extern "C"
         int getResultInterrupt(void* _result);
         void setResultInterrupt(void* _result);
         void unsetResultInterrupt(void* _result);
-        int isResultValid(void* _result);
+        int getResultState(void* _result);
         const char* getResultWarning(void* _result);
         const char* getResultAssignment(void* _result);
 
