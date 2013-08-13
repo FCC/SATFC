@@ -14,6 +14,7 @@ namespace JNA {
 class JNAConfig : public ProgramOptions::AppOptions {
 public:
 	JNAConfig();
+
 	// status of the ClaspConfig object
 	enum Conf_Status { c_not_configured=0, c_valid=1, c_error=2 };
 
@@ -21,7 +22,6 @@ public:
 	std::string getErrorMessage(); //return error message of ClaspConfig
 	std::string getClaspErrorMessage(); //return error message of ClaspOptions
 	void configure(char* args, int maxArgs=128); // use the args to configure config_
-
 
 	ClaspConfig* getConfig();
 
@@ -70,8 +70,8 @@ public:
 
 	// redefine the event to make it easier while writing code
 	typedef Clasp::ClaspFacade::Event Event;
-	// called when a state is entered or left, it checks for the interrupt flag, if true facade.terminate() is called.
-	void state(Event e, ClaspFacade& f);
+
+	void state(Event e, ClaspFacade& f) {};
 
 	// Some operation triggered an important event.
 	/*
@@ -83,12 +83,7 @@ public:
 	//! Some configuration option is unsafe/unreasonable w.r.t the current problem.
 	void warning(const char* msg);
 
-	// function to control the interruption of the solver
-	bool getInterrupt();
-	void setInterrupt();
-	void unsetInterrupt();
-
-	enum Result_State { r_UNSAT=0, r_SAT=1, r_INTERRUPT=2, r_UNKNOWN=3 };
+	enum Result_State { r_UNSAT=0, r_SAT=1, r_UNKNOWN=3 };
 
 	// will return the state of the call to solve.  if r_SAT, assignment_ contains the true litterals.
 	Result_State getState();
@@ -100,20 +95,27 @@ public:
 
 	std::string getAssignment();
 private:
-	bool interrupt_;
 	Result_State state_;
 	std::string warning_; // warning message if any.
 	std::string assignment_; // contains the true literals.
 };
 
+class JNAFacade : public Clasp::ClaspFacade {
+public:
+	JNAFacade();
+	void interrupt();
+	bool wasInterrupted();
+private:
+	bool interrupt_;
+};
+
 // solves the problem given the config storing the state of the call and the assignment in result if the problem is SAT.
-void solve(JNAProblem& problem, JNAConfig& config, JNAResult& result);
+void solve(JNAFacade& facade, JNAProblem& problem, JNAConfig& config, JNAResult& result);
 
 }// end JNA namespace
 
 // JNA Library
-extern "C"
-{
+extern "C" {
 	// Configuration of clasp
 	void* createConfig(const char* _params, int _params_strlen, int _maxArgs);
 	void destroyConfig(void* _config);
@@ -136,8 +138,13 @@ extern "C"
         const char* getResultWarning(void* _result);
         const char* getResultAssignment(void* _result);
 
+	// creates and destroys facades -> handles interrupts
+	void* createFacade();
+	void destroyFacade(void* _facade);
+	int interrupt(void* _facade);
+
 	// solves the problem given the configuration.  Results are stored into results.
-	void jnasolve(void* _problem, void* _config, void* _result);
+	void jnasolve(void* _facade, void* _problem, void* _config, void* _result);
 
 }
 #endif

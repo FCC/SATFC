@@ -9,11 +9,12 @@ public interface ClaspLibrary extends Library
 	 * Creates a new configuration object using the given parameters.
 	 * @param params parameters with which to create the configuration. Must be the same as 
 	 * the ones given to the clasp executable, but must not contain any from the "Basic Options"
+	 * @param params_strlen length of the params string.
 	 * @param maxArgs maximum number of arguments contained in parameters (i.e. parameters cannot 
 	 * have more arguments than maxArgs, arguments are separated by spaces)
 	 * @return a new configuration object using the given parameters.
 	 */
-	Pointer createConfig(String params, int maxArgs);
+	Pointer createConfig(String params, int params_strlen, int maxArgs);
 	
 	/**
 	 * Frees the memory used by the configuration object.
@@ -64,8 +65,7 @@ public interface ClaspLibrary extends Library
 	int getProblemStatus(Pointer problem);
 
 	/**
-	 * Creates a new result object that will contain the results once solve is called and enables the 
-	 * library to be interrupted.
+	 * Creates a new result object that will contain the results once solve is called.
 	 * @return a new result object.
 	 */
 	Pointer createResult();
@@ -77,26 +77,7 @@ public interface ClaspLibrary extends Library
 	void destroyResult(Pointer result);
 	
 	/**
-	 * Get the status of the interrupt flag of the result object.
-	 * @param result result object to get the interrupt status from.
-	 * @return the status of the interrupt flag of the result object.
-	 */
-	boolean getResultInterrupt(Pointer result);
-	
-	/**
-	 * Set the interrupt flag of the result object to true.  The solve will end as soon as possible.
-	 * @param result result object to set the interrupt flag for.
-	 */
-	void setResultInterrupt(Pointer result);
-	
-	/**
-	 * Unsets the interrupt flag of the result object so that a new call to solve can be made.
-	 * @param  result result object to set the interrupt flag for.
-	 */
-	void unsetResultInterrupt(Pointer result);
-	
-	/**
-	 * Returns the state of the result: 0 = UNSAT, 1 = SAT, 2 = INTERRUPT, 3 = UNKNOWN.
+	 * Returns the state of the result: 0 = UNSAT, 1 = SAT, 2 = UNKNOWN.
 	 * @param result result object to return the status of the assignment from.
 	 * @return the state of the result.
 	 */
@@ -118,10 +99,30 @@ public interface ClaspLibrary extends Library
 	String getResultAssignment(Pointer result);
 
 	/**
+	 * Create a facade that will handle the interrupt calls.
+	 * @return a facade that will handle the interrupt calls.
+	 */
+	Pointer createFacade();
+	
+	/**
+	 * Frees the memory used by the facade.
+	 * @param facade destroy the facade object.
+	 */
+    void destroyFacade(Pointer facade);
+    
+    /**
+     * Tries to terminate the call to solve.
+     * @param facade facade used to solve.
+     * @return true if the call to solve was interrupted.
+     */
+    boolean interrupt(Pointer facade);
+
+	/**
 	 * Solves the problem using the given configuration and stores the results in the given results object.
+	 * @param facade facade object used to call solve and interrupt.
 	 * @param problem problem to solve.
 	 * @param config configuration to use.
 	 * @param result result object used to control the execution / store results.
 	 */
-	void jnasolve(Pointer problem, Pointer config, Pointer result);	
+	void jnasolve(Pointer facade, Pointer problem, Pointer config, Pointer result);	
 }
