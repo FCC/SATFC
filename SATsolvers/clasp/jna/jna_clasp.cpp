@@ -37,9 +37,9 @@ void JNAConfig::configure(char* args, int maxArgs)
 	err_message_ = "";
 	// first we need to simulate the argc and argv that are given to the run function in clasp_app.h run().
 	int argc = 1;
-	char* argv[maxArgs];
+	char** argv = new char*[maxArgs]();
 	// set the program executable
-	char *prog = "jna_clasp";
+	char prog[] = "jna_clasp";
 	argv[0] = prog;
 	char* arg = strtok(args, " ");
 	while (arg && argc < maxArgs)
@@ -69,6 +69,7 @@ void JNAConfig::configure(char* args, int maxArgs)
 		status_ = c_error;
 		err_message_ = "Parsing of the command line arguments failed!  Please test with the clasp executable.";
 	}
+	delete[] argv;
 }
 
 ClaspConfig* JNAConfig::getConfig()
@@ -97,16 +98,7 @@ bool JNAProblem::getStatus()
 
 // JNAResults
 
-JNAResult::JNAResult() : interrupt_(false), state_(r_UNKNOWN) {}
-
-void JNAResult::state(Event e, ClaspFacade& f)
-{
-	if (interrupt_)
-	{
-		setState(JNAResult::r_INTERRUPT);
-		f.terminate();
-	}
-}
+JNAResult::JNAResult() : state_(r_UNKNOWN) {}
 
 // save the last result in a string object.
 void JNAResult::event(const Solver& s, Event e, ClaspFacade&f)
@@ -130,21 +122,6 @@ void JNAResult::warning(const char* msg)
 	warning_.assign(msg);
 }
 
-bool JNAResult::getInterrupt()
-{
-	return interrupt_;
-}
-
-void JNAResult::setInterrupt()
-{
-	interrupt_ = true;
-}
-
-void JNAResult:: unsetInterrupt()
-{
-	interrupt_ = false;
-}
-
 std::string JNAResult::getWarning()
 {
 	return warning_;
@@ -165,10 +142,22 @@ void JNAResult::setState(JNAResult::Result_State state)
 	state_ = state;
 }
 
-void solve(JNAProblem &problem, JNAConfig &config, JNAResult &result)
+JNAFacade::JNAFacade() : interrupt_(false) {}
+
+void JNAFacade::interrupt()
 {
-	Clasp::ClaspFacade libclasp;
-	libclasp.solve(problem, *(config.getConfig()), &result);
+	interrupt_ = true;
+	terminate();
+}
+
+bool JNAFacade::wasInterrupted()
+{
+	return interrupt_;
+}
+
+void solve(JNAFacade &facade, JNAProblem &problem, JNAConfig &config, JNAResult &result)
+{
+	facade.solve(problem, *(config.getConfig()), &result);
 	if (result.getState() != JNAResult::r_SAT)
 	{
 		result.setState(JNAResult::r_UNSAT);
@@ -179,9 +168,11 @@ void solve(JNAProblem &problem, JNAConfig &config, JNAResult &result)
 
 // C functions for the JNA library interface
 
+using namespace JNA;
+
 void* createConfig(const char* _params, int _params_strlen, int _maxArgs)
 {
-	char args[_params_strlen];
+	char args[_params_strlen+1];
 	strcpy(args, _params);
 	JNA::JNAConfig* config = new JNA::JNAConfig();
 	config->configure(args, _maxArgs);
@@ -241,24 +232,6 @@ void destroyResult(void* _result)
 	delete result;
 }
 
-int getResultInterrupt(void* _result)
-{
-	JNA::JNAResult* result = reinterpret_cast<JNA::JNAResult*>(_result);
-	return result->getInterrupt();
-}
-
-void setResultInterrupt(void* _result)
-{
-	JNA::JNAResult* result = reinterpret_cast<JNA::JNAResult*>(_result);
-	result->setInterrupt();
-}
-
-void unsetResultInterrupt(void* _result)
-{
-	JNA::JNAResult* result = reinterpret_cast<JNA::JNAResult*>(_result);
-	result->unsetInterrupt();
-}
-
 int getResultState(void* _result)
 {
 	JNA::JNAResult* result = reinterpret_cast<JNA::JNAResult*>(_result);
@@ -277,10 +250,28 @@ const char* getResultAssignment(void* _result)
 	return result->getAssignment().c_str();
 }
 
-void jnasolve(void* _problem, void* _config, void* _result)
+void* createFacade()
 {
+	JNA::JNAFacade* facade = new JNA::JNAFacade();
+	return facade;
+}
+
+void destroyFacade(void* _facade)
+{
+	delete reinterpret_cast<JNA::JNAFacade*>(_facade);	
+}
+
+int interrupt(void* _facade)
+{
+	bool value = reinterpret_cast<JNA::JNAFacade*>(_facade)->terminate();
+	return value;
+}
+
+void jnasolve(void* _facade, void* _problem, void* _config, void* _result)
+{
+	JNA::JNAFacade* facade = reinterpret_cast<JNA::JNAFacade*>(_facade);
 	JNA::JNAProblem* problem = reinterpret_cast<JNA::JNAProblem*>(_problem);
 	JNA::JNAConfig* config = reinterpret_cast<JNA::JNAConfig*>(_config);
 	JNA::JNAResult* result = reinterpret_cast<JNA::JNAResult*>(_result);
-	JNA::solve(*problem, *config, *result);
+	JNA::solve(*facade, *problem, *config, *result);
 }

@@ -42,6 +42,9 @@ public class ClaspSATSolver implements ISATSolver
 	{
 		// load the library
 		fClaspLibrary = (ClaspLibrary) Native.loadLibrary(libraryPath, ClaspLibrary.class);
+		fMaxArgs = maxArgs;
+		fParameters = parameters;
+		
 		// set the info about parameters, throw an exception if seed is contained.
 		if (parameters.contains("--seed"))
 		{
@@ -49,9 +52,11 @@ public class ClaspSATSolver implements ISATSolver
 		}
 		
 		// check if the configuration is valid.
-		Pointer config = fClaspLibrary.createConfig(fParameters+" --seed=1", fMaxArgs);
+		String params = fParameters+" --seed=1";
+		Pointer config = fClaspLibrary.createConfig(params, params.length(), fMaxArgs);
 		try {
-			if (fClaspLibrary.getConfigStatus(config) == 2)
+			int status = fClaspLibrary.getConfigStatus(config);
+			if (status == 2)
 			{
 				String configError = fClaspLibrary.getConfigErrorMessage(config);
 				String claspError = fClaspLibrary.getConfigClaspErrorMessage(config);
@@ -63,19 +68,23 @@ public class ClaspSATSolver implements ISATSolver
 		{
 			fClaspLibrary.destroyConfig(config);
 		}
-		fMaxArgs = maxArgs;
-		fParameters = parameters;
 	}
 	
 	@Override
 	public SATSolverResult solve(CNF aCNF, double aCutoff, long aSeed) {
 		
-		log.warn("The ClaspSATSolver currently doesn't use the seed argument of solve.");
-
-		// the constrution of the config should always work as it as been checked in the constructor.
-		int seed = (new Random(aSeed)).nextInt();
-		Pointer config = fClaspLibrary.createConfig(fParameters+" --seed="+seed , fMaxArgs);
+		long time1 = System.currentTimeMillis();
 		
+		// create the facade
+		final Pointer facade = fClaspLibrary.createFacade();
+		
+		// Create the configuration object
+		// the construction of the config should always work as it as been checked in the constructor.
+		int seed = (new Random(aSeed)).nextInt();
+		String params = fParameters+" --seed="+seed;
+		Pointer config = fClaspLibrary.createConfig(params, params.length(), fMaxArgs);
+		
+		// create the problem
 		CNFCompressor compressor = new CNFCompressor();
 		Pointer problem = fClaspLibrary.createProblem(compressor.compress(aCNF).toDIMACS(null));
 		final Pointer result = fClaspLibrary.createResult();
@@ -83,22 +92,21 @@ public class ClaspSATSolver implements ISATSolver
 		// Launches a timer that will set the interrupt flag of the result object to true after aCutOff seconds.
 		Timer timer = new Timer();
 		timer.schedule(new TimerTask() {
-			
 			@Override
 			public void run() {
-				fClaspLibrary.setResultInterrupt(result);
+				boolean value = fClaspLibrary.interrupt(facade);
+				log.error("Interrupt: "+value);
+				System.exit(0);
 			}
-		}, (long)(aCutoff*1000));
+		}, (long)(0.01*1000));
 		
-		long time1 = System.currentTimeMillis();
+
 		// Start solving
-		fClaspLibrary.jnasolve(problem, config, result);
+		fClaspLibrary.jnasolve(facade, problem, config, result);
 		timer.cancel();
-		long time2 = System.currentTimeMillis();
-		
 		
 		SATResult satResult;
-		HashSet<Litteral> assignment = null;
+		HashSet<Litteral> assignment = new HashSet<Litteral>();
 		int state = fClaspLibrary.getResultState(result);
 		if (state == 0)
 		{
@@ -119,11 +127,16 @@ public class ClaspSATSolver implements ISATSolver
 			log.error("Clasp crashed!");
 		}
 		
-		SATSolverResult answer = new SATSolverResult(satResult, (time1-time2)/1000.0, assignment);
-		
+		//clears memory
+		fClaspLibrary.destroyFacade(facade);
 		fClaspLibrary.destroyConfig(config);
 		fClaspLibrary.destroyProblem(problem);
 		fClaspLibrary.destroyResult(result);
+		
+		long time2 = System.currentTimeMillis();
+		
+		SATSolverResult answer = new SATSolverResult(satResult, (time2-time1)/1000.0, assignment);
+		
 		return answer;
 	}
 
