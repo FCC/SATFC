@@ -7,9 +7,10 @@
 using namespace std;
 using namespace JNA;
 
-static string params = "-n 1";
+static string params = "--seed=2147483647 -n 1";
 static char args[1024];
 //static string prostr = "p cnf 5 5\n1 -2 0\n1 -2 3 0\n-1 -3 4 0\n2 5 0\n1 -5 -4 0";
+//static string prostr = "p cnf 5 3\n1 0\n-2 0\n-1 4 0";
 static string prostr = "p cnf 5 3\n1 0\n-2 0\n-1 4 0";
 
 void init()
@@ -46,19 +47,20 @@ void example2()
 {
 	init();
 	cout << "START TEST" << endl;
-	JNAConfig* conf = (JNAConfig*) createConfig(args, 128);
-	cout << getConfigStatus(conf) << endl;
-	cout << getConfigErrorMessage(conf) << endl;
-	cout << getConfigClaspErrorMessage(conf) << endl;
+	JNAConfig* conf = (JNAConfig*) createConfig(args, params.length(), 128);
+	cout << "Conf Status: " << getConfigStatus(conf) << endl;
+	cout << "Conf Error: " << getConfigErrorMessage(conf) << endl;
+	cout << "Clasp Error: " << getConfigClaspErrorMessage(conf) << endl;
+
+	// set rand
+	
 
 	JNAProblem* problem = (JNAProblem*) createProblem(prostr.c_str());
 
 	JNAResult* result = (JNAResult*) createResult();
 
-//	Clasp::ClaspFacade libclasp;
-//	libclasp.solve(*problem, *(conf->getConfig()), result);
-
 	jnasolve(problem, conf, result);
+	cout << "Result state: " << getResultState(result) << endl;
 
 	cout << "Assignment:\n" << getResultAssignment(result) << endl;
 	
