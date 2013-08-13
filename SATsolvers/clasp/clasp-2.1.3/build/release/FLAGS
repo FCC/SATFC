@@ -1,5 +1,0 @@
-CXX         ?= g++
-CXXFLAGS    := -O3 -DNDEBUG -DWITH_THREADS=0 -DWITH_CLASPRE=0
-WARNFLAGS   := -W -Wall
-LDFLAGS     := 
-
