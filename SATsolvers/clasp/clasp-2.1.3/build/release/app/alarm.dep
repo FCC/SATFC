@@ -1,1 +1,0 @@
-app/alarm.o: ../../app/alarm.cpp ../../app/alarm.h
