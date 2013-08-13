@@ -4,6 +4,7 @@
 
 #include "jna_clasp.h"
 #include "clasp/reader.h"
+//#include "program_opts/composite_value_parser.h"
 
 namespace JNA {
 
@@ -33,15 +34,13 @@ void JNAConfig::configure(char* args, int maxArgs)
 	{
 		config_.reset();
 	}
-	err_message_ = "No error.";
+	err_message_ = "";
 	// first we need to simulate the argc and argv that are given to the run function in clasp_app.h run().
-	//char args[(sizeof args_)/(sizeof(char))];
-//	strcpy(args, args_);
-//std::cout <<"\"" << args_ << "\"" << std::endl;
-//std::cout <<"\"" << args << "\"" << std::endl;
 	int argc = 1;
 	char* argv[maxArgs];
-	
+	// set the program executable
+	char *prog = "jna_clasp";
+	argv[0] = prog;
 	char* arg = strtok(args, " ");
 	while (arg && argc < maxArgs)
 	{
@@ -98,12 +97,13 @@ bool JNAProblem::getStatus()
 
 // JNAResults
 
-JNAResult::JNAResult() : interrupt_(false), valid_(true) {}
+JNAResult::JNAResult() : interrupt_(false), state_(r_UNKNOWN) {}
 
 void JNAResult::state(Event e, ClaspFacade& f)
 {
 	if (interrupt_)
 	{
+		setState(JNAResult::r_INTERRUPT);
 		f.terminate();
 	}
 }
@@ -121,7 +121,7 @@ void JNAResult::event(const Solver& s, Event e, ClaspFacade&f)
 		}
 		assignment_ = ostr.str();
 		assignment_.erase(assignment_.size()-1);
-		valid_ = true;
+		state_ = r_SAT;
 	}
 }
 
@@ -155,18 +155,33 @@ std::string JNAResult::getAssignment()
 	return assignment_;
 }
 
-bool JNAResult::isValid()
+JNAResult::Result_State JNAResult::getState()
 {
-	return valid_;
+	return state_;
+}
+
+void JNAResult::setState(JNAResult::Result_State state)
+{
+	state_ = state;
+}
+
+void solve(JNAProblem &problem, JNAConfig &config, JNAResult &result)
+{
+	Clasp::ClaspFacade libclasp;
+	libclasp.solve(problem, *(config.getConfig()), &result);
+	if (result.getState() != JNAResult::r_SAT)
+	{
+		result.setState(JNAResult::r_UNSAT);
+	}
 }
 
 } // end JNA namespace
 
 // C functions for the JNA library interface
 
-void* createConfig(const char* _params, int _maxArgs)
+void* createConfig(const char* _params, int _params_strlen, int _maxArgs)
 {
-	char args[(sizeof _params)/(sizeof(char))];
+	char args[_params_strlen];
 	strcpy(args, _params);
 	JNA::JNAConfig* config = new JNA::JNAConfig();
 	config->configure(args, _maxArgs);
@@ -244,10 +259,10 @@ void unsetResultInterrupt(void* _result)
 	result->unsetInterrupt();
 }
 
-int isResultValid(void* _result)
+int getResultState(void* _result)
 {
 	JNA::JNAResult* result = reinterpret_cast<JNA::JNAResult*>(_result);
-	return result->isValid();
+	return result->getState();
 }
 
 const char* getResultWarning(void* _result)
@@ -267,6 +282,5 @@ void jnasolve(void* _problem, void* _config, void* _result)
 	JNA::JNAProblem* problem = reinterpret_cast<JNA::JNAProblem*>(_problem);
 	JNA::JNAConfig* config = reinterpret_cast<JNA::JNAConfig*>(_config);
 	JNA::JNAResult* result = reinterpret_cast<JNA::JNAResult*>(_result);
-	Clasp::ClaspFacade libclasp;
-	libclasp.solve(*problem, *(config->getConfig()), result);
+	JNA::solve(*problem, *config, *result);
 }
