@@ -142,17 +142,11 @@ void JNAResult::setState(JNAResult::Result_State state)
 	state_ = state;
 }
 
-JNAFacade::JNAFacade() : interrupt_(false) {}
+JNAFacade::JNAFacade() {}
 
-void JNAFacade::interrupt()
+bool JNAFacade::interrupt()
 {
-	interrupt_ = true;
-	terminate();
-}
-
-bool JNAFacade::wasInterrupted()
-{
-	return interrupt_;
+	return terminate();
 }
 
 void solve(JNAFacade &facade, JNAProblem &problem, JNAConfig &config, JNAResult &result)
@@ -263,8 +257,8 @@ void destroyFacade(void* _facade)
 
 int interrupt(void* _facade)
 {
-	bool value = reinterpret_cast<JNA::JNAFacade*>(_facade)->terminate();
-	return value;
+	JNA::JNAFacade* facade = reinterpret_cast<JNA::JNAFacade*>(_facade);
+	return facade->interrupt();
 }
 
 void jnasolve(void* _facade, void* _problem, void* _config, void* _result)

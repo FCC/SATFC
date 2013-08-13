@@ -7,6 +7,7 @@
 
 #include "clasp_options.h"
 #include "clasp/clasp_facade.h"
+#include "clasp/solve_algorithms.h"
 
 using namespace Clasp;
 namespace JNA {
@@ -103,10 +104,7 @@ private:
 class JNAFacade : public Clasp::ClaspFacade {
 public:
 	JNAFacade();
-	void interrupt();
-	bool wasInterrupted();
-private:
-	bool interrupt_;
+	bool interrupt();
 };
 
 // solves the problem given the config storing the state of the call and the assignment in result if the problem is SAT.
@@ -145,6 +143,5 @@ extern "C" {
 
 	// solves the problem given the configuration.  Results are stored into results.
 	void jnasolve(void* _facade, void* _problem, void* _config, void* _result);
-
 }
 #endif
