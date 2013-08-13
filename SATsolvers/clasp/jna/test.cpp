@@ -77,6 +77,8 @@ cout << "args: \"" << Sargs << "\"" << endl;
 
 	cout << "Assignment:\n" << getResultAssignment(result) << endl;
 	
+	cout << "Terminate: " << interrupt(facade) << endl;
+
 	destroyFacade(facade);
 	destroyConfig(conf);
 	destroyConfig(problem);
@@ -121,7 +123,7 @@ int main()
 	//example1();
 	//example1();
 	example2();
-	example2();
+	//example2();
 	//example3();
 	//example4();
 }
