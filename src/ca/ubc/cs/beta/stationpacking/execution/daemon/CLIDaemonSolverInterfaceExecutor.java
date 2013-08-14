@@ -5,9 +5,9 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.ubc.cs.beta.stationpacking.execution.daemon.client.ClientCommunicationMechanism;
-import ca.ubc.cs.beta.stationpacking.execution.daemon.message.IMessage;
-import ca.ubc.cs.beta.stationpacking.execution.daemon.message.SolveMessage;
+import ca.ubc.cs.beta.stationpacking.daemon.java.client.ClientCommunicationMechanism;
+import ca.ubc.cs.beta.stationpacking.daemon.java.message.IMessage;
+import ca.ubc.cs.beta.stationpacking.daemon.java.message.SolveMessage;
 
 /**
  * CLI interface that reads user commands and sends them to Daemon Solver.

@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.execution.daemon.message;
+package ca.ubc.cs.beta.stationpacking.daemon.java.message;
 
 import java.util.HashMap;
 import java.util.HashSet;

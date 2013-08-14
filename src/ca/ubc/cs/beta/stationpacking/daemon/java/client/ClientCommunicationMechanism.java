@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.execution.daemon.client;
+package ca.ubc.cs.beta.stationpacking.daemon.java.client;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -14,11 +14,11 @@ import java.net.UnknownHostException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.ubc.cs.beta.stationpacking.execution.daemon.message.ExceptionMessage;
-import ca.ubc.cs.beta.stationpacking.execution.daemon.message.IMessage;
-import ca.ubc.cs.beta.stationpacking.execution.daemon.message.SolverResultMessage;
-import ca.ubc.cs.beta.stationpacking.execution.daemon.message.StatusMessage;
-import ca.ubc.cs.beta.stationpacking.execution.daemon.message.StatusMessage.Status;
+import ca.ubc.cs.beta.stationpacking.daemon.java.message.ExceptionMessage;
+import ca.ubc.cs.beta.stationpacking.daemon.java.message.IMessage;
+import ca.ubc.cs.beta.stationpacking.daemon.java.message.SolverResultMessage;
+import ca.ubc.cs.beta.stationpacking.daemon.java.message.StatusMessage;
+import ca.ubc.cs.beta.stationpacking.daemon.java.message.StatusMessage.Status;
 
 /**
  * Sends messages across UDP. Communication mechanism for daemon solver interface.

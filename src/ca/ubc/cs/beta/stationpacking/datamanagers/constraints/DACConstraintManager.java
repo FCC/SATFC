@@ -1,5 +1,6 @@
 package ca.ubc.cs.beta.stationpacking.datamanagers.constraints;
 
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -36,7 +37,7 @@ public class DACConstraintManager implements IConstraintManager{
 	static final Integer LVHFmin = 2, LVHFmax = 6, UVHFmin=7, UVHFmax = 13, UHFmin = 14, UHFmax = 51;
 	Set<Integer> LVHFChannels = new HashSet<Integer>(), UVHFChannels = new HashSet<Integer>(), UHFChannels = new HashSet<Integer>();
 	
-	public DACConstraintManager(IStationManager aStationManager, String aPairwiseConstraintsFilename){	
+	public DACConstraintManager(IStationManager aStationManager, String aPairwiseConstraintsFilename) throws FileNotFoundException{	
 		
 		Set<Station> aStations = aStationManager.getStations();
 		
@@ -66,14 +67,14 @@ public class DACConstraintManager implements IConstraintManager{
 			}
 		}
 
+		CSVReader aReader = new CSVReader(new FileReader(aPairwiseConstraintsFilename),',');
+		
 		try{
 			int aChannelType;
 			String[] aLine;
 			String aString;
 			Integer aID;
 			Station aStation;
-			//NA - reading interference constraints
-			CSVReader aReader = new CSVReader(new FileReader(aPairwiseConstraintsFilename),',');
 			while((aLine = aReader.readNext())!=null){	//NA - perform some sanity checks
 				aID = Integer.valueOf(aLine[3].replaceAll("\\s", ""));
 				if((aStation=fStations.get(aID)) != null){
@@ -146,7 +147,7 @@ public class DACConstraintManager implements IConstraintManager{
 			}
 			aReader.close();
 		} catch(IOException e){
-			throw new  IllegalStateException("IOException in DACConstraintManager constructor "+e.getMessage());
+			throw new IllegalStateException("There was an exception while reading the constraint manager file ("+e.getMessage()+").");
 		}
 		
 		fLowerVHFCOConstraints = aCOConstraints.get(0);
