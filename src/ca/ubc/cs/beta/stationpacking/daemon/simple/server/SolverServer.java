@@ -20,6 +20,7 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.DomainStationManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 
 /**
  * Wrapper around an ISolver and a StationManager that takes care of receiving problem instances and various misc commands from UDP localhost, and communicate
@@ -42,7 +43,7 @@ public class SolverServer {
 	 */
 	private final static String COMMANDSEP = ":";
 	private enum ServerCommand {
-
+		TEST,
 		TERMINATE,
 		SOLVE,
 		PING;
@@ -58,7 +59,7 @@ public class SolverServer {
 
 	private final static int MAXPACKETSIZE = 65000;
 
-	public SolverServer(ISolver aSolver, int aServerPort) throws SocketException, UnknownHostException {
+	public SolverServer(int aServerPort) throws SocketException, UnknownHostException {
 		
 		if (aServerPort >= 0 && aServerPort < 1024)
 		{
@@ -73,7 +74,8 @@ public class SolverServer {
 		fServerSocket = new DatagramSocket(fServerPort);
 		fIPAdress = InetAddress.getByName("localhost");
 
-		fSolver = aSolver;
+		//TODO set ISolver
+		fSolver = null;
 		
 	}
 	
@@ -203,7 +205,7 @@ public class SolverServer {
 			log.warn(aError);
 			try
 			{
-				sendLocalMessage(aError,aSendPort);
+				sendLocalMessage("ERROR"+COMMANDSEP+aError,aSendPort);
 			}
 			catch(IOException e1)
 			{
@@ -214,6 +216,9 @@ public class SolverServer {
 		
 		switch(aServerCommand)
 		{
+			case TEST:
+				log.info("HAVING FUN");
+				return true;
 			case TERMINATE:
 				log.info("Got a termination command, terminating.");
 				return false;
@@ -223,29 +228,17 @@ public class SolverServer {
 				
 				try
 				{
-					if(aMessage.split(COMMANDSEP).length!=5)
+					String[] aMessageParts = aMessage.split(COMMANDSEP);
+					if(aMessageParts.length!=4)
 					{
 						throw new IllegalArgumentException("Solving command does not have necessary additional information.");
 					}
 					
-					String aDomainFilename = aMessage.split(COMMANDSEP)[1];
-					String aInterferenceFilename = aMessage.split(COMMANDSEP)[2];
-					String aInstanceString = aMessage.split(COMMANDSEP)[3];
+					String aDataFoldername = aMessageParts[1];
+					String aInstanceString = aMessageParts[2];
+					double aCutoff = Double.valueOf(aMessageParts[3]);
 					
-					//Build packing data managers.
-					
-					IStationManager aStationManager = new DomainStationManager(aDomainFilename);
-					IConstraintManager aConstraintManager = new DACConstraintManager(aStationManager,aInterferenceFilename);
-					
-					//Build problem instance.
-					StationPackingInstance aInstance = StationPackingInstance.valueOf(aInstanceString, aStationManager);
-					
-					/*
-					 * TODO Some magic happens here.
-					 * 
-					 * Most solvers take station managers and constraint managers on construction. Should we make a lazy solver that gives you
-					 * a solver given those two things?
-					 */
+					//SolverResult aResult = solve(aDataFoldername, aInstanceString, aCutoff);
 					
 					String aAnswer = StringUtils.join(new String[]{"ANSWER","SO EASY, JUST SOLVED IT!"},COMMANDSEP);
 					try
@@ -263,15 +256,13 @@ public class SolverServer {
 					log.warn("Got an exception while trying to execute a solving command ({}).",e.getMessage());
 					try
 					{
-						sendLocalMessage(e.getMessage(), aSendPort);
+						sendLocalMessage("ERROR"+COMMANDSEP+e.getMessage(), aSendPort);
 					}
 					catch(IOException e1)
 					{
 						log.warn("Could not send a message back to client ("+e1.getMessage()+").");
 					}
 				}
-				
-				
 				
 				return true;
 				
@@ -293,7 +284,7 @@ public class SolverServer {
 				log.warn(aError);
 				try
 				{
-					sendLocalMessage(aError,aSendPort);
+					sendLocalMessage("ERROR"+COMMANDSEP+aError,aSendPort);
 				}
 				catch(IOException e1)
 				{
@@ -302,5 +293,19 @@ public class SolverServer {
 				return true;
 		}
 	}
+	
+	private SolverResult solve(String aDataFoldername, String aInstanceString, double aCutoff)
+	{
+		/**
+		 * DO YOUR MAGIC HERE SANTA, I HAVE ALREADY SHOWN YOU HOW TO GET THE INSTANCE.
+		 */
+		
+		IStationManager aStationManager = null;
+		StationPackingInstance aInstance = StationPackingInstance.valueOf(aInstanceString, aStationManager);
+							
+		
+		return null;
+	}
+
 
 }
