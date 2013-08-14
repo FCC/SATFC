@@ -24,9 +24,9 @@ public class ClaspSATSolver implements ISATSolver
 	
 	private static Logger log = LoggerFactory.getLogger(ClaspSATSolver.class);
 	
-	ClaspLibrary fClaspLibrary;
-	String fParameters;
-	int fMaxArgs;
+	private ClaspLibrary fClaspLibrary;
+	private String fParameters;
+	private int fMaxArgs;
 	
 	public ClaspSATSolver(String libraryPath, String parameters)
 	{
