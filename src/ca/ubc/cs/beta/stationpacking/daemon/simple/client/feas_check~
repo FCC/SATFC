@@ -50,14 +50,28 @@ def processMessage(message):
         return 'ERROR'
     elif command == 'ANSWER':
         print '[COMM] Got an ANSWER message.'
-        print message 
+        ##TODO process answer message. 
+    elif command == 'TEST':
+        print '[COMM] Got a TEST message.'
+        print message
     else:
         print '[COMM-ERROR] Unrecognized message:'
         print '[COMM-ERROR]',message
         return 'UNRECOGNIZED'    
     
+def sendMessage(sock,message):
+    try:
+        print '[COMM] Sending',message
+        sock.sendto(message.encode('ASCII'), (UDP_IP, UDP_PORT))
+    except Exception as e:
+        print '[COMM-ERROR] Could not send message to',UDP_IP,'port',UDP_PORT,'('+e.strerror+').'
+    
+def receiveMessage(sock):
+    message, addr = sock.recvfrom(MAXPACKETSIZE)
+    print '[COMM] Received a message.'
+    return message
 
-
+    
 #########################################################################################################
 
 def main():
@@ -67,7 +81,7 @@ def main():
         print 'SATFC '+date+', v'+version
         print 'A SAT-based feasibility checker by Auctionomics [A. Frechette, G. Saulnier-Comte, N. Arnosti, K. Leyton-Brown]'
         print 'Normal execution: "./feas_check question_csv_file_name answer_csv_file_name"'
-        print 'This wrapper communicates with a feasibility checker daemon on ',UDP_IP,'port',UDP_PORT
+        print 'This wrapper communicates with a SATFC daemon on ',UDP_IP,'port',UDP_PORT
         print 'For more usage see feasibility checker usage section of the Ladder Auction Algorithm Mini-Spec v2.1, June 2013.'
         sys.exit()
     elif sys.argv[1]=='-init':
@@ -82,20 +96,23 @@ def main():
         """Instance to solve"""
     
         """Establish connection"""
-        sock = socket.socket(socket.AF_INET, # Internet
+        try:
+            sock = socket.socket(socket.AF_INET, # Internet
                              socket.SOCK_DGRAM) # UDP
-        
+        except Exception as e:
+            raise Exception('[ERROR] Could not create a UDP socket ('+e.strerror+').')
+            sys.exit()
+  
         """Ping daemon"""
         print '[INFO] Checking that the daemon SATFC is alive.'
-        print '[COMM] Pinging daemon SATFC.'
-        sock.sendto('PING'.encode('ASCII'), (UDP_IP, UDP_PORT))
+        
+        sendMessage(sock,'PING')
+        
         pingtime = time.time()
         pinged = False
         while not pinged and time.time()-pingtime < 2:
-            message, addr = sock.recvfrom(MAXPACKETSIZE)
-            print '[COMM] Received message.'
+            message = receiveMessage(sock)
             pinged = (processMessage(message)=='PING')
-        
         if not pinged:
             print '[INFO] Failed to ping daemon SATFC on',UDP_IP,'port',UDP_PORT
             print '[INFO] Reperforming intialization to launch daemon SATFC.'
@@ -110,14 +127,16 @@ def main():
         
         cutoff = 10
         
+        print '[INFO] Submitting an instance to the daemon SATFC'
+        
         """Send message."""
-        sock.sendto(COMMANDSEP.join(['SOLVE','SANTA','IS','AWESOME']).encode('ASCII'),(UDP_IP, UDP_PORT)) 
+        
+        sendMessage(sock,COMMANDSEP.join(['TEST','Entry1','Entry2','Entry3']))
         
         solvetime = time.time()
         """Wait for answer"""
-        while time.time()-solvetime < 1.5*cutoff:
-            message, addr = sock.recvfrom(MAXPACKETSIZE)
-            print '[COMM] Received message.'
+        while time.time()-solvetime < 1.5*cutoff:           
+            message = receiveMessage(sock)
             processMessage(message)
             sys.exit()
              
@@ -127,7 +146,7 @@ def main():
         
         
     
-        
+
     
 def getEnvironmentVariables():
     """Environment variables and external settings"""
