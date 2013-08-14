@@ -129,9 +129,6 @@ extern "C" {
 	// functions of the result class
 	void* createResult();
 	void destroyResult(void* _result);
-        int getResultInterrupt(void* _result);
-        void setResultInterrupt(void* _result);
-        void unsetResultInterrupt(void* _result);
         int getResultState(void* _result);
         const char* getResultWarning(void* _result);
         const char* getResultAssignment(void* _result);
