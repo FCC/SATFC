@@ -2,6 +2,7 @@ package ca.ubc.cs.beta.stationpacking.daemon.simple.datamanager;
 
 import java.io.FileNotFoundException;
 import java.util.HashMap;
+import java.util.HashSet;
 
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 
@@ -31,7 +32,7 @@ public class SolverManager {
 	 * @return true if the data was added and solver created, false if it was already contained.
 	 * @throws FileNotFoundException thrown if a file needed to add the data is not found.
 	 */
-	boolean addData(String path) throws FileNotFoundException
+	public boolean addData(String path) throws FileNotFoundException
 	{
 		SolverBundle bundle = fSolverData.get(path);
 		if (bundle != null)
@@ -54,7 +55,7 @@ public class SolverManager {
 	 * @return a solver bundle corresponding to the given directory path.
 	 * @throws FileNotFoundException thrown if a file needed to add the data is not found.
 	 */
-	SolverBundle getData(String path) throws FileNotFoundException
+	public SolverBundle getData(String path) throws FileNotFoundException
 	{
 		SolverBundle bundle = fSolverData.get(path);
 		if (bundle == null)
@@ -63,6 +64,21 @@ public class SolverManager {
 			bundle = fSolverData.get(path);
 		}
 		return bundle;
+	}
+
+	/**
+	 * Calls notify shutdown on all the solvers contained in the manager and removes them.
+	 */
+	public void notifyShutdown()
+	{
+		HashSet<String> keys = new HashSet<String>(fSolverData.keySet());
+		for (String path : keys)
+		{
+			SolverBundle bundle = fSolverData.get(path);
+			ISolver solver = bundle.getSolver();
+			solver.notifyShutdown();
+			fSolverData.remove(path);
+		}
 	}
 	
 }
