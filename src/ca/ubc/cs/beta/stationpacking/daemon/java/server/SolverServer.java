@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.execution.daemon.server;
+package ca.ubc.cs.beta.stationpacking.daemon.java.server;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -18,15 +18,15 @@ import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.daemon.java.client.ClientCommunicationMechanism;
+import ca.ubc.cs.beta.stationpacking.daemon.java.message.CommandMessage;
+import ca.ubc.cs.beta.stationpacking.daemon.java.message.ExceptionMessage;
+import ca.ubc.cs.beta.stationpacking.daemon.java.message.IMessage;
+import ca.ubc.cs.beta.stationpacking.daemon.java.message.SolveMessage;
+import ca.ubc.cs.beta.stationpacking.daemon.java.message.SolverResultMessage;
+import ca.ubc.cs.beta.stationpacking.daemon.java.message.StatusMessage;
+import ca.ubc.cs.beta.stationpacking.daemon.java.message.CommandMessage.Command;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
-import ca.ubc.cs.beta.stationpacking.execution.daemon.client.ClientCommunicationMechanism;
-import ca.ubc.cs.beta.stationpacking.execution.daemon.message.CommandMessage;
-import ca.ubc.cs.beta.stationpacking.execution.daemon.message.CommandMessage.Command;
-import ca.ubc.cs.beta.stationpacking.execution.daemon.message.ExceptionMessage;
-import ca.ubc.cs.beta.stationpacking.execution.daemon.message.IMessage;
-import ca.ubc.cs.beta.stationpacking.execution.daemon.message.SolveMessage;
-import ca.ubc.cs.beta.stationpacking.execution.daemon.message.SolverResultMessage;
-import ca.ubc.cs.beta.stationpacking.execution.daemon.message.StatusMessage;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 

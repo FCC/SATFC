@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.execution;
+package ca.ubc.cs.beta.stationpacking.execution.instancegeneration;
 
 import java.util.List;
 
