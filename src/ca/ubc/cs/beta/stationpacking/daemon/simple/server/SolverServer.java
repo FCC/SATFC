@@ -1,6 +1,7 @@
 package ca.ubc.cs.beta.stationpacking.daemon.simple.server;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
@@ -9,12 +10,16 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.charset.Charset;
+import java.util.Random;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.daemon.simple.datamanager.ISolverFactory;
+import ca.ubc.cs.beta.stationpacking.daemon.simple.datamanager.SolverBundle;
+import ca.ubc.cs.beta.stationpacking.daemon.simple.datamanager.SolverManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.DACConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.DomainStationManager;
@@ -36,7 +41,8 @@ public class SolverServer {
 	/*
 	 * Solver fields.
 	 */
-	private final ISolver fSolver;
+	private final SolverManager fSolverManager;
+	private final Random fRandom;
 	
 	/*
 	 * Command fields.
@@ -59,7 +65,7 @@ public class SolverServer {
 
 	private final static int MAXPACKETSIZE = 65000;
 
-	public SolverServer(int aServerPort) throws SocketException, UnknownHostException {
+	public SolverServer(int aServerPort, ISolverFactory solverFactory) throws SocketException, UnknownHostException {
 		
 		if (aServerPort >= 0 && aServerPort < 1024)
 		{
@@ -74,9 +80,9 @@ public class SolverServer {
 		fServerSocket = new DatagramSocket(fServerPort);
 		fIPAdress = InetAddress.getByName("localhost");
 
-		//TODO set ISolver
-		fSolver = null;
-		
+		//Set solver structures needed.
+		fSolverManager = new SolverManager(solverFactory);
+		fRandom = new Random();
 	}
 	
 	/**
@@ -121,9 +127,9 @@ public class SolverServer {
 			log.error("Error occured while shutting down", e);
 		}
 		
-		if(fSolver!=null)
+		if(fSolverManager!=null)
 		{
-			fSolver.notifyShutdown();
+			fSolverManager.notifyShutdown();
 		}
 		
 		log.info("Solver server shutting down.");
@@ -238,7 +244,7 @@ public class SolverServer {
 					String aInstanceString = aMessageParts[2];
 					double aCutoff = Double.valueOf(aMessageParts[3]);
 					
-					//SolverResult aResult = solve(aDataFoldername, aInstanceString, aCutoff);
+					SolverResult aResult = solve(aDataFoldername, aInstanceString, aCutoff);
 					
 					String aAnswer = StringUtils.join(new String[]{"ANSWER","SO EASY, JUST SOLVED IT!"},COMMANDSEP);
 					try
@@ -294,17 +300,17 @@ public class SolverServer {
 		}
 	}
 	
-	private SolverResult solve(String aDataFoldername, String aInstanceString, double aCutoff)
+	private SolverResult solve(String aDataFoldername, String aInstanceString, double aCutoff) throws FileNotFoundException
 	{
-		/**
-		 * DO YOUR MAGIC HERE SANTA, I HAVE ALREADY SHOWN YOU HOW TO GET THE INSTANCE.
-		 */
+		SolverBundle bundle = fSolverManager.getData(aDataFoldername);
 		
-		IStationManager aStationManager = null;
+		IStationManager aStationManager = bundle.getStationManager();
 		StationPackingInstance aInstance = StationPackingInstance.valueOf(aInstanceString, aStationManager);
 							
+		ISolver solver = bundle.getSolver();
+		SolverResult aResult = solver.solve(aInstance, aCutoff, fRandom.nextInt());
 		
-		return null;
+		return aResult;
 	}
 
 
