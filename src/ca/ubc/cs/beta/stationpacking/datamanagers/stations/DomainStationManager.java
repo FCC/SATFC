@@ -1,6 +1,8 @@
 package ca.ubc.cs.beta.stationpacking.datamanagers.stations;
 
+import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -16,33 +18,41 @@ public class DomainStationManager implements IStationManager{
 
 	private HashMap<Integer,Station> fStations = new HashMap<Integer,Station>();
 	
-	public DomainStationManager(String aStationDomainsFilename) throws Exception{
-		CSVReader aReader = new CSVReader(new FileReader(aStationDomainsFilename),',');
+	public DomainStationManager(String aStationDomainsFilename) throws FileNotFoundException{
+	
+		CSVReader aReader;
+		aReader = new CSVReader(new FileReader(aStationDomainsFilename),',');
 		String[] aLine;
 		Integer aID,aChannel;
 		String aString;
 		Set<Integer> aChannelDomain;
-		
-		while((aLine = aReader.readNext())!=null){	
-			aChannelDomain = new HashSet<Integer>();
-			for(int i=2;i<aLine.length;i++){ 	//NA - Ideally would have a more robust check here
-				aString = aLine[i].replaceAll("\\s", "");
-				if(aString.length()>0){
-					aChannel = Integer.valueOf(aString); 
-					aChannelDomain.add(aChannel);
+		try
+		{
+			while((aLine = aReader.readNext())!=null){	
+				aChannelDomain = new HashSet<Integer>();
+				for(int i=2;i<aLine.length;i++){ 	//NA - Ideally would have a more robust check here
+					aString = aLine[i].replaceAll("\\s", "");
+					if(aString.length()>0){
+						aChannel = Integer.valueOf(aString); 
+						aChannelDomain.add(aChannel);
+					}
 				}
-			}
-			aID = Integer.valueOf(aLine[1].replaceAll("\\s", ""));
-			if(aChannelDomain.isEmpty()){
-				try{
-					throw new IllegalStateException("Station "+aID+" has empty domain.");
-				} catch(Exception e) {
-					e.printStackTrace();
+				aID = Integer.valueOf(aLine[1].replaceAll("\\s", ""));
+				if(aChannelDomain.isEmpty()){
+					try{
+						throw new IllegalStateException("Station "+aID+" has empty domain.");
+					} catch(Exception e) {
+						e.printStackTrace();
+					}
 				}
+				fStations.put(aID, new Station(aID,aChannelDomain));
 			}
-			fStations.put(aID, new Station(aID,aChannelDomain));
+			aReader.close();	
 		}
-		aReader.close();	
+		catch(IOException e)
+		{
+			throw new IllegalStateException("There was an exception while reading the station domains file ("+e.getMessage()+").");
+		}
 		
 	}
 	
