@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.execution.daemon.message;
+package ca.ubc.cs.beta.stationpacking.daemon.java.message;
 
 /**
  * An exception message class.

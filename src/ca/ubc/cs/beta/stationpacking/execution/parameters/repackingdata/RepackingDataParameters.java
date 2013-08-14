@@ -1,5 +1,7 @@
 package ca.ubc.cs.beta.stationpacking.execution.parameters.repackingdata;
 
+import java.io.IOException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,8 +29,8 @@ public class RepackingDataParameters extends AbstractOptions{
 		log.info("Creating a station manager...");
 		try {
 			return new DomainStationManager(DomainFilename);
-		} catch (Exception e) {
-			throw new IllegalArgumentException("Couldn't create station manager "+e.getMessage());
+		} catch (IOException e) {
+			throw new IllegalArgumentException("Couldn't create station manager ("+e.getMessage()+").");
 		}
 	}
 	
@@ -36,7 +38,14 @@ public class RepackingDataParameters extends AbstractOptions{
 	{
 		Logger log = LoggerFactory.getLogger(RepackingDataParameters.class);
 		log.info("Constraint a constraint manager for the given stations...");
-		return new DACConstraintManager(aStationManager,ConstraintFilename);
+		try
+		{
+			return new DACConstraintManager(aStationManager,ConstraintFilename);
+		}
+		catch(IOException e)
+		{
+			throw new IllegalArgumentException("Couldn't create constraint manager ("+e.getMessage()+").");
+		}
 	}
 	
 
