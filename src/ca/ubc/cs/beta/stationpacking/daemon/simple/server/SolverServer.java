@@ -103,7 +103,7 @@ public class SolverServer {
 		DatagramPacket sendPacket = new DatagramPacket(aSendBytes,
 				aSendBytes.length, fIPAdress, aPort);
 
-		log.info("Sending message back to "+fIPAdress+" port "+aPort);
+		log.info("Sending message \"{}\" back to "+fIPAdress+" port "+aPort,aMessage);
 		fServerSocket.send(sendPacket);
 	}
 	
@@ -217,7 +217,16 @@ public class SolverServer {
 		switch(aServerCommand)
 		{
 			case TEST:
-				log.info("HAVING FUN");
+				log.info("Received a TEST message: {}",aMessage);
+				try
+				{
+					sendLocalMessage(StringUtils.join(new String[]{"TEST","You are the best."},COMMANDSEP),aSendPort);
+				}
+				catch(IOException e1)
+				{
+					log.warn("Could not send a message back to client ("+e1.getMessage()+").");
+				}
+				
 				return true;
 			case TERMINATE:
 				log.info("Got a termination command, terminating.");
@@ -238,17 +247,7 @@ public class SolverServer {
 					String aInstanceString = aMessageParts[2];
 					double aCutoff = Double.valueOf(aMessageParts[3]);
 					
-					//SolverResult aResult = solve(aDataFoldername, aInstanceString, aCutoff);
-					
-					String aAnswer = StringUtils.join(new String[]{"ANSWER","SO EASY, JUST SOLVED IT!"},COMMANDSEP);
-					try
-					{
-						sendLocalMessage(aAnswer,aSendPort);
-					}
-					catch(IOException e1)
-					{
-						log.warn("Could not send a message back to client ("+e1.getMessage()+").");
-					}
+					//Solving happens here, then we send the message back.
 					
 				}
 				catch(Exception e)
