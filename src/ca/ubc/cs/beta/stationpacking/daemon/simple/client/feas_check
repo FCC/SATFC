@@ -34,6 +34,8 @@ MAXPACKETSIZE = 65000
 
 COMMANDSEP = ':'
 
+SEED=1
+
 def processMessage(message):
     command = message.split(COMMANDSEP)[0]
     
@@ -95,6 +97,13 @@ def main():
     else:     
         """Instance to solve"""
     
+        """Setup the instance to solve"""
+        (current_dir,environment_data_location,environment_execution_dir) = getEnvironmentVariables()
+        
+        (problem_data_directory,packing_stations,packing_channels,cutoff) = getSolvingInstanceInfo(environment_execution_dir,environment_data_location)
+        
+        instance = '-'.join(packing_channels)+'_'+'-'.join(packing_stations)
+        
         """Establish connection"""
         try:
             sock = socket.socket(socket.AF_INET, # Internet
@@ -124,13 +133,11 @@ def main():
         
         ##TODO create solving message.
         
-        cutoff = 10
-        
         print '[INFO] Submitting an instance to the daemon SATFC'
         
         """Send message."""
         
-        sendMessage(sock,COMMANDSEP.join(['TEST','Entry1','Entry2','Entry3']))
+        sendMessage(sock,COMMANDSEP.join(['SOLVE',problem_data_directory,instance,str(cutoff),str(SEED)]))
         
         solvetime = time.time()
         """Wait for answer"""
@@ -170,7 +177,7 @@ def getEnvironmentVariables():
     
     return (current_dir,environment_data_location,environment_execution_dir)
     
-def getSolvingInstanceInfo(environment_data_location):
+def getSolvingInstanceInfo(environment_execution_dir,environment_data_location):
     """Parse FCC feas_check parameters"""
 
     question_filename = environment_execution_dir+os.sep+sys.argv[1]

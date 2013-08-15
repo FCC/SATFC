@@ -25,10 +25,10 @@ public class TAESATSolverParameters extends AbstractOptions implements ISATSolve
 	@ParametersDelegate
 	public AlgorithmExecutionOptions AlgorithmExecutionOptions = new AlgorithmExecutionOptions();
 
-	@Parameter(names = "-SOLVER", description = "SAT solver to use (from the implemented list of SAT solvers - can be circumvented by fully defining a valid TAE).", required=true, validateWith = ImplementedSolverParameterValidator.class)
+	@Parameter(names = "--solver", description = "SAT solver to use (from the implemented list of SAT solvers - can be circumvented by fully defining a valid TAE).", required=true, validateWith = ImplementedSolverParameterValidator.class)
 	public String Solver;
 	
-	@Parameter(names = "-CNF_DIR", description = "Directory location where to write CNFs. Will be created if inexistant.",required=true)
+	@Parameter(names = "--cnf_dir", description = "Directory location where to write CNFs. Will be created if inexistant.",required=true)
 	public String CNFDirectory;
 
 	@Override

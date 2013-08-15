@@ -1,5 +1,6 @@
 package ca.ubc.cs.beta.stationpacking.daemon.simple.datamanager;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.HashMap;
 
@@ -13,8 +14,8 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
  */
 public class DataManager {
 
-	private static String DOMAIN_FILE = "/domain.csv";
-	private static String INTERFERENCES_FILE = "/interferences.csv";
+	private static String DOMAIN_FILE = File.separator+"domains.csv";
+	private static String INTERFERENCES_FILE = File.separator+"interferences.csv";
 	
 	private HashMap<String, ManagerBundle> fData;
 	
