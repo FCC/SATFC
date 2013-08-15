@@ -17,7 +17,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.daemon.simple.datamanager.ISolverFactory;
 import ca.ubc.cs.beta.stationpacking.daemon.simple.datamanager.SolverBundle;
 import ca.ubc.cs.beta.stationpacking.daemon.simple.datamanager.SolverManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
@@ -39,7 +38,6 @@ public class SolverServer {
 	 * Solver fields.
 	 */
 	private final SolverManager fSolverManager;
-	private final Random fRandom;
 	
 	/*
 	 * Command fields.
@@ -62,7 +60,7 @@ public class SolverServer {
 
 	private final static int MAXPACKETSIZE = 65000;
 
-	public SolverServer(int aServerPort, ISolverFactory solverFactory) throws SocketException, UnknownHostException {
+	public SolverServer(SolverManager aSolverManager,int aServerPort) throws SocketException, UnknownHostException {
 		
 		if (aServerPort >= 0 && aServerPort < 1024)
 		{
@@ -78,8 +76,7 @@ public class SolverServer {
 		fIPAdress = InetAddress.getByName("localhost");
 
 		//Set solver structures needed.
-		fSolverManager = new SolverManager(solverFactory);
-		fRandom = new Random();
+		fSolverManager = aSolverManager;
 	}
 	
 	/**
@@ -143,7 +140,7 @@ public class SolverServer {
 			throw new IllegalStateException("Trying to communicate with a closed server socket.");
 		}
 		
-		log.info("Solver server is processing requests using a single thread on port {}.",fServerSocket.getLocalPort());
+		log.info("Solver server is processing requests using a single thread on localhost port {}.",fServerSocket.getInetAddress(),fServerSocket.getLocalPort());
 		
 		try {
 			while (true) {
@@ -236,23 +233,30 @@ public class SolverServer {
 				return false;
 			case SOLVE:
 				log.info("Got a solving command, solving.");
-				log.info("NOM NOM NOM MUNCH MUNCH MUNCH");
-				
 				try
 				{
 					String[] aMessageParts = aMessage.split(COMMANDSEP);
-					if(aMessageParts.length!=4)
+					if(aMessageParts.length!=5)
 					{
 						throw new IllegalArgumentException("Solving command does not have necessary additional information.");
 					}
 					
 					String aDataFoldername = aMessageParts[1];
+					log.info("Getting data from {}.",aDataFoldername);
+					
 					String aInstanceString = aMessageParts[2];
+					log.info("Solving instance {},",aInstanceString);
+					
 					double aCutoff = Double.valueOf(aMessageParts[3]);
+					log.info("with cutoff {}, and",aCutoff);
 					
-					SolverResult aResult = solve(aDataFoldername, aInstanceString, aCutoff);
+					long aSeed = Long.valueOf(aMessageParts[4]);
+					log.info("with seed {}.",aSeed);
 					
-					String aAnswer = StringUtils.join(new String[]{"ANSWER","SO EASY, JUST SOLVED IT!"},COMMANDSEP);
+					
+					SolverResult aResult = solve(aDataFoldername, aInstanceString, aCutoff,aSeed);
+					
+					String aAnswer = StringUtils.join(new String[]{"ANSWER",aResult.toParsableString()},COMMANDSEP);
 					try
 					{
 						sendLocalMessage(aAnswer,aSendPort);
@@ -306,7 +310,7 @@ public class SolverServer {
 		}
 	}
 	
-	private SolverResult solve(String aDataFoldername, String aInstanceString, double aCutoff) throws FileNotFoundException
+	private SolverResult solve(String aDataFoldername, String aInstanceString, double aCutoff, long aSeed) throws FileNotFoundException
 	{
 		SolverBundle bundle = fSolverManager.getData(aDataFoldername);
 		
@@ -314,7 +318,7 @@ public class SolverServer {
 		StationPackingInstance aInstance = StationPackingInstance.valueOf(aInstanceString, aStationManager);
 							
 		ISolver solver = bundle.getSolver();
-		SolverResult aResult = solver.solve(aInstance, aCutoff, fRandom.nextInt());
+		SolverResult aResult = solver.solve(aInstance, aCutoff, aSeed);
 		
 		return aResult;
 	}

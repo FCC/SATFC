@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import ca.ubc.cs.beta.aclib.misc.jcommander.JCommanderHelper;
 import ca.ubc.cs.beta.aclib.misc.options.UsageSection;
 import ca.ubc.cs.beta.aclib.options.ConfigToLaTeX;
+import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.ExecutableSolverParameters;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
@@ -37,14 +38,14 @@ public class SingleInstanceStatelessSolverExecutor {
 		{
 			//Parse the command line arguments in a parameter object.
 			ExecutableSolverParameters aExecutableSolverParameter = new ExecutableSolverParameters();
-			JCommander aParameterParser = JCommanderHelper.getJCommander(aExecutableSolverParameter, aExecutableSolverParameter.SolverParameters.TAESATSolverParameters.AvailableTAEOptions);
+			JCommander aParameterParser = JCommanderHelper.getJCommander(aExecutableSolverParameter, TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators());
 			try
 			{
 				aParameterParser.parse(args);
 			}
 			catch (ParameterException aParameterException)
 			{
-				List<UsageSection> sections = ConfigToLaTeX.getParameters(aExecutableSolverParameter,aExecutableSolverParameter.SolverParameters.TAESATSolverParameters.AvailableTAEOptions);
+				List<UsageSection> sections = ConfigToLaTeX.getParameters(aExecutableSolverParameter,TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators());
 				
 				boolean showHiddenParameters = false;
 				
