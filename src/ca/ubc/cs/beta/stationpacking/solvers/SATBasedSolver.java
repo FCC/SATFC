@@ -50,14 +50,21 @@ public class SATBasedSolver implements ISolver {
 		
 		double aRemainingCutoff = aCutoff;
 		HashSet<SolverResult> aComponentResults = new HashSet<SolverResult>();
-		for(Set<Station> aStationComponent : fComponentGrouper.group(aInstance,fConstraintManager))
+		
+		Set<Set<Station>> aStationComponents = fComponentGrouper.group(aInstance,fConstraintManager);
+		log.info("Problem separated in {} groups.",aStationComponents.size());
+		
+		for(Set<Station> aStationComponent : aStationComponents)
 		{
 			StationPackingInstance aComponentInstance = new StationPackingInstance(aStationComponent,aChannelRange);
 			
+			log.info("Encoding subproblem in CNF.");
 			CNF aCNF = fSATEncoder.encode(aComponentInstance);
 			
+			log.info("Solving the subproblem CNF.");
 			SATSolverResult aComponentResult = fSATSolver.solve(aCNF, aRemainingCutoff, aSeed);
 			
+			log.info("Parsing result.");
 			Map<Integer,Set<Station>> aStationAssignment = new HashMap<Integer,Set<Station>>();
 			if(aComponentResult.getResult().equals(SATResult.SAT))
 			{
