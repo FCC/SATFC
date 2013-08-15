@@ -220,7 +220,7 @@ public class SolverServer {
 				log.info("Received a TEST message: {}",aMessage);
 				try
 				{
-					sendLocalMessage(StringUtils.join(new String[]{"TEST","You are the best."},COMMANDSEP),aSendPort);
+					sendLocalMessage(StringUtils.join(new String[]{"TEST","Got a test message."},COMMANDSEP),aSendPort);
 				}
 				catch(IOException e1)
 				{
