@@ -89,7 +89,7 @@ public class NewSolverTest {
 			 * 
 			 */
 			
-			ISolver aSATBasedSolver = new SATBasedSolver(aTAESATSolver, new SATEncoder(aStationManager, aConstraintManager), aConstraintManager, new NoGrouper());
+			ISolver aSATBasedSolver = new SATBasedSolver(aClaspSATSolver, new SATEncoder(aStationManager, aConstraintManager), aConstraintManager, new NoGrouper());
 			
 		
 			aInstanceGeneration = new InstanceGeneration(aSATBasedSolver,aInstanceGenerationParameters.getExperimentReporter());
