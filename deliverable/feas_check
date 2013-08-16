@@ -7,7 +7,7 @@ import subprocess
 import socket
 import logging
 
-version = '0.9.6a'
+version = '0.9.7a'
 date = 'August 2013'
 solver = 'Daemon SATFC Tuned Clasp Library'
 """
@@ -44,7 +44,7 @@ DAEMONCREATIONSANITYSLEEPTIME = 4
 
 """Setup logging"""
 logging.basicConfig(format='%(asctime)s.%(msecs).03d [%(levelname)s] %(message)s',
-                    level=logging.DEBUG,
+                    level=logging.INFO,
                     datefmt='%d/%m/%Y %H:%M:%S')
 
 #########################################################################################################
@@ -353,7 +353,7 @@ def init(sock,current_dir):
     logging.debug('Checking that the daemon SATFC is alive.')
     pinged = ping(sock)
     if pinged:
-        logging.debug('Daemon SATFC is already alive, no initialization needed.')
+        logging.info('Daemon SATFC is already alive, no initialization needed.')
         return
     logging.info('Daemon SATFC unavailable.')
     logging.info('Launching daemon SATFC.')
