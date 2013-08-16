@@ -1,13 +1,11 @@
 #! /usr/bin/env python
 # vim: syntax=python
-
-import subprocess
 import sys
 import os
-import tempfile
 import time
+import subprocess
 import socket
-import select
+import logging
 
 version = '0.9.6a'
 date = 'August 2013'
@@ -31,39 +29,54 @@ MAXPACKETSIZE = 65000
 COMMANDSEP = ':'
 
 """Static daemon solver parameters"""
+#(relative) path to clasp library to launch daemon with.
 DAEMONSOLVERLIB = 'SATsolvers/clasp/jna/libjnaclasp.so'
+#Seed used whenever we're solving a problem.
 SEED=str(1)
 
 """Waiting variables"""
-#Maximum number of times we attempt to ping the SATFC daemon before reperforming initialization.
-MAXPINGATTEMPS=1
 #Maximum time (s) we wait for a ping message.
 MAXPINGTIME = 1
-#Fraction of cutoff time we wait for an answer to solve message.
-MAXCUTOFFFRACTIONWAITTIME = 1.5
+#Time (s) added to the cutoff time as a timeout when waiting for a solving.
+SOLVINGWAITADDEDTIME = 30
 #The time (s) waited in initialization phase to insure the daemon has started carefully.
-DAEMONCREATIONSANITYSLEEPTIME = 2
+DAEMONCREATIONSANITYSLEEPTIME = 4
+
+"""Setup logging"""
+logging.basicConfig(format='%(asctime)s.%(msecs).03d [%(levelname)s] %(message)s',
+                    level=logging.DEBUG,
+                    datefmt='%d/%m/%Y %H:%M:%S')
 
 #########################################################################################################
 
+def establishConnection():
+    """Establish connection"""
+    logging.debug('Establishing connection.')
+    try:
+        sock = socket.socket(socket.AF_INET, # Internet
+                        socket.SOCK_DGRAM) # UDP
+        return sock
+    except Exception as e:
+        raise Exception('Could not create a UDP socket ('+str(e)+').')
+
 def processMessage(message):
     command = message.split(COMMANDSEP)[0]
-    
+
     if command == 'PING':
-        print '[COMM] Got a PING message.'
+        logging.debug('Got a PING message.')
         return ('PING','')
     if command == 'IGNORE':
         return ('IGNORE','')
     elif command == 'ERROR':
-        print '[COMM] Got an ERROR message:'
+        logging.warning('Got an ERROR message:')
         messageparts = message.split(COMMANDSEP)
         if len(messageparts)==2:
-            print '[SERVER-ERROR]',messageparts[1]
+            logging.warning('Server error: %s',messageparts[1])
         else:
-            print '(No error info with the error message)'
+            logging.warning('(No error info with the error message)')
         return ('ERROR','')
     elif command == 'ANSWER':
-        print '[COMM] Got an ANSWER message.'
+        logging.debug('Got an ANSWER message.')
         messageparts = message.split(COMMANDSEP)
         if len(messageparts)==2:
             resultstring = messageparts[1]
@@ -76,62 +89,69 @@ def processMessage(message):
                     satisfiability = 'no'
                 else:
                     satisfiability = 'unknown'
-                    
+
                 runtime = resultstringparts[1]
                 runtime = "%0.4f" % float(runtime)
-  
-                assignment = resultstringparts[2]          
+
+                assignment = resultstringparts[2]
                 if satisfiability == 'yes':
                     assignment = {s[0]:s[1].split('_') for s in [seg.split('-') for seg in assignment.split(';')]}
                 else:
                     assignment = {}
-                
+
                 return ('ANSWER',(satisfiability,runtime,assignment))
             else:
-                print '[COMM-ERROR] Could not parse result string from SATFC.'
-                print '[COMM-ERROR] Received:',message
+                logging.error('Could not parse result string from SATFC.')
+                logging.error('Received: %s',message)
                 return ('ERROR',message)
         else:
-            print '[COMM-ERROR] Could not parse answer received from daemon SATFC.'
-            print '[COMM-ERROR] Received:',message
+            logging.error('Could not parse answer received from daemon SATFC.')
+            logging.error('Received: %s',message)
             return ('ERROR',message)
-            
+
     elif command == 'TEST':
-        print '[COMM] Got a TEST message.'
-        print message
+        logging.debug('Got a TEST message:')
+        logging.debug('%s',message)
         return ('TEST','')
     else:
-        print '[COMM-ERROR] Unrecognized message:'
-        print '[COMM-ERROR]',message
+        logging.error('Unrecognized message:')
+        logging.error('%s',message)
         return ('UNRECOGNIZED',message)
-    
+
 def sendMessage(sock,message):
     try:
-        if len(message)>120:
-            print '[COMM] Sending',message[0:120],'...'
+        if len(message)>100:
+            logging.debug('Sending "%s ...',message[0:100])
         else:
-            print '[COMM] Sending',message
+            logging.debug('Sending "%s".',message)
         sock.sendto(message.encode('ASCII'), (UDP_IP, UDP_PORT))
     except Exception as e:
-        print '[COMM-ERROR] Could not send message to',UDP_IP,'port',UDP_PORT,'('+str(e)+').'
-    
+        logging.error('Could not send message to %s port %s (%s).',str(UDP_IP),str(UDP_PORT),str(e))
+
 def receiveMessage(sock,timeout):
     sock.settimeout(timeout)
     try:
         message, addr = sock.recvfrom(MAXPACKETSIZE)
-        print '[COMM] Received a message.'
+        logging.debug('Received a message.')
         return message
     except Exception as e:
-        print '[COMM-ERROR] Error while waiting for packet ('+str(e)+').'
+        logging.warning('Error while waiting for packet (%s).',str(e))
         return 'IGNORE'
-        
 
-    
+def ping(sock):
+    pingtime = time.time()
+    pinged = False
+    while not pinged and time.time()-pingtime < MAXPINGTIME:
+        sendMessage(sock,'PING')
+        message = receiveMessage(sock,MAXPINGTIME)
+        (messagetype,messageinfo) = processMessage(message)
+        pinged = (messagetype=='PING')
+    return pinged
+
 #########################################################################################################
 
 def main():
     starttime = time.time()
-  
     """Check what command must be executed"""
     if len(sys.argv)<=1:
         #Output usage.
@@ -140,83 +160,91 @@ def main():
         print 'Normal execution: "./feas_check question_csv_file_name answer_csv_file_name"'
         print 'This wrapper communicates with a SATFC daemon on ',UDP_IP,'port',UDP_PORT
         print 'For more usage see feasibility checker usage section of the Ladder Auction Algorithm Mini-Spec v2.1, June 2013.'
-        sys.exit()
+        return
     elif sys.argv[1]=='-init':
         """Initialization to perform"""
-        print '[INFO] Performing initialization.'
+        logging.info('Performing initialization.')
         (current_dir,environment_data_location,environment_execution_dir) = getEnvironmentVariables()
-        
-        """Establish connection"""
-        print '[INFO] Establishing connection.'
-        try:
-            sock = socket.socket(socket.AF_INET, # Internet
-                             socket.SOCK_DGRAM) # UDP
-        except Exception as e:
-            raise Exception('[ERROR] Could not create a UDP socket ('+str(e)+').')
-        
-        init(sock,current_dir)    
-        sys.exit()
+        sock = establishConnection()
+        init(sock,current_dir)
+        logging.info('Done.')
+        return
+    elif sys.argv[1]=='-kill':
+        """Killing daemon SATFC"""
+        logging.info('Killing daemon solver.')
+        sock = establishConnection()
+        logging.debug('Checking that the daemon SATFC is alive.')
+        pinged = ping(sock)
+        if not pinged:
+            logging.info('SATFC daemon did not answer ping, assuming already dead.')
+        else:
+            logging.info('Daemon SATFC is alive, sending a kill command.')
+            sendMessage(sock,'TERMINATE')
+        logging.info('Done.')
+        return
     elif len(sys.argv)!=3:
         print 'Unrecognized usage, try ./feas_check for some info.'
-        sys.exit()
-    else:  
+        return
+    else:
         run_information = []
-               
+
         run_information.append('SATFC v'+version+' using '+solver+'.')
-        
+
         """Setup the instance to solve"""
-        print '[INFO] Reading instance information.'
+        logging.debug('Reading instance information.')
         (current_dir,environment_data_location,environment_execution_dir) = getEnvironmentVariables()
-        
+
         (question_filename,answer_filename,problem_data_directory,packing_stations,packing_channels,cutoff) = getSolvingInstanceInfo(environment_execution_dir,environment_data_location)
-        
+
         instance = '-'.join(packing_channels)+'_'+'-'.join(packing_stations)
-        
+
         """Establish connection"""
-        print '[INFO] Establishing connection.'
-        try:
-            sock = socket.socket(socket.AF_INET, # Internet
-                             socket.SOCK_DGRAM) # UDP
-        except Exception as e:
-            raise Exception('[ERROR] Could not create a UDP socket ('+str(e)+').')
-        
-        """Ping daemon"""
+        sock = establishConnection()
+
+        """Init if not available."""
         init(sock,current_dir)
-        print '[INFO] Daemon SATFC is alive, proceeding.'   
-        
+        logging.info('Daemon SATFC is alive, proceeding.')
+
         """Create the solving message."""
-        print '[INFO] Submitting an instance to the daemon SATFC'
-        
+        logging.info('Submitting an instance to the daemon SATFC')
+        logging.debug('Solving instance: %s ,',instance)
+        logging.debug('with cutoff %s ,',cutoff)
+        logging.debug('and seed %s .',SEED)
         """Send message."""
         sendMessage(sock,COMMANDSEP.join(['SOLVE',problem_data_directory,instance,cutoff,SEED]))
-        
+
         """Wait for answer"""
-        print '[INFO] Waiting for an answer...'
+        logging.info('Waiting for an answer...')
         solvetime = time.time()
-        solved=False        
-        while not solved and time.time()-solvetime < MAXCUTOFFFRACTIONWAITTIME*float(cutoff):           
-            message = receiveMessage(sock,MAXCUTOFFFRACTIONWAITTIME*float(cutoff))
+        solved=False
+        while not solved and time.time()-solvetime < (SOLVINGWAITADDEDTIME+float(cutoff)):
+            message = receiveMessage(sock,(SOLVINGWAITADDEDTIME+float(cutoff)))
             (messagetype,messageinfo) = processMessage(message)
             solved = (messagetype=='ANSWER')
-             
+            error = (messagetype=='ERROR')
+            if not solved:
+                run_information.append('Message received during solving: "'+message+'"')
+            if error:
+                break
+
         if solved:
             (satisfiability,runtime,assignment) = messageinfo
         else:
-            print '[ERROR] Instance was not solved within '+str(MAXCUTOFFFRACTIONWAITTIME)+'*cutofftime ('+str(MAXCUTOFFFRACTIONWAITTIME*float(cutoff))+') assuming something terrible happened.'                        
+            logging.error('Instance was not solved within allocated time.')
             satisfiability = 'unknown'
             runtime = time.time()-starttime
             assignment = {}
-        
-        print '[INFO] Result:',','.join([str(satisfiability),str(runtime),str(assignment)])
-        
+
+        logging.info('Result: %s',','.join([str(satisfiability),str(runtime),str(assignment)]))
+
         totaltime = time.time()-starttime
         run_information.append('Total time taken '+str(totaltime)+' seconds.')
         run_information.append('Time spent solving by daemon SATFC '+str(runtime)+' seconds.')
-        
-        print '[INFO] Total walltime taken:',str(totaltime)
-        
-        print '[INFO] Writing result to file',answer_filename
-        
+
+        logging.info('Total walltime taken: %s',str(totaltime))
+
+        logging.info('Writing result to file %s',answer_filename)
+
         answer_file = open(answer_filename,'w')
         answer_file.write('ANSWER,'+satisfiability+'\n')
         for information_line in run_information:
@@ -225,10 +253,9 @@ def main():
             for station in assignment[channel]:
                 answer_file.write(str(station)+','+str(channel)+'\n')
         answer_file.close()
-            
-        sys.exit()
+        return
 
-        
+
 #########################################################################################################
 
 def getEnvironmentVariables():
@@ -241,19 +268,19 @@ def getEnvironmentVariables():
     if 'FC_STATION_DATA_PATH' in environment_variables:
         environment_data_location = environment_variables['FC_STATION_DATA_PATH']
     else:
-        print '[WARNING] FC_STATION_DATA_PATH environment variable has not been set, resolving to default current directory.'
+        logging.warning('FC_STATION_DATA_PATH environment variable has not been set, resolving to default current directory.')
         environment_data_location = current_dir
     environment_data_location = environment_data_location.rstrip(os.sep)
 
     if 'FC_WORKING_PATH' in environment_variables:
         environment_execution_dir = environment_variables['FC_WORKING_PATH']
     else:
-        print '[WARNING] FC_WORKING_PATH environment variable has not been set, resolving to default current directory.'
+        logging.warning('FC_WORKING_PATH environment variable has not been set, resolving to default current directory.')
         environment_execution_dir = current_dir
     environment_execution_dir = environment_execution_dir.rstrip(os.sep)
-    
+
     return (current_dir,environment_data_location,environment_execution_dir)
-    
+
 def getSolvingInstanceInfo(environment_execution_dir,environment_data_location):
     """Parse FCC feas_check parameters"""
 
@@ -310,92 +337,86 @@ def getSolvingInstanceInfo(environment_execution_dir,environment_data_location):
     else:
         raise Exception('Unrecognized value for key BAND in question csv file! (value = '+question_parameters['BAND']+')')
     packing_channels = [str(c) for c in packing_channels]
-    
+
     #Stations to pack
     try:
         packing_stations = [int(line.split(',')[0]) for line in question_parameters['STATIONS']]
     except:
         raise Exception('Unrecognized list of stations in question csv file! ('+question_parameters['STATIONS']+')')
     packing_stations = [str(s) for s in packing_stations]
-    
+
     return (question_filename,answer_filename,problem_data_directory,packing_stations,packing_channels,cutoff)
 
 def init(sock,current_dir):
-    #Perform initialization        
+    #Perform initialization
     #Check if daemon SATFC is alive.
-    print '[INFO] Checking that the daemon SATFC is alive.'
-    pingtime = time.time()
-    pinged = False
-    while not pinged and time.time()-pingtime < MAXPINGTIME:
-        sendMessage(sock,'PING')
-        message = receiveMessage(sock,MAXPINGTIME)
-        (messagetype,messageinfo) = processMessage(message)
-        pinged = (messagetype=='PING')
-        
+    logging.debug('Checking that the daemon SATFC is alive.')
+    pinged = ping(sock)
     if pinged:
-        print '[INFO] Daemon SATFC is already alive, no initialization needed.'
+        logging.debug('Daemon SATFC is already alive, no initialization needed.')
         return
-    print '[INFO] Daemon SATFC unavailable.'        
-    print '[INFO] Launching daemon SATFC.'
-    
+    logging.info('Daemon SATFC unavailable.')
+    logging.info('Launching daemon SATFC.')
+
     #Navigate the current directory for data folders.
-    print '[INFO] Gathering all the available data folders.'    
+    logging.debug('Gathering all the available data folders.')
     datafoldernames = []
     for subdirectory in [d for d in os.listdir(current_dir) if os.path.isdir(d)]:
         if os.path.isfile(current_dir+os.sep+subdirectory+os.sep+'domains.csv') and os.path.isfile(current_dir+os.sep+subdirectory+os.sep+'interferences.csv'):
-            print '[INFO] Data available in',subdirectory
+            logging.debug('Data available in %s',subdirectory)
             datafoldernames.append(current_dir+os.sep+subdirectory)
 
     if len(datafoldernames)==0:
-        print '[WARN] There were no valid FC_CONFIG data folders in',current_dir
-        print '[WARN] SATFC daemon will be started without any data.'
+        logging.warning('There were no valid FC_CONFIG data folders in %s',current_dir)
+        logging.warning('SATFC daemon will be started without any data.')
     elif len(datafoldernames)<5:
-        print '[INFO] SATFC daemon will be started with data from',str(datafoldernames)
+        logging.debug('SATFC daemon will be started with data from: %s',','.join(datafoldernames))
     else:
-        print '[INFO] SATFC daemon will be started with more than 5 different data sets.'
-        
+        logging.debug('SATFC daemon will be started with more than 5 different data sets.')
+
     """Fill in the SATFC_daemon options and launch it"""
     options = {
     '--library':current_dir+os.sep+DAEMONSOLVERLIB,
     '-PORT':str(UDP_PORT),
     '-DATA-FOLDERNAME':'"'+','.join(datafoldernames)+'"'
     }
-    
+
     feas_check_exec = 'java -jar '+current_dir+os.sep+'SATFC_daemon.jar'
     options_callstring = ' '.join(map(lambda (k,v) : k+' '+v,options.iteritems()))
     callstring = feas_check_exec+' '+options_callstring
-    
-    print '[INFO] Launching SATFC daemon, executing:'
-    print callstring
-    
+
+    logging.info('Launching SATFC daemon.')
+    logging.debug('Executing : %s',callstring)
+
     daemon_out_name = 'SATFC_daemon_out.txt'
     daemon_out = open(daemon_out_name,'w')
     daemon_err_name = 'SATFC_daemon_err.txt'
     daemon_err = open(daemon_err_name,'w')
-    
+
     execution = subprocess.Popen(callstring.split(' '),stdout=daemon_out, stderr=daemon_err, stdin=subprocess.PIPE)
-    
+
     #Sanity check, make sure standard error is empty after 5 seconds.
-    print '[INFO] Making sure daemon solver was started without any errors... '
+    logging.info('Making sure daemon solver was started without any errors... ')
     time.sleep(DAEMONCREATIONSANITYSLEEPTIME)
     errors=open(daemon_err_name,'r').readlines()
     if not len(errors)==0:
         execution.kill()
-        print '[ERROR] There was an error while starting the daemon solver.'
-        print '[ERROR] Check SATFC_daemon_out.txt and SATFC_daemon_err.txt.'
-        print '[ERROR] Make sure to kill the SATFC_daemon process if it is not already dead.'
-        
-        print '[ERROR] Sample from',daemon_err_name,':'
-        print '========================================================================'
-        print ''.join(errors)
-        print '========================================================================'
-        
+        logging.error('There was an error while starting the daemon solver.')
+        logging.error('Check %s and %s .',daemon_out_name,daemon_err_name)
+        logging.error('Make sure to kill the SATFC_daemon process if it is not already dead.')
+
+        logging.error('Sample of',daemon_err_name,':')
+        logging.error('========================================================================')
+        for i in range(min(10,len(errors))):
+            logging.error('%s',errors[i])
+        logging.error('========================================================================')
         raise Exception('There was an error while starting the daemon solver.')
-    
+
     else:
-        print '[INFO] SATFC daemon started on port',UDP_PORT,'and ready to go.'
-    
+        logging.info('SATFC daemon started on port %s and ready to go.',str(UDP_PORT))
+
     return
-    
+
 if __name__ == "__main__":
     main()
+    sys.exit()
