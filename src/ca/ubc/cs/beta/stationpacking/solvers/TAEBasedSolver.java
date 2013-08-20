@@ -111,7 +111,7 @@ public class TAEBasedSolver implements ISolver{
 						aCutoff = aRun.getRunConfig().getCutoffTime();
 						aSumRuntimes += aRun.getRuntime();
 					}
-					if(aSumRuntimes>1.01+aCutoff+1)
+					if(aSumRuntimes>1.01*aCutoff+1)
 					{
 						aKill = true;
 					}

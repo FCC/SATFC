@@ -9,7 +9,7 @@ import ca.ubc.cs.beta.aclib.algorithmrun.RunResult;
  * @author afrechet
  */
 public enum SATResult implements Serializable{
-	SAT,UNSAT,TIMEOUT,CRASHED,KILLED;
+	SAT,UNSAT,TIMEOUT,CRASHED,KILLED,INTERRUPTED;
 	
 	public SATResult fromRunResult(RunResult aRunResult)
 	{	
