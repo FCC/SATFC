@@ -318,5 +318,10 @@ public class GlueMiniSatSolver implements IIncrementalSATSolver{
 	        
 	        clear();	//Important to clear; otherwise the clauses inserted above remain in the problem.
 		}
+
+		@Override
+		public void interrupt() {
+			throw new UnsupportedOperationException("GlueMiniSatSolver does not support pre-emption yet. (interrupts)");
+		}
 		
 }
