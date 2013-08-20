@@ -40,5 +40,10 @@ public interface IIncrementalSATSolver {
 	/* Resets the internal state, so that the current problem contains no variables and no clauses.
 	 */
 	public void clear();
+	
+	/**
+	 * Tries to stop the solve call if implemented, if not throws an UnsupportedOperationException.
+	 */
+	void interrupt();
 }
 

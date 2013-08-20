@@ -380,6 +380,11 @@ public class TAEBasedSolver implements ISolver{
 		
 	}
 	
+	@Override
+	public void interrupt() throws UnsupportedOperationException 
+	{
+		throw new UnsupportedOperationException("TAEBasedSolver does not support pre-emption. (interrupts)");
+	}
 	
 	
 }
