@@ -251,6 +251,11 @@ public class IncrementalSolver implements ISolver{
 	public void notifyShutdown() {
 		
 	}
+
+	@Override
+	public void interrupt() throws UnsupportedOperationException {
+		fIncrementalSATLibrary.interrupt();
+	}
 	
 	/* The following three methods are for an extension of the solver capability.
 	 * Currently unimplemented.

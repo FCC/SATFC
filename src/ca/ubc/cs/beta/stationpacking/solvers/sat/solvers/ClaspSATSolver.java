@@ -19,6 +19,12 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Litteral;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.CNFCompressor;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.jnalibraries.ClaspLibrary;
 
+/**
+ * Implements a SAT solver using the jnaclasplibrary.so.  It gracefully handles thread interruptions while solve() is executing
+ * and returns a null answer in that case.
+ * @author gsauln
+ *
+ */
 public class ClaspSATSolver implements ISATSolver
 {
 	
@@ -27,6 +33,7 @@ public class ClaspSATSolver implements ISATSolver
 	private ClaspLibrary fClaspLibrary;
 	private String fParameters;
 	private int fMaxArgs;
+	private boolean fInterrupt;
 	
 	public ClaspSATSolver(String libraryPath, String parameters)
 	{
@@ -44,6 +51,7 @@ public class ClaspSATSolver implements ISATSolver
 		fClaspLibrary = (ClaspLibrary) Native.loadLibrary(libraryPath, ClaspLibrary.class);
 		fMaxArgs = maxArgs;
 		fParameters = parameters;
+		fInterrupt = false;
 		
 		// set the info about parameters, throw an exception if seed is contained.
 		if (parameters.contains("--seed"))
@@ -70,22 +78,26 @@ public class ClaspSATSolver implements ISATSolver
 		}
 	}
 	
-	protected class Interrupt
+	protected class BooleanHolder
 	{
-		private boolean fInterrupted = false;
-		public void setInterrupt()
+		private boolean fBoolean = false;
+		public synchronized void setBoolean()
 		{
-			fInterrupted = true;
+			fBoolean = true;
 		}
-		public boolean getInterrupt()
+		public synchronized boolean getBoolean()
 		{
-			return fInterrupted;
+			return fBoolean;
+		}
+		public synchronized void unsetBoolean()
+		{
+			fBoolean = false;
 		}
 	}
 	
 	@Override
 	public SATSolverResult solve(CNF aCNF, double aCutoff, long aSeed) {
-		
+		fInterrupt = false;
 		long time1 = System.currentTimeMillis();
 		
 		// create the facade
@@ -101,30 +113,45 @@ public class ClaspSATSolver implements ISATSolver
 		CNFCompressor compressor = new CNFCompressor();
 		Pointer problem = fClaspLibrary.createProblem(compressor.compress(aCNF).toDIMACS(null));
 		final Pointer result = fClaspLibrary.createResult();
-		final Interrupt interrupt = new Interrupt();
+		final BooleanHolder timeout = new BooleanHolder();
 		// Launches a timer that will set the interrupt flag of the result object to true after aCutOff seconds.
 		Timer timer = new Timer();
 		timer.schedule(new TimerTask() {
 			@Override
 			public void run() {
 				fClaspLibrary.interrupt(facade);
-				interrupt.setInterrupt();
+				timeout.setBoolean();
 			}
 		}, (long)(aCutoff*1000));
-		
+		// listens for thread interruption every 0.1 seconds, if the thread is interrupted, interrupt the library and return gracefully
+		// while returning null (free library memory, etc.)
+		timer.schedule(new TimerTask() {
+			@Override
+			public void run() {
+				if (fInterrupt)
+				{
+					fClaspLibrary.interrupt(facade);
+				}
+			}
+		}, 0, 100);
 
 		// Start solving
 		fClaspLibrary.jnasolve(facade, problem, config, result);
 		timer.cancel();
 		
-		SATResult satResult;
+		SATResult satResult = null;
 		HashSet<Litteral> assignment = new HashSet<Litteral>();
 		int state = fClaspLibrary.getResultState(result);
-		if (interrupt.getInterrupt())
+		if (fInterrupt)
+		{
+			satResult = SATResult.INTERRUPTED;
+			fInterrupt = false;
+		}
+		else if (timeout.getBoolean())
 		{
 			satResult = SATResult.TIMEOUT;
 		}
-		else
+		else 
 		{
 			if (state == 0)
 			{
@@ -150,7 +177,12 @@ public class ClaspSATSolver implements ISATSolver
 		
 		long time2 = System.currentTimeMillis();
 		
-		SATSolverResult answer = new SATSolverResult(satResult, (time2-time1)/1000.0, assignment);
+		// should be null only if thread was interrupted.
+		SATSolverResult answer = null;
+		if (satResult != null)
+		{
+			answer = new SATSolverResult(satResult, (time2-time1)/1000.0, assignment);
+		}
 		
 		return answer;
 	}
@@ -172,5 +204,11 @@ public class ClaspSATSolver implements ISATSolver
 	
 	@Override
 	public void notifyShutdown() {}
+
+	@Override
+	public void interrupt() throws UnsupportedOperationException 
+	{
+		fInterrupt = true;
+	}
 
 }

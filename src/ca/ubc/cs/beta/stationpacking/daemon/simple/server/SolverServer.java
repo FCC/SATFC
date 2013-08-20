@@ -20,6 +20,7 @@ import ca.ubc.cs.beta.stationpacking.daemon.simple.datamanager.SolverBundle;
 import ca.ubc.cs.beta.stationpacking.daemon.simple.datamanager.SolverManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 
 /**
@@ -30,14 +31,18 @@ import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
  *
  */
 public class SolverServer {
-	
+
 	private static Logger log = LoggerFactory.getLogger(SolverServer.class);
-	
+
 	/*
-	 * Solver fields.
+	 * Solving fields.
 	 */
 	private final SolverManager fSolverManager;
-	
+	private final MessageHolder fMessageHolder;
+	private final SolverHolder fSolverHolder;
+	private final SolverRunner fSolverRunner;
+	private Thread fSolvingThread;
+
 	/*
 	 * Command fields.
 	 */
@@ -48,8 +53,7 @@ public class SolverServer {
 		SOLVE,
 		PING;
 	}
-	
-	
+
 	/*
 	 * Communication fields.
 	 */
@@ -60,24 +64,28 @@ public class SolverServer {
 	private final static int MAXPACKETSIZE = 65000;
 
 	public SolverServer(SolverManager aSolverManager,int aServerPort) throws SocketException, UnknownHostException {
-		
+
 		if (aServerPort >= 0 && aServerPort < 1024)
 		{
-		log.warn("Trying to allocate a port < 1024 which generally requires root priviledges (which aren't necessary and discouraged), this may fail");
+			log.warn("Trying to allocate a port < 1024 which generally requires root priviledges (which aren't necessary and discouraged), this may fail");
 		}
 		if(aServerPort < -1 || aServerPort > 65535)
 		{
-		throw new IllegalArgumentException("Port must be in the interval [0,65535]");
+			throw new IllegalArgumentException("Port must be in the interval [0,65535]");
 		}
-		 
+
 		fServerPort = aServerPort;
 		fServerSocket = new DatagramSocket(fServerPort);
 		fIPAdress = InetAddress.getByName("localhost");
 
 		//Set solver structures needed.
 		fSolverManager = aSolverManager;
+		fMessageHolder = new MessageHolder();
+		fSolverRunner = new SolverRunner();
+		fSolvingThread = new Thread(fSolverRunner);
+		fSolverHolder = new SolverHolder();
 	}
-	
+
 	/**
 	 * @param aMessage - a string message to send.
 	 * @param aPort - the port location on localhost.
@@ -95,7 +103,7 @@ public class SolverServer {
 			log.warn("Response is too big to send to client, please adjust packet size in both client and server ("
 					+ aSendBytes.length + " > " + MAXPACKETSIZE + ")");
 			log.warn("Dropping message.");
-			
+
 			throw new IllegalArgumentException("Solver tried to send a message that is too large.");			
 		}
 
@@ -105,7 +113,7 @@ public class SolverServer {
 		log.info("Sending message \"{}\" back to "+fIPAdress+" port "+aPort,aMessage);
 		fServerSocket.send(sendPacket);
 	}
-	
+
 	/**
 	 * Shutdown the solver server.
 	 */
@@ -119,31 +127,33 @@ public class SolverServer {
 		{
 			log.error("Error occured while shutting down", e);
 		}
-		
+
 		if(fSolverManager!=null)
 		{
 			fSolverManager.notifyShutdown();
 		}
-		
+
+		terminateSolverRunner();
 		log.info("Solver server shutting down.");
 	}
-	
+
 	/**
 	 * Start the solver server. It will now listen indefinitely to its given port for messages.
 	 */
 	public void start() {
-		
+
 		// Prevent infinite loop from closed socket re-reading
 		if (fServerSocket.isClosed())
 		{
 			throw new IllegalStateException("Trying to communicate with a closed server socket.");
 		}
-		
+
 		log.info("Solver server is processing requests using a single thread on localhost port {}.",fServerSocket.getInetAddress(),fServerSocket.getLocalPort());
-		
+
 		try {
+			fSolvingThread.start();
 			while (true) {
-				
+
 				byte[] aReceiveData = new byte[MAXPACKETSIZE];
 
 				try {
@@ -152,7 +162,7 @@ public class SolverServer {
 					DatagramPacket aReceivePacket = new DatagramPacket(
 							aReceiveData, aReceiveData.length);
 					fServerSocket.receive(aReceivePacket);
-					
+
 					if (!fIPAdress.equals(aReceivePacket.getAddress())) {
 						log.warn(
 								"Received request from a non-{}, ignoring request from {}.",
@@ -162,12 +172,12 @@ public class SolverServer {
 
 					log.info("Received a packet.");
 					aReceiveData = aReceivePacket.getData();
-					
+
 					int aSendPort = aReceivePacket.getPort();
 					String aMessage = new String(aReceiveData,"ASCII").trim();
-					
+
 					log.info("Message received: \"{}\"",aMessage);
-					
+
 					//Process message
 					if(!processCommand(aMessage, aSendPort))return;
 
@@ -181,7 +191,7 @@ public class SolverServer {
 			notifyShutdown();
 		}
 	}
-	
+
 	/**
 	 * @param aMessage - a command message.
 	 * @param aSendPort - the (localhost) port that sent the message.
@@ -189,7 +199,7 @@ public class SolverServer {
 	 */
 	private boolean processCommand(String aMessage, int aSendPort)
 	{
-		
+
 		String aServerCommandString = aMessage.trim().split(COMMANDSEP)[0];
 		ServerCommand aServerCommand;
 		try
@@ -212,115 +222,278 @@ public class SolverServer {
 			}
 			return true;
 		}
-		
+
 		switch(aServerCommand)
 		{
-			case TEST:
-				log.info("Received a TEST message: {}",aMessage);
+		case TEST:
+			log.info("Received a TEST message: {}",aMessage);
+			try
+			{
+				sendLocalMessage(StringUtils.join(new String[]{"TEST","Got a test message."},COMMANDSEP),aSendPort);
+			}
+			catch(IOException e1)
+			{
+				log.warn("Could not send a message back to client ("+e1.getMessage()+").");
+			}
+
+			return true;
+		case TERMINATE:
+			log.info("Got a termination command, terminating.");
+			return false;
+		case SOLVE:
+			log.info("Got a solving command, solving.");
+			try
+			{
+				String[] aMessageParts = aMessage.split(COMMANDSEP);
+				if(aMessageParts.length!=5)
+				{
+					throw new IllegalArgumentException("Solving command does not have necessary additional information.");
+				}
+
+				String aDataFoldername = aMessageParts[1];
+				log.info("Getting data from {}.",aDataFoldername);
+
+				String aInstanceString = aMessageParts[2];
+				log.info("Solving instance {},",aInstanceString);
+
+				double aCutoff = Double.valueOf(aMessageParts[3]);
+				log.info("with cutoff {}, and",aCutoff);
+
+				long aSeed = Long.valueOf(aMessageParts[4]);
+				log.info("with seed {}.",aSeed);
+
+				SolveMessage message = new SolveMessage(aSendPort, aDataFoldername, aInstanceString, aCutoff, aSeed);
+				fMessageHolder.setSolveMessage(message);
+				ISolver solver = fSolverHolder.getSolver();
+				if (solver != null)
+				{
+					log.info("Trying to stop current solving thread.");
+					solver.interrupt();
+				}
+				synchronized (fSolverRunner) {	
+				fSolverRunner.notify();
+				}
+			}
+			catch(Exception e)
+			{
+				log.warn("Got an exception while trying to execute a solving command ({}).",e.getMessage());
 				try
 				{
-					sendLocalMessage(StringUtils.join(new String[]{"TEST","Got a test message."},COMMANDSEP),aSendPort);
+					sendLocalMessage("ERROR"+COMMANDSEP+e.getMessage(), aSendPort);
 				}
 				catch(IOException e1)
 				{
 					log.warn("Could not send a message back to client ("+e1.getMessage()+").");
 				}
-				
-				return true;
-			case TERMINATE:
-				log.info("Got a termination command, terminating.");
-				return false;
-			case SOLVE:
-				log.info("Got a solving command, solving.");
+			}
+
+			return true;
+
+		case PING:
+			log.info("Got a ping command, sending back an acknowledgement.");
+			String aAcknowledgement = ServerCommand.PING.toString();
+			try
+			{
+				sendLocalMessage(aAcknowledgement, aSendPort);
+			}
+			catch(IOException e1)
+			{
+				log.warn("Could not send a message back to client ("+e1.getMessage()+").");
+			}
+
+			return true;
+		default:
+			String aError = "Unrecognized command "+aServerCommand+" in message.";
+			log.warn(aError);
+			try
+			{
+				sendLocalMessage("ERROR"+COMMANDSEP+aError,aSendPort);
+			}
+			catch(IOException e1)
+			{
+				log.warn("Could not send a message back to client ("+e1.getMessage()+").");
+			}
+			return true;
+		}
+	}
+
+	private SolverResult solve(String aDataFoldername, String aInstanceString, double aCutoff, long aSeed) throws FileNotFoundException
+	{
+		SolverBundle bundle = fSolverManager.getData(aDataFoldername);
+
+		IStationManager aStationManager = bundle.getStationManager();
+		StationPackingInstance aInstance = StationPackingInstance.valueOf(aInstanceString, aStationManager);
+
+		ISolver solver = bundle.getSolver();
+		fSolverHolder.setSolver(solver);
+		SolverResult aResult = solver.solve(aInstance, aCutoff, aSeed);
+
+		return aResult;
+	}
+
+	protected class SolverHolder
+	{
+		private ISolver fSolver = null;
+		public synchronized void setSolver(ISolver solver)
+		{
+			fSolver = solver;
+		}
+		public synchronized ISolver getSolver()
+		{
+			return fSolver;
+		}
+	}
+	
+	protected void terminateSolverRunner()
+	{
+		fSolverRunner.stop();
+		fSolvingThread.interrupt();
+	}
+
+	protected class SolveMessage
+	{
+		private int fSendPort;
+		private String fDataFolderName;
+		private String fInstanceString;
+		private double fCutOff;
+		private long fSeed;
+
+		public SolveMessage(int sendPort, String aDataFoldername, String aInstanceString, double aCutoff, long aSeed)
+		{
+			fSendPort = sendPort;
+			fDataFolderName = aDataFoldername;
+			fInstanceString = aInstanceString;
+			fCutOff = aCutoff;
+			fSeed = aSeed;
+		}
+
+		public int getSendPort()
+		{
+			return fSendPort;
+		}
+
+		public String getDataFolderName()
+		{
+			return fDataFolderName;
+		}
+
+		public String getInstanceString()
+		{
+			return fInstanceString;
+		}
+
+		public double getCutOff()
+		{
+			return fCutOff;
+		}
+
+		public long getSeed()
+		{
+			return fSeed;
+		}
+
+		public SolveMessage copy()
+		{
+			return new SolveMessage(fSendPort, fDataFolderName, fInstanceString, fCutOff, fSeed);
+		}
+
+	}
+
+	protected class MessageHolder
+	{
+		private SolveMessage fMessage;
+		// reads and flushes the message in the holder, returns null if no message is contained
+		public synchronized SolveMessage getSolveMessage()
+		{
+			SolveMessage message = null;
+			if (fMessage != null)
+			{
+				message = fMessage.copy();
+			}
+			fMessage = null;
+			return message;
+		}
+		// sets the message in the holder
+		public synchronized void setSolveMessage(SolveMessage message)
+		{
+			fMessage = message;
+		}
+		// returns true if the holder contains a message, false otherwise.
+		public synchronized boolean isEmpty()
+		{
+			return (fMessage == null);
+		}
+	}
+
+	protected class SolverRunner implements Runnable
+	{
+		private boolean fRunning = true;
+
+		public void stop()
+		{
+			fRunning = false;
+		}
+
+		@Override
+		public void run() {
+			while (fRunning)
+			{
+				SolveMessage aMessage;
+					while (fRunning && fMessageHolder.isEmpty())
+					{
+						synchronized (fSolverRunner) {	
+						try 
+						{
+							fSolverRunner.wait();
+						} 
+						catch (InterruptedException e) 
+						{
+							// 	calls to interrupt are made to stop the solving command... we do not want to exit this loop unless fRunning is false.
+						}
+						}
+					}
+					aMessage = fMessageHolder.getSolveMessage();
+					if (aMessage == null) continue;
+				if (!fRunning) continue;
+
+				// solve the command if possible
 				try
 				{
-					String[] aMessageParts = aMessage.split(COMMANDSEP);
-					if(aMessageParts.length!=5)
+					SolverResult aResult = solve(aMessage.getDataFolderName(), aMessage.getInstanceString(), aMessage.getCutOff(), aMessage.getSeed());
+					
+					// empty the solver holder as we are done
+					fSolverHolder.setSolver(null);
+					
+					// send the result if needed
+					if (aResult.getResult() != SATResult.INTERRUPTED) // dot not return if the command was killed.
 					{
-						throw new IllegalArgumentException("Solving command does not have necessary additional information.");
+						String aAnswer = StringUtils.join(new String[]{"ANSWER",aResult.toParsableString()},COMMANDSEP);
+						try
+						{
+							sendLocalMessage(aAnswer,aMessage.getSendPort());
+						}
+						catch(IOException e1)
+						{
+							log.warn("Could not send a message back to client ("+e1.getMessage()+").");
+						}
 					}
-					
-					String aDataFoldername = aMessageParts[1];
-					log.info("Getting data from {}.",aDataFoldername);
-					
-					String aInstanceString = aMessageParts[2];
-					log.info("Solving instance {},",aInstanceString);
-					
-					double aCutoff = Double.valueOf(aMessageParts[3]);
-					log.info("with cutoff {}, and",aCutoff);
-					
-					long aSeed = Long.valueOf(aMessageParts[4]);
-					log.info("with seed {}.",aSeed);
-					
-					
-					SolverResult aResult = solve(aDataFoldername, aInstanceString, aCutoff,aSeed);
-					
-					String aAnswer = StringUtils.join(new String[]{"ANSWER",aResult.toParsableString()},COMMANDSEP);
-					try
-					{
-						sendLocalMessage(aAnswer,aSendPort);
-					}
-					catch(IOException e1)
-					{
-						log.warn("Could not send a message back to client ("+e1.getMessage()+").");
-					}
-					
 				}
 				catch(Exception e)
 				{
 					log.warn("Got an exception while trying to execute a solving command ({}).",e.getMessage());
+e.printStackTrace();
 					try
 					{
-						sendLocalMessage("ERROR"+COMMANDSEP+e.getMessage(), aSendPort);
+						sendLocalMessage("ERROR"+COMMANDSEP+e.getMessage(), aMessage.getSendPort());
 					}
 					catch(IOException e1)
 					{
 						log.warn("Could not send a message back to client ("+e1.getMessage()+").");
 					}
 				}
-				
-				return true;
-				
-			case PING:
-				log.info("Got a ping command, sending back an acknowledgement.");
-				String aAcknowledgement = ServerCommand.PING.toString();
-				try
-				{
-					sendLocalMessage(aAcknowledgement, aSendPort);
-				}
-				catch(IOException e1)
-				{
-					log.warn("Could not send a message back to client ("+e1.getMessage()+").");
-				}
-				
-				return true;
-			default:
-				String aError = "Unrecognized command "+aServerCommand+" in message.";
-				log.warn(aError);
-				try
-				{
-					sendLocalMessage("ERROR"+COMMANDSEP+aError,aSendPort);
-				}
-				catch(IOException e1)
-				{
-					log.warn("Could not send a message back to client ("+e1.getMessage()+").");
-				}
-				return true;
+			}
+
 		}
-	}
-	
-	private SolverResult solve(String aDataFoldername, String aInstanceString, double aCutoff, long aSeed) throws FileNotFoundException
-	{
-		SolverBundle bundle = fSolverManager.getData(aDataFoldername);
-		
-		IStationManager aStationManager = bundle.getStationManager();
-		StationPackingInstance aInstance = StationPackingInstance.valueOf(aInstanceString, aStationManager);
-							
-		ISolver solver = bundle.getSolver();
-		SolverResult aResult = solver.solve(aInstance, aCutoff, aSeed);
-		
-		return aResult;
-	}
 
-
+	}
 }
