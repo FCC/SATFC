@@ -12,5 +12,10 @@ public interface ISATSolver {
 	 */
 	public SATSolverResult solve(CNF aCNF, double aCutoff, long aSeed);
 	
+	/**
+	 * Tries to stop the solve call if implemented, if not throws an UnsupportedOperationException.
+	 */
+	public void interrupt() throws UnsupportedOperationException;
+	
 	public void notifyShutdown();
 }

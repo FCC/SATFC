@@ -131,4 +131,11 @@ public class TAESATSolver implements ISATSolver{
 		fTAE.notifyShutdown();
 	}
 
+
+	@Override
+	public void interrupt() throws UnsupportedOperationException 
+	{
+		throw new UnsupportedOperationException("TAESATSolver does not support pre-emption. (interrupts)");
+	}
+
 }

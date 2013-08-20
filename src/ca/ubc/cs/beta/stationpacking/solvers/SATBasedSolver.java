@@ -169,6 +169,12 @@ public class SATBasedSolver implements ISolver {
 		fSATSolver.notifyShutdown();
 	}
 
+
+	@Override
+	public void interrupt() throws UnsupportedOperationException {
+		fSATSolver.interrupt();
+	}
+
 	
 
 }
