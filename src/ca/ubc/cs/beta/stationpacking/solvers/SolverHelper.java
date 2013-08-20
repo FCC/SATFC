@@ -39,6 +39,10 @@ public class SolverHelper {
 		{
 			aSATResult = SATResult.UNSAT;
 		}
+		else if(aSATResults.contains(SATResult.INTERRUPTED))
+		{
+			aSATResult = SATResult.INTERRUPTED;
+		}
 		else if(aSATResults.contains(SATResult.CRASHED))
 		{
 			aSATResult = SATResult.CRASHED;
