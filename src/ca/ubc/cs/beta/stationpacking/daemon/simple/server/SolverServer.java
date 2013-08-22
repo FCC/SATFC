@@ -27,7 +27,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
  * Wrapper around an ISolver and a StationManager that takes care of receiving problem instances and various misc commands from UDP localhost, and communicate
  * result and other information back.
  * 
- * @author afrechet
+ * @author afrechet, gsauln
  *
  */
 public class SolverServer {
@@ -38,9 +38,14 @@ public class SolverServer {
 	 * Solving fields.
 	 */
 	private final SolverManager fSolverManager;
+	
 	private final MessageHolder fMessageHolder;
+	
+	private SolveMessage fLastSolveMessage;
+	
 	private final SolverHolder fSolverHolder;
 	private final SolverRunner fSolverRunner;
+	
 	private Thread fSolvingThread;
 
 	/*
@@ -84,6 +89,9 @@ public class SolverServer {
 		fSolverRunner = new SolverRunner();
 		fSolvingThread = new Thread(fSolverRunner);
 		fSolverHolder = new SolverHolder();
+		
+		fLastSolveMessage = null;
+		
 	}
 
 	/**
@@ -263,16 +271,21 @@ public class SolverServer {
 				log.info("with seed {}.",aSeed);
 
 				SolveMessage message = new SolveMessage(aSendPort, aDataFoldername, aInstanceString, aCutoff, aSeed);
+				
 				fMessageHolder.setSolveMessage(message);
+				
 				ISolver solver = fSolverHolder.getSolver();
+				
 				if (solver != null)
 				{
 					log.info("Trying to stop current solving thread.");
 					solver.interrupt();
 				}
 				synchronized (fSolverRunner) {	
-				fSolverRunner.notify();
+					fSolverRunner.notify();
 				}
+				
+				
 			}
 			catch(Exception e)
 			{
@@ -397,6 +410,63 @@ public class SolverServer {
 			return new SolveMessage(fSendPort, fDataFolderName, fInstanceString, fCutOff, fSeed);
 		}
 
+		private SolverServer getOuterType() {
+			return SolverServer.this;
+		}
+		
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + getOuterType().hashCode();
+			long temp;
+			temp = Double.doubleToLongBits(fCutOff);
+			result = prime * result + (int) (temp ^ (temp >>> 32));
+			result = prime
+					* result
+					+ ((fDataFolderName == null) ? 0 : fDataFolderName
+							.hashCode());
+			result = prime
+					* result
+					+ ((fInstanceString == null) ? 0 : fInstanceString
+							.hashCode());
+			result = prime * result + (int) (fSeed ^ (fSeed >>> 32));
+			result = prime * result + fSendPort;
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			SolveMessage other = (SolveMessage) obj;
+			if (!getOuterType().equals(other.getOuterType()))
+				return false;
+			if (Double.doubleToLongBits(fCutOff) != Double
+					.doubleToLongBits(other.fCutOff))
+				return false;
+			if (fDataFolderName == null) {
+				if (other.fDataFolderName != null)
+					return false;
+			} else if (!fDataFolderName.equals(other.fDataFolderName))
+				return false;
+			if (fInstanceString == null) {
+				if (other.fInstanceString != null)
+					return false;
+			} else if (!fInstanceString.equals(other.fInstanceString))
+				return false;
+			if (fSeed != other.fSeed)
+				return false;
+			if (fSendPort != other.fSendPort)
+				return false;
+			return true;
+		}
+		
+
 	}
 
 	protected class MessageHolder
@@ -442,14 +512,14 @@ public class SolverServer {
 					while (fRunning && fMessageHolder.isEmpty())
 					{
 						synchronized (fSolverRunner) {	
-						try 
-						{
-							fSolverRunner.wait();
-						} 
-						catch (InterruptedException e) 
-						{
-							// 	calls to interrupt are made to stop the solving command... we do not want to exit this loop unless fRunning is false.
-						}
+							try 
+							{
+								fSolverRunner.wait();
+							} 
+							catch (InterruptedException e) 
+							{
+								// 	calls to interrupt are made to stop the solving command... we do not want to exit this loop unless fRunning is false.
+							}
 						}
 					}
 					aMessage = fMessageHolder.getSolveMessage();
@@ -481,7 +551,6 @@ public class SolverServer {
 				catch(Exception e)
 				{
 					log.warn("Got an exception while trying to execute a solving command ({}).",e.getMessage());
-e.printStackTrace();
 					try
 					{
 						sendLocalMessage("ERROR"+COMMANDSEP+e.getMessage(), aMessage.getSendPort());
