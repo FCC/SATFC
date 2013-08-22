@@ -281,7 +281,7 @@ private:
 	SolveAlgorithm& operator=(const SolveAlgorithm&);
 	LitVec         assumptions_;
 	SolveLimits    limits_;
-	bool interrupt_; // added in order to handle terminate - gsauln
+	volatile bool interrupt_; // added in order to handle terminate - gsauln
 };
 //! A basic algorithm for single-threaded sequential solving.
 class SimpleSolve : public SolveAlgorithm {

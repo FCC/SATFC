@@ -4,10 +4,11 @@ import sys
 import os
 import time
 import subprocess
+import signal
 import socket
 import logging
 
-version = '0.9.7a'
+version = '0.9.7b'
 date = 'August 2013'
 solver = 'Daemon SATFC Tuned Clasp Library'
 """
@@ -152,6 +153,18 @@ def ping(sock):
 
 def main():
     starttime = time.time()
+
+    if '-port' in sys.argv:
+        try:
+            portindex = sys.argv.index('-port')+1
+            global UDP_PORT
+            UDP_PORT=int(sys.argv[portindex])
+            logging.info('UDP port to use is set to %s.',str(UDP_PORT))
+            sys.argv.pop(portindex-1)
+            sys.argv.pop(portindex-1)
+        except Exception as e:
+            raise Exception('Could not read port in arguments ('+str(e)+').')
+
     """Check what command must be executed"""
     if len(sys.argv)<=1:
         #Output usage.
@@ -347,6 +360,14 @@ def getSolvingInstanceInfo(environment_execution_dir,environment_data_location):
 
     return (question_filename,answer_filename,problem_data_directory,packing_stations,packing_channels,cutoff)
 
+"""
+Function necessary to prevent interrupts from killing daemon subprocess.
+"""
+def preexec_function():
+    # Ignore the SIGINT signal by setting the handler to the standard
+    # signal handler SIG_IGN.
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
 def init(sock,current_dir):
     #Perform initialization
     #Check if daemon SATFC is alive.
@@ -393,7 +414,7 @@ def init(sock,current_dir):
     daemon_err_name = 'SATFC_daemon_err.txt'
     daemon_err = open(daemon_err_name,'w')
 
-    execution = subprocess.Popen(callstring.split(' '),stdout=daemon_out, stderr=daemon_err, stdin=subprocess.PIPE)
+    execution = subprocess.Popen(callstring.split(' '),stdout=daemon_out, stderr=daemon_err, stdin=subprocess.PIPE,preexec_fn = preexec_function)
 
     #Sanity check, make sure standard error is empty after 5 seconds.
     logging.info('Making sure daemon solver was started without any errors... ')
