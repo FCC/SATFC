@@ -50,7 +50,7 @@ public class DaemonSolverLauncher {
 		SolverServer aSolverServer = aDaemonSolverParameters.getSolverServer(); 
 		try
 		{
-			log.info("Starting solver server.");
+			log.info("Starting daemon solver server.");
 			aSolverServer.start();
 		}
 		finally
