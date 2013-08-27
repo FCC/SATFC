@@ -1,6 +1,9 @@
 package ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder;
 
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 
@@ -15,7 +18,8 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Litteral;
  *
  */
 public class CNFCompressor{
-
+	private static Logger log = LoggerFactory.getLogger(CNFCompressor.class);
+	
 	private final HashBiMap<Long,Long> fCompressionMap;
 	private long fCompressionMapMax = 1;
 	
@@ -25,6 +29,8 @@ public class CNFCompressor{
 	}
 	
 	public CNF compress(CNF aCNF) {
+		
+		log.info("Compressing CNF.");
 		
 		if(!aCNF.getVariables().containsAll(fCompressionMap.keySet()))
 		{
@@ -45,15 +51,15 @@ public class CNFCompressor{
 				{
 					fCompressionMap.put(aVariable, fCompressionMapMax++);
 				}
-				
 				long aCompressedVariable = fCompressionMap.get(aVariable);
 				
 				aCompressedClause.add(new Litteral(aCompressedVariable,aLitteral.getSign()));
-				
 			}
 			
 			aCompressedCNF.add(aCompressedClause);
 		}
+		
+		log.info("Done.");
 		
 		return aCompressedCNF;
 	}

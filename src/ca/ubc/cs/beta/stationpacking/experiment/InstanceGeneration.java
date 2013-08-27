@@ -1,5 +1,6 @@
 package ca.ubc.cs.beta.stationpacking.experiment;
 
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -40,21 +41,25 @@ public class InstanceGeneration {
 	 *
 	**/
 	public void run(Set<Station> aStartingStations, Iterator<Station> aStationIterator, Set<Integer> aChannelRange,double aCutoff, long aSeed){
-		StationPackingInstance aInstance = new StationPackingInstance(aStartingStations,aChannelRange);
+		
 		int i = 0;
+		
+		HashSet<Station> aStations = new HashSet<Station>(aStartingStations);
+		
 		while(aStationIterator.hasNext()) {
 			log.info("Iteration "+i);
 			i++;
 			Station aStation = aStationIterator.next();
 			log.info("Trying to add {} to current set.",aStation);
-			aInstance.addStation(aStation);
 			
+			aStations.add(aStation);
+			StationPackingInstance aInstance = new StationPackingInstance(aStations,aChannelRange);
 				SolverResult aRunResult = fSolver.solve(aInstance,aCutoff,aSeed);
 				log.info("Result: {}",aRunResult);
 				fExperimentReporter.report(aInstance, aRunResult);
 				if(!aRunResult.getResult().equals(SATResult.SAT)){
 					log.info("Instance was UNSAT, removing {}",aStation);
-					aInstance.removeStation(aStation);						
+					aStations.remove(aStation);						
 				} /*else {
 					log.info("Instance was SAT, with assignment "+aRunResult.getAssignment());
 				}	*/			

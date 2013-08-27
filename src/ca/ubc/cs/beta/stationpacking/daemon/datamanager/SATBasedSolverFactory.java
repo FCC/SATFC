@@ -1,10 +1,11 @@
-package ca.ubc.cs.beta.stationpacking.daemon.simple.datamanager;
+package ca.ubc.cs.beta.stationpacking.daemon.datamanager;
 
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.SATBasedSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ISATSolver;
 
@@ -20,7 +21,7 @@ public class SATBasedSolverFactory implements ISolverFactory {
 	
 	/**
 	 * Creates a new factory that will use the given solver and grouper to create ISolvers.
-	 * @param solver sovler to be used to create ISolvers.
+	 * @param solver solver to be used to create ISolvers.
 	 * @param grouper grouper to be used to create ISolvers.
 	 */
 	public SATBasedSolverFactory(ISATSolver solver, IComponentGrouper grouper)
@@ -31,7 +32,7 @@ public class SATBasedSolverFactory implements ISolverFactory {
 	
 	@Override
 	public ISolver create(IStationManager stationManager, IConstraintManager constraintManager) {
-		SATEncoder encoder = new SATEncoder(stationManager, constraintManager);
+		ISATEncoder encoder = new SATEncoder(stationManager, constraintManager);
 		ISolver solver = new SATBasedSolver(fSATSolver, encoder, constraintManager, fGrouper);
 		return solver;
 	}

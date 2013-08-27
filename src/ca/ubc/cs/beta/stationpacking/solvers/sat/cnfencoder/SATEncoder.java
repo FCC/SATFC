@@ -1,11 +1,11 @@
 package ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
+import java.util.Set;
 
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.math3.util.Pair;
+
+import com.google.common.collect.Sets;
 
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
@@ -52,27 +52,34 @@ public class SATEncoder implements ISATEncoder {
 		return aCNF;
 	}
 	
-	private CNF encodeBaseClauses(StationPackingInstance aInstance)
+	/**
+	 * Get the base SAT clauses of a station packing instances. The base clauses encode the following two constraints:
+	 * <ol>
+	 * <li> Every station must be on at least one channel in the intersection of its domain and the problem instance's channels. </li>
+	 * <li> Every station must be on at most one channel in the intersection of its domain and the problem instance's channels. </li>
+	 * <ol>
+	 * @param aInstance - a station packing problem instance.
+	 * @return A CNF of base clauses.
+	 */
+	public static CNF encodeBaseClauses(StationPackingInstance aInstance)
 	{
 		CNF aCNF = new CNF();
 		
-		HashSet<Integer> aInstanceChannels = aInstance.getChannels();
-		HashSet<Station> aInstanceStations = aInstance.getStations();
+		Set<Integer> aInstanceChannels = aInstance.getChannels();
+		Set<Station> aInstanceStations = aInstance.getStations();
 		
 		//Each station has its own base clauses.
 		for(Station aStation: aInstanceStations)
 		{
-			@SuppressWarnings("unchecked")
-			ArrayList<Integer> aStationInstanceDomain = new ArrayList<Integer>(CollectionUtils.retainAll(aInstanceChannels, aStation.getDomain()));
+			ArrayList<Integer> aStationInstanceDomain = new ArrayList<Integer>(Sets.intersection(aInstanceChannels, aStation.getDomain()));
 			
 			//A station must be on at least one channel,
 			Clause aStationValidAssignmentBaseClause = new Clause();
 			for(Integer aChannel : aStationInstanceDomain)
 			{
-				aStationValidAssignmentBaseClause.add(new Litteral(Pair(aStation.getID(), aChannel), true));
+				aStationValidAssignmentBaseClause.add(new Litteral(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(), aChannel), true));
 			}
 			aCNF.add(aStationValidAssignmentBaseClause);
-			
 			
 			//A station can be on at most one channel,
 			for(int i=0;i<aStationInstanceDomain.size();i++)
@@ -82,10 +89,10 @@ public class SATEncoder implements ISATEncoder {
 					Clause aStationSingleAssignmentBaseClause = new Clause();
 					
 					Integer aDomainChannel1 = aStationInstanceDomain.get(i);
-					aStationSingleAssignmentBaseClause.add(new Litteral(Pair(aStation.getID(),aDomainChannel1),false));
+					aStationSingleAssignmentBaseClause.add(new Litteral(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aDomainChannel1),false));
 					
 					Integer aDomainChannel2 = aStationInstanceDomain.get(j);
-					aStationSingleAssignmentBaseClause.add(new Litteral(Pair(aStation.getID(),aDomainChannel2),false));
+					aStationSingleAssignmentBaseClause.add(new Litteral(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aDomainChannel2),false));
 					
 					aCNF.add(aStationSingleAssignmentBaseClause);
 				}
@@ -93,34 +100,30 @@ public class SATEncoder implements ISATEncoder {
 		}
 		
 		return aCNF;
-		
-		
 	}
 	
 	private CNF encodeCoConstraints(StationPackingInstance aInstance)
 	{
 		CNF aCNF = new CNF();
 		
-		HashSet<Integer> aInstanceChannels = aInstance.getChannels();
-		HashSet<Station> aInstanceStations = aInstance.getStations();
+		Set<Integer> aInstanceChannels = aInstance.getChannels();
+		Set<Station> aInstanceStations = aInstance.getStations();
 		
 		for(Station aStation : aInstanceStations)
-		{
-			@SuppressWarnings("unchecked")
-			Collection<Station> aInterferingStations = CollectionUtils.retainAll(
-					fConstraintManager.getCOInterferingStations(aStation, aInstanceChannels),
-					aInstanceStations);
-			
-			for(Station aInterferingStation : aInterferingStations)
+		{		
+			for(Station aInterferingStation : fConstraintManager.getCOInterferingStations(aStation, aInstanceChannels))
 			{
-				for(Integer aChannel : aInstanceChannels)
+				if(aInstanceStations.contains(aInterferingStation))
 				{
-					if(aStation.getDomain().contains(aChannel) && aInterferingStation.getDomain().contains(aChannel))
+					for(Integer aChannel : aInstanceChannels)
 					{
-						Clause aCoChannelClause = new Clause();
-						aCoChannelClause.add(new Litteral(Pair(aStation.getID(),aChannel),false));
-						aCoChannelClause.add(new Litteral(Pair(aInterferingStation.getID(),aChannel),false));
-						aCNF.add(aCoChannelClause);
+						if(aStation.getDomain().contains(aChannel) && aInterferingStation.getDomain().contains(aChannel))
+						{
+							Clause aCoChannelClause = new Clause();
+							aCoChannelClause.add(new Litteral(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aChannel),false));
+							aCoChannelClause.add(new Litteral(SATEncoderUtils.SzudzikElegantPairing(aInterferingStation.getID(),aChannel),false));
+							aCNF.add(aCoChannelClause);
+						}
 					}
 				}
 			}
@@ -133,27 +136,25 @@ public class SATEncoder implements ISATEncoder {
 	{
 		CNF aCNF = new CNF();
 		
-		HashSet<Integer> aInstanceChannels = aInstance.getChannels();
-		HashSet<Station> aInstanceStations = aInstance.getStations();
+		Set<Integer> aInstanceChannels = aInstance.getChannels();
+		Set<Station> aInstanceStations = aInstance.getStations();
 		
 		for(Station aStation : aInstanceStations)
-		{
-			@SuppressWarnings("unchecked")
-			Collection<Station> aInterferingStations = CollectionUtils.retainAll(
-					fConstraintManager.getADJplusInterferingStations(aStation, aInstanceChannels),
-					aInstanceStations);
-			
-			for(Station aInterferingStation : aInterferingStations)
+		{			
+			for(Station aInterferingStation : fConstraintManager.getADJplusInterferingStations(aStation, aInstanceChannels))
 			{
-				for(Integer aChannel : aInstanceChannels)
+				if(aInstanceStations.contains(aInterferingStation))
 				{
-					Integer aInterferingChannel = aChannel+1;
-					if(aStation.getDomain().contains(aChannel) && aInterferingStation.getDomain().contains(aInterferingChannel) && aInstanceChannels.contains(aInterferingChannel))
+					for(Integer aChannel : aInstanceChannels)
 					{
-						Clause aAdjChannelClause = new Clause();
-						aAdjChannelClause.add(new Litteral(Pair(aStation.getID(),aChannel),false));
-						aAdjChannelClause.add(new Litteral(Pair(aInterferingStation.getID(),aInterferingChannel),false));
-						aCNF.add(aAdjChannelClause);
+						Integer aInterferingChannel = aChannel+1;
+						if(aStation.getDomain().contains(aChannel) && aInterferingStation.getDomain().contains(aInterferingChannel) && aInstanceChannels.contains(aInterferingChannel))
+						{
+							Clause aAdjChannelClause = new Clause();
+							aAdjChannelClause.add(new Litteral(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aChannel),false));
+							aAdjChannelClause.add(new Litteral(SATEncoderUtils.SzudzikElegantPairing(aInterferingStation.getID(),aInterferingChannel),false));
+							aCNF.add(aAdjChannelClause);
+						}
 					}
 				}
 			}
@@ -166,62 +167,13 @@ public class SATEncoder implements ISATEncoder {
 	@Override
 	public Pair<Station,Integer> decode(long aVariable){
 		
-		Pair<Integer,Integer> aStationChannelPair = Unpair(aVariable);
+		Pair<Integer,Integer> aStationChannelPair = SATEncoderUtils.SzudzikElegantInversePairing(aVariable);
 		
 		Station aStation = fStationManager.getStationfromID(aStationChannelPair.getKey());
 		
 		Integer aChannel = aStationChannelPair.getValue();
 		
 		return new Pair<Station,Integer>(aStation,aChannel);
-		
-	}
-	
-	/*
-	 * Szudzik's elegant pairing function (http://szudzik.com/ElegantPairing.pdf)
-	 * that acts as a bijection between our station channel pairs and the SAT variables.
-	 */
-	private static long Pair(Integer x, Integer y)
-	{
-		long X = (long) x;
-		long Y = (long) y;
-		
-		long Z;
-		if(X<Y)
-		{
-			Z= Y*Y+X;
-		}
-		else
-		{
-			Z = X*X+X+Y;
-		}
-		
-		return Z;
-	}
-	
-	private static Pair<Integer,Integer> Unpair(long z)
-	{
-		long a = (long) (z-Math.pow(Math.floor(Math.sqrt(z)),2));
-		long b =(long) Math.floor(Math.sqrt(z));
-	
-		
-		if(a<b)
-		{
-			if(a>Integer.MAX_VALUE || a<Integer.MIN_VALUE || b > Integer.MAX_VALUE || b<Integer.MIN_VALUE)
-			{
-				throw new IllegalArgumentException("Cannot unpair "+z+" to integer pairing components.");
-			}
-			
-			return new Pair<Integer,Integer>((int)a,(int)b);
-		}
-		else
-		{
-			if(b>Integer.MAX_VALUE || b<Integer.MIN_VALUE || (a-b) > Integer.MAX_VALUE || (a-b)<Integer.MIN_VALUE)
-			{
-				throw new IllegalArgumentException("Cannot unpair "+z+" to integer pairing components.");
-			}
-			
-			return new Pair<Integer,Integer>((int)b,(int)(a-b));
-		}
 		
 	}
 	

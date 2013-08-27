@@ -8,12 +8,11 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Set;
 
-
 /**
- * Container class for the station object.
+ * Immutable container class for the station object.
  * Uniquely identified by its integer ID.
+ * Also contains the station's domain (channels it can be on).
  * @author afrechet
- *
  */
 public class Station implements Comparable<Station>, Serializable{
 	
@@ -21,18 +20,22 @@ public class Station implements Comparable<Station>, Serializable{
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
-	
-	private final Integer fID;
-	
+	private final int fID;
 	private final Set<Integer> fDomain;
 	
-
+	/**
+	 * Construct a station.
+	 * @param aID - the station ID.
+	 * @param aDomain - the station's domain (channels it can be assigned to).
+	 */
 	public Station(Integer aID, Set<Integer> aDomain){
 		fID = aID;
-		fDomain = aDomain;
+		fDomain = Collections.unmodifiableSet(new HashSet<Integer>(aDomain));
 	}
 
-	
+	/**
+	 * @return - the station ID.
+	 */
 	public int getID(){
 		return fID;
 	}
@@ -43,33 +46,43 @@ public class Station implements Comparable<Station>, Serializable{
 		return "Station "+fID;
 	}
 	
+	/**
+	 * A station's domain is an unmodifiable set backed up by a hash set.
+	 * @return - get the station's domain.
+	 */
 	public Set<Integer> getDomain(){
-		return new HashSet<Integer>(fDomain);
-	}
-	
-	public boolean removeFromDomain(Integer aChannel){
-		return fDomain.remove(aChannel);
+		return fDomain;
 	}
 	
 	@Override
 	public boolean equals(Object o)
 	{
-		if (!(o instanceof Station))
+		if(o == this)
+		{
+			return true;
+		}
+		else if (!(o instanceof Station))
 		{
 			return false;
 		}
 		else
 		{
 			Station aStation = (Station) o;
-			return fID.equals(aStation.fID);
+			return fID == aStation.fID;
 		}
 	}
 	
 	@Override
 	public int hashCode(){
-		return fID.hashCode();
+		return fID;
 	}
 	
+	/**
+	 * Returns a unique, non-optimized string representing the given station set.
+	 * Specifically, returns the "-"-separated list of sorted station IDs. 
+	 * @param aStations - a station set to hash.
+	 * @return - a string hash for the station set.
+	 */
 	public static String hashStationSet(Collection<Station> aStations)
 	{
 		LinkedList<Station> aStationsList = new LinkedList<Station>(aStations);
@@ -90,7 +103,7 @@ public class Station implements Comparable<Station>, Serializable{
 
 	@Override
 	public int compareTo(Station o) {
-		return fID - o.getID();
+		return Integer.compare(fID,o.fID);
 	}
 
 }
