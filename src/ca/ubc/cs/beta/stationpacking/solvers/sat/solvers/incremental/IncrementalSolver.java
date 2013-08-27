@@ -240,7 +240,7 @@ public class IncrementalSolver implements ISolver{
 	private void reset(){
 		log.info("Cannot use incremental capability, re-setting...");
 		fIncrementalSATLibrary.clear();
-		fCurrentInstance = new StationPackingInstance();
+		fCurrentInstance = new StationPackingInstance(new HashSet<Station>(),new HashSet<Integer>());
 		fCurrentClauses = new HashSet<Clause>();
 		fAssumptions = new Clause();
 		curCount = 1;

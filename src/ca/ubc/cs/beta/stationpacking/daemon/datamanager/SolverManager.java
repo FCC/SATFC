@@ -1,16 +1,18 @@
-package ca.ubc.cs.beta.stationpacking.daemon.simple.datamanager;
+package ca.ubc.cs.beta.stationpacking.daemon.datamanager;
 
 import java.io.FileNotFoundException;
 import java.util.HashMap;
 import java.util.HashSet;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 
 /**
  * Manages the solvers & data corresponding to different directories to make sure it is only read once.
  */
 public class SolverManager {
-
+	private static Logger log = LoggerFactory.getLogger(SolverManager.class);
+	
 	private HashMap<String, SolverBundle> fSolverData;
 	private ISolverFactory fSolverFactory;
 	private DataManager fDataManager;
@@ -27,13 +29,24 @@ public class SolverManager {
 	}
 	
 	/**
+	 * @param path - a data path.
+	 * @return true if and only if the solver manager contains solving data for the provided path.
+	 */
+	public boolean hasData(String path)
+	{
+		return fSolverData.containsKey(path);
+	}
+	
+	/**
 	 * Adds the data (domain, interferences) contained in the path and a corresponding new solver to the manager. 
 	 * @param path path to add the data from.
 	 * @return true if the data was added and solver created, false if it was already contained.
 	 * @throws FileNotFoundException thrown if a file needed to add the data is not found.
 	 */
 	public boolean addData(String path) throws FileNotFoundException
-	{
+	{	
+		log.info("Adding data from {} to solver manager.",path);
+		
 		SolverBundle bundle = fSolverData.get(path);
 		if (bundle != null)
 		{
@@ -60,6 +73,7 @@ public class SolverManager {
 		SolverBundle bundle = fSolverData.get(path);
 		if (bundle == null)
 		{
+			log.info("Requested data from {} not available, will try to add it.",path);
 			addData(path);
 			bundle = fSolverData.get(path);
 		}

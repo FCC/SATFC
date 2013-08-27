@@ -2,7 +2,6 @@ package ca.ubc.cs.beta.stationpacking.base;
 
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -10,23 +9,33 @@ import java.util.Set;
 
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 
-
+/**
+ * Immutable container class representing a station packing instance.
+ * @author afrechet
+ */
 public class StationPackingInstance {
 	
-	private HashMap<Integer,Station> fStations = new HashMap<Integer,Station>();
-
+	private final Set<Station> fStations;
 	private final Set<Integer> fChannels;
 	
-	public StationPackingInstance(){
-		fChannels = new HashSet<Integer>();
-	}
-	
+	/**
+	 * Create a station packing instance.
+	 * @param aStations - set of stations to pack.
+	 * @param aChannels - set of channels to pack in.
+	 */
 	public StationPackingInstance(Set<Station> aStations, Set<Integer> aChannels){
-		fChannels = new HashSet<Integer>(aChannels);
-		for(Station aStation : aStations) fStations.put(aStation.getID(),aStation);
+		
+		fChannels = Collections.unmodifiableSet(new HashSet<Integer>(aChannels));
+		fStations = Collections.unmodifiableSet(new HashSet<Station>(aStations));
 	}
 	
 	//AF - Added a different way to print set of channels so that an Instance.toString() is easier to read in CSV.
+	/**
+	 * Returns a unique, non-optimized string representing the given channel set.
+	 * Specifically, returns the "-"-separated list of sorted channels.
+	 * @param aChannels - a channel set to hash.
+	 * @return - a string hash for the station set.
+	 */
 	public static String hashChannelSet(Set<Integer> aChannels)
 	{
 		LinkedList<Integer> aChannelList = new LinkedList<Integer>(aChannels);
@@ -47,7 +56,7 @@ public class StationPackingInstance {
 	
 	@Override
 	public String toString() {
-		return hashChannelSet(fChannels)+"_"+Station.hashStationSet(fStations.values());
+		return hashChannelSet(fChannels)+"_"+Station.hashStationSet(fStations);
 	}
 	
 	/**
@@ -117,30 +126,25 @@ public class StationPackingInstance {
 		return true;
 	}
 	
-	public int getNumberofStations() {
-		return fStations.size();
+	/**
+	 * An instance's stations is an unmodifiable set backed up by a hash set.
+	 * @return - get the problem instance's stations.
+	 */
+	public Set<Station> getStations(){
+		return fStations;
 	}
 	
-	public boolean addStation(Station aStation){
-		return (fStations.put(aStation.getID(),aStation)==null);
+	/**
+	 * An instance's channels is an unmodifiable set backed up by a hash set.
+	 * @return - get the problem instance's channels.
+	 */
+	public Set<Integer> getChannels(){
+		return fChannels;
 	}
 	
-	public boolean removeStation(Station aStation){
-		return (fStations.remove(aStation.getID())!=null);
-	}
-	
-	public HashSet<Station> getStations(){
-		return new HashSet<Station>(fStations.values());
-	}
-	
-	public HashSet<Integer> getChannels(){
-		return new HashSet<Integer>(fChannels);
-	}
-	
-	public Station getStation(Integer aID){
-		return fStations.get(aID);
-	}
-	
+	/**
+	 * @return an information string about the instance.
+	 */
 	public String getInfo()
 	{
 		return fStations.size()+" stations to pack into "+fChannels.size()+" channels";
