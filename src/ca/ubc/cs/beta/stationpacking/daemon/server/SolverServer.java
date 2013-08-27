@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.daemon.simple.server;
+package ca.ubc.cs.beta.stationpacking.daemon.server;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
@@ -16,8 +16,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.daemon.simple.datamanager.SolverBundle;
-import ca.ubc.cs.beta.stationpacking.daemon.simple.datamanager.SolverManager;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.SolverBundle;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.SolverManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
@@ -40,8 +40,6 @@ public class SolverServer {
 	private final SolverManager fSolverManager;
 	
 	private final MessageHolder fMessageHolder;
-	
-	private SolveMessage fLastSolveMessage;
 	
 	private final SolverHolder fSolverHolder;
 	private final SolverRunner fSolverRunner;
@@ -89,8 +87,6 @@ public class SolverServer {
 		fSolverRunner = new SolverRunner();
 		fSolvingThread = new Thread(fSolverRunner);
 		fSolverHolder = new SolverHolder();
-		
-		fLastSolveMessage = null;
 		
 	}
 
@@ -257,10 +253,16 @@ public class SolverServer {
 				{
 					throw new IllegalArgumentException("Solving command does not have necessary additional information.");
 				}
-
+				
 				String aDataFoldername = aMessageParts[1];
 				log.info("Getting data from {}.",aDataFoldername);
-
+				
+				//Check if we have the required data.
+				if(!fSolverManager.hasData(aDataFoldername))
+				{
+					sendLocalMessage("INFO"+COMMANDSEP+"Warning, daemon solver did not have the problem data loaded, it will try to load it.", aSendPort);
+				}
+				
 				String aInstanceString = aMessageParts[2];
 				log.info("Solving instance {},",aInstanceString);
 
@@ -285,11 +287,11 @@ public class SolverServer {
 					fSolverRunner.notify();
 				}
 				
-				
 			}
 			catch(Exception e)
 			{
 				log.warn("Got an exception while trying to execute a solving command ({}).",e.getMessage());
+				e.printStackTrace();
 				try
 				{
 					sendLocalMessage("ERROR"+COMMANDSEP+e.getMessage(), aSendPort);
@@ -535,7 +537,7 @@ public class SolverServer {
 					fSolverHolder.setSolver(null);
 					
 					// send the result if needed
-					if (aResult.getResult() != SATResult.INTERRUPTED) // dot not return if the command was killed.
+					if (aResult.getResult() != SATResult.INTERRUPTED) // do not return if the command was killed.
 					{
 						String aAnswer = StringUtils.join(new String[]{"ANSWER",aResult.toParsableString()},COMMANDSEP);
 						try

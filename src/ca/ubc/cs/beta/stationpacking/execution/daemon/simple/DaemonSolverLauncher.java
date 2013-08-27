@@ -9,7 +9,7 @@ import ca.ubc.cs.beta.aclib.misc.jcommander.JCommanderHelper;
 import ca.ubc.cs.beta.aclib.misc.options.UsageSection;
 import ca.ubc.cs.beta.aclib.options.ConfigToLaTeX;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
-import ca.ubc.cs.beta.stationpacking.daemon.simple.server.SolverServer;
+import ca.ubc.cs.beta.stationpacking.daemon.server.SolverServer;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.DaemonSolverParameters;
 
 import com.beust.jcommander.JCommander;

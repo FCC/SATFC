@@ -10,9 +10,9 @@ import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
-import ca.ubc.cs.beta.stationpacking.daemon.simple.datamanager.SATBasedSolverFactory;
-import ca.ubc.cs.beta.stationpacking.daemon.simple.datamanager.SolverManager;
-import ca.ubc.cs.beta.stationpacking.daemon.simple.server.SolverServer;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.SATBasedSolverFactory;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.SolverManager;
+import ca.ubc.cs.beta.stationpacking.daemon.server.SolverServer;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat.ClaspLibSATSolverParameters;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.NoGrouper;
 
