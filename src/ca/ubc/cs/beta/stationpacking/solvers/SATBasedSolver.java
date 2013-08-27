@@ -60,6 +60,7 @@ public class SATBasedSolver implements ISolver {
 			
 			log.info("Encoding subproblem in CNF.");
 			CNF aCNF = fSATEncoder.encode(aComponentInstance);
+			log.info("CNF has {} clauses.",aCNF.size());
 			
 			log.info("Solving the subproblem CNF.");
 			SATSolverResult aComponentResult = fSATSolver.solve(aCNF, aRemainingCutoff, aSeed);
@@ -134,7 +135,7 @@ public class SATBasedSolver implements ISolver {
 			{
 				aAssignmentSize += aResult.getAssignment().get(aChannel).size();
 			}
-			if(aAssignmentSize!=aInstance.getNumberofStations())
+			if(aAssignmentSize!=aInstance.getStations().size())
 			{
 				throw new IllegalStateException("Merged station assignment doesn't assign exactly the stations in the instance.");
 			}

@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -34,19 +35,14 @@ public class DACConstraintManager implements IConstraintManager{
 	HashMap<Station,Set<Station>> fUpperVHFADJminusConstraints;
 	HashMap<Station,Set<Station>> fUHFADJminusConstraints;
 	
-	static final Integer LVHFmin = 2, LVHFmax = 6, UVHFmin=7, UVHFmax = 13, UHFmin = 14, UHFmax = 51;
-	Set<Integer> LVHFChannels = new HashSet<Integer>(), UVHFChannels = new HashSet<Integer>(), UHFChannels = new HashSet<Integer>();
+	public static final Integer LVHFmin = 2, LVHFmax = 6, UVHFmin=7, UVHFmax = 13, UHFmin = 14, UHFmax = 51;
+	public static final HashSet<Integer> LVHF_CHANNELS = new HashSet<Integer>(Arrays.asList(2,3,4,5,6));
+	public static final HashSet<Integer> UVHF_CHANNELS = new HashSet<Integer>(Arrays.asList(7,8,9,10,11,12,13));
+	public static final HashSet<Integer> UHF_CHANNELS = new HashSet<Integer>(Arrays.asList(14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,38,39,40,41,42,43,44,45,46,47,48,49,50,51));
 	
 	public DACConstraintManager(IStationManager aStationManager, String aPairwiseConstraintsFilename) throws FileNotFoundException{	
 		
 		Set<Station> aStations = aStationManager.getStations();
-		
-		LVHFChannels = new HashSet<Integer>();
-		for(int i = LVHFmin; i<= LVHFmax; i++) LVHFChannels.add(i);
-		for(int i = UVHFmin; i<= UVHFmax; i++) UVHFChannels.add(i);
-		for(int i = UHFmin; i<= UHFmax; i++) UHFChannels.add(i);
-		UHFChannels.remove(37);
-
 		
 		ArrayList<HashMap<Station,Set<Station>>> aCOConstraints = new ArrayList<HashMap<Station,Set<Station>>>(3);
 		ArrayList<HashMap<Station,Set<Station>>> aADJplusConstraints = new ArrayList<HashMap<Station,Set<Station>>>(3);
@@ -164,11 +160,11 @@ public class DACConstraintManager implements IConstraintManager{
 	@Override
 	public Set<Station> getCOInterferingStations(Station aStation, Set<Integer> aChannelRange) {
 		Set<Station> aInterfering;
-		if(LVHFChannels.containsAll(aChannelRange)){
+		if(LVHF_CHANNELS.containsAll(aChannelRange)){
 			aInterfering = fLowerVHFCOConstraints.get(aStation);
-		} else if(UVHFChannels.containsAll(aChannelRange)){
+		} else if(UVHF_CHANNELS.containsAll(aChannelRange)){
 			aInterfering = fUpperVHFCOConstraints.get(aStation);
-		} else if(UHFChannels.containsAll(aChannelRange)) {
+		} else if(UHF_CHANNELS.containsAll(aChannelRange)) {
 			aInterfering = fUHFCOConstraints.get(aStation);
 		} else {
 			throw new IllegalStateException("Specified channel range contains channels from multiple bands.");
@@ -180,11 +176,11 @@ public class DACConstraintManager implements IConstraintManager{
 	@Override
 	public Set<Station> getADJplusInterferingStations(Station aStation, Set<Integer> aChannelRange){
 		Set<Station> aInterfering;
-		if(LVHFChannels.containsAll(aChannelRange)){
+		if(LVHF_CHANNELS.containsAll(aChannelRange)){
 			aInterfering = fLowerVHFADJConstraints.get(aStation);
-		} else if(UVHFChannels.containsAll(aChannelRange)){
+		} else if(UVHF_CHANNELS.containsAll(aChannelRange)){
 			aInterfering = fUpperVHFADJConstraints.get(aStation);
-		} else if(UHFChannels.containsAll(aChannelRange)) {
+		} else if(UHF_CHANNELS.containsAll(aChannelRange)) {
 			aInterfering = fUHFADJConstraints.get(aStation);
 		} else {
 			throw new IllegalStateException("Specified channel range contains channels from multiple bands.");

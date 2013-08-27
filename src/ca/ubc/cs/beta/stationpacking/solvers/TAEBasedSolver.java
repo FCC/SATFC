@@ -317,7 +317,7 @@ public class TAEBasedSolver implements ISolver{
 			{
 				aAssignmentSize += aResult.getAssignment().get(aChannel).size();
 			}
-			if(aAssignmentSize!=aInstance.getNumberofStations())
+			if(aAssignmentSize!=aInstance.getStations().size())
 			{
 				throw new IllegalStateException("Merged station assignment doesn't assign exactly the stations in the instance.");
 			}

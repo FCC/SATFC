@@ -8,7 +8,7 @@ import signal
 import socket
 import logging
 
-version = '0.9.7b'
+version = '0.9.7c'
 date = 'August 2013'
 solver = 'Daemon SATFC Tuned Clasp Library'
 """
@@ -66,7 +66,7 @@ def processMessage(message):
     if command == 'PING':
         logging.debug('Got a PING message.')
         return ('PING','')
-    if command == 'IGNORE':
+    elif command == 'IGNORE':
         return ('IGNORE','')
     elif command == 'ERROR':
         logging.warning('Got an ERROR message:')
@@ -76,6 +76,14 @@ def processMessage(message):
         else:
             logging.warning('(No error info with the error message)')
         return ('ERROR','')
+    elif command == 'INFO':
+        logging.info('Got information from the solver:')
+        messageparts = message.split(COMMANDSEP)
+        if len(messageparts)==2:
+            logging.info('%s',messageparts[1])
+        else:
+            logging.info('(No message with the info message.)')
+        return ('INFO','')
     elif command == 'ANSWER':
         logging.debug('Got an ANSWER message.')
         messageparts = message.split(COMMANDSEP)
@@ -175,11 +183,15 @@ def main():
         print 'For more usage see feasibility checker usage section of the Ladder Auction Algorithm Mini-Spec v2.1, June 2013.'
         return
     elif sys.argv[1]=='-init':
+        possible_datafoldernames=[]
+        if len(sys.argv)>2:
+            possible_datafoldernames = sys.argv[2:]
+
         """Initialization to perform"""
         logging.info('Performing initialization.')
         (current_dir,environment_data_location,environment_execution_dir) = getEnvironmentVariables()
         sock = establishConnection()
-        init(sock,current_dir)
+        init(sock,current_dir,possible_datafoldernames)
         logging.info('Done.')
         return
     elif sys.argv[1]=='-kill':
@@ -215,7 +227,7 @@ def main():
         sock = establishConnection()
 
         """Init if not available."""
-        init(sock,current_dir)
+        init(sock,current_dir,[])
         logging.info('Daemon SATFC is alive, proceeding.')
 
         """Create the solving message."""
@@ -368,7 +380,7 @@ def preexec_function():
     # signal handler SIG_IGN.
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-def init(sock,current_dir):
+def init(sock,current_dir,possible_datafoldernames):
     #Perform initialization
     #Check if daemon SATFC is alive.
     logging.debug('Checking that the daemon SATFC is alive.')
@@ -382,7 +394,8 @@ def init(sock,current_dir):
     #Navigate the current directory for data folders.
     logging.debug('Gathering all the available data folders.')
     datafoldernames = []
-    for subdirectory in [d for d in os.listdir(current_dir) if os.path.isdir(d)]:
+    possible_datafoldernames.extend([d for d in os.listdir(current_dir) if os.path.isdir(d)])
+    for subdirectory in possible_datafoldernames:
         if os.path.isfile(current_dir+os.sep+subdirectory+os.sep+'domains.csv') and os.path.isfile(current_dir+os.sep+subdirectory+os.sep+'interferences.csv'):
             logging.debug('Data available in %s',subdirectory)
             datafoldernames.append(current_dir+os.sep+subdirectory)
