@@ -53,7 +53,7 @@ void JNAConfig::configure(char* args, int maxArgs)
 	if (argc >= maxArgs)
 	{
 		status_ = c_error;
-		err_message_ = "Too many arguments were given, call the constructor with a higer value of maxArgs! (defaul=128)";
+		err_message_ = "Too many arguments were given, call the constructor with a higher value of maxArgs! (defaul=128)";
 	}
 
 	// call the init options to set up the configuration
@@ -89,12 +89,6 @@ bool JNAProblem::read(ApiPtr p, uint32 properties) {
 	status_ = Clasp::parseDimacs(istr, *(p.ctx)); 
 	return status_;
 }
-
-bool JNAProblem::getStatus()
-{
-	return status_;
-}
-
 
 // JNAResults
 
