@@ -114,6 +114,7 @@ public class ClaspSATSolver implements ISATSolver
 		Pointer problem = fClaspLibrary.createProblem(compressor.compress(aCNF).toDIMACS(null));
 		final Pointer result = fClaspLibrary.createResult();
 		final BooleanHolder timeout = new BooleanHolder();
+		
 		// Launches a timer that will set the interrupt flag of the result object to true after aCutOff seconds.
 		Timer timer = new Timer();
 		timer.schedule(new TimerTask() {

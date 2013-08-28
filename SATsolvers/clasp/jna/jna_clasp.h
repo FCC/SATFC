@@ -51,13 +51,13 @@ private:
 // JNAProblem holder
 class JNAProblem : public Clasp::Input {
 public:
-	JNAProblem(std::string problem);// problem mus be a string in dimacs format
+	JNAProblem(std::string problem);// problem must be a string in dimacs format
 	Format format() const { return DIMACS; }
 	bool	read(ApiPtr api, uint32 properties);
 	void	addMinimize(Clasp::MinimizeBuilder&, ApiPtr) {}
-	void	getAssumptions(Clasp::LitVec&) {}
+	void	getAssumptions(Clasp::LitVec& vec) {}
 
-	bool	getStatus(); // returns the output of the read function after solve has been called on the problem
+	bool	getStatus() { return status_; } // returns the output of the read function after solve has been called on the problem
 private:
 	std::string problem_;
 	bool status_;
