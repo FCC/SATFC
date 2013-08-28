@@ -10,6 +10,9 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.charset.Charset;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -45,6 +48,8 @@ public class SolverServer {
 	private final SolverRunner fSolverRunner;
 	
 	private Thread fSolvingThread;
+	private Lock fSolveLock = new ReentrantLock();
+	private Condition fMessageCondition = fSolveLock.newCondition();
 
 	/*
 	 * Command fields.
@@ -280,13 +285,18 @@ public class SolverServer {
 				
 				if (solver != null)
 				{
-					log.info("Trying to stop current solving thread.");
+					log.info("Trying to stop current solving thread as a new problem was given.");
 					solver.interrupt();
 				}
-				synchronized (fSolverRunner) {	
-					fSolverRunner.notify();
+				fSolveLock.lock();
+				try
+				{
+					fMessageCondition.signalAll();
 				}
-				
+				finally
+				{
+					fSolveLock.unlock();
+				}
 			}
 			catch(Exception e)
 			{
@@ -511,22 +521,22 @@ public class SolverServer {
 			while (fRunning)
 			{
 				SolveMessage aMessage;
+				fSolveLock.lock();
+				try
+				{
 					while (fRunning && fMessageHolder.isEmpty())
 					{
-						synchronized (fSolverRunner) {	
-							try 
-							{
-								fSolverRunner.wait();
-							} 
-							catch (InterruptedException e) 
-							{
-								// 	calls to interrupt are made to stop the solving command... we do not want to exit this loop unless fRunning is false.
-							}
-						}
+						fMessageCondition.await();
 					}
-					aMessage = fMessageHolder.getSolveMessage();
-					if (aMessage == null) continue;
-				if (!fRunning) continue;
+				} catch (InterruptedException e) {
+					continue; // we do not want to stop unless fRunning is false.
+				}
+				finally
+				{
+					fSolveLock.unlock();
+				}
+				aMessage = fMessageHolder.getSolveMessage();
+				if (aMessage == null || !fRunning) continue;
 
 				// solve the command if possible
 				try

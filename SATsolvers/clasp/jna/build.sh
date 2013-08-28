@@ -9,10 +9,10 @@ make clean
 echo "Done."
 echo "CLASP----------------------------------------------"
 cd $CLASP
-./configure.sh --config=jna CXXFLAGS="-O3 -DNDEBUG -fPIC"
+#./configure.sh --config=jna CXXFLAGS="-O3 -DNDEBUG -fPIC"
 #./configure.sh --config=jna CXXFLAGS="-g -fPIC"
 cd build/jna
-make clean
+#make clean
 
 # copy my modified headers and code to handle interrupts
 origh=$CURRENT/$CLASP/libclasp/clasp/solve_algorithms.h
