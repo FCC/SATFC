@@ -18,6 +18,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Litteral;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.CNFCompressor;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.jnalibraries.ClaspLibrary;
+import ca.ubc.cs.beta.stationpacking.utils.Holder;
 
 /**
  * Implements a SAT solver using the jnaclasplibrary.so.  It gracefully handles thread interruptions while solve() is executing
@@ -78,23 +79,6 @@ public class ClaspSATSolver implements ISATSolver
 		}
 	}
 	
-	protected class BooleanHolder
-	{
-		private boolean fBoolean = false;
-		public synchronized void setBoolean()
-		{
-			fBoolean = true;
-		}
-		public synchronized boolean getBoolean()
-		{
-			return fBoolean;
-		}
-		public synchronized void unsetBoolean()
-		{
-			fBoolean = false;
-		}
-	}
-	
 	@Override
 	public SATSolverResult solve(CNF aCNF, double aCutoff, long aSeed) {
 		fInterrupt = false;
@@ -113,7 +97,8 @@ public class ClaspSATSolver implements ISATSolver
 		CNFCompressor compressor = new CNFCompressor();
 		Pointer problem = fClaspLibrary.createProblem(compressor.compress(aCNF).toDIMACS(null));
 		final Pointer result = fClaspLibrary.createResult();
-		final BooleanHolder timeout = new BooleanHolder();
+		final Holder<Boolean> timeout = new Holder<Boolean>();
+		timeout.set(false);
 		
 		// Launches a timer that will set the interrupt flag of the result object to true after aCutOff seconds.
 		Timer timer = new Timer();
@@ -121,7 +106,7 @@ public class ClaspSATSolver implements ISATSolver
 			@Override
 			public void run() {
 				fClaspLibrary.interrupt(facade);
-				timeout.setBoolean();
+				timeout.set(true);
 			}
 		}, (long)(aCutoff*1000));
 		// listens for thread interruption every 0.1 seconds, if the thread is interrupted, interrupt the library and return gracefully
@@ -148,7 +133,7 @@ public class ClaspSATSolver implements ISATSolver
 			satResult = SATResult.INTERRUPTED;
 			fInterrupt = false;
 		}
-		else if (timeout.getBoolean())
+		else if (timeout.get())
 		{
 			satResult = SATResult.TIMEOUT;
 		}

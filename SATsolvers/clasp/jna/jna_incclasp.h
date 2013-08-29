@@ -20,6 +20,17 @@ public:
 private:
 	const char* (*readCallback_)();
         bool status_;
+	LitVec assumptions_;
+};
+
+class JNAIncControl : public Clasp::IncrementalControl
+{
+public:
+	JNAIncControl(int (*nextCallback)());
+	void initStep(ClaspFacade& f) {}
+        bool nextStep(ClaspFacade& f) { return nextCallback_(); }
+private:
+	int (*nextCallback_)();
 };
 
 
@@ -28,8 +39,8 @@ private:
 // C function definitions
 extern "C"
 {
-	void test(const char* (*fn)()); // used to test the library
-
+	void* createIncProblem(const char* (*readCallback)());
+	void test(const char* (*fn)(), int (*fn1)()); // used to test the library
 }
 
 

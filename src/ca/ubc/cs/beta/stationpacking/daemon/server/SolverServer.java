@@ -25,6 +25,7 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
+import ca.ubc.cs.beta.stationpacking.utils.Holder;
 
 /**
  * Wrapper around an ISolver and a StationManager that takes care of receiving problem instances and various misc commands from UDP localhost, and communicate
@@ -42,9 +43,9 @@ public class SolverServer {
 	 */
 	private final SolverManager fSolverManager;
 	
-	private final MessageHolder fMessageHolder;
+	private final Holder<SolveMessage> fMessageHolder;
 	
-	private final SolverHolder fSolverHolder;
+	private final Holder<ISolver> fSolverHolder;
 	private final SolverRunner fSolverRunner;
 	
 	private Thread fSolvingThread;
@@ -88,10 +89,10 @@ public class SolverServer {
 
 		//Set solver structures needed.
 		fSolverManager = aSolverManager;
-		fMessageHolder = new MessageHolder();
+		fMessageHolder = new Holder<SolveMessage>();
 		fSolverRunner = new SolverRunner();
 		fSolvingThread = new Thread(fSolverRunner);
-		fSolverHolder = new SolverHolder();
+		fSolverHolder = new Holder<ISolver>();
 		
 	}
 
@@ -279,9 +280,9 @@ public class SolverServer {
 
 				SolveMessage message = new SolveMessage(aSendPort, aDataFoldername, aInstanceString, aCutoff, aSeed);
 				
-				fMessageHolder.setSolveMessage(message);
+				fMessageHolder.set(message);
 				
-				ISolver solver = fSolverHolder.getSolver();
+				ISolver solver = fSolverHolder.get();
 				
 				if (solver != null)
 				{
@@ -350,25 +351,12 @@ public class SolverServer {
 		StationPackingInstance aInstance = StationPackingInstance.valueOf(aInstanceString, aStationManager);
 
 		ISolver solver = bundle.getSolver();
-		fSolverHolder.setSolver(solver);
+		fSolverHolder.set(solver);
 		SolverResult aResult = solver.solve(aInstance, aCutoff, aSeed);
 
 		return aResult;
 	}
 
-	protected class SolverHolder
-	{
-		private ISolver fSolver = null;
-		public synchronized void setSolver(ISolver solver)
-		{
-			fSolver = solver;
-		}
-		public synchronized ISolver getSolver()
-		{
-			return fSolver;
-		}
-	}
-	
 	protected void terminateSolverRunner()
 	{
 		fSolverRunner.stop();
@@ -481,32 +469,6 @@ public class SolverServer {
 
 	}
 
-	protected class MessageHolder
-	{
-		private SolveMessage fMessage;
-		// reads and flushes the message in the holder, returns null if no message is contained
-		public synchronized SolveMessage getSolveMessage()
-		{
-			SolveMessage message = null;
-			if (fMessage != null)
-			{
-				message = fMessage.copy();
-			}
-			fMessage = null;
-			return message;
-		}
-		// sets the message in the holder
-		public synchronized void setSolveMessage(SolveMessage message)
-		{
-			fMessage = message;
-		}
-		// returns true if the holder contains a message, false otherwise.
-		public synchronized boolean isEmpty()
-		{
-			return (fMessage == null);
-		}
-	}
-
 	protected class SolverRunner implements Runnable
 	{
 		private boolean fRunning = true;
@@ -535,7 +497,7 @@ public class SolverServer {
 				{
 					fSolveLock.unlock();
 				}
-				aMessage = fMessageHolder.getSolveMessage();
+				aMessage = fMessageHolder.pop();
 				if (aMessage == null || !fRunning) continue;
 
 				// solve the command if possible
@@ -544,7 +506,7 @@ public class SolverServer {
 					SolverResult aResult = solve(aMessage.getDataFolderName(), aMessage.getInstanceString(), aMessage.getCutOff(), aMessage.getSeed());
 					
 					// empty the solver holder as we are done
-					fSolverHolder.setSolver(null);
+					fSolverHolder.clear();
 					
 					// send the result if needed
 					if (aResult.getResult() != SATResult.INTERRUPTED) // do not return if the command was killed.
