@@ -1,11 +1,16 @@
 package ca.ubc.cs.beta.stationpacking.base;
 
 
+import java.io.UnsupportedEncodingException;
+import java.security.MessageDigest;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Set;
+
+import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.codec.digest.DigestUtils;
 
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 
@@ -148,6 +153,23 @@ public class StationPackingInstance {
 	public String getInfo()
 	{
 		return fStations.size()+" stations to pack into "+fChannels.size()+" channels";
+	}
+	
+	/**
+	 * @return a hashed version of the instance's string representation.
+	 */
+	public String getHashString()
+	{
+		String aString = this.toString();
+		MessageDigest aDigest = DigestUtils.getSha1Digest();
+		try {
+			byte[] aResult = aDigest.digest(aString.getBytes("UTF-8"));
+		    String aResultString = new String(Hex.encodeHex(aResult));	
+		    return aResultString;
+		}
+		catch (UnsupportedEncodingException e) {
+		    throw new IllegalStateException("Could not encode filename", e);
+		}
 	}
 
 
