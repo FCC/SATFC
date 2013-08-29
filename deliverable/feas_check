@@ -328,7 +328,8 @@ def getSolvingInstanceInfo(environment_execution_dir,environment_data_location):
         elif key.isdigit():
             question_parameters['STATIONS'].append(question_line)
         elif key:
-            raise Exception('Unrecognized problem instance data key in question csv file! ('+question_line+')')
+            logging.warning('Unrecognized problem instance data key in question csv file (%s).',question_line)
+            #raise Exception('Unrecognized problem instance data key in question csv file! ('+question_line+')')
 
     #Map to options for feasibility checker.
     try:
@@ -347,20 +348,20 @@ def getSolvingInstanceInfo(environment_execution_dir,environment_data_location):
         packing_channels = range(2,6+1)
     elif question_parameters['BAND'][0]=='HVHF' or question_parameters['BAND'][0]=='UVHF':
         packing_channels = range(7,13+1)
-    elif question_parameters['BAND'][0]=='UHF':
+    elif question_parameters['BAND'][0]=='UHF' or question_parameters['BAND'][0]==str(3):
 
         highest_channel = 51
         if len(question_parameters['HIGHEST'])>0:
             try:
                 highest_channel = int(question_parameters['HIGHEST'][0])
             except:
-                raise Exception('Unrecognized value for key HIGHEST in question csv file! (value ='+question_parameters['HIGHEST']+')')
+                raise Exception('Unrecognized value for key HIGHEST in question csv file! (value ='+str(question_parameters['HIGHEST'])+')')
 
         packing_channels = range(14,min(highest_channel,51)+1)
         if 37 in packing_channels:
             packing_channels.remove(37)
     else:
-        raise Exception('Unrecognized value for key BAND in question csv file! (value = '+question_parameters['BAND']+')')
+        raise Exception('Unrecognized value for key BAND in question csv file! (value = '+str(question_parameters['BAND'][0])+')')
     packing_channels = [str(c) for c in packing_channels]
 
     #Stations to pack
