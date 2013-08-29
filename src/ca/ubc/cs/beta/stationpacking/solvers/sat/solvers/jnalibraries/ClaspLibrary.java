@@ -99,6 +99,12 @@ public interface ClaspLibrary extends Library
 	String getResultAssignment(Pointer result);
 
 	/**
+	 * Resets the result object to the default state: UNKNOWN with no warnings and assignments.
+	 * @param result result object to reset.
+	 */
+	void resetResult(Pointer result);
+	
+	/**
 	 * Create a facade that will handle the interrupt calls.
 	 * @return a facade that will handle the interrupt calls.
 	 */
@@ -122,7 +128,7 @@ public interface ClaspLibrary extends Library
 	 * @param facade facade object used to call solve and interrupt.
 	 * @param problem problem to solve.
 	 * @param config configuration to use.
-	 * @param result result object used to control the execution / store results.
+	 * @param result result object used to store results.
 	 */
 	void jnasolve(Pointer facade, Pointer problem, Pointer config, Pointer result);	
 }
