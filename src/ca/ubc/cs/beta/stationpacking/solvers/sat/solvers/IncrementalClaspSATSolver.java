@@ -3,6 +3,7 @@ package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Random;
+import java.util.StringTokenizer;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.locks.Condition;
@@ -226,7 +227,7 @@ public class IncrementalClaspSATSolver implements ISATSolver
 			else if (state == 1)
 			{
 				satResult = SATResult.SAT;
-				assignment = parseAssignment(fLib.getResultAssignment(fJNAResult), fCompressor);
+				assignment = parseAssignment(fLib.getResultAssignment(fJNAResult));
 			}
 			else 
 			{
@@ -252,10 +253,18 @@ public class IncrementalClaspSATSolver implements ISATSolver
 		return answer;
 	}
 
-	private HashSet<Litteral> parseAssignment(String resultAssignment,
-			Compressor fCompressor2) {
-		// TODO Auto-generated method stub
-		return null;
+	private HashSet<Litteral> parseAssignment(String assignment) {
+		HashSet<Litteral> set = new HashSet<Litteral>();
+		StringTokenizer strtok = new StringTokenizer(assignment, ";");
+		while (strtok.hasMoreTokens())
+		{
+			int intLit = Integer.valueOf(strtok.nextToken());
+			int var = Math.abs(intLit);
+			boolean sign = intLit > 0;
+			Litteral aLit = new Litteral(fCompressor.decompressVar(var), sign);
+			set.add(aLit);
+		}
+		return set;
 	}
 
 	@Override
