@@ -73,7 +73,7 @@ public class CNFCompressor{
 		}
 		else
 		{
-			throw new IllegalArgumentException("Cannot uncompress variable "+aVariable+", not in the compression map.");
+			throw new IllegalArgumentException("Cannot decompress variable "+aVariable+", not in the compression map.");
 		}
 		
 
