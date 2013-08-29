@@ -55,28 +55,41 @@ public class IncrementalClaspSATSolver implements ISATSolver
 	private Pointer fJNAResult = null;
 	private boolean fTerminated;
 	private Compressor fCompressor;
+	private final Holder<Boolean> fFirstCall = new Holder<Boolean>();
+	private boolean fSolveCalled = false;
 	
 	// callback functions to be used by clasp 
 	private final IncrementalClaspLibrary.jnaIncRead fReadCallback = new IncrementalClaspLibrary.jnaIncRead()
 	{
 		@Override
 		public String read() {
-			fLocks.resultObtained.setAndSignal(true);
-			try {
-				fLocks.resultRead.waitUntilEqual(true, new IHDoNothing());
-			} catch (InterruptedException e) {
-				// do nothing if we were interrupted, we should wait for the solve command to handle this.
+			// the first run is launched before any call to solve, so it must be waiting on the problem.
+			if (!fFirstCall.get())
+			{
+				fLocks.resultObtained.setAndSignal(true);
+				try {
+					fLocks.resultRead.waitUntilEqual(true, new IHDoNothing());
+				} catch (InterruptedException e) {
+					// do nothing if we were interrupted, we should wait for the solve command to handle this.
+				}
+				// result were read reset the flag
+				fLocks.resultRead.setAndSignal(false);
 			}
-			// result were read reset the flag
-			fLocks.resultRead.setAndSignal(false);
+			else
+			{
+				fFirstCall.set(false);
+			}
+
 			// wait until we get a new problem
 			try {
-				fLocks.problemEncoding.waitUntilNotEqual(null, new IHDoNothing());
+				fLocks.problemEncoding.waitUntilNotEqual("", new IHDoNothing());
 			} catch (InterruptedException e) {
 				// do nothing as the thread isn't solving anything
 			}
+
 			String problem = fLocks.problemEncoding.getHolderValue();
-			fLocks.problemEncoding.setAndSignal(null);
+
+			fLocks.problemEncoding.setAndSignal("");
 
 			return problem;
 		}
@@ -85,7 +98,7 @@ public class IncrementalClaspSATSolver implements ISATSolver
 	private final IncrementalClaspLibrary.jnaIncContinue fContinueCallback = new IncrementalClaspLibrary.jnaIncContinue() {
 		@Override
 		public boolean doContinue() {
-			return !fContinueCallbackHolder.get();
+			return fContinueCallbackHolder.get();
 		}
 	};
 	
@@ -110,6 +123,7 @@ public class IncrementalClaspSATSolver implements ISATSolver
 		
 		// set holders values
 		fContinueCallbackHolder.set(true);
+		fFirstCall.set(true);
 		
 		// initialize the variables
 		fMaxArgs = maxArgs;
@@ -146,12 +160,14 @@ public class IncrementalClaspSATSolver implements ISATSolver
 		
 		// create and launch the thread
 		fIncrementalRunner = new IncrementalRunner(fJNAFacade, fJNAResult);
-		(new Thread(fIncrementalRunner)).run();
+		(new Thread(fIncrementalRunner)).start();
 	}
 	
 	@Override
 	public SATSolverResult solve(CNF aCNF, double aCutoff, long aSeed) 
 	{
+		fLib.resetResult(fJNAResult);
+		
 		long time1 = System.currentTimeMillis();
 		if (fTerminated)
 		{
@@ -190,6 +206,7 @@ public class IncrementalClaspSATSolver implements ISATSolver
 			}
 		}, 0, 100);
 		
+		fSolveCalled = true;
 		try
 		{
 			fLocks.resultObtained.waitUntilEqual(true, new InterruptHandler() 
@@ -203,8 +220,8 @@ public class IncrementalClaspSATSolver implements ISATSolver
 		{
 			// interrupts are already handled inside but we are waiting for a smooth exit to make sure the state of the system is stable.
 		}
-		
-		// debug waitUntilNotify
+		timer.cancel();
+		fSolveCalled = false;
 		
 		SATResult satResult = null;
 		HashSet<Litteral> assignment = new HashSet<Litteral>();
@@ -227,7 +244,7 @@ public class IncrementalClaspSATSolver implements ISATSolver
 			else if (state == 1)
 			{
 				satResult = SATResult.SAT;
-				assignment = parseAssignment(fLib.getResultAssignment(fJNAResult));
+				assignment = parseAssignment(fLib.getResultAssignment(fJNAResult), message.getLitInActivatedClauses());
 			}
 			else 
 			{
@@ -249,27 +266,32 @@ public class IncrementalClaspSATSolver implements ISATSolver
 		{
 			answer = new SATSolverResult(satResult, (time2-time1)/1000.0, assignment);
 		}
-		
+
 		return answer;
 	}
 
-	private HashSet<Litteral> parseAssignment(String assignment) {
+	private HashSet<Litteral> parseAssignment(String assignment, HashSet<Long> litInActivatedClauses) {
 		HashSet<Litteral> set = new HashSet<Litteral>();
 		StringTokenizer strtok = new StringTokenizer(assignment, ";");
+
 		while (strtok.hasMoreTokens())
 		{
 			int intLit = Integer.valueOf(strtok.nextToken());
 			int var = Math.abs(intLit);
 			boolean sign = intLit > 0;
-			Litteral aLit = new Litteral(fCompressor.decompressVar(var), sign);
-			set.add(aLit);
+			long decompressValue = fCompressor.decompressVar(var);
+			if (litInActivatedClauses.contains(decompressValue))
+			{
+				Litteral aLit = new Litteral(decompressValue, sign);
+				set.add(aLit);
+			}
 		}
 		return set;
 	}
 
 	@Override
 	public void interrupt() throws UnsupportedOperationException {
-		fInterrupt = true;
+		if (fSolveCalled) fInterrupt = true;
 	}
 
 	@Override
@@ -310,7 +332,7 @@ public class IncrementalClaspSATSolver implements ISATSolver
 	{
 		public Lock lock = new ReentrantLock();
 		
-		public ConditionHolder<String> problemEncoding = new ConditionHolder<String>(lock.newCondition(), new Holder<String>());
+		public ConditionHolder<String> problemEncoding = new ConditionHolder<String>(lock.newCondition(), new Holder<String>(""));
 		public ConditionHolder<Boolean> resultRead = new ConditionHolder<Boolean>(lock.newCondition(), new Holder<Boolean>(false));
 		public ConditionHolder<Boolean> resultObtained = new ConditionHolder<Boolean>(lock.newCondition(), new Holder<Boolean>(false));
 		public ConditionHolder<Boolean> notifyShutdown = new ConditionHolder<Boolean>(lock.newCondition(), new Holder<Boolean>(false));
@@ -342,15 +364,19 @@ public class IncrementalClaspSATSolver implements ISATSolver
 			
 			/**
 			 * 
-			 * @param value
+			 * @param value must not be null.
 			 * @param interruptHandler handles the interruptedExceptions.
 			 */
 			public void waitUntilEqual(T value, InterruptHandler interruptHandler) throws InterruptedException
 			{
+				if (value == null)
+				{
+					throw new IllegalArgumentException("The value given to waitUntilEqual must not be null!");
+				}
 				lock.lock();
 				try
 				{
-					while (holder.get().equals(value))
+					while (!value.equals(holder.get()))
 					{
 						try
 						{
@@ -368,12 +394,22 @@ public class IncrementalClaspSATSolver implements ISATSolver
 				}
 			}
 			
+			/**
+			 * 
+			 * @param value must not be null.
+			 * @param interruptHandler
+			 * @throws InterruptedException
+			 */
 			public void waitUntilNotEqual(T value, InterruptHandler interruptHandler) throws InterruptedException
 			{
+				if (value == null)
+				{
+					throw new IllegalArgumentException("The value given to waitUntilEqual must not be null!");
+				}
 				lock.lock();
 				try
 				{
-					while (!holder.get().equals(value))
+					while (value.equals(holder.get()))
 					{
 						try
 						{
@@ -432,7 +468,7 @@ public class IncrementalClaspSATSolver implements ISATSolver
 			Pointer problem = fLib.createIncProblem(fReadCallback);
 			
 			// Create incremental controller
-			Pointer control = fLib.createIncControl(fContinueCallback);
+			Pointer control = fLib.createIncControl(fContinueCallback, fJNAResult);
 			
 			// call solve incremental, the thread will stop here until the call is terminated by incremental control returning false.
 			fLib.jnasolveIncremental(fFacade, problem, config, control, fResult);
@@ -453,18 +489,25 @@ public class IncrementalClaspSATSolver implements ISATSolver
 		private int fNumVars;
 		private HashSet<Litteral> fAssumptions;
 		private HashSet<Clause> fClauses;
+		private HashSet<Long> fLitInActivatedClauses;
 		
-		public Message(int numVars, HashSet<Litteral> assumptions, HashSet<Clause> clauses)
+		public Message(int numVars, HashSet<Litteral> assumptions, HashSet<Clause> clauses, HashSet<Long> litInActivatedClauses)
 		{
 			fNumVars = numVars;
 			fAssumptions = assumptions;
 			fClauses = clauses;
+			fLitInActivatedClauses = litInActivatedClauses;
+		}
+		
+		public HashSet<Long> getLitInActivatedClauses()
+		{
+			return fLitInActivatedClauses;
 		}
 		
 		public String encode()
 		{
 			StringBuffer strBuffer = new StringBuffer();
-			strBuffer.append(encodeParameterLine(fNumVars));
+			strBuffer.append(encodeParameterLine(fNumVars, fClauses.size()));
 			strBuffer.append("\n");
 			strBuffer.append(encodeLitteralSet(fAssumptions));
 			strBuffer.append("\n");
@@ -475,12 +518,12 @@ public class IncrementalClaspSATSolver implements ISATSolver
 		protected String encodeLitteralSet(HashSet<Litteral> set)
 		{
 			String str = StringUtils.join(set, " ");
-			return "a "+str;
+			return "a "+str+" 0";
 		}
 		
-		protected String encodeParameterLine(int numVars)
+		protected String encodeParameterLine(int numVars, int numClauses)
 		{
-			return "p pcnf "+fNumVars;
+			return "p pcnf "+fNumVars+" "+numClauses;
 		}
 		
 		protected String encodeClauses(HashSet<Clause> set)
@@ -522,7 +565,8 @@ public class IncrementalClaspSATSolver implements ISATSolver
 				fCompressedControlLitterals.add(new Litteral(lit.getVariable(), true));
 			}
 			fActivatedCompressedControls.clear();
-			
+
+			HashSet<Long> litInActivatedClauses = new HashSet<Long>();
 			HashSet<Clause> newClauses = new HashSet<Clause>();
 			for (Clause clause : cnf)
 			{
@@ -532,17 +576,20 @@ public class IncrementalClaspSATSolver implements ISATSolver
 					// add the clause
 					fControlVariables.put(clause, fNextControlLiteral);
 					control = fNextControlLiteral;
-					fNextControlLiteral++;
+					fNextControlLiteral--;
 					// add the clause to new clauses
 					Clause compressedClause = compressClause(clause, control);
 					newClauses.add(compressedClause);
 				}
-				fCompressedControlLitterals.remove(new Litteral(control, true));
-				fCompressedControlLitterals.add(new Litteral(control, false));
-				fActivatedCompressedControls.add(new Litteral(control, false));
+				fCompressedControlLitterals.remove(new Litteral(compressVar(control), true));
+				fCompressedControlLitterals.add(new Litteral(compressVar(control), false));
+				fActivatedCompressedControls.add(new Litteral(compressVar(control), false));
+				for (Litteral lit : clause)
+				{
+					litInActivatedClauses.add(lit.getVariable());
+				}
 			}
-			
-			Message message = new Message(fCompressionMap.size(), fCompressedControlLitterals, newClauses);
+			Message message = new Message(fCompressionMap.size(), fCompressedControlLitterals, newClauses, litInActivatedClauses);
 			return message;
 		}
 		
@@ -555,9 +602,9 @@ public class IncrementalClaspSATSolver implements ISATSolver
 				Long compressedVar = compressVar(lit.getVariable());
 				newClause.add(new Litteral(compressedVar, lit.getSign()));
 			}
-			// add the control variable (if we compress the clause it needs to be activated, so the sign is false)
+			// add the control variable 
 			Long compressedVar = compressVar(control);
-			Litteral controlLit = new Litteral(compressedVar, false);
+			Litteral controlLit = new Litteral(compressedVar, true);
 			newClause.add(controlLit);
 			return newClause;
 		}

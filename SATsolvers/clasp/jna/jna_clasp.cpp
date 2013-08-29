@@ -136,6 +136,13 @@ void JNAResult::setState(JNAResult::Result_State state)
 	state_ = state;
 }
 
+void JNAResult::reset()
+{
+	state_ = r_UNKNOWN;
+	warning_ = "";
+	assignment_ = "";
+}
+
 JNAFacade::JNAFacade() {}
 
 bool JNAFacade::interrupt()
@@ -236,6 +243,12 @@ const char* getResultAssignment(void* _result)
 {
 	JNA::JNAResult* result = reinterpret_cast<JNA::JNAResult*>(_result);
 	return result->getAssignment().c_str();
+}
+
+void resetResult(void* _result)
+{
+	JNA::JNAResult* result = reinterpret_cast<JNA::JNAResult*>(_result);
+	result->reset();
 }
 
 void* createFacade()

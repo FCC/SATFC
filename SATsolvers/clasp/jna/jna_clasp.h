@@ -95,6 +95,9 @@ public:
 	std::string getWarning();
 
 	std::string getAssignment();
+
+	void reset();//reset the state of the problem as when it is created.
+
 private:
 	Result_State state_;
 	std::string warning_; // warning message if any.
@@ -132,6 +135,7 @@ extern "C" {
         int getResultState(void* _result);
         const char* getResultWarning(void* _result);
         const char* getResultAssignment(void* _result);
+	void resetResult(void* _result);
 
 	// creates and destroys facades -> handles interrupts
 	void* createFacade();
