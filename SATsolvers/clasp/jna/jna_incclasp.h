@@ -26,22 +26,30 @@ private:
 class JNAIncControl : public Clasp::IncrementalControl
 {
 public:
-	JNAIncControl(int (*nextCallback)());
+	JNAIncControl(int (*nextCallback)(), JNAResult* result);
 	void initStep(ClaspFacade& f) {}
-        bool nextStep(ClaspFacade& f) { return nextCallback_(); }
+        bool nextStep(ClaspFacade& f);
 private:
 	int (*nextCallback_)();
+	JNAResult* result_;
 };
 
+bool parseLitVec(StreamSource& in, LitVec& vec);
 
 } //end JNA namespace
 
 // C function definitions
 extern "C"
 {
-	void* createIncProblem(const char* (*readCallback)());
-	void test(const char* (*fn)(), int (*fn1)()); // used to test the library
-}
+void* createIncProblem(const char* (*readCallback)());
+void destroyIncProblem(void* _problem);
+	
+void* createIncControl(int (*_nextCallback)(), void* _result);
+void destroyIncControl(void* _control);
+	
+void jnasolveIncremental(void* _facade, void* _problem, void* _config, void* _control, void* _result);
+
+} // end Extern "C"
 
 
 #endif

@@ -34,15 +34,28 @@ public interface IncrementalClaspLibrary extends ClaspLibrary
 	 */
 	void destroyIncProblem(Pointer problem);
 	
-	Pointer createIncControl(jnaIncContinue callback);
-	
-	void destroyIncControl(Pointer control);
-	
-	void jnasolveIncremental(Pointer facade, Pointer incProblem, Pointer config, Pointer incControl, Pointer result);
-
+	/**
+	 * Creates a new incremental control object that will be using the callback function and setting the results correctly when UNSAT.
+	 * @param callback callback method to use in order to control the incremental solving.
+	 * @param result result object for which to set the state correctly.
+	 * @return a new incremental control object that will be using the callback function and setting the results correctly when UNSAT. 
+	 */
+	Pointer createIncControl(jnaIncContinue callback, Pointer result);
 	
 	/**
-	 * Used to test the library by calling a dummy C function.
+	 * Frees the memory used by the control object.
+	 * @param control control object to be destroyed.
 	 */
-	void test(jnaIncRead fn, jnaIncContinue fn1);
+	void destroyIncControl(Pointer control);
+	
+	/**
+	 * Start solving incrementally.  Should be using in a thread as it is a blocking call until incControl returns false.
+	 * @param facade object used to call solve and interrupt. 
+	 * @param incProblem incremental problem to solve using the callback method to get new input.
+	 * @param config configuration to use.
+	 * @param incControl control object used to stop the incremental solving loop.
+	 * @param result result object used to store results.
+	 */
+	void jnasolveIncremental(Pointer facade, Pointer incProblem, Pointer config, Pointer incControl, Pointer result);
+
 }

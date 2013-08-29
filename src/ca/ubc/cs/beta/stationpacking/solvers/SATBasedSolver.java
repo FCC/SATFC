@@ -122,7 +122,7 @@ public class SATBasedSolver implements ISolver {
 						
 						if(!aComponentInstance.getStations().contains(aStation) || !aComponentInstance.getChannels().contains(aChannel))
 						{
-							throw new IllegalStateException("A decoded station and channel from a component SAT assignment is not in that component's problem instance.");
+							throw new IllegalStateException("A decoded station and channel from a component SAT assignment is not in that component's problem instance. ("+aStation+", channel:"+aChannel+")");
 						}
 						
 						if(!aStationAssignment.containsKey(aChannel))
