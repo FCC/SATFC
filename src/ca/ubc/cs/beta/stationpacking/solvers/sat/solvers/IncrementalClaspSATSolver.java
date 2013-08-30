@@ -66,11 +66,19 @@ public class IncrementalClaspSATSolver implements ISATSolver
 			// the first run is launched before any call to solve, so it must be waiting on the problem.
 			if (!fFirstCall.get())
 			{
-				fLocks.resultObtained.setAndSignal(true);
-				try {
-					fLocks.resultRead.waitUntilEqual(true, new IHDoNothing());
-				} catch (InterruptedException e) {
-					// do nothing if we were interrupted, we should wait for the solve command to handle this.
+				fLocks.lock.lock();
+				try
+				{
+					fLocks.resultObtained.setAndSignal(true);
+					try {
+						fLocks.resultRead.waitUntilEqual(true, new IHDoNothing());
+					} catch (InterruptedException e) {
+					// 	do nothing if we were interrupted, we should wait for the solve command to handle this.
+					}
+				}
+				finally
+				{
+					fLocks.lock.unlock();
 				}
 				// result were read reset the flag
 				fLocks.resultRead.setAndSignal(false);
