@@ -20,7 +20,7 @@ public class Clause implements Collection<Litteral>{
 	
 	public Clause()
 	{
-		fLitterals = new HashSet<Litteral>();
+		fLitterals = new ArrayDeque<Litteral>();
 	}
 	
 	public Collection<Litteral> getLitterals()

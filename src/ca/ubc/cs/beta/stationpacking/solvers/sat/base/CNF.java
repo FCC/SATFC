@@ -19,7 +19,7 @@ public class CNF implements Collection<Clause>{
 	
 	public CNF()
 	{
-		fClauses = new HashSet<Clause>();
+		fClauses = new ArrayDeque<Clause>();
 	}
 	
 	/**
