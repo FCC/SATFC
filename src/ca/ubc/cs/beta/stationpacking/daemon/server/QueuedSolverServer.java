@@ -17,8 +17,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.SolverBundle;
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.SolverManager;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverBundle;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
