@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.execution.daemon.simple;
+package ca.ubc.cs.beta.stationpacking.execution.daemon;
 
 import java.util.List;
 

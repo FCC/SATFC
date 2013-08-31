@@ -16,7 +16,6 @@ import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Litteral;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.CNFCompressor;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.jnalibraries.ClaspLibrary;
 import ca.ubc.cs.beta.stationpacking.utils.Holder;
 
@@ -26,7 +25,7 @@ import ca.ubc.cs.beta.stationpacking.utils.Holder;
  * @author gsauln
  *
  */
-public class ClaspSATSolver implements ISATSolver
+public class ClaspSATSolver extends AbstractCompressedSATSolver
 {
 	
 	private static Logger log = LoggerFactory.getLogger(ClaspSATSolver.class);
@@ -94,8 +93,7 @@ public class ClaspSATSolver implements ISATSolver
 		Pointer config = fClaspLibrary.createConfig(params, params.length(), fMaxArgs);
 		
 		// create the problem
-		CNFCompressor compressor = new CNFCompressor();
-		Pointer problem = fClaspLibrary.createProblem(compressor.compress(aCNF).toDIMACS(null));
+		Pointer problem = fClaspLibrary.createProblem(aCNF.toDIMACS(null));
 		final Pointer result = fClaspLibrary.createResult();
 		final Holder<Boolean> timeout = new Holder<Boolean>();
 		timeout.set(false);
@@ -146,7 +144,7 @@ public class ClaspSATSolver implements ISATSolver
 			else if (state == 1)
 			{
 				satResult = SATResult.SAT;
-				assignment = parseAssignment(fClaspLibrary.getResultAssignment(result), compressor);
+				assignment = parseAssignment(fClaspLibrary.getResultAssignment(result));
 			}
 			else 
 			{
@@ -173,7 +171,7 @@ public class ClaspSATSolver implements ISATSolver
 		return answer;
 	}
 
-	public static HashSet<Litteral> parseAssignment(String assignment, CNFCompressor compressor)
+	public static HashSet<Litteral> parseAssignment(String assignment)
 	{
 		HashSet<Litteral> set = new HashSet<Litteral>();
 		StringTokenizer strtok = new StringTokenizer(assignment, ";");
@@ -182,7 +180,7 @@ public class ClaspSATSolver implements ISATSolver
 			int intLit = Integer.valueOf(strtok.nextToken());
 			int var = Math.abs(intLit);
 			boolean sign = intLit > 0;
-			Litteral aLit = new Litteral(compressor.decompress(var), sign);
+			Litteral aLit = new Litteral(var, sign);
 			set.add(aLit);
 		}
 		return set;

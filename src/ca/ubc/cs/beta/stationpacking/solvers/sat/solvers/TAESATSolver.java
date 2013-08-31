@@ -18,13 +18,12 @@ import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Litteral;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.CNFCompressor;
 
 /**
  * Lean TAE based SAT solver.
  * @author afrechet
  */
-public class TAESATSolver implements ISATSolver{
+public class TAESATSolver extends AbstractCompressedSATSolver{
 	
 	private final TargetAlgorithmEvaluator fTAE;
 	private final ParamConfiguration fParamConfiguration;
@@ -47,8 +46,6 @@ public class TAESATSolver implements ISATSolver{
 	@Override
 	public SATSolverResult solve(CNF aCNF, double aCutoff, long aSeed) {
 		
-		CNFCompressor aCompressor = new CNFCompressor();
-		
 		//Setup the CNF file and filename.
 		String aCNFFilename = fCNFDir + File.separator + RandomStringUtils.randomAlphabetic(15)+".cnf";
 		File aCNFFile = new File(aCNFFilename);
@@ -58,7 +55,7 @@ public class TAESATSolver implements ISATSolver{
 			aCNFFile = new File(aCNFFilename);
 		}
 
-		String aCNFString = aCompressor.compress(aCNF).toDIMACS(new String[]{"FCC Station packing instance."});
+		String aCNFString = aCNF.toDIMACS(new String[]{"FCC Station packing instance."});
 		
 		//Write the CNF to disk.
 		try 
@@ -103,7 +100,7 @@ public class TAESATSolver implements ISATSolver{
 					boolean aSign = !aLiteral.contains("-"); 
 					long aVariable = Long.valueOf(aLiteral.replace("-", ""));
 					
-					aAssignment.add(new Litteral(aCompressor.decompress(aVariable),aSign));
+					aAssignment.add(new Litteral(aVariable,aSign));
 				}
 				break;
 			case UNSAT:

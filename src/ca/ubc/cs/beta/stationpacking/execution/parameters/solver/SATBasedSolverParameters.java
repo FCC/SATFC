@@ -14,9 +14,9 @@ import ca.ubc.cs.beta.stationpacking.execution.parameters.converters.AbstractFro
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat.ClaspLibSATSolverParameters;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat.TAESATSolverParameters;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
-import ca.ubc.cs.beta.stationpacking.solvers.SATBasedSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.NoGrouper;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.GenericSATBasedSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ISATSolver;
@@ -82,7 +82,7 @@ public class SATBasedSolverParameters extends AbstractOptions implements ISolver
 		log.info("Not grouping stations in any way.");
 		IComponentGrouper aComponentGrouper = new NoGrouper();
 		
-		return new SATBasedSolver(aSATSolver, aSATEncoder, aConstraintManager, aComponentGrouper);
+		return new GenericSATBasedSolver(aSATSolver, aSATEncoder, aConstraintManager, aComponentGrouper);
 		
 	}
 

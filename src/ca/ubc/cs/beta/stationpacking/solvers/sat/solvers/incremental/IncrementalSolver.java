@@ -15,8 +15,10 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Clause;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Litteral;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATDecoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental.SATSolver.IIncrementalSATSolver;
 
@@ -113,7 +115,9 @@ public class IncrementalSolver implements ISolver{
 		}
 		
 		//Get clauses associated with the new instance
-		Set<Clause> aNewClauses = fEncoder.encode(aInstance);
+		Pair<CNF,ISATDecoder> aEncoding = fEncoder.encode(aInstance);
+		CNF aNewClauses = aEncoding.getKey();
+		ISATDecoder aDecoder = aEncoding.getValue();
 				
 		/*
 		 * Add all NEW clauses to our clause set (including a dummy variable to "toggle" them).
@@ -189,7 +193,7 @@ public class IncrementalSolver implements ISolver{
 					//If the litteral is positive, then we keep it as it is an assigned station to a channel.
 					if(aSign)
 					{
-						Pair<Station,Integer> aStationChannelPair = fEncoder.decode(aVariable);
+						Pair<Station,Integer> aStationChannelPair = aDecoder.decode(aVariable);
 						Station aStation = aStationChannelPair.getKey();
 						Integer aChannel = aStationChannelPair.getValue();
 						

@@ -10,6 +10,7 @@ import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,15 +18,15 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.Collections2;
 
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.DataManager;
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.ManagerBundle;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.data.DataManager;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.data.ManagerBundle;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.DACConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.CNFCompressor;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATDecoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATEncoder;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
 
 public class CNFExtractor {
 	
@@ -139,11 +140,11 @@ public class CNFExtractor {
 					}
 					
 				}
-				else if(aBand.equals("LVHF"))
+				else if(aBand.equals("LVHF") || aBand.equals("1"))
 				{
 					aPackingChannels = DACConstraintManager.LVHF_CHANNELS;
 				}
-				else if(aBand.equals("HVHF") || aBand.equals("UVHF"))
+				else if(aBand.equals("HVHF") || aBand.equals("UVHF") || aBand.equals("2"))
 				{
 					aPackingChannels = DACConstraintManager.UVHF_CHANNELS;
 				}
@@ -165,11 +166,11 @@ public class CNFExtractor {
 			String aInstanceString = StringUtils.join(aPackingChannels,"-")+"_"+StringUtils.join(aPackingStations,"-");
 			StationPackingInstance aInstance = StationPackingInstance.valueOf(aInstanceString, aStationManager);
 			
-			ISATEncoder aSATEncoder = new SATEncoder(aStationManager, aConstraintManager);
-			CNFCompressor aCNFCompressor = new CNFCompressor();
+			ISATEncoder aSATEncoder = new SATCompressor(aStationManager, aConstraintManager);
 
 			log.info("Encoding into SAT...");
-			CNF aCNF = aCNFCompressor.compress(aSATEncoder.encode(aInstance));
+			Pair<CNF,ISATDecoder> aEncoding = aSATEncoder.encode(aInstance);
+			CNF aCNF = aEncoding.getKey();
 			
 			
 			String aCNFFilename = aCNFdir+aInstance.getHashString()+".cnf";

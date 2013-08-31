@@ -35,7 +35,7 @@ import ca.ubc.cs.beta.stationpacking.utils.Holder;
  * @author gsauln
  *
  */
-public class IncrementalClaspSATSolver implements ISATSolver 
+public class IncrementalClaspSATSolver extends AbstractSATSolver 
 {
 	// C++
 	// create the parser for the problem format
