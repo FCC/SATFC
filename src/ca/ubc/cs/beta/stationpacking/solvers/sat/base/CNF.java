@@ -1,10 +1,11 @@
 package ca.ubc.cs.beta.stationpacking.solvers.sat.base;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Set;
+import java.util.LinkedList;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -12,10 +13,10 @@ import org.apache.commons.lang3.StringUtils;
  * A SAT formula in Conjunctive Normal Form (a conjunction of clauses - AND's of OR's of litterals). Implementation wise just a clause set wrapper. 
  * @author afrechet
  */
-public class CNF implements Set<Clause>{
-
-	private final HashSet<Clause> fClauses;
-
+public class CNF implements Collection<Clause>{
+	
+	private final Collection<Clause> fClauses;
+	
 	public CNF()
 	{
 		fClauses = new HashSet<Clause>();
@@ -69,9 +70,9 @@ public class CNF implements Set<Clause>{
 	/**
 	 * @return all the variables present in the CNF.
 	 */
-	public HashSet<Long> getVariables()
+	public Collection<Long> getVariables()
 	{
-		HashSet<Long> aVariables = new HashSet<Long>();
+		Collection<Long> aVariables = new HashSet<Long>();
 		
 		for(Clause aClause : fClauses)
 		{
@@ -87,7 +88,7 @@ public class CNF implements Set<Clause>{
 	@Override
 	public String toString()
 	{
-		HashSet<String> aClauseStrings = new HashSet<String>();
+		ArrayDeque<String> aClauseStrings = new ArrayDeque<String>();
 		for(Clause aClause : fClauses)
 		{
 			aClauseStrings.add("("+aClause.toString()+")");

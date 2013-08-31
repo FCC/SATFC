@@ -1,10 +1,13 @@
-package ca.ubc.cs.beta.stationpacking.daemon.datamanager;
+package ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver;
 
 import java.io.FileNotFoundException;
 import java.util.HashMap;
 import java.util.HashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.data.DataManager;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.data.ManagerBundle;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 
 /**

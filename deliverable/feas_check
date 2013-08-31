@@ -182,6 +182,14 @@ def main():
         print 'This wrapper communicates with a SATFC daemon on ',UDP_IP,'port',UDP_PORT
         print 'For more usage see feasibility checker usage section of the Ladder Auction Algorithm Mini-Spec v2.1, June 2013.'
         return
+    elif sys.argv[1]=='-send':
+        logging.warning("This is a test function, should not be used in stable versions.")
+        #Test function to send a string message to the daemon.
+        message = sys.argv[2]
+        sock = establishConnection()
+        print 'Sending message:',message
+        sendMessage(sock,message)
+        print 'Sent.'
     elif sys.argv[1]=='-init':
         possible_datafoldernames=[]
         if len(sys.argv)>2:
@@ -278,6 +286,7 @@ def main():
             for station in assignment[channel]:
                 answer_file.write(str(station)+','+str(channel)+'\n')
         answer_file.close()
+
         return
 
 
@@ -309,8 +318,13 @@ def getEnvironmentVariables():
 def getSolvingInstanceInfo(environment_execution_dir,environment_data_location):
     """Parse FCC feas_check parameters"""
 
-    question_filename = environment_execution_dir+os.sep+sys.argv[1]
-    answer_filename = environment_execution_dir+os.sep+sys.argv[2]
+    question_filename = sys.argv[1]
+    answer_filename = sys.argv[2]
+
+    if not question_filename[0] == os.sep:
+        question_filename = environment_execution_dir+os.sep+question_filename
+    if not answer_filename[0] == os.sep:
+        answer_filename = environment_execution_dir+os.sep+answer_filename
 
     #Parse the question parameters
     question_parameters = {}
@@ -335,7 +349,7 @@ def getSolvingInstanceInfo(environment_execution_dir,environment_data_location):
     try:
         cutoff = str(float(question_parameters['FC_TIMEOUT'][0])/1000.0)
     except:
-        raise Exception('Unrecognized value for key FC_TIMEOUT in question csv file!')
+        raise Exception('Unrecognized value '+str(question_parameters['FC_TIMEOUT'][0])+' for key FC_TIMEOUT in question csv file!')
 
     #Directory to find problem setting data
     problem_data_directory = 'default'
@@ -344,9 +358,9 @@ def getSolvingInstanceInfo(environment_execution_dir,environment_data_location):
     problem_data_directory = environment_data_location+os.sep+problem_data_directory
 
     #Channels to pack into.
-    if question_parameters['BAND'][0]=='LVHF':
+    if question_parameters['BAND'][0]=='LVHF' or question_parameters['BAND'][0]==str(1):
         packing_channels = range(2,6+1)
-    elif question_parameters['BAND'][0]=='HVHF' or question_parameters['BAND'][0]=='UVHF':
+    elif question_parameters['BAND'][0]=='HVHF' or question_parameters['BAND'][0]=='UVHF' or question_parameters['BAND'][0]==str(2):
         packing_channels = range(7,13+1)
     elif question_parameters['BAND'][0]=='UHF' or question_parameters['BAND'][0]==str(3):
 

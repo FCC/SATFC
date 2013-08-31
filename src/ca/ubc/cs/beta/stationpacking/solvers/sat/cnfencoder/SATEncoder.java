@@ -14,6 +14,8 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Clause;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Litteral;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.base.IBijection;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.base.IdentityBijection;
 
 /**
  * Encodes a problem instance as a propositional satisfiability problem. 
@@ -28,15 +30,24 @@ public class SATEncoder implements ISATEncoder {
 	private final IStationManager fStationManager;
 	private final IConstraintManager fConstraintManager;
 	
+	private final IBijection<Long,Long> fBijection;
+	
 	public SATEncoder(IStationManager aStationManager, IConstraintManager aConstraintManager)
+	{
+		this(aStationManager,aConstraintManager, new IdentityBijection<Long>());
+	}
+	
+	public SATEncoder(IStationManager aStationManager, IConstraintManager aConstraintManager, IBijection<Long, Long> aBijection)
 	{
 		fStationManager = aStationManager;
 		fConstraintManager = aConstraintManager;
+		
+		fBijection = aBijection;
 	}
 	
 	
 	@Override
-	public CNF encode(StationPackingInstance aInstance){
+	public Pair<CNF,ISATDecoder> encode(StationPackingInstance aInstance){
 		
 		CNF aCNF = new CNF();
 		
@@ -49,7 +60,23 @@ public class SATEncoder implements ISATEncoder {
 		//Encode adjacent-channel constraints
 		aCNF.addAll(encodeAdjConstraints(aInstance));
 		
-		return aCNF;
+		//Create the decoder
+		
+		ISATDecoder aDecoder = new ISATDecoder() {
+			
+			@Override
+			public Pair<Station, Integer> decode(long aVariable) {
+				Pair<Integer,Integer> aStationChannelPair = SATEncoderUtils.SzudzikElegantInversePairing(fBijection.inversemap(aVariable));
+				
+				Station aStation = fStationManager.getStationfromID(aStationChannelPair.getKey());
+				
+				Integer aChannel = aStationChannelPair.getValue();
+				
+				return new Pair<Station,Integer>(aStation,aChannel);
+			}
+		};
+		
+		return new Pair<CNF,ISATDecoder>(aCNF,aDecoder);
 	}
 	
 	/**
@@ -61,7 +88,7 @@ public class SATEncoder implements ISATEncoder {
 	 * @param aInstance - a station packing problem instance.
 	 * @return A CNF of base clauses.
 	 */
-	public static CNF encodeBaseClauses(StationPackingInstance aInstance)
+	public CNF encodeBaseClauses(StationPackingInstance aInstance)
 	{
 		CNF aCNF = new CNF();
 		
@@ -77,7 +104,8 @@ public class SATEncoder implements ISATEncoder {
 			Clause aStationValidAssignmentBaseClause = new Clause();
 			for(Integer aChannel : aStationInstanceDomain)
 			{
-				aStationValidAssignmentBaseClause.add(new Litteral(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(), aChannel), true));
+				
+				aStationValidAssignmentBaseClause.add(new Litteral(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(), aChannel)), true));
 			}
 			aCNF.add(aStationValidAssignmentBaseClause);
 			
@@ -89,10 +117,10 @@ public class SATEncoder implements ISATEncoder {
 					Clause aStationSingleAssignmentBaseClause = new Clause();
 					
 					Integer aDomainChannel1 = aStationInstanceDomain.get(i);
-					aStationSingleAssignmentBaseClause.add(new Litteral(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aDomainChannel1),false));
+					aStationSingleAssignmentBaseClause.add(new Litteral(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aDomainChannel1)),false));
 					
 					Integer aDomainChannel2 = aStationInstanceDomain.get(j);
-					aStationSingleAssignmentBaseClause.add(new Litteral(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aDomainChannel2),false));
+					aStationSingleAssignmentBaseClause.add(new Litteral(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aDomainChannel2)),false));
 					
 					aCNF.add(aStationSingleAssignmentBaseClause);
 				}
@@ -117,11 +145,11 @@ public class SATEncoder implements ISATEncoder {
 				{
 					for(Integer aChannel : aInstanceChannels)
 					{
-						if(aStation.getDomain().contains(aChannel) && aInterferingStation.getDomain().contains(aChannel))
+						if(aStation.getID()<aInterferingStation.getID() && aStation.getDomain().contains(aChannel) && aInterferingStation.getDomain().contains(aChannel))
 						{
 							Clause aCoChannelClause = new Clause();
-							aCoChannelClause.add(new Litteral(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aChannel),false));
-							aCoChannelClause.add(new Litteral(SATEncoderUtils.SzudzikElegantPairing(aInterferingStation.getID(),aChannel),false));
+							aCoChannelClause.add(new Litteral(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aChannel)),false));
+							aCoChannelClause.add(new Litteral(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aInterferingStation.getID(),aChannel)),false));
 							aCNF.add(aCoChannelClause);
 						}
 					}
@@ -148,11 +176,11 @@ public class SATEncoder implements ISATEncoder {
 					for(Integer aChannel : aInstanceChannels)
 					{
 						Integer aInterferingChannel = aChannel+1;
-						if(aStation.getDomain().contains(aChannel) && aInterferingStation.getDomain().contains(aInterferingChannel) && aInstanceChannels.contains(aInterferingChannel))
+						if( aStation.getDomain().contains(aChannel) && aInterferingStation.getDomain().contains(aInterferingChannel) && aInstanceChannels.contains(aInterferingChannel))
 						{
 							Clause aAdjChannelClause = new Clause();
-							aAdjChannelClause.add(new Litteral(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aChannel),false));
-							aAdjChannelClause.add(new Litteral(SATEncoderUtils.SzudzikElegantPairing(aInterferingStation.getID(),aInterferingChannel),false));
+							aAdjChannelClause.add(new Litteral(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aChannel)),false));
+							aAdjChannelClause.add(new Litteral(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aInterferingStation.getID(),aInterferingChannel)),false));
 							aCNF.add(aAdjChannelClause);
 						}
 					}
@@ -164,18 +192,7 @@ public class SATEncoder implements ISATEncoder {
 	}
 	
 	
-	@Override
-	public Pair<Station,Integer> decode(long aVariable){
-		
-		Pair<Integer,Integer> aStationChannelPair = SATEncoderUtils.SzudzikElegantInversePairing(aVariable);
-		
-		Station aStation = fStationManager.getStationfromID(aStationChannelPair.getKey());
-		
-		Integer aChannel = aStationChannelPair.getValue();
-		
-		return new Pair<Station,Integer>(aStation,aChannel);
-		
-	}
+
 	
 	
 	

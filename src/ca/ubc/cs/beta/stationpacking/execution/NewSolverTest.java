@@ -17,8 +17,8 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.instancegeneration.InstanceGenerationParameters;
 import ca.ubc.cs.beta.stationpacking.experiment.InstanceGeneration;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
-import ca.ubc.cs.beta.stationpacking.solvers.SATBasedSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.NoGrouper;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.GenericSATBasedSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ClaspSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ISATSolver;
@@ -93,7 +93,7 @@ public class NewSolverTest {
 			 * 
 			 */
 			
-			ISolver aSATBasedSolver = new SATBasedSolver(incClaspSATSolver, new SATEncoder(aStationManager, aConstraintManager), aConstraintManager, new NoGrouper());
+			ISolver aSATBasedSolver = new GenericSATBasedSolver(incClaspSATSolver, new SATEncoder(aStationManager, aConstraintManager), aConstraintManager, new NoGrouper());
 			
 		
 			aInstanceGeneration = new InstanceGeneration(aSATBasedSolver,aInstanceGenerationParameters.getExperimentReporter());
