@@ -1,8 +1,8 @@
 package ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder;
 
+
 import org.apache.commons.math3.util.Pair;
 
-import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 
@@ -19,14 +19,10 @@ public interface ISATEncoder {
 	 * @param aInstance - an instance to encode as a SAT problem.
 	 * @return a SAT CNF representation of the problem instance. 
 	 */
-	public CNF encode(StationPackingInstance aInstance);
+	public Pair<CNF,ISATDecoder> encode(StationPackingInstance aInstance);
 	
 	
-	/**
-	 * @param aVariable - a SAT variable.
-	 * @return - the station and channel encoded by the given SAT variable.
-	 */
-	public Pair<Station,Integer> decode(long aVariable);
+	
 	
 
 	

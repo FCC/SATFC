@@ -1,9 +1,10 @@
 package ca.ubc.cs.beta.stationpacking.solvers.sat.base;
 
+import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Set;
+import java.util.LinkedList;
 import java.util.TreeSet;
 
 import org.apache.commons.lang3.StringUtils;
@@ -13,16 +14,16 @@ import org.apache.commons.lang3.StringUtils;
  * @author afrechet
  *
  */
-public class Clause implements Set<Litteral>{
+public class Clause implements Collection<Litteral>{
 
-	private final HashSet<Litteral> fLitterals;
+	private final Collection<Litteral> fLitterals;
 	
 	public Clause()
 	{
 		fLitterals = new HashSet<Litteral>();
 	}
 	
-	public Set<Litteral> getLitterals()
+	public Collection<Litteral> getLitterals()
 	{
 		return fLitterals;
 	}
@@ -127,7 +128,6 @@ public class Clause implements Set<Litteral>{
 	@Override
 	public void clear() {
 		fLitterals.clear();
-		
 	}
 	
 }

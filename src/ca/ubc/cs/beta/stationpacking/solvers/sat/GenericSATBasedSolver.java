@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solvers;
+package ca.ubc.cs.beta.stationpacking.solvers.sat;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,18 +16,21 @@ import org.slf4j.LoggerFactory;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
+import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
+import ca.ubc.cs.beta.stationpacking.solvers.SolverHelper;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Litteral;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATDecoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ISATSolver;
 
-public class SATBasedSolver implements ISolver {
+public class GenericSATBasedSolver implements ISolver {
 	
-	private static Logger log = LoggerFactory.getLogger(SATBasedSolver.class);
+	private static Logger log = LoggerFactory.getLogger(GenericSATBasedSolver.class);
 	
 	private final static boolean SAVE_CNF = false;
 	private final static String CNF_DIR = "/ubc/cs/home/a/afrechet/arrow-space/OrcinusMountPoint/FCCFeasibilityCheckingInstances/UHF_21-08-13";
@@ -38,7 +41,7 @@ public class SATBasedSolver implements ISolver {
 	private final ISATEncoder fSATEncoder;
 	private final ISATSolver fSATSolver;
 	
-	public SATBasedSolver(ISATSolver aSATSolver, ISATEncoder aSATEncoder, IConstraintManager aConstraintManager, IComponentGrouper aComponentGrouper)
+	public GenericSATBasedSolver(ISATSolver aSATSolver, ISATEncoder aSATEncoder, IConstraintManager aConstraintManager, IComponentGrouper aComponentGrouper)
 	{
 		fConstraintManager = aConstraintManager;
 		fComponentGrouper = aComponentGrouper;
@@ -67,7 +70,9 @@ public class SATBasedSolver implements ISolver {
 			StationPackingInstance aComponentInstance = new StationPackingInstance(aStationComponent,aChannelRange);
 			
 			log.info("Encoding subproblem in CNF.");
-			CNF aCNF = fSATEncoder.encode(aComponentInstance);
+			Pair<CNF,ISATDecoder> aEncoding = fSATEncoder.encode(aInstance);
+			CNF aCNF = aEncoding.getKey();
+			ISATDecoder aDecoder = aEncoding.getValue();
 			log.info("CNF has {} clauses.",aCNF.size());
 			
 			//Check if CNF should be saved.
@@ -116,7 +121,7 @@ public class SATBasedSolver implements ISolver {
 					//If the litteral is positive, then we keep it as it is an assigned station to a channel.
 					if(aSign)
 					{
-						Pair<Station,Integer> aStationChannelPair = fSATEncoder.decode(aVariable);
+						Pair<Station,Integer> aStationChannelPair = aDecoder.decode(aVariable);
 						Station aStation = aStationChannelPair.getKey();
 						Integer aChannel = aStationChannelPair.getValue();
 						

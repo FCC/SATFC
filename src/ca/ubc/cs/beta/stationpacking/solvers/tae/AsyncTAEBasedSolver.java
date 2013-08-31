@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solvers;
+package ca.ubc.cs.beta.stationpacking.solvers.tae;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,6 +25,7 @@ import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluatorCal
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
+import ca.ubc.cs.beta.stationpacking.solvers.SolverHelper;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.cnflookup.AsyncCachedCNFLookup;
@@ -32,7 +33,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.cnflookup.ICNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.reporters.IExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.CNFCompressor;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATDecoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
 
 /**
@@ -82,7 +83,7 @@ public class AsyncTAEBasedSolver {
 	}
 
 
-	private TargetAlgorithmEvaluatorCallback getCompilingCallback(final StationPackingInstance aInstance,final IExperimentReporter aAsynchronousReporter,final HashMap<RunConfig,StationPackingInstance> aToSolveInstances, final HashMap<RunConfig,CNFCompressor> aComponentEncoders)
+	private TargetAlgorithmEvaluatorCallback getCompilingCallback(final StationPackingInstance aInstance,final IExperimentReporter aAsynchronousReporter,final HashMap<RunConfig,StationPackingInstance> aToSolveInstances, final HashMap<RunConfig,ISATDecoder> aComponentDecoders)
 	{
 		return new TargetAlgorithmEvaluatorCallback()
 		{
@@ -104,7 +105,7 @@ public class AsyncTAEBasedSolver {
 							//Grab assignment
 							String aAdditionalRunData = aRun.getAdditionalRunData();
 							StationPackingInstance aComponentInstance = aToSolveInstances.get(aRun.getRunConfig());
-							CNFCompressor aComponentEncoder = aComponentEncoders.get(aRun.getRunConfig());
+							ISATDecoder aSATDecoder = aComponentDecoders.get(aRun.getRunConfig());
 							
 							//The TAE wrapper is assumed to return a ';'-separated string of litterals, one litteral for each variable of the SAT problem.
 							HashMap<Long,Boolean> aLitteralChecker = new HashMap<Long,Boolean>();
@@ -129,7 +130,7 @@ public class AsyncTAEBasedSolver {
 								//If the litteral is positive, then we keep it as it is an assigned station to a channel.
 								if(aSign)
 								{
-									Pair<Station,Integer> aStationChannelPair = fEncoder.decode(aComponentEncoder.decompress(aVariable));
+									Pair<Station,Integer> aStationChannelPair = aSATDecoder.decode(aVariable);
 									Station aStation = aStationChannelPair.getKey();
 									Integer aChannel = aStationChannelPair.getValue();
 									
@@ -240,17 +241,13 @@ public class AsyncTAEBasedSolver {
 		Set<Set<Station>> aInstanceGroups = fGrouper.group(aInstance,fManager);
 		
 		HashMap<RunConfig,StationPackingInstance> aToSolveInstances = new HashMap<RunConfig,StationPackingInstance>();
-		HashMap<RunConfig,CNFCompressor> aComponentEncoders = new HashMap<RunConfig,CNFCompressor>();	
+		HashMap<RunConfig,ISATDecoder> aComponentDecoders = new HashMap<RunConfig,ISATDecoder>();	
 		
 		//Create the runs to execute.
 		for(Set<Station> aStationComponent : aInstanceGroups){
 			
-			//Wrap the encoder in a compressor for this component.
-			CNFCompressor aComponentEncoder = new CNFCompressor();
-			
 			//Create the component group instance.
 			StationPackingInstance aComponentInstance = new StationPackingInstance(aStationComponent,aChannelRange);
-			
 			
 			//Not present, CNF must be solved.
 			//Name the instance
@@ -258,31 +255,31 @@ public class AsyncTAEBasedSolver {
 			
 			File aCNFFile = new File(aCNFFileName);
 			
-			if(!aCNFFile.exists())
+			
+			//Encode the instance
+			Pair<CNF,ISATDecoder> aEncoding = fEncoder.encode(aInstance);
+			CNF aCNF = aEncoding.getKey();
+			ISATDecoder aDecoder = aEncoding.getValue();
+			
+			String aCNFString = aCNF.toDIMACS(new String[]{"FCC Station packing instance.","[Channels]_[Stations] ",aComponentInstance.toString()});
+			
+			//Write it to disk
+			try 
 			{
-				//Encode the instance
-				CNF aCNF = fEncoder.encode(aComponentInstance);
-				CNF aCompressedCNF = aComponentEncoder.compress(aCNF);
-				
-				String aCNFString = aCompressedCNF.toDIMACS(new String[]{"FCC Station packing instance.","[Channels]_[Stations] ",aComponentInstance.toString()});
-				
-				//Write it to disk
-				try 
-				{
-					FileUtils.writeStringToFile(aCNFFile, aCNFString);
-				} 
-				catch (IOException e) 
-				{
-					throw new IllegalStateException("Could not write CNF to file ("+e.getMessage()+").");
-				}
+				FileUtils.writeStringToFile(aCNFFile, aCNFString);
+			} 
+			catch (IOException e) 
+			{
+				throw new IllegalStateException("Could not write CNF to file ("+e.getMessage()+").");
 			}
+			
 			//Create the run config and add it to the to-do list.
 			ProblemInstance aProblemInstance = new ProblemInstance(aCNFFileName);
 			ProblemInstanceSeedPair aProblemInstanceSeedPair = new ProblemInstanceSeedPair(aProblemInstance,aSeed);
 			RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aCutoff, fParamConfigurationSpace.getDefaultConfiguration());
 			
 			aToSolveInstances.put(aRunConfig,aComponentInstance);
-			aComponentEncoders.put(aRunConfig, aComponentEncoder);
+			aComponentDecoders.put(aRunConfig, aDecoder);
 		
 		}
 		
@@ -290,7 +287,7 @@ public class AsyncTAEBasedSolver {
 		List<RunConfig> aRunConfigs = new ArrayList<RunConfig>(aToSolveInstances.keySet());
 		
 		//We are not providing any preempting observer when doing async runs as we do not want to kill (possibly) shared instances.
-		fTargetAlgorithmEvaluator.evaluateRunsAsync(aRunConfigs,getCompilingCallback(aInstance,aAsynchronousReporter,aToSolveInstances,aComponentEncoders));
+		fTargetAlgorithmEvaluator.evaluateRunsAsync(aRunConfigs,getCompilingCallback(aInstance,aAsynchronousReporter,aToSolveInstances,aComponentDecoders));
 		
 	}
 	
