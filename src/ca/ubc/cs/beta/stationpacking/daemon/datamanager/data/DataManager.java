@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.daemon.datamanager;
+package ca.ubc.cs.beta.stationpacking.daemon.datamanager.data;
 
 import java.io.File;
 import java.io.FileNotFoundException;

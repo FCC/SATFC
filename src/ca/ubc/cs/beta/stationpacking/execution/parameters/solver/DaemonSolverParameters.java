@@ -10,8 +10,8 @@ import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.SATBasedSolverFactory;
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.SolverManager;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.CompressedSATBasedSolverFactory;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverManager;
 import ca.ubc.cs.beta.stationpacking.daemon.server.SolverServer;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat.ClaspLibSATSolverParameters;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.NoGrouper;
@@ -41,7 +41,7 @@ public class DaemonSolverParameters extends AbstractOptions {
 	{
 		Logger log = LoggerFactory.getLogger(DaemonSolverParameters.class);
 		
-		SolverManager aSolverManager = new SolverManager(new SATBasedSolverFactory(SolverParameters.getSATSolver(), new NoGrouper()));
+		SolverManager aSolverManager = new SolverManager(new CompressedSATBasedSolverFactory(SolverParameters.getSATSolver(), new NoGrouper()));
 		
 		boolean isEmpty = true;
 		for(String aDataFoldername : DataFoldernames)

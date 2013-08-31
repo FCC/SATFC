@@ -16,13 +16,13 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.validator.ImplementedSolverParameterValidator;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
-import ca.ubc.cs.beta.stationpacking.solvers.TAEBasedSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.cnflookup.HybridCNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solvers.cnflookup.ICNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.ConstraintGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATEncoder;
+import ca.ubc.cs.beta.stationpacking.solvers.tae.TAEBasedSolver;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;

@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solvers;
+package ca.ubc.cs.beta.stationpacking.solvers.tae;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,12 +27,14 @@ import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluatorRun
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
+import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
+import ca.ubc.cs.beta.stationpacking.solvers.SolverHelper;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.cnflookup.ICNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.CNFCompressor;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATDecoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
 
 
@@ -151,13 +153,11 @@ public class TAEBasedSolver implements ISolver{
 		
 		ArrayList<SolverResult> aComponentResults = new ArrayList<SolverResult>();
 		HashMap<RunConfig,StationPackingInstance> aToSolveInstances = new HashMap<RunConfig,StationPackingInstance>();
-		HashMap<RunConfig,CNFCompressor> aComponentEncoders = new HashMap<RunConfig,CNFCompressor>();
+		HashMap<RunConfig,ISATDecoder> aComponentDecoders = new HashMap<RunConfig,ISATDecoder>();
 		
 		HashSet<String> aCNFs = new HashSet<String>();
 		//Create the runs to execute.
 		for(Set<Station> aStationComponent : aInstanceGroups){
-			
-			CNFCompressor aComponentEncoder = new CNFCompressor();
 			
 			//Create the component group instance.
 			StationPackingInstance aComponentInstance = new StationPackingInstance(aStationComponent,aChannelRange);
@@ -184,10 +184,11 @@ public class TAEBasedSolver implements ISolver{
 				File aCNFFile = new File(aCNFFileName);
 				
 				//Encode the instance
-				CNF aCNF = fEncoder.encode(aComponentInstance);
-				CNF aCompressedCNF = aComponentEncoder.compress(aCNF);
+				Pair<CNF,ISATDecoder> aEncoding = fEncoder.encode(aInstance);
+				CNF aCNF = aEncoding.getKey();
+				ISATDecoder aDecoder = aEncoding.getValue();
 				
-				String aCNFString = aCompressedCNF.toDIMACS(new String[]{"FCC Station packing instance.","[Channels]_[Stations] ",aComponentInstance.toString()});
+				String aCNFString = aCNF.toDIMACS(new String[]{"FCC Station packing instance.","[Channels]_[Stations] ",aComponentInstance.toString()});
 				
 				//Write it to disk
 				try 
@@ -205,7 +206,7 @@ public class TAEBasedSolver implements ISolver{
 				RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aCutoff, fParamConfigurationSpace.getDefaultConfiguration());
 				
 				aToSolveInstances.put(aRunConfig,aComponentInstance);
-				aComponentEncoders.put(aRunConfig, aComponentEncoder);
+				aComponentDecoders.put(aRunConfig, aDecoder);
 				
 			}
 		}
@@ -230,7 +231,7 @@ public class TAEBasedSolver implements ISolver{
 					//Grab assignment
 					String aAdditionalRunData = aRun.getAdditionalRunData();
 					StationPackingInstance aComponentInstance = aToSolveInstances.get(aRun.getRunConfig());
-					CNFCompressor aComponentEncoder = aComponentEncoders.get(aRun.getRunConfig());
+					ISATDecoder aDecoder = aComponentDecoders.get(aRun.getRunConfig());
 					
 					//The TAE wrapper is assumed to return a ';'-separated string of litterals, one litteral for each variable of the SAT problem.
 					HashMap<Long,Boolean> aLitteralChecker = new HashMap<Long,Boolean>();
@@ -255,7 +256,7 @@ public class TAEBasedSolver implements ISolver{
 						//If the litteral is positive, then we keep it as it is an assigned station to a channel.
 						if(aSign)
 						{
-							Pair<Station,Integer> aStationChannelPair = fEncoder.decode(aComponentEncoder.decompress(aVariable));
+							Pair<Station,Integer> aStationChannelPair = aDecoder.decode(aVariable);
 							Station aStation = aStationChannelPair.getKey();
 							Integer aChannel = aStationChannelPair.getValue();
 							

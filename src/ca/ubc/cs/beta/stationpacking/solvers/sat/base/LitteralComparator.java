@@ -8,5 +8,4 @@ public class LitteralComparator implements Comparator<Litteral>
 	public int compare(Litteral o1, Litteral o2) {
 		return Long.compare(o1.getVariable(),o2.getVariable());
 	}
-	
 };

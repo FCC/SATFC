@@ -1,22 +1,21 @@
-package ca.ubc.cs.beta.stationpacking.daemon.datamanager;
+package ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver;
 
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
-import ca.ubc.cs.beta.stationpacking.solvers.SATBasedSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATEncoder;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ISATSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.CompressedSATBasedSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
 
 /**
  * Creates an ISolver factory that will be using the given SAT Solver, encoder and grouper.  Note
  * that the same instance of SAT solver, encoder and grouper will be used in all the ISolvers created 
  * (i.e. calls to create).
  */
-public class SATBasedSolverFactory implements ISolverFactory {
+public class CompressedSATBasedSolverFactory implements ISolverFactory {
 
-	private ISATSolver fSATSolver;
+	private AbstractCompressedSATSolver fSATSolver;
 	private IComponentGrouper fGrouper;
 	
 	/**
@@ -24,7 +23,7 @@ public class SATBasedSolverFactory implements ISolverFactory {
 	 * @param solver solver to be used to create ISolvers.
 	 * @param grouper grouper to be used to create ISolvers.
 	 */
-	public SATBasedSolverFactory(ISATSolver solver, IComponentGrouper grouper)
+	public CompressedSATBasedSolverFactory(AbstractCompressedSATSolver solver, IComponentGrouper grouper)
 	{
 		fSATSolver = solver;
 		fGrouper = grouper;
@@ -32,8 +31,8 @@ public class SATBasedSolverFactory implements ISolverFactory {
 	
 	@Override
 	public ISolver create(IStationManager stationManager, IConstraintManager constraintManager) {
-		ISATEncoder encoder = new SATEncoder(stationManager, constraintManager);
-		ISolver solver = new SATBasedSolver(fSATSolver, encoder, constraintManager, fGrouper);
+		SATCompressor encoder = new SATCompressor(stationManager, constraintManager);
+		ISolver solver = new CompressedSATBasedSolver(fSATSolver, encoder, constraintManager, fGrouper);
 		return solver;
 	}
 
