@@ -9,8 +9,8 @@ import ca.ubc.cs.beta.aclib.misc.jcommander.JCommanderHelper;
 import ca.ubc.cs.beta.aclib.misc.options.UsageSection;
 import ca.ubc.cs.beta.aclib.options.ConfigToLaTeX;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
-import ca.ubc.cs.beta.stationpacking.daemon.server.SolverServer;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.daemon.DaemonSolverParameters;
+import ca.ubc.cs.beta.stationpacking.daemon.server.QueuedSolverServer;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.daemon.QueuedDaemonSolverParameters;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;
@@ -20,14 +20,14 @@ import com.beust.jcommander.ParameterException;
  * @author afrechet
  *
  */
-public class DaemonSolverLauncher {
+public class QueuedDaemonSolverLauncher {
 
-	private static Logger log = LoggerFactory.getLogger(DaemonSolverLauncher.class);
+	private static Logger log = LoggerFactory.getLogger(QueuedDaemonSolverLauncher.class);
 	
 	public static void main(String[] args) throws Exception {
 		
 		//Parse the command line arguments in a parameter object.
-		DaemonSolverParameters aDaemonSolverParameters = new DaemonSolverParameters();
+		QueuedDaemonSolverParameters aDaemonSolverParameters = new QueuedDaemonSolverParameters();
 		JCommander aParameterParser = JCommanderHelper.getJCommander(aDaemonSolverParameters, TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators());
 		try
 		{
@@ -47,7 +47,7 @@ public class DaemonSolverLauncher {
 		}
 		
 		log.info("Creating solver server.");
-		SolverServer aSolverServer = aDaemonSolverParameters.getSolverServer(); 
+		QueuedSolverServer aSolverServer = aDaemonSolverParameters.getQueuedSolverServer(); 
 		try
 		{
 			log.info("Starting daemon solver server.");

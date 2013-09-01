@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.execution.parameters.solver;
+package ca.ubc.cs.beta.stationpacking.execution.parameters.solver.daemon;
 
 import java.io.FileNotFoundException;
 import java.net.SocketException;
@@ -12,7 +12,7 @@ import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.CompressedSATBasedSolverFactory;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverManager;
-import ca.ubc.cs.beta.stationpacking.daemon.server.SolverServer;
+import ca.ubc.cs.beta.stationpacking.daemon.server.QueuedSolverServer;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat.ClaspLibSATSolverParameters;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.NoGrouper;
 
@@ -25,7 +25,7 @@ import com.beust.jcommander.ParametersDelegate;
  *
  */
 @UsageTextField(title="FCC StationPacking Daemon Solver Options",description="Parameters required to launch a daemon solver.")
-public class DaemonSolverParameters extends AbstractOptions {	
+public class QueuedDaemonSolverParameters extends AbstractOptions {	
 	
 	//Solver parameters
 	@ParametersDelegate
@@ -39,7 +39,7 @@ public class DaemonSolverParameters extends AbstractOptions {
 	
 	public SolverManager getSolverManager()
 	{
-		Logger log = LoggerFactory.getLogger(DaemonSolverParameters.class);
+		Logger log = LoggerFactory.getLogger(QueuedDaemonSolverParameters.class);
 		
 		SolverManager aSolverManager = new SolverManager(new CompressedSATBasedSolverFactory(SolverParameters.getSATSolver(), new NoGrouper()));
 		
@@ -65,10 +65,10 @@ public class DaemonSolverParameters extends AbstractOptions {
 		return aSolverManager;
 	}
 	
-	public SolverServer getSolverServer()
+	public QueuedSolverServer getQueuedSolverServer()
 	{
 		try {
-			return new SolverServer(getSolverManager(),Port);
+			return new QueuedSolverServer(getSolverManager(),Port);
 		} catch (SocketException | UnknownHostException e) {
 			throw new IllegalArgumentException("Could not create solver server with given information ("+e.getMessage()+").");
 		}
