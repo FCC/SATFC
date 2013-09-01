@@ -4,6 +4,8 @@
 /FCCStationPacking/Output
 *.o
 *.pyc
+*~
+*.directory
 /FCCStationPacking/SATsolvers/clasp/claspx64osx/build
 *.DS_Store
 *.swp

@@ -40,7 +40,7 @@ public class QueuedSolverServer {
 	 */
 	private final SolverManager fSolverManager;
 	
-	private final LinkedBlockingQueue<SolveMessage> fMessages;
+	private final LinkedBlockingQueue<QueuedSolveMessage> fMessages;
 	
 	private final SolverRunner fSolverRunner;
 	
@@ -83,7 +83,7 @@ public class QueuedSolverServer {
 
 		//Set solver structures needed.
 		fSolverManager = aSolverManager;
-		fMessages = new LinkedBlockingQueue<SolveMessage>();
+		fMessages = new LinkedBlockingQueue<QueuedSolveMessage>();
 		fSolverRunner = new SolverRunner();
 		fSolvingThread = new Thread(fSolverRunner);
 		fSolverRunner.setThread(fSolvingThread);
@@ -244,34 +244,40 @@ public class QueuedSolverServer {
 			log.info("Got a termination command, terminating.");
 			return false;
 		case SOLVE:
-			log.info("Got a solving command, solving.");
+			log.info("Got a solving command, enqueuing solving run.");
 			try
 			{
 				String[] aMessageParts = aMessage.split(COMMANDSEP);
-				if(aMessageParts.length!=5)
+				if(aMessageParts.length!=6)
 				{
 					throw new IllegalArgumentException("Solving command does not have necessary additional information.");
 				}
 				
-				String aDataFoldername = aMessageParts[1];
+				String aID = aMessageParts[1].trim();
+				log.info("Problem ID {}.",aID);
+				
+				String aDataFoldername = aMessageParts[2];
 				log.info("Getting data from {}.",aDataFoldername);
 				
 				//Check if we have the required data.
 				if(!fSolverManager.hasData(aDataFoldername))
 				{
-					sendLocalMessage("INFO"+COMMANDSEP+"Warning, daemon solver did not have the problem data loaded, it will try to load it.", aSendPort);
+					sendLocalMessage("INFO"+COMMANDSEP+"Warning, daemon solver did not have the problem data for "+aDataFoldername+" loaded, it will try to load it.", aSendPort);
+					fSolverManager.addData(aDataFoldername);
 				}
 				
-				String aInstanceString = aMessageParts[2];
+				String aInstanceString = aMessageParts[3];
 				log.info("Solving instance {},",aInstanceString);
 
-				double aCutoff = Double.valueOf(aMessageParts[3]);
+				double aCutoff = Double.valueOf(aMessageParts[4]);
 				log.info("with cutoff {}, and",aCutoff);
 
-				long aSeed = Long.valueOf(aMessageParts[4]);
-				log.info("with seed {}.",aSeed);
+				long aSeed = Long.valueOf(aMessageParts[5]);
+				log.info("with seed {}, and",aSeed);
 
-				SolveMessage message = new SolveMessage(aSendPort, aDataFoldername, aInstanceString, aCutoff, aSeed);
+				QueuedSolveMessage message = new QueuedSolveMessage(aSendPort, aDataFoldername, aInstanceString, aCutoff, aSeed, aID);
+				
+				log.info("Enqueuing instance with ID {}.",aID);
 				
 				fMessages.add(message);
 				
@@ -339,21 +345,23 @@ public class QueuedSolverServer {
 		fSolvingThread.interrupt();
 	}
 
-	protected class SolveMessage
+	protected class QueuedSolveMessage
 	{
-		private int fSendPort;
-		private String fDataFolderName;
-		private String fInstanceString;
-		private double fCutOff;
-		private long fSeed;
+		private final int fSendPort;
+		private final String fDataFolderName;
+		private final String fInstanceString;
+		private final double fCutOff;
+		private final String fID;
+		private final long fSeed;
 
-		public SolveMessage(int sendPort, String aDataFoldername, String aInstanceString, double aCutoff, long aSeed)
+		public QueuedSolveMessage(int sendPort, String aDataFoldername, String aInstanceString, double aCutoff, long aSeed, String aID)
 		{
 			fSendPort = sendPort;
 			fDataFolderName = aDataFoldername;
 			fInstanceString = aInstanceString;
 			fCutOff = aCutoff;
 			fSeed = aSeed;
+			fID = aID;
 		}
 
 		public int getSendPort()
@@ -380,10 +388,15 @@ public class QueuedSolverServer {
 		{
 			return fSeed;
 		}
-
-		public SolveMessage copy()
+		
+		public String getID()
 		{
-			return new SolveMessage(fSendPort, fDataFolderName, fInstanceString, fCutOff, fSeed);
+			return fID;
+		}
+
+		public QueuedSolveMessage copy()
+		{
+			return new QueuedSolveMessage(fSendPort, fDataFolderName, fInstanceString, fCutOff, fSeed, fID);
 		}
 
 		private QueuedSolverServer getOuterType() {
@@ -419,7 +432,7 @@ public class QueuedSolverServer {
 				return false;
 			if (getClass() != obj.getClass())
 				return false;
-			SolveMessage other = (SolveMessage) obj;
+			QueuedSolveMessage other = (QueuedSolveMessage) obj;
 			if (!getOuterType().equals(other.getOuterType()))
 				return false;
 			if (Double.doubleToLongBits(fCutOff) != Double
@@ -473,26 +486,32 @@ public class QueuedSolverServer {
 		public void run() {
 			while (fRunning)
 			{
-				SolveMessage aMessage;
+				QueuedSolveMessage aMessage;
 				
 				try
 				{
+					log.info("{} instances in queue.",fMessages.size());
+					log.info("Trying to take an instance from queue...");
 					aMessage = fMessages.take();
 				}
 				catch (InterruptedException e)
 				{
+					log.warn("Interrupted while taking a solving message from queue.");
 					continue;
 				}
 				
 				// solve the command if possible
 				try
 				{
+					String aID = aMessage.getID();
+					log.info("Got instance with ID {}.",aID);
+					log.info("Beginning to solve...");
 					SolverResult aResult = solve(aMessage.getDataFolderName(), aMessage.getInstanceString(), aMessage.getCutOff(), aMessage.getSeed());
 					
 					// send the result if needed
 					if (aResult.getResult() != SATResult.INTERRUPTED) // do not return if the command was killed.
 					{
-						String aAnswer = StringUtils.join(new String[]{"ANSWER",aResult.toParsableString()},COMMANDSEP);
+						String aAnswer = StringUtils.join(new String[]{"ANSWER",aID,aResult.toParsableString()},COMMANDSEP);
 						try
 						{
 							sendLocalMessage(aAnswer,aMessage.getSendPort());
