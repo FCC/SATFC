@@ -4,7 +4,6 @@ import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.TreeSet;
 
 import org.apache.commons.lang3.StringUtils;
