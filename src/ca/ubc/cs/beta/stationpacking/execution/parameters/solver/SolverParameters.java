@@ -5,6 +5,7 @@ import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.tae.TAESolverParameters;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 
 import com.beust.jcommander.Parameter;

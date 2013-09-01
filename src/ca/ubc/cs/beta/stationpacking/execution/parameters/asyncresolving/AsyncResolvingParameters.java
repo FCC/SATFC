@@ -12,7 +12,7 @@ import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.repackingdata.RepackingDataParameters;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.AsyncTAESolverParameters;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.tae.AsyncTAESolverParameters;
 import ca.ubc.cs.beta.stationpacking.solvers.reporters.AsynchronousLocalExperimentReporter;
 
 import com.beust.jcommander.Parameter;
