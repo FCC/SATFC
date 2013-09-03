@@ -46,7 +46,7 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 	private IncrementalClaspLibrary fLib = null;
 	private String fParameters;
 	private int fMaxArgs;
-	private boolean fInterrupt;
+	private volatile boolean fInterrupt;
 	private final LockManager fLocks = new LockManager();
 	private final Holder<Boolean> fContinueCallbackHolder = new Holder<Boolean>();
 	private Long fSeed;
@@ -56,7 +56,7 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 	private boolean fTerminated;
 	private Compressor fCompressor;
 	private final Holder<Boolean> fFirstCall = new Holder<Boolean>();
-	private boolean fSolveCalled = false;
+	private volatile boolean fSolveCalled = false;
 	
 	// callback functions to be used by clasp 
 	private final IncrementalClaspLibrary.jnaIncRead fReadCallback = new IncrementalClaspLibrary.jnaIncRead()
@@ -98,7 +98,8 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 			String problem = fLocks.problemEncoding.getHolderValue();
 
 			fLocks.problemEncoding.setAndSignal("");
-
+			// set the interrupt flag to false as we start a new computation
+			fInterrupt = false;
 			return problem;
 		}
 	};
@@ -175,6 +176,8 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 	public SATSolverResult solve(CNF aCNF, double aCutoff, long aSeed) 
 	{
 		fLib.resetResult(fJNAResult);
+		
+		fInterrupt = false;
 		
 		long time1 = System.currentTimeMillis();
 		if (fTerminated)
