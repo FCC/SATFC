@@ -5,6 +5,7 @@ import java.util.Random;
 import java.util.StringTokenizer;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +34,7 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 	private ClaspLibrary fClaspLibrary;
 	private String fParameters;
 	private int fMaxArgs;
-	private boolean fInterrupt;
+	private final AtomicBoolean fInterrupt = new AtomicBoolean(false);
 	
 	public ClaspSATSolver(String libraryPath, String parameters)
 	{
@@ -51,7 +52,6 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		fClaspLibrary = (ClaspLibrary) Native.loadLibrary(libraryPath, ClaspLibrary.class);
 		fMaxArgs = maxArgs;
 		fParameters = parameters;
-		fInterrupt = false;
 		
 		// set the info about parameters, throw an exception if seed is contained.
 		if (parameters.contains("--seed"))
@@ -78,9 +78,14 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		}
 	}
 	
+	/*
+	 * Note that the fInterrupt boolean is shared by all solve jobs, so would have to be modified to make a parallel solver.
+	 * 
+	 * (non-Javadoc)
+	 * @see ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ISATSolver#solve(ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF, double, long)
+	 */
 	@Override
 	public SATSolverResult solve(CNF aCNF, double aCutoff, long aSeed) {
-		fInterrupt = false;
 		long time1 = System.currentTimeMillis();
 		
 		// create the facade
@@ -112,7 +117,7 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		timer.schedule(new TimerTask() {
 			@Override
 			public void run() {
-				if (fInterrupt)
+				if (fInterrupt.get())
 				{
 					fClaspLibrary.interrupt(facade);
 				}
@@ -126,10 +131,10 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		SATResult satResult = null;
 		HashSet<Litteral> assignment = new HashSet<Litteral>();
 		int state = fClaspLibrary.getResultState(result);
-		if (fInterrupt)
+		
+		if (fInterrupt.compareAndSet(true, false))
 		{
 			satResult = SATResult.INTERRUPTED;
-			fInterrupt = false;
 		}
 		else if (timeout.get())
 		{
@@ -192,7 +197,7 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 	@Override
 	public void interrupt() throws UnsupportedOperationException 
 	{
-		fInterrupt = true;
+		fInterrupt.set(true);
 	}
 
 }

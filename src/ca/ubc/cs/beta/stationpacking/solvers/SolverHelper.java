@@ -31,7 +31,11 @@ public class SolverHelper {
 		//Merge SAT results		
 		SATResult aSATResult = SATResult.CRASHED;
 		
-		if(aSATResults.size()==1)
+		if(aSATResults.isEmpty())
+		{
+			aSATResult = SATResult.TIMEOUT;
+		}
+		else if(aSATResults.size()==1)
 		{
 			aSATResult = aSATResults.iterator().next();
 		}
