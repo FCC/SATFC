@@ -13,6 +13,7 @@ import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ca.ubc.cs.beta.aclib.misc.watch.AutoStartStopWatch;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
@@ -53,7 +54,7 @@ public class GenericSATBasedSolver implements ISolver {
 	@Override
 	public SolverResult solve(StationPackingInstance aInstance, double aCutoff,
 			long aSeed) {
-		long aStartTime = System.nanoTime();
+		AutoStartStopWatch aSolveWatch = new AutoStartStopWatch();
 		
 		log.info("Solving instance of {}...",aInstance.getInfo());
 
@@ -89,6 +90,14 @@ public class GenericSATBasedSolver implements ISolver {
 				} catch (IOException e) {
 					log.error("Could not write CNF to file ({}).",e.getMessage());
 				}
+			}
+			
+			long aOverhead = aSolveWatch.time();
+			
+			aRemainingCutoff -= aOverhead/1000.0;
+			if(aRemainingCutoff<=0)
+			{
+				break;
 			}
 			
 			log.info("Solving the subproblem CNF.");
@@ -189,7 +198,7 @@ public class GenericSATBasedSolver implements ISolver {
 		log.info("...done.");
 		
 		log.info("Result : {}",aResult);
-		log.info("Total time taken "+(System.nanoTime()-aStartTime)*Math.pow(10, -9)+" seconds");
+		log.info("Total time taken "+aSolveWatch.stop()/1000.0+" seconds");
 		
 		return aResult;
 	}
