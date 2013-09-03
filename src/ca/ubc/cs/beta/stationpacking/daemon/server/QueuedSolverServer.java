@@ -16,6 +16,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ca.ubc.cs.beta.aclib.misc.watch.AutoStartStopWatch;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverBundle;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverManager;
@@ -135,7 +136,7 @@ public class QueuedSolverServer {
 		{
 			fSolverManager.notifyShutdown();
 		}
-
+		
 		terminateSolverRunner();
 		log.info("Solver server shutting down.");
 	}
@@ -247,7 +248,21 @@ public class QueuedSolverServer {
 			log.info("Got a solving command, enqueuing solving run.");
 			try
 			{
+				AutoStartStopWatch aOverheadWatch = new AutoStartStopWatch();
+				
 				String[] aMessageParts = aMessage.split(COMMANDSEP);
+				if(aMessageParts.length==5)
+				{
+					//Assuming old job message with no id. ID will be attributed by itself.
+					String[] aOldMessageParts = aMessageParts;
+					aMessageParts = new String[6];
+					aMessageParts[0] = ServerCommand.SOLVE.toString();
+					aMessageParts[1] = "NOID";
+					for(int i=1;i<aOldMessageParts.length;i++)
+					{
+						aMessageParts[i+1]=aOldMessageParts[i];
+					}
+				}
 				if(aMessageParts.length!=6)
 				{
 					throw new IllegalArgumentException("Solving command does not have necessary additional information.");
@@ -274,12 +289,26 @@ public class QueuedSolverServer {
 
 				long aSeed = Long.valueOf(aMessageParts[5]);
 				log.info("with seed {}, and",aSeed);
-
-				QueuedSolveMessage message = new QueuedSolveMessage(aSendPort, aDataFoldername, aInstanceString, aCutoff, aSeed, aID);
 				
-				log.info("Enqueuing instance with ID {}.",aID);
+				double aOverhead = aOverheadWatch.stop();
+				log.debug("Overhead of processing solve message {} ms.",aOverhead);
+				if(aCutoff-aOverhead/1000.0<=0)
+				{
+					log.warn("Already have spent more than the required cutoff.");
+					sendLocalMessage("INFO"+COMMANDSEP+"Already have spent more than the required cutoff.", aSendPort);
+					String aAnswer = StringUtils.join(new String[]{"ANSWER",aID,SolverResult.createTimeoutResult(aOverhead).toParsableString()},COMMANDSEP);
+					sendLocalMessage(aAnswer,aSendPort);
+				}
+				else
+				{
 				
-				fMessages.add(message);
+					log.info("Enqueuing instance with ID {}.",aID);
+					QueuedSolveMessage message = new QueuedSolveMessage(aSendPort, aDataFoldername, aInstanceString, aCutoff-aOverhead/1000.0, aSeed, aID);
+					
+					fMessages.add(message);
+				}
+				
+				
 				
 			}
 			catch(Exception e)
