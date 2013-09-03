@@ -11,7 +11,4 @@
 *.swp
 /bin
 /Arguments
-/.classpath
-/.project
-/.settings
 /deliverable
