@@ -13,9 +13,7 @@ import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverManager;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat.ClaspLibSATSolverParameters;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.NoGrouper;
 
-import com.beust.jcommander.IParameterValidator;
 import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParameterException;
 import com.beust.jcommander.ParametersDelegate;
 
 /**
@@ -64,26 +62,6 @@ public class ThreadedSolverServerParameters extends AbstractOptions {
 		return aSolverManager;
 	}
 	
-	public class PortValidator implements IParameterValidator
-	{
-
-		@Override
-		public void validate(String name, String value)
-				throws ParameterException {
-			
-			int aPort = Integer.valueOf(value);
-			if (aPort >= 0 && aPort < 1024)
-			{
-				throw new ParameterException("Trying to allocate a port < 1024 which generally requires root priviledges (which aren't necessary and discouraged), this may fail");
-			}
-			if(aPort < -1 || aPort > 65535)
-			{
-				throw new ParameterException("Port must be in the interval [0,65535]");
-			}
-			
-			
-		}
-		
-	}
+	
 	
 }
