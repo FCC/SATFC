@@ -25,7 +25,7 @@ import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.listener.Serve
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.responder.ServerResponder;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.responder.ServerResponse;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerSolver;
-import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.SolverState;
+import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerSolverInterrupter;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.SolvingJob;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.daemon.ThreadedSolverServerParameters;
 
@@ -77,7 +77,7 @@ public class ThreadedSolverServerExecutor {
 		
 		//Setup queues and solver state.
 		BlockingQueue<SolvingJob> aSolvingJobQueue = new LinkedBlockingQueue<SolvingJob>();
-		SolverState aSolverState = new SolverState();
+		ServerSolverInterrupter aSolverState = new ServerSolverInterrupter();
 		
 		BlockingQueue<ServerResponse> aServerResponseQueue = new LinkedBlockingQueue<ServerResponse>();
 		

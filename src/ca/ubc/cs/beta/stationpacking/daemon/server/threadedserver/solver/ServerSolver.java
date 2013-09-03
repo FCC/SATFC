@@ -26,9 +26,9 @@ public class ServerSolver implements Runnable {
 	private final SolverManager fSolverManager;
 	private final BlockingQueue<SolvingJob> fSolvingJobQueue;
 	private final BlockingQueue<ServerResponse> fServerResponseQueue;
-	private final SolverState fSolverState;
+	private final ServerSolverInterrupter fSolverState;
 	
-	public ServerSolver(SolverManager aSolverManager, SolverState aSolverState, BlockingQueue<SolvingJob> aSolvingJobQueue, BlockingQueue<ServerResponse> aServerResponseQueue)
+	public ServerSolver(SolverManager aSolverManager, ServerSolverInterrupter aSolverState, BlockingQueue<SolvingJob> aSolvingJobQueue, BlockingQueue<ServerResponse> aServerResponseQueue)
 	{
 		fSolverManager = aSolverManager;
 		
@@ -109,6 +109,7 @@ public class ServerSolver implements Runnable {
 				ISolver aSolver = aBundle.getSolver();
 				
 				double aOverhead = aOverheadWatch.stop()/1000.0;
+				log.debug("Overhead of initializing solve command {} ms.",aOverhead);
 				double aRemainingTime = aCutoff - aOverhead;
 				if(aRemainingTime<=0)
 				{
@@ -179,6 +180,10 @@ public class ServerSolver implements Runnable {
 						Thread.currentThread().interrupt();
 						return;
 					}
+				}
+				else
+				{
+					log.debug("Solve process was (gracefully) interrupted.");
 				}
 			}
 		}

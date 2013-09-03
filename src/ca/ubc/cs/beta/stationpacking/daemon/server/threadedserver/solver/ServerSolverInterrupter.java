@@ -4,21 +4,26 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 
 /**
  * Atomically maintains state for a solving thread/process. Main functionality is to allow interruption.
  * @author afrechet
- *
  */
-public class SolverState {
+public class ServerSolverInterrupter {
 
+	private static Logger log = LoggerFactory.getLogger(ServerSolverInterrupter.class);
+	
 	private String fCurrentJobID;
 	private ISolver fCurrentSolver;
 	
 	private Collection<String> fInterruptedJobIDs;
+	private final static int MAXSIZE = 200;
 	
-	public SolverState()
+	public ServerSolverInterrupter()
 	{
 		fInterruptedJobIDs = Collections.newSetFromMap(new ConcurrentHashMap<String,Boolean>());
 		
@@ -31,18 +36,27 @@ public class SolverState {
 	 * @return the String ID of the current job.
 	 */
 	public synchronized String getCurrentJobID()
-	{
+	{	
 		return fCurrentJobID;
 	}
 	
 	/**
-	 * Check if the job ID has been interrupted.
+	 * Check if the job ID has been interrupted. If the job was interrupted, it will also be removed from the set of interrupted jobs.
 	 * @param aJobID - a String job ID.
 	 * @return true if the job ID has been interrupted, false otherwise.
 	 */
 	public synchronized boolean isInterrupted(String aJobID)
 	{
-		return fInterruptedJobIDs.contains(aJobID);
+		if(fInterruptedJobIDs.size()>MAXSIZE)
+		{
+			log.warn("Interrupted jobs contains more than {} jobs to be interrupted. Having such a large set may lead to inefficiencies.");
+		}
+		boolean isInterrupted = fInterruptedJobIDs.contains(aJobID);
+		if(isInterrupted)
+		{
+			fInterruptedJobIDs.remove(aJobID);
+		}
+		return isInterrupted;
 	}
 	
 	/**
@@ -109,11 +123,29 @@ public class SolverState {
 	{
 		if(fCurrentJobID.equals(aJobID))
 		{
+			log.info("Job {} was current job, interrupting it.",aJobID);
 			fCurrentSolver.interrupt();
 		}
 		else
 		{
+			log.info("Adding job {} to the set of (to-be) interrupted jobs.",aJobID);
 			fInterruptedJobIDs.add(aJobID);
+		}
+	}
+	
+	/**
+	 * Interrupt the current executing job, not matter what it is. Ends gracefully if there is no current job.
+	 */
+	public synchronized void interruptCurrentJob()
+	{
+		if(fCurrentJobID==null)
+		{
+			log.debug("No current job to interrupt.");
+		}
+		else
+		{
+			log.info("Interrupting current job with ID {}.",fCurrentJobID);
+			fCurrentSolver.interrupt();
 		}
 	}
 	
