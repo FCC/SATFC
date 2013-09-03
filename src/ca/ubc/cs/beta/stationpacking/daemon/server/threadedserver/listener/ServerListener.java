@@ -13,10 +13,14 @@ import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aclib.misc.watch.AutoStartStopWatch;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.responder.ServerResponse;
-import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.SolverState;
+import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerSolverInterrupter;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.SolvingJob;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 
+/**
+ * Runnable that is in charge of listening to a socket for (UDP) command messages and executing those commands.
+ * @author afrechet
+ */
 public class ServerListener implements Runnable {
 	
 	private static Logger log = LoggerFactory.getLogger(ServerListener.class);
@@ -47,14 +51,16 @@ public class ServerListener implements Runnable {
 	 * Solving jobs field.
 	 */
 	private final BlockingQueue<SolvingJob> fSolvingJobQueue;
-	private final SolverState fSolverState;
+	private final ServerSolverInterrupter fSolverState;
 	
 	/**
+	 * 
 	 * @param aSolvingJobQueue - queue to submit job to.
+	 * @param aSolverState - a thread-safe solver state to use for job interruption.
 	 * @param aServerResponseQueue - queue to submit responses/communication messages to.
 	 * @param aServerSocket - should be listening to local host (127.0.0.1).
 	 */
-	public ServerListener(BlockingQueue<SolvingJob> aSolvingJobQueue, SolverState aSolverState, BlockingQueue<ServerResponse> aServerResponseQueue, DatagramSocket aServerSocket) {
+	public ServerListener(BlockingQueue<SolvingJob> aSolvingJobQueue, ServerSolverInterrupter aSolverState, BlockingQueue<ServerResponse> aServerResponseQueue, DatagramSocket aServerSocket) {
 		
 		if(aServerSocket.isClosed())	
 		{
@@ -227,19 +233,19 @@ public class ServerListener implements Runnable {
 			}
 			
 			aID = aMessageParts[1].trim();
-			log.info("Problem ID {}.",aID);
+			log.info("Problem ID {}, with",aID);
 			
 			aDataFoldername = aMessageParts[2];
-			log.info("Getting data from {}.",aDataFoldername);
+			log.info("data from {}, and",aDataFoldername);
 			
 			aInstanceString = aMessageParts[3];
-			log.info("Solving instance {},",aInstanceString);
+			log.info("instance {}, and",aInstanceString);
 
 			aCutoff = Double.valueOf(aMessageParts[4]);
-			log.info("with cutoff {}, and",aCutoff);
+			log.info("cutoff {} s, and",aCutoff);
 
 			aSeed = Long.valueOf(aMessageParts[5]);
-			log.info("with seed {}, and",aSeed);
+			log.info("seed {}, and",aSeed);
 		}
 		catch(Exception e)
 		{
@@ -249,8 +255,8 @@ public class ServerListener implements Runnable {
 		}
 		
 		double aOverhead = aOverheadWatch.stop()/1000.0;
-		double aRemainingTime = aCutoff-aOverhead;
 		log.debug("Overhead of processing solve message {} ms.",aOverhead);
+		double aRemainingTime = aCutoff-aOverhead;
 		if(aRemainingTime<=0)
 		{
 			log.warn("Already have spent more than the required cutoff.");
@@ -260,6 +266,12 @@ public class ServerListener implements Runnable {
 		}
 		else
 		{
+			if(aID.equals("feascheck"))
+			{
+				log.debug("Received a feascheck job, making sure solver is available by interrupting current job.");
+				fSolverState.interruptCurrentJob();
+			}
+			
 			log.info("Enqueuing instance with ID {}.",aID);
 			fSolvingJobQueue.put(new SolvingJob(aID, aDataFoldername, aInstanceString, aRemainingTime, aSeed, aSendAddress, aSendPort));
 		}
