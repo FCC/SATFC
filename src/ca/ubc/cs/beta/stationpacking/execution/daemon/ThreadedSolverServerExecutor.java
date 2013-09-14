@@ -86,41 +86,37 @@ public class ThreadedSolverServerExecutor {
 		ServerResponder aServerResponder = new ServerResponder(aServerResponseQueue, aServerSocket);
 		ServerSolver aServerSolver = new ServerSolver(aSolverManager, aSolverState, aSolvingJobQueue, aServerResponseQueue);
 		
-		try
-		{
-			Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler() {
+		//Any uncaught exception should terminate current process.
+		Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler() {
+			
+			@Override
+			public void uncaughtException(Thread t, Throwable e) {
 				
-				@Override
-				public void uncaughtException(Thread t, Throwable e) {
-					
-					e.printStackTrace();
-					
-					log.error("Thread {} died with an exception ({}).",t.getName(),e.getMessage());
-					
-					log.error("Stopping service :( .");
-					EXECUTOR_SERVICE.shutdownNow();
-					
-					TERMINATION_STATUS.set(1);
-					
-				}
-			});
-			
-			EXECUTOR_SERVICE.submit(aServerListener);
-			EXECUTOR_SERVICE.submit(aServerResponder);
-			EXECUTOR_SERVICE.submit(aServerSolver);
-			
-			try {
-				EXECUTOR_SERVICE.awaitTermination(365*10, TimeUnit.DAYS);
-			} catch (InterruptedException e1) {
-				log.error("Steve is really amazed that we're seeing this right now",e1);
-				return;
+				e.printStackTrace();
+				
+				log.error("Thread {} died with an exception ({}).",t.getName(),e.getMessage());
+				
+				log.error("Stopping service :( .");
+				EXECUTOR_SERVICE.shutdownNow();
+				
+				TERMINATION_STATUS.set(1);
+				
 			}
-		}
-		finally
-		{
-			aServerSolver.notifyShutdown();
-		}
+		});
 		
+		//Submit and start producers and consumers.
+		
+		EXECUTOR_SERVICE.submit(aServerListener);
+		EXECUTOR_SERVICE.submit(aServerResponder);
+		EXECUTOR_SERVICE.submit(aServerSolver);
+		
+		try {
+			EXECUTOR_SERVICE.awaitTermination(365*10, TimeUnit.DAYS);
+		} catch (InterruptedException e1) {
+			log.error("Steve is really amazed that we're seeing this right now",e1);
+			return;
+		}
+	
 		System.exit(TERMINATION_STATUS.get());
 		
 	}
