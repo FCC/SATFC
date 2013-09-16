@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 
 /**
- * Atomically maintains state for a solving thread/process. Main functionality is to allow interruption.
+ * Atomically maintains state for a solving thread. Main functionality is to allow interruption.
  * @author afrechet
  */
 public class ServerSolverInterrupter {
@@ -116,7 +116,8 @@ public class ServerSolverInterrupter {
 	
 	/**
 	 * Interrupt a job with the given ID. This is either done by interrupting the current job through its corresponding solver, or by adding the job ID to 
-	 * the set of interrupted job IDs.
+	 * the set of interrupted job IDs. If the current job is interrupted, note that notifyStop() also needs to be called to signal the state that we indeed stopped
+	 * the job.
 	 * @param aJobID - a String job ID.
 	 */
 	public synchronized void interrupt(String aJobID)
@@ -134,7 +135,8 @@ public class ServerSolverInterrupter {
 	}
 	
 	/**
-	 * Interrupt the current executing job, not matter what it is. Ends gracefully if there is no current job.
+	 * Interrupt the current executing job, not matter what it is. Ends gracefully if there is no current job. Note that notifyStop() also needs to be called to signal the state that we indeed stopped
+	 * the job.
 	 */
 	public synchronized void interruptCurrentJob()
 	{

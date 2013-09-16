@@ -19,6 +19,10 @@ import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 
+/**
+ * Consumer runnable that is in charge of solving station packing problems from a given queue.
+ * @author afrechet
+ */
 public class ServerSolver implements Runnable {
 
 	private static Logger log = LoggerFactory.getLogger(ServerSolver.class);
@@ -167,7 +171,7 @@ public class ServerSolver implements Runnable {
 				}
 				
 				//Send the result if necessary.
-				if (aResult.getResult() != SATResult.INTERRUPTED) // do not return if the command was killed.
+				if (aResult.getResult() != SATResult.INTERRUPTED) // do not return if the command was interrupted.
 				{
 					String aAnswer = StringUtils.join(new String[]{"ANSWER",aID,aResult.toParsableString()},ServerListener.COMMANDSEP);
 					try
@@ -189,16 +193,11 @@ public class ServerSolver implements Runnable {
 		}
 		finally
 		{
-			notifyShutdown();
 			log.info("Server's solver thread shutting down.");
+			fSolverManager.notifyShutdown();
 		}
 	}
-	
-	public void notifyShutdown()
-	{
-		log.info("Shutting down.");
-		fSolverManager.notifyShutdown();
-	}
+
 
 	
 
