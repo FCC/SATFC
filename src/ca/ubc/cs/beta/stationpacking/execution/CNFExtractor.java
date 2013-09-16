@@ -5,7 +5,10 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
@@ -114,6 +117,7 @@ public class CNFExtractor {
 			{
 				throw new IllegalArgumentException("Did not find STATION_CONFIG in question file "+aQuestionFilename);
 			}
+			log.info("Data from: {}.",aStationConfig);
 			
 			Set<Integer> aPackingChannels = null;
 			if(aBand != null)
@@ -123,20 +127,23 @@ public class CNFExtractor {
 					if(aHighest != null)
 					{
 						final Integer aFilterHighest = aHighest;
-						Collections2.filter(
-								DACConstraintManager.UHF_CHANNELS, 
-								new Predicate<Integer>()
-								{
-									@Override
-									public boolean apply(Integer c)
-									{
-										return c<=aFilterHighest;
-									}
-								});
+						aPackingChannels = new HashSet<Integer>(
+									Collections2.filter(
+										DACConstraintManager.UHF_CHANNELS, 
+										new Predicate<Integer>()
+										{
+											@Override
+											public boolean apply(Integer c)
+											{
+												return c<=aFilterHighest;
+											}
+										}
+									)
+								);
 					}
 					else
 					{
-						aPackingChannels = DACConstraintManager.UHF_CHANNELS;
+						throw new IllegalArgumentException("Packing in UHF, but no highest channel specified. Must be problematic.");
 					}
 					
 				}
@@ -158,6 +165,14 @@ public class CNFExtractor {
 				throw new IllegalArgumentException("Did not find BAND in question file "+aQuestionFilename);
 			}
 			
+			List<Integer> aSortedStations = new ArrayList<Integer>(aPackingStations);
+			Collections.sort(aSortedStations);
+			List<Integer> aSortedChannels = new ArrayList<Integer>(aPackingChannels);
+ 			Collections.sort(aSortedChannels);
+			
+			log.info("Packing channels: {}.",StringUtils.join(aSortedChannels,","));
+			log.info("Stations : {}.", StringUtils.join(aSortedStations,","));
+			
 			log.info("Getting station packing instance ...");
 			
 			IStationManager aStationManager = aManagerBundle.getStationManager();
@@ -177,7 +192,7 @@ public class CNFExtractor {
 			log.info("Saving CNF to {}...",aCNFFilename);
 			
 			try {
-				FileUtils.writeStringToFile(new File(aCNFFilename), aCNF.toDIMACS(new String[]{"FCC Station Packing Instance","Channels: "+StringUtils.join(aPackingChannels,","),"Stations: "+StringUtils.join(aPackingStations,",")}));
+				FileUtils.writeStringToFile(new File(aCNFFilename), aCNF.toDIMACS(new String[]{"FCC Station Packing Instance","Channels: "+StringUtils.join(aSortedChannels,","),"Stations: "+StringUtils.join(aSortedStations,",")}));
 			} catch (IOException e) {
 				throw new IllegalStateException("Could not write CNF to file ("+e.getMessage()+").");
 			}
