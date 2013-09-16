@@ -113,7 +113,7 @@ public class ThreadedSolverServerExecutor {
 		try {
 			EXECUTOR_SERVICE.awaitTermination(365*10, TimeUnit.DAYS);
 		} catch (InterruptedException e1) {
-			log.error("Steve is really amazed that we're seeing this right now",e1);
+			log.error("We are really amazed that we're seeing this right now",e1);
 			return;
 		}
 	
