@@ -43,6 +43,8 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 	
 	public ClaspSATSolver(String libraryPath, String parameters, int maxArgs)
 	{
+		log.info("Building a Clasp solver from library {} and configuration {}.",libraryPath,parameters);
+		
 		init(libraryPath, parameters, maxArgs);
 	}
 

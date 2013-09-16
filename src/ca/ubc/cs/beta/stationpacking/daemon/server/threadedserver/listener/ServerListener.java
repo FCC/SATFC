@@ -255,7 +255,7 @@ public class ServerListener implements Runnable {
 		}
 		
 		double aOverhead = aOverheadWatch.stop()/1000.0;
-		log.debug("Overhead of processing solve message {} ms.",aOverhead);
+		log.debug("Overhead of processing solve message {} s.",aOverhead);
 		double aRemainingTime = aCutoff-aOverhead;
 		if(aRemainingTime<=0)
 		{

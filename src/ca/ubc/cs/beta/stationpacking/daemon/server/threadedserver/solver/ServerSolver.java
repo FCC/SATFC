@@ -109,7 +109,7 @@ public class ServerSolver implements Runnable {
 				ISolver aSolver = aBundle.getSolver();
 				
 				double aOverhead = aOverheadWatch.stop()/1000.0;
-				log.debug("Overhead of initializing solve command {} ms.",aOverhead);
+				log.debug("Overhead of initializing solve command {} s.",aOverhead);
 				double aRemainingTime = aCutoff - aOverhead;
 				if(aRemainingTime<=0)
 				{
