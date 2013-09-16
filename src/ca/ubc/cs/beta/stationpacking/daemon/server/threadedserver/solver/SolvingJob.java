@@ -2,6 +2,10 @@ package ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver;
 
 import java.net.InetAddress;
 
+/**
+ * Container class for a solving job.
+ * @author afrechet
+ */
 public class SolvingJob {
 
 	private final String fID;
