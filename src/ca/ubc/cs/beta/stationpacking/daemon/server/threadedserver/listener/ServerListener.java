@@ -18,7 +18,7 @@ import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.Solving
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 
 /**
- * Runnable that is in charge of listening to a socket for (UDP) command messages and executing those commands.
+ * Producer runnable that is in charge of listening to a socket for (UDP) command messages and enqueuing those commands or the response to those commands.
  * @author afrechet
  */
 public class ServerListener implements Runnable {
@@ -51,6 +51,7 @@ public class ServerListener implements Runnable {
 	 * Solving jobs field.
 	 */
 	private final BlockingQueue<SolvingJob> fSolvingJobQueue;
+	
 	private final ServerSolverInterrupter fSolverState;
 	
 	/**
@@ -101,6 +102,7 @@ public class ServerListener implements Runnable {
 							aReceiveData, aReceiveData.length);
 					fServerSocket.receive(aReceivePacket);
 
+					//For security, filter non-localhost messages.
 					if (!InetAddress.getByName("localhost").equals(aReceivePacket.getAddress())) {
 						log.warn(
 								"Received request from a non-{}, ignoring request from {}.",
@@ -149,6 +151,7 @@ public class ServerListener implements Runnable {
 	 */
 	private boolean processCommand(String aMessage, InetAddress aSendAddress, int aSendPort) throws InterruptedException
 	{
+		//Switch on the command in the message.
 		String aServerCommandString = aMessage.trim().split(COMMANDSEP)[0];
 		ServerCommand aServerCommand;
 		try
@@ -183,7 +186,7 @@ public class ServerListener implements Runnable {
 	}
 	
 	/*
-	 * Individual process methods for each of the possible command.
+	 * Individual process methods for each of the possible commands.
 	 */
 	
 	private boolean processTestCommand(String aMessage, InetAddress aSendAddress, int aSendPort) throws InterruptedException
@@ -311,7 +314,6 @@ public class ServerListener implements Runnable {
 		{
 			log.warn("There was an exception while parsing the interrupt message ({}).",e.getMessage());
 			fServerResponseQueue.put(new ServerResponse("ERROR"+COMMANDSEP+e.getMessage(),aSendAddress,aSendPort));
-			return true;
 		}
 		return true;
 	}

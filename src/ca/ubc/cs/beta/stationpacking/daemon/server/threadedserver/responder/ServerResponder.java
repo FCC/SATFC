@@ -12,6 +12,10 @@ import java.util.concurrent.BlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Consumer runnable that is in charge of emitting responses from a queue to a given (UDP) socket.
+ * @author afrechet
+ */
 public class ServerResponder implements Runnable {
 
 private final static int MAXPACKETSIZE = 65000;
@@ -104,7 +108,7 @@ private final static int MAXPACKETSIZE = 65000;
 		DatagramPacket sendPacket = new DatagramPacket(aSendBytes,
 				aSendBytes.length, aAddress, aPort);
 		
-		log.info("Sending message \"{}\" back to "+aAddress+" port "+aPort,aMessage);
+		log.info("Sending message \"{}\" to "+aAddress+" port "+aPort,aMessage);
 		fServerSocket.send(sendPacket);
 	}
 
