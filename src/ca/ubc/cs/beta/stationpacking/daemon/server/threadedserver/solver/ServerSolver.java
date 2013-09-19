@@ -10,8 +10,8 @@ import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aclib.misc.watch.AutoStartStopWatch;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverBundle;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverManager;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBundle;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.listener.ServerListener;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.responder.ServerResponse;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
@@ -87,7 +87,7 @@ public class ServerSolver implements Runnable {
 				log.info("Got solving job with ID {}.",aID);
 				log.info("Beginning to solve...");
 				
-				SolverBundle aBundle;
+				ISolverBundle aBundle;
 				try 
 				{
 					aBundle = fSolverManager.getData(aDataFolderName);
@@ -110,7 +110,7 @@ public class ServerSolver implements Runnable {
 				IStationManager aStationManager = aBundle.getStationManager();
 				StationPackingInstance aInstance = StationPackingInstance.valueOf(aInstanceString, aStationManager);
 
-				ISolver aSolver = aBundle.getSolver();
+				ISolver aSolver = aBundle.getSolver(aInstance);
 				
 				double aOverhead = aOverheadWatch.stop()/1000.0;
 				log.debug("Overhead of initializing solve command {} s.",aOverhead);

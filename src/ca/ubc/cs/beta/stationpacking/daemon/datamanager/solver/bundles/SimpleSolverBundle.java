@@ -1,55 +1,54 @@
-package ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver;
+package ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles;
 
+import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 
 /**
  * Bundle containing a ISolver, IStationManager and an IConstraintManager.
+ * Does not perform any solver selection.
  */
-public class SolverBundle {
+public class SimpleSolverBundle implements ISolverBundle{
 
-	private ISolver fSolver;
-	private IStationManager fStationManager;
-	private IConstraintManager fConstraintManager;
+	private final ISolver fSolver;
+	private final IStationManager fStationManager;
+	private final IConstraintManager fConstraintManager;
 	
 	/**
 	 * Creates a bundle containing an ISolver and the managers used to create it.
-	 * @param solver solver bundled.
+	 * @param solverselector a per-instance solver selector.
 	 * @param stationManager station manager used by the solver.
 	 * @param constraintManager constraint manager used by the solver.
 	 */
-	public SolverBundle(ISolver solver, IStationManager stationManager, IConstraintManager constraintManager)
+	public SimpleSolverBundle(ISolver solver, IStationManager stationManager, IConstraintManager constraintManager)
 	{
 		fSolver = solver;
 		fStationManager = stationManager;
 		fConstraintManager = constraintManager;
 	}
 	
-	/**
-	 * Return the solver contained in the bundle.
-	 * @return the solver contained in the bundle
-	 */
-	public ISolver getSolver()
+	@Override
+	public ISolver getSolver(StationPackingInstance aInstance)
 	{
 		return fSolver;
 	}
 	
-	/**
-	 * Returns the station manager contained in the bundle.
-	 * @return the station manager contained in the bundle.
-	 */
+	@Override
 	public IStationManager getStationManager()
 	{
 		return fStationManager;
 	}
 	
-	/**
-	 * Returns the constraint manager contained in the bundle.
-	 * @return the constraint manager contained in the bundle.
-	 */
+	@Override
 	public IConstraintManager getConstraintManager()
 	{
 		return fConstraintManager;
+	}
+	
+	@Override
+	public void notifyShutdown()
+	{
+		fSolver.notifyShutdown();
 	}
 }
