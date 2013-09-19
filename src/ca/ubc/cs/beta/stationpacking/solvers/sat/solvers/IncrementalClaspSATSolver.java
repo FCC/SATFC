@@ -40,7 +40,6 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 	// C++
 	// create the parser for the problem format
 	
-	
 	private static Logger log = LoggerFactory.getLogger(IncrementalClaspSATSolver.class);
 	
 	private IncrementalClaspLibrary fLib = null;

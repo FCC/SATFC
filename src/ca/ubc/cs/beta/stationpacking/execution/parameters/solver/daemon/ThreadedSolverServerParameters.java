@@ -8,10 +8,9 @@ import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.CompressedSATBasedSolverFactory;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverManager;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ClaspSATSolverSelectorBundleFactory;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat.ClaspLibSATSolverParameters;
-import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.NoGrouper;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
@@ -38,7 +37,8 @@ public class ThreadedSolverServerParameters extends AbstractOptions {
 	{
 		Logger log = LoggerFactory.getLogger(ThreadedSolverServerParameters.class);
 		
-		SolverManager aSolverManager = new SolverManager(new CompressedSATBasedSolverFactory(SolverParameters.getSATSolver(), new NoGrouper()));
+		log.warn("Provided configuration for clasp will not be used. Instead, internal configurations are used on a per-instance basis.");
+		SolverManager aSolverManager = new SolverManager(new ClaspSATSolverSelectorBundleFactory(SolverParameters.Library));
 		
 		boolean isEmpty = true;
 		for(String aDataFoldername : DataFoldernames)

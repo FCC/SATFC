@@ -350,7 +350,7 @@ public class SolverServer {
 		IStationManager aStationManager = bundle.getStationManager();
 		StationPackingInstance aInstance = StationPackingInstance.valueOf(aInstanceString, aStationManager);
 
-		ISolver solver = bundle.getSolver();
+		ISolver solver = bundle.getSolver(aInstance);
 		fSolverHolder.set(solver);
 		SolverResult aResult = solver.solve(aInstance, aCutoff, aSeed);
 
