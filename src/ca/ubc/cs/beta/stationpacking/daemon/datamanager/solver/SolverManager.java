@@ -8,7 +8,8 @@ import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.data.DataManager;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.data.ManagerBundle;
-import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBundle;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBundleFactory;
 
 /**
  * Manages the solvers & data corresponding to different directories to make sure it is only read once.
@@ -16,18 +17,18 @@ import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 public class SolverManager {
 	private static Logger log = LoggerFactory.getLogger(SolverManager.class);
 	
-	private HashMap<String, SolverBundle> fSolverData;
-	private ISolverFactory fSolverFactory;
+	private HashMap<String, ISolverBundle> fSolverData;
+	private ISolverBundleFactory fSolverFactory;
 	private DataManager fDataManager;
 	
 	/**
 	 * Creates a solver manager that will use the given factory to create the solvers when needed.
-	 * @param solverFactory a solver factory used to create solvers.
+	 * @param aSolverBundleFactory a solver bundle factory to create solver bundles.
 	 */
-	public SolverManager(ISolverFactory solverFactory)
+	public SolverManager(ISolverBundleFactory aSolverBundleFactory)
 	{
-		fSolverFactory = solverFactory;
-		fSolverData = new HashMap<String, SolverBundle>();
+		fSolverFactory = aSolverBundleFactory;
+		fSolverData = new HashMap<String, ISolverBundle>();
 		fDataManager = new DataManager();
 	}
 	
@@ -50,7 +51,7 @@ public class SolverManager {
 	{	
 		log.info("Adding data from {} to solver manager.",path);
 		
-		SolverBundle bundle = fSolverData.get(path);
+		ISolverBundle bundle = fSolverData.get(path);
 		if (bundle != null)
 		{
 			return false;
@@ -58,8 +59,9 @@ public class SolverManager {
 		else
 		{
 			ManagerBundle dataBundle = fDataManager.getData(path);
-			ISolver solver = fSolverFactory.create(dataBundle.getStationManager(), dataBundle.getConstraintManager());
-			fSolverData.put(path, new SolverBundle(solver, dataBundle.getStationManager(), dataBundle.getConstraintManager()));
+			ISolverBundle solverbundle = fSolverFactory.getBundle(dataBundle.getStationManager(), dataBundle.getConstraintManager());
+			
+			fSolverData.put(path, solverbundle);
 			return true;
 		}
 	}
@@ -71,9 +73,9 @@ public class SolverManager {
 	 * @return a solver bundle corresponding to the given directory path.
 	 * @throws FileNotFoundException thrown if a file needed to add the data is not found.
 	 */
-	public SolverBundle getData(String path) throws FileNotFoundException
+	public ISolverBundle getData(String path) throws FileNotFoundException
 	{
-		SolverBundle bundle = fSolverData.get(path);
+		ISolverBundle bundle = fSolverData.get(path);
 		if (bundle == null)
 		{
 			log.info("Requested data from {} not available, will try to add it.",path);
@@ -91,9 +93,8 @@ public class SolverManager {
 		HashSet<String> keys = new HashSet<String>(fSolverData.keySet());
 		for (String path : keys)
 		{
-			SolverBundle bundle = fSolverData.get(path);
-			ISolver solver = bundle.getSolver();
-			solver.notifyShutdown();
+			ISolverBundle bundle = fSolverData.get(path);
+			bundle.notifyShutdown();
 			fSolverData.remove(path);
 		}
 	}

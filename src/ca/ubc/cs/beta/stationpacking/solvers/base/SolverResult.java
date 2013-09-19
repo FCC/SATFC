@@ -26,7 +26,7 @@ public class SolverResult implements Serializable {
 	
 	public SolverResult(SATResult aResult, double aRuntime, Map<Integer,Set<Station>> aAssignment)
 	{
-		if(aRuntime<=0)
+		if(aRuntime<0 && Math.abs(aRuntime)!=0.0)
 		{
 			throw new IllegalArgumentException("Cannot create a solver result with negative runtime (runtime = "+aRuntime+").");
 		}
