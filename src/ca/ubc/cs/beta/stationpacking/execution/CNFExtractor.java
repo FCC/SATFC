@@ -153,7 +153,7 @@ public class CNFExtractor {
 				}
 				else if(aBand.equals("HVHF") || aBand.equals("UVHF") || aBand.equals("2"))
 				{
-					aPackingChannels = DACConstraintManager.UVHF_CHANNELS;
+					aPackingChannels = DACConstraintManager.HVHF_CHANNELS;
 				}
 				else
 				{
