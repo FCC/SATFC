@@ -49,156 +49,166 @@ public class ServerSolver implements Runnable {
 		
 		log.info("Server's solver is processing solving commands on a single thread.");
 		
-		try
-		{
-			while(true)
+		
+			try
 			{
-				SolvingJob aSolvingJob;
-				try
+				while(true)
 				{
-					aSolvingJob = fSolvingJobQueue.take();
-				}
-				catch(InterruptedException e)
-				{
-					log.error("Solving job queue take method was interrupted, propagating interruption ({}).",e.getMessage());
-					Thread.currentThread().interrupt();
-					return;
-				}
-				AutoStartStopWatch aOverheadWatch = new AutoStartStopWatch();
-				
-				String aID = aSolvingJob.getID();
-				
-				//Check if this job is interrupted.
-				if(fSolverState.isInterrupted(aID))
-				{
-					log.debug("Skipping interrupted job {}.",aID);
-					continue;
-				}
-				
-				String aDataFolderName = aSolvingJob.getDataFolderName();
-				String aInstanceString = aSolvingJob.getInstanceString();
-				
-				double aCutoff = aSolvingJob.getCutOff();
-				long aSeed = aSolvingJob.getSeed();
-				
-				InetAddress aSendAddress = aSolvingJob.getSendAddress();
-				int aSendPort = aSolvingJob.getSendPort();
-				
-				log.info("Got solving job with ID {}.",aID);
-				log.info("Beginning to solve...");
-				
-				ISolverBundle aBundle;
-				try 
-				{
-					aBundle = fSolverManager.getData(aDataFolderName);
-				} catch (FileNotFoundException e) {
-					String aError = "Could not find solving data for "+aSolvingJob.getDataFolderName()+" ("+e.getMessage()+")";
-					log.error(aError);
+					SolvingJob aSolvingJob;
 					try
 					{
-						fServerResponseQueue.put(new ServerResponse("ERROR"+ServerListener.COMMANDSEP+aError,aSendAddress,aSendPort));
+						aSolvingJob = fSolvingJobQueue.take();
 					}
-					catch(InterruptedException e1)
+					catch(InterruptedException e)
 					{
-						log.error("Solving job queue take method was interrupted, propagating interruption ({}).",e1.getMessage());
+						log.error("Solving job queue take method was interrupted, propagating interruption ({}).",e.getMessage());
 						Thread.currentThread().interrupt();
 						return;
 					}
-					continue;
-				}
-
-				IStationManager aStationManager = aBundle.getStationManager();
-				StationPackingInstance aInstance = StationPackingInstance.valueOf(aInstanceString, aStationManager);
-
-				ISolver aSolver = aBundle.getSolver(aInstance);
-				
-				double aOverhead = aOverheadWatch.stop()/1000.0;
-				log.debug("Overhead of initializing solve command {} s.",aOverhead);
-				double aRemainingTime = aCutoff - aOverhead;
-				if(aRemainingTime<=0)
-				{
-					try
+					AutoStartStopWatch aOverheadWatch = new AutoStartStopWatch();
+					
+					String aID = aSolvingJob.getID();
+					
+					//Check if this job is interrupted.
+					if(fSolverState.isInterrupted(aID))
 					{
-						log.warn("Already have spent more than the required cutoff.");
-						fServerResponseQueue.put(new ServerResponse("INFO"+ServerListener.COMMANDSEP+"Already have spent more than the required cutoff.", aSendAddress, aSendPort));
-						String aAnswer = StringUtils.join(new String[]{"ANSWER",aID,SolverResult.createTimeoutResult(aOverhead).toParsableString()},ServerListener.COMMANDSEP);
-						fServerResponseQueue.put(new ServerResponse(aAnswer,aSendAddress,aSendPort));
-					}
-					catch(InterruptedException e1)
-					{
-						log.error("Solving job queue take method was interrupted, propagating interruption ({}).",e1.getMessage());
-						Thread.currentThread().interrupt();
-						return;
-					}
-					continue;
-				}
-				
-				log.info("Beginning to solve...");
-								
-				//Notify the start of the solving.
-				fSolverState.notifyStart(aID, aSolver);
-				
-				
-				SolverResult aResult;
-				try
-				{
-					try
-					{
-						aResult = aSolver.solve(aInstance, aCutoff, aSeed);
-					}
-					finally
-					{
-						//Notify solver state.
-						fSolverState.notifyStop(aID);
-					}
-				}
-				catch(Exception e)
-				{
-					String aError = "Got an exception while trying to execute a solving command ("+e.getMessage()+")";
-					log.error(aError);
-					try
-					{
-						fServerResponseQueue.put(new ServerResponse("ERROR"+ServerListener.COMMANDSEP+aError,aSendAddress,aSendPort));
-					}
-					catch(InterruptedException e1)
-					{
-						log.error("Solving job queue take method was interrupted, propagating interruption ({}).",e1.getMessage());
-						Thread.currentThread().interrupt();
-						return;
+						log.debug("Skipping interrupted job {}.",aID);
+						continue;
 					}
 					
-					continue;
-				}
-				
-				//Send the result if necessary.
-				if (aResult.getResult() != SATResult.INTERRUPTED) // do not return if the command was interrupted.
-				{
-					String aAnswer = StringUtils.join(new String[]{"ANSWER",aID,aResult.toParsableString()},ServerListener.COMMANDSEP);
+					String aDataFolderName = aSolvingJob.getDataFolderName();
+					String aInstanceString = aSolvingJob.getInstanceString();
+					
+					double aCutoff = aSolvingJob.getCutOff();
+					long aSeed = aSolvingJob.getSeed();
+					
+					InetAddress aSendAddress = aSolvingJob.getSendAddress();
+					int aSendPort = aSolvingJob.getSendPort();
+					
+					log.info("Got solving job with ID {}.",aID);
+					log.info("Beginning to solve...");
+					
+					ISolverBundle aBundle;
+					try 
+					{
+						aBundle = fSolverManager.getData(aDataFolderName);
+					} catch (FileNotFoundException e) {
+						String aError = "Could not find solving data for "+aSolvingJob.getDataFolderName()+" ("+e.getMessage()+")";
+						log.error(aError);
+						try
+						{
+							fServerResponseQueue.put(new ServerResponse("ERROR"+ServerListener.COMMANDSEP+aError,aSendAddress,aSendPort));
+						}
+						catch(InterruptedException e1)
+						{
+							log.error("Solving job queue take method was interrupted, propagating interruption ({}).",e1.getMessage());
+							Thread.currentThread().interrupt();
+							return;
+						}
+						continue;
+					}
+	
+					IStationManager aStationManager = aBundle.getStationManager();
+					StationPackingInstance aInstance;
+					try {
+						aInstance = StationPackingInstance.valueOf(aInstanceString, aStationManager);
+					} catch(RuntimeException e)
+					{
+						e.printStackTrace();
+						throw e;
+					}
+
+	
+					ISolver aSolver = aBundle.getSolver(aInstance);
+					
+					double aOverhead = aOverheadWatch.stop()/1000.0;
+					log.debug("Overhead of initializing solve command {} s.",aOverhead);
+					double aRemainingTime = aCutoff - aOverhead;
+					if(aRemainingTime<=0)
+					{
+						try
+						{
+							log.warn("Already have spent more than the required cutoff.");
+							fServerResponseQueue.put(new ServerResponse("INFO"+ServerListener.COMMANDSEP+"Already have spent more than the required cutoff.", aSendAddress, aSendPort));
+							String aAnswer = StringUtils.join(new String[]{"ANSWER",aID,SolverResult.createTimeoutResult(aOverhead).toParsableString()},ServerListener.COMMANDSEP);
+							fServerResponseQueue.put(new ServerResponse(aAnswer,aSendAddress,aSendPort));
+						}
+						catch(InterruptedException e1)
+						{
+							log.error("Solving job queue take method was interrupted, propagating interruption ({}).",e1.getMessage());
+							Thread.currentThread().interrupt();
+							return;
+						}
+						continue;
+					}
+					
+					log.info("Beginning to solve...");
+									
+					//Notify the start of the solving.
+					fSolverState.notifyStart(aID, aSolver);
+					
+					SolverResult aResult;
 					try
 					{
-						fServerResponseQueue.put(new ServerResponse(aAnswer,aSendAddress,aSendPort));
+						try
+						{
+							aResult = aSolver.solve(aInstance, aCutoff, aSeed);
+						}
+						finally
+						{
+							//Notify solver state.
+							fSolverState.notifyStop(aID);
+						}
 					}
-					catch(InterruptedException e1)
+					catch(Exception e)
 					{
-						log.error("Solving job queue take method was interrupted, propagating interruption ({}).",e1.getMessage());
-						Thread.currentThread().interrupt();
-						return;
+						String aError = "Got an exception while trying to execute a solving command ("+e.getMessage()+")";
+						log.error(aError);
+						try
+						{
+							fServerResponseQueue.put(new ServerResponse("ERROR"+ServerListener.COMMANDSEP+aError,aSendAddress,aSendPort));
+						}
+						catch(InterruptedException e1)
+						{
+							log.error("Solving job queue take method was interrupted, propagating interruption ({}).",e1.getMessage());
+							Thread.currentThread().interrupt();
+							return;
+						}
+						
+						continue;
 					}
-				}
-				else
-				{
-					log.debug("Solve process was (gracefully) interrupted.");
+					
+					//Send the result if necessary.
+					if (aResult.getResult() != SATResult.INTERRUPTED) // do not return if the command was interrupted.
+					{
+						String aAnswer = StringUtils.join(new String[]{"ANSWER",aID,aResult.toParsableString()},ServerListener.COMMANDSEP);
+						try
+						{
+							fServerResponseQueue.put(new ServerResponse(aAnswer,aSendAddress,aSendPort));
+						}
+						catch(InterruptedException e1)
+						{
+							log.error("Solving job queue take method was interrupted, propagating interruption ({}).",e1.getMessage());
+							Thread.currentThread().interrupt();
+							return;
+						}
+					}
+					else
+					{
+						log.debug("Solve process was (gracefully) interrupted.");
+					}
 				}
 			}
+			finally
+			{
+				log.info("Server's solver thread shutting down.");
+				fSolverManager.notifyShutdown();
+			}
 		}
-		finally
-		{
-			log.info("Server's solver thread shutting down.");
-			fSolverManager.notifyShutdown();
-		}
+		
 	}
 
 
 	
 
-}
+
