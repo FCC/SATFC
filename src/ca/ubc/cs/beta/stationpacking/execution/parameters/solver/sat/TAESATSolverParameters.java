@@ -10,7 +10,7 @@ import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorBuilder;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.validator.ImplementedSolverParameterValidator;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ISATSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.TAESATSolver;
 
 import com.beust.jcommander.Parameter;
@@ -32,7 +32,7 @@ public class TAESATSolverParameters extends AbstractOptions implements ISATSolve
 	public String CNFDirectory;
 
 	@Override
-	public ISATSolver getSATSolver() {
+	public AbstractCompressedSATSolver getSATSolver() {
 		
 		AlgorithmExecutionOptions.paramFileDelegate.paramFile = AlgorithmExecutionOptions.algoExecDir+File.separatorChar+"sw_parameterspaces"+File.separatorChar+"sw_"+Solver+".txt";
 		
