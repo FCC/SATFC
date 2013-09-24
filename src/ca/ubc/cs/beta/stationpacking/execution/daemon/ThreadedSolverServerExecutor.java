@@ -36,9 +36,38 @@ public class ThreadedSolverServerExecutor {
 
 	private static Logger log = LoggerFactory.getLogger(ThreadedSolverServerExecutor.class);
 	
-	private final static ExecutorService EXECUTOR_SERVICE = Executors.newCachedThreadPool();
+	
 	private final static AtomicInteger TERMINATION_STATUS = new AtomicInteger(0);
+	
+	private final static UncaughtExceptionHandler UNCAUGHT_EXCEPTION_HANDLER;
+		
+	static
+	{
+		/*
+		 * Statically define the uncaught exception handler.
+		 */
 
+		//Any uncaught exception should terminate current process.
+		UNCAUGHT_EXCEPTION_HANDLER = new UncaughtExceptionHandler() 
+		{
+			@Override
+			public void uncaughtException(Thread t, Throwable e) {
+				
+				e.printStackTrace();
+				
+				log.error("Thread {} died with an exception ({}).",t.getName(),e.getMessage());
+				
+				log.error("Stopping service :( .");
+				EXECUTOR_SERVICE.shutdownNow();
+				
+				TERMINATION_STATUS.set(1);
+				
+			}
+		};
+	}
+	
+	private final static ExecutorService EXECUTOR_SERVICE = Executors.newCachedThreadPool();
+	
 	public static void main(String[] args) {
 		//Parse the command line arguments in a parameter object.
 		ThreadedSolverServerParameters aParameters = new ThreadedSolverServerParameters();
@@ -81,34 +110,19 @@ public class ThreadedSolverServerExecutor {
 		
 		BlockingQueue<ServerResponse> aServerResponseQueue = new LinkedBlockingQueue<ServerResponse>();
 		
+				
 		//Setup server runnables.
 		ServerListener aServerListener = new ServerListener(aSolvingJobQueue, aSolverState, aServerResponseQueue, aServerSocket);
 		ServerResponder aServerResponder = new ServerResponder(aServerResponseQueue, aServerSocket);
 		ServerSolver aServerSolver = new ServerSolver(aSolverManager, aSolverState, aSolvingJobQueue, aServerResponseQueue);
 		
-		//Any uncaught exception should terminate current process.
-		Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler() {
-			
-			@Override
-			public void uncaughtException(Thread t, Throwable e) {
-				
-				e.printStackTrace();
-				
-				log.error("Thread {} died with an exception ({}).",t.getName(),e.getMessage());
-				
-				log.error("Stopping service :( .");
-				EXECUTOR_SERVICE.shutdownNow();
-				
-				TERMINATION_STATUS.set(1);
-				
-			}
-		});
+		
 		
 		//Submit and start producers and consumers.
 		
-		EXECUTOR_SERVICE.submit(aServerListener);
-		EXECUTOR_SERVICE.submit(aServerResponder);
-		EXECUTOR_SERVICE.submit(aServerSolver);
+		submitRunnable(aServerListener);
+		submitRunnable(aServerResponder);
+		submitRunnable(aServerSolver);
 		
 		try {
 			EXECUTOR_SERVICE.awaitTermination(365*10, TimeUnit.DAYS);
@@ -120,5 +134,26 @@ public class ThreadedSolverServerExecutor {
 		System.exit(TERMINATION_STATUS.get());
 		
 	}
-
+	
+	/**
+	 * Wrapper method around runnables to make executor service catch uncaught exceptions.
+	 * @param r - a runnable.
+	 */
+	private static void submitRunnable(final Runnable r)
+	{
+		EXECUTOR_SERVICE.submit(
+				new Runnable() {
+					@Override
+					public void run() {
+						// TODO Auto-generated method stub
+						try {
+							r.run();
+						}  catch(Throwable t)
+						{
+							UNCAUGHT_EXCEPTION_HANDLER.uncaughtException(Thread.currentThread(), t);
+						}
+					}
+							
+				});
+	}
 }

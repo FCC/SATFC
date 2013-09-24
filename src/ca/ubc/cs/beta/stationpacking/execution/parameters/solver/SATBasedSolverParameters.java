@@ -13,13 +13,11 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.converters.AbstractFromFileConverter;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat.ClaspLibSATSolverParameters;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat.TAESATSolverParameters;
-import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.NoGrouper;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.GenericSATBasedSolver;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATEncoder;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ISATSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.CompressedSATBasedSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
 
 @UsageTextField(title="FCC Station Packing Packing SAT Solver Based Feasibility Checker",description="Parameters defining a SAT solver based feasibility checker.")
 public class SATBasedSolverParameters extends AbstractOptions implements ISolverParameters{
@@ -50,7 +48,7 @@ public class SATBasedSolverParameters extends AbstractOptions implements ISolver
 	@Parameter(names = "-SAT-SOLVER-PARAMETERS",description = "the name of the file containing the SAT solver parameters.", required=true)
 	public String SATSolverParametersFilename;
 	
-	public ISATSolver getSATSolver()
+	public AbstractCompressedSATSolver getSATSolver()
 	{
 		Logger log = LoggerFactory.getLogger(SATBasedSolverParameters.class);
 		switch(SATSolverChoice)
@@ -67,22 +65,22 @@ public class SATBasedSolverParameters extends AbstractOptions implements ISolver
 	}
 	
 	@Override
-	public ISolver getSolver(IStationManager aStationManager,
+	public CompressedSATBasedSolver getSolver(IStationManager aStationManager,
 			IConstraintManager aConstraintManager) {
 		
 		Logger log = LoggerFactory.getLogger(SATBasedSolverParameters.class);
 		
 		log.info("Creating a SAT solver based feasibility checker.");
 		
-		ISATSolver aSATSolver = getSATSolver();
+		AbstractCompressedSATSolver aSATSolver = getSATSolver();
 		
-		ISATEncoder aSATEncoder = new SATEncoder(aStationManager, aConstraintManager);
+		SATCompressor aSATCompressor = new SATCompressor(aStationManager, aConstraintManager);
 		
 		//Decided to go with a no grouper.
 		log.info("Not grouping stations in any way.");
 		IComponentGrouper aComponentGrouper = new NoGrouper();
 		
-		return new GenericSATBasedSolver(aSATSolver, aSATEncoder, aConstraintManager, aComponentGrouper);
+		return new CompressedSATBasedSolver(aSATSolver, aSATCompressor, aConstraintManager, aComponentGrouper);
 		
 	}
 
