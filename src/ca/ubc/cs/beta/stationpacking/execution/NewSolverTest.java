@@ -15,11 +15,16 @@ import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluat
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.instancegeneration.InstanceGenerationParameters;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat.ClaspLibSATSolverParameters;
 import ca.ubc.cs.beta.stationpacking.experiment.InstanceGeneration;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.NoGrouper;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.CompressedSATBasedSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.GenericSATBasedSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATEncoder;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ClaspSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ISATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.IncrementalClaspSATSolver;
@@ -83,17 +88,15 @@ public class NewSolverTest {
 			
 			String aAlexLibPath = "/ubc/cs/project/arrow/afrechet/git/FCCStationPacking/SATsolvers/clasp/jna/libjnaclasp.so";
 			String aSantaLibPath = "/home/gsauln/workspace/FCC-Station-Packing/SATsolvers/clasp/jna/libjnaclasp.so";
-			//ISATSolver aClaspSATSolver = new ClaspSATSolver(aSantaLibPath, 
-			//		 "--eq=0 --trans-ext=all --sat-prepro=0 --sign-def=2 --del-max=10000 --strengthen=local,1 --del-init-r=800,20000 --loops=no --init-watches=0 --heuristic=Berkmin --del-cfl=F,100 --restarts=L,256 --del-algo=basic,0 --deletion=3,66,3.0 --berk-max=256 --del-grow=1.0,100.0,F,128 --update-act --del-glue=4,0 --update-lbd=2 --reverse-arcs=3 --otfs=0 --berk-huang --del-on-restart=50 --contraction=120 --counter-restarts=3 --local-restarts --lookahead=no --save-progress=10 --counter-bump=180");
-			ISATSolver incClaspSATSolver = new IncrementalClaspSATSolver(aSantaLibPath,
-					"--eq=0 --trans-ext=all --sat-prepro=0 --sign-def=2 --del-max=10000 --strengthen=local,1 --del-init-r=800,20000 --loops=no --init-watches=0 --heuristic=Berkmin --del-cfl=F,100 --restarts=L,256 --del-algo=basic,0 --deletion=3,66,3.0 --berk-max=256 --del-grow=1.0,100.0,F,128 --update-act --del-glue=4,0 --update-lbd=2 --reverse-arcs=3 --otfs=0 --berk-huang --del-on-restart=50 --contraction=120 --counter-restarts=3 --local-restarts --lookahead=no --save-progress=10 --counter-bump=180",
-				1);
+			
+			AbstractCompressedSATSolver aClaspSATSolver = new ClaspSATSolver(aAlexLibPath, ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13);
+			AbstractSATSolver incClaspSATSolver = new IncrementalClaspSATSolver(aAlexLibPath,ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13,1);
 			
 			/*
 			 * 
 			 */
 			
-			ISolver aSATBasedSolver = new GenericSATBasedSolver(incClaspSATSolver, new SATEncoder(aStationManager, aConstraintManager), aConstraintManager, new NoGrouper());
+			ISolver aSATBasedSolver = new CompressedSATBasedSolver(aClaspSATSolver, new SATCompressor(aStationManager, aConstraintManager), aConstraintManager, new NoGrouper());
 			
 		
 			aInstanceGeneration = new InstanceGeneration(aSATBasedSolver,aInstanceGenerationParameters.getExperimentReporter());

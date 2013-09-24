@@ -31,21 +31,21 @@ public class ClaspSATSolverSelectorBundle implements ISolverBundle{
 		fStationManager = aStationManager;
 		fConstraintManager = aConstraintManager;
 		
-		SATCompressor aEncoder = new SATCompressor(fStationManager, aConstraintManager);
+		SATCompressor aCompressor = new SATCompressor(fStationManager, aConstraintManager);
 		IComponentGrouper aGrouper = new NoGrouper();
 		
 		AbstractCompressedSATSolver aUHFClaspSATsolver =  new ClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13);
-		fClaspGeneral = new CompressedSATBasedSolver(aUHFClaspSATsolver, aEncoder, aConstraintManager, aGrouper);
+		fClaspGeneral = new CompressedSATBasedSolver(aUHFClaspSATsolver, aCompressor, aConstraintManager, aGrouper);
 		
 		AbstractCompressedSATSolver aHVHFClaspSATsolver = new ClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.HVHF_CONFIG_09_13);
-		fClaspHVHF = new CompressedSATBasedSolver(aHVHFClaspSATsolver, aEncoder, aConstraintManager, aGrouper);
+		fClaspHVHF = new CompressedSATBasedSolver(aHVHFClaspSATsolver, aCompressor, aConstraintManager, aGrouper);
 	}
 	
 	@Override
 	public ISolver getSolver(StationPackingInstance aInstance) {
 		
 		//Return the right solver based on the channels in the instance.
-		if(DACConstraintManager.HVHF_CHANNELS.containsAll(aInstance.getChannels()))
+		if(DACConstraintManager.HVHF_CHANNELS.containsAll(aInstance.getChannels()) || DACConstraintManager.LVHF_CHANNELS.containsAll(aInstance.getChannels()))
 		{
 			log.info("Returning clasp configured for HVHF.");
 			return fClaspHVHF;

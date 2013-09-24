@@ -42,7 +42,7 @@ public class GenericSATBasedSolver implements ISolver {
 	private final ISATEncoder fSATEncoder;
 	private final ISATSolver fSATSolver;
 	
-	public GenericSATBasedSolver(ISATSolver aSATSolver, ISATEncoder aSATEncoder, IConstraintManager aConstraintManager, IComponentGrouper aComponentGrouper)
+	protected GenericSATBasedSolver(ISATSolver aSATSolver, ISATEncoder aSATEncoder, IConstraintManager aConstraintManager, IComponentGrouper aComponentGrouper)
 	{
 		fConstraintManager = aConstraintManager;
 		fComponentGrouper = aComponentGrouper;
