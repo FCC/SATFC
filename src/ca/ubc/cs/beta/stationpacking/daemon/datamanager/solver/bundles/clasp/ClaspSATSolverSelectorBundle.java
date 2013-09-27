@@ -41,9 +41,11 @@ public class ClaspSATSolverSelectorBundle implements ISolverBundle{
 		
 		SATEncoder aSATEncoder = new SATEncoder(fStationManager,aConstraintManager);
 		AbstractSATSolver aUHFIncrementalClaspSATsolver = new IncrementalClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13, 1);
-		//AbstractCompressedSATSolver aUHFClaspSATsolver =  new ClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13);
-		//fClaspGeneral = new CompressedSATBasedSolver(aUHFClaspSATsolver, aCompressor, aConstraintManager, aGrouper);
+		
 		fClaspGeneral = new SATBasedSolver(aUHFIncrementalClaspSATsolver, aSATEncoder, aConstraintManager, aGrouper);
+		
+//		AbstractCompressedSATSolver aUHFClaspSATsolver =  new ClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13);
+//		fClaspGeneral = new CompressedSATBasedSolver(aUHFClaspSATsolver, aCompressor, aConstraintManager, aGrouper);
 		
 		
 		AbstractCompressedSATSolver aHVHFClaspSATsolver = new ClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.HVHF_CONFIG_09_13);
