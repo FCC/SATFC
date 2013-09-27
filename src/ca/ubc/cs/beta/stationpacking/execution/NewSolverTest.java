@@ -93,11 +93,13 @@ public class NewSolverTest {
 			String aAlexLibPath = "/ubc/cs/project/arrow/afrechet/git/FCCStationPacking/SATsolvers/clasp/jna/libjnaclasp.so";
 			String aSantaLibPath = "/home/gsauln/workspace/FCC-Station-Packing/SATsolvers/clasp/jna/libjnaclasp.so";
 			
-			AbstractCompressedSATSolver aClaspSATSolver = new ClaspSATSolver(aAlexLibPath, ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13);
+			String usePath = aSantaLibPath;
+			
+			AbstractCompressedSATSolver aClaspSATSolver = new ClaspSATSolver(usePath, ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13);
 			
 			SATEncoder aEncoder = new SATEncoder(aStationManager, aConstraintManager);
 			
-			AbstractSATSolver incClaspSATSolver = new IncrementalClaspSATSolver(aAlexLibPath, ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13, 1);
+			AbstractSATSolver incClaspSATSolver = new IncrementalClaspSATSolver(usePath, ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13, 1);
 			
 			/*
 			 * 
