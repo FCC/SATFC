@@ -1,9 +1,10 @@
-package ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles;
+package ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.clasp;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBundle;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.DACConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
@@ -12,9 +13,13 @@ import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.NoGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.CompressedSATBasedSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.SATBasedSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ClaspSATSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractSATSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental.IncrementalClaspSATSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.ClaspSATSolver;
 
 public class ClaspSATSolverSelectorBundle implements ISolverBundle{
 	
@@ -34,8 +39,12 @@ public class ClaspSATSolverSelectorBundle implements ISolverBundle{
 		SATCompressor aCompressor = new SATCompressor(fStationManager, aConstraintManager);
 		IComponentGrouper aGrouper = new NoGrouper();
 		
-		AbstractCompressedSATSolver aUHFClaspSATsolver =  new ClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13);
-		fClaspGeneral = new CompressedSATBasedSolver(aUHFClaspSATsolver, aCompressor, aConstraintManager, aGrouper);
+		SATEncoder aSATEncoder = new SATEncoder(fStationManager,aConstraintManager);
+		AbstractSATSolver aUHFIncrementalClaspSATsolver = new IncrementalClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13, 1);
+		//AbstractCompressedSATSolver aUHFClaspSATsolver =  new ClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13);
+		//fClaspGeneral = new CompressedSATBasedSolver(aUHFClaspSATsolver, aCompressor, aConstraintManager, aGrouper);
+		fClaspGeneral = new SATBasedSolver(aUHFIncrementalClaspSATsolver, aSATEncoder, aConstraintManager, aGrouper);
+		
 		
 		AbstractCompressedSATSolver aHVHFClaspSATsolver = new ClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.HVHF_CONFIG_09_13);
 		fClaspHVHF = new CompressedSATBasedSolver(aHVHFClaspSATsolver, aCompressor, aConstraintManager, aGrouper);

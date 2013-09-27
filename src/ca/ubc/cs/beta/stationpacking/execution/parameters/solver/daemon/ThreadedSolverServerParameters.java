@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverManager;
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ClaspSATSolverSelectorBundleFactory;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.clasp.ClaspSATSolverSelectorBundleFactory;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat.ClaspLibSATSolverParameters;
 
 import com.beust.jcommander.Parameter;

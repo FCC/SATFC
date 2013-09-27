@@ -210,11 +210,12 @@ public class InstanceGenerationParameters extends AbstractOptions {
 	public long Seed = 1;
 	
 	//Solver parameters
-	// change for SolverParameters if not incremental // broken branching
+	//change for SolverParameters if not incremental // broken branching
 	// for incremental use IncrementalSolverParameters
 	@ParametersDelegate
 	public SolverParameters SolverParameters = new SolverParameters(); // Normal
 	//public IncrementalSolverParameters SolverParameters = new IncrementalSolverParameters(); // Incremental
+	
 	
 	//(Global) Data parameters
 	@ParametersDelegate

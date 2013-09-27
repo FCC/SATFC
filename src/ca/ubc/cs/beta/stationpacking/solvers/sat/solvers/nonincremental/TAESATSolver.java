@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers;
+package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,6 +18,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Litteral;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
 
 /**
  * Lean TAE based SAT solver.
