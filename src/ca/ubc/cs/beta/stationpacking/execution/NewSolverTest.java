@@ -12,6 +12,7 @@ import ca.ubc.cs.beta.aclib.misc.options.UsageSection;
 import ca.ubc.cs.beta.aclib.options.ConfigToLaTeX;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorBuilder;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
+import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.instancegeneration.InstanceGenerationParameters;
@@ -21,17 +22,20 @@ import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.NoGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.CompressedSATBasedSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.GenericSATBasedSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.SATBasedSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractSATSolver;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ClaspSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ISATSolver;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.IncrementalClaspSATSolver;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.TAESATSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental.CompleteProblemIncrementalClaspSATWrapper;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental.IncrementalClaspSATSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.ClaspSATSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.TAESATSolver;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;
+import com.google.common.collect.Sets;
 
 public class NewSolverTest {
 
@@ -90,13 +94,16 @@ public class NewSolverTest {
 			String aSantaLibPath = "/home/gsauln/workspace/FCC-Station-Packing/SATsolvers/clasp/jna/libjnaclasp.so";
 			
 			AbstractCompressedSATSolver aClaspSATSolver = new ClaspSATSolver(aAlexLibPath, ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13);
-			AbstractSATSolver incClaspSATSolver = new IncrementalClaspSATSolver(aAlexLibPath,ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13,1);
+			
+			SATEncoder aEncoder = new SATEncoder(aStationManager, aConstraintManager);
+			
+			AbstractSATSolver incClaspSATSolver = new IncrementalClaspSATSolver(aAlexLibPath, ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13, 1);
 			
 			/*
 			 * 
 			 */
 			
-			ISolver aSATBasedSolver = new CompressedSATBasedSolver(aClaspSATSolver, new SATCompressor(aStationManager, aConstraintManager), aConstraintManager, new NoGrouper());
+			ISolver aSATBasedSolver = new SATBasedSolver(incClaspSATSolver, aEncoder , aConstraintManager, new NoGrouper());
 			
 		
 			aInstanceGeneration = new InstanceGeneration(aSATBasedSolver,aInstanceGenerationParameters.getExperimentReporter());

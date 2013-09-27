@@ -11,7 +11,7 @@ import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluat
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.validator.ImplementedSolverParameterValidator;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.TAESATSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.TAESATSolver;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;

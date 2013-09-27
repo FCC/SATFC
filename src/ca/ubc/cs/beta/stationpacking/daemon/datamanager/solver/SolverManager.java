@@ -18,7 +18,7 @@ public class SolverManager {
 	private static Logger log = LoggerFactory.getLogger(SolverManager.class);
 	
 	private HashMap<String, ISolverBundle> fSolverData;
-	private ISolverBundleFactory fSolverFactory;
+	private ISolverBundleFactory fSolverBundleFactory;
 	private DataManager fDataManager;
 	
 	/**
@@ -27,7 +27,7 @@ public class SolverManager {
 	 */
 	public SolverManager(ISolverBundleFactory aSolverBundleFactory)
 	{
-		fSolverFactory = aSolverBundleFactory;
+		fSolverBundleFactory = aSolverBundleFactory;
 		fSolverData = new HashMap<String, ISolverBundle>();
 		fDataManager = new DataManager();
 	}
@@ -59,7 +59,7 @@ public class SolverManager {
 		else
 		{
 			ManagerBundle dataBundle = fDataManager.getData(path);
-			ISolverBundle solverbundle = fSolverFactory.getBundle(dataBundle.getStationManager(), dataBundle.getConstraintManager());
+			ISolverBundle solverbundle = fSolverBundleFactory.getBundle(dataBundle.getStationManager(), dataBundle.getConstraintManager());
 			
 			fSolverData.put(path, solverbundle);
 			return true;
