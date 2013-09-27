@@ -22,7 +22,7 @@ public class SolverParameters extends AbstractOptions implements ISolverParamete
 	
 	public static enum SolverChoice
 	{
-		INCREMENTAL,TAE;
+		TAE;
 	};
 
 	@Parameter(names = "-SOLVER-TYPE",description = "the type of solver that will be executed.", required=true)
@@ -30,9 +30,6 @@ public class SolverParameters extends AbstractOptions implements ISolverParamete
 	
 	@ParametersDelegate
 	public TAESolverParameters TAESolverParameters = new TAESolverParameters();
-	
-	@ParametersDelegate
-	public IncrementalSolverParameters IncrementalSolverParameters = new IncrementalSolverParameters();
 	
 	@Override
 	public ISolver getSolver(IStationManager aStationManager, IConstraintManager aConstraintManager)
@@ -45,8 +42,6 @@ public class SolverParameters extends AbstractOptions implements ISolverParamete
 		{
 			case TAE:
 				return TAESolverParameters.getSolver(aStationManager,aConstraintManager);
-			case INCREMENTAL:
-				return IncrementalSolverParameters.getSolver(aStationManager,aConstraintManager);
 			default:
 				throw new ParameterException("Unrecognized solver choice "+SolverChoice);
 		}
