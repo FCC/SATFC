@@ -1,5 +1,7 @@
-package ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles;
+package ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.clasp;
 
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBundle;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBundleFactory;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 

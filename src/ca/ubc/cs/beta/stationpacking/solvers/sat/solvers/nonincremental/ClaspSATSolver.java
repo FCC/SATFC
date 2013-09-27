@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers;
+package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental;
 
 import java.util.HashSet;
 import java.util.Random;
@@ -17,6 +17,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Litteral;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.jnalibraries.ClaspLibrary;
 import ca.ubc.cs.beta.stationpacking.utils.Holder;
 
