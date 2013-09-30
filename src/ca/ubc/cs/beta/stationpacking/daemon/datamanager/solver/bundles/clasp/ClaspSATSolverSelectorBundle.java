@@ -33,21 +33,26 @@ public class ClaspSATSolverSelectorBundle implements ISolverBundle{
 	
 	public ClaspSATSolverSelectorBundle(String aClaspLibraryPath, IStationManager aStationManager, IConstraintManager aConstraintManager)
 	{
+		log.info("Initializing clasp selector bundle.");
+		
 		fStationManager = aStationManager;
 		fConstraintManager = aConstraintManager;
 		
 		SATCompressor aCompressor = new SATCompressor(fStationManager, aConstraintManager);
 		IComponentGrouper aGrouper = new NoGrouper();
 		
+		
+		log.info("Creating incremental library clasp.");
 		SATEncoder aSATEncoder = new SATEncoder(fStationManager,aConstraintManager);
 		AbstractSATSolver aUHFIncrementalClaspSATsolver = new IncrementalClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13, 1);
-		
+
 		fClaspGeneral = new SATBasedSolver(aUHFIncrementalClaspSATsolver, aSATEncoder, aConstraintManager, aGrouper);
 		
+//		log.info("Creating standard library clasp.");
 //		AbstractCompressedSATSolver aUHFClaspSATsolver =  new ClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13);
 //		fClaspGeneral = new CompressedSATBasedSolver(aUHFClaspSATsolver, aCompressor, aConstraintManager, aGrouper);
 		
-		
+		log.info("Creating standard library clasp.");
 		AbstractCompressedSATSolver aHVHFClaspSATsolver = new ClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.HVHF_CONFIG_09_13);
 		fClaspHVHF = new CompressedSATBasedSolver(aHVHFClaspSATsolver, aCompressor, aConstraintManager, aGrouper);
 	}
