@@ -192,6 +192,9 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 		
 		Message message = fCompressor.compress(aCNF);
 		String encoding = message.encode();
+		
+		long compTime1 = System.currentTimeMillis();
+		
 		fLocks.problemEncoding.setAndSignal(encoding);
 				
 		// Launches a timer that will set the interrupt flag of the result object to true after aCutOff seconds.
@@ -233,6 +236,9 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 		}
 		timer.cancel();
 		fSolveCalled = false;
+		
+		long compTime2 = System.currentTimeMillis();
+		System.err.println("Incremental Clasp running time:"+(compTime2-compTime1));
 		
 		SATResult satResult = null;
 		HashSet<Litteral> assignment = new HashSet<Litteral>();
@@ -517,12 +523,17 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 		
 		public String encode()
 		{
+			log.info("Encoding the super giga string.");
 			StringBuffer strBuffer = new StringBuffer();
 			strBuffer.append(encodeParameterLine(fNumVars, fClauses.size()));
 			strBuffer.append("\n");
 			strBuffer.append(encodeLitteralSet(fAssumptions));
 			strBuffer.append("\n");
 			strBuffer.append(encodeClauses(fClauses));
+			log.info("Done encoding the super giga string.");
+			System.err.println(strBuffer.length());
+			
+			
 			return strBuffer.toString();
 		}
 		
