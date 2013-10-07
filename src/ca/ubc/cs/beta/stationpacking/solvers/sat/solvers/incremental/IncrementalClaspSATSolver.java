@@ -22,8 +22,8 @@ import com.sun.jna.Pointer;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.base.OldClause;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Litteral;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Clause;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.helpers.IncrementalClaspSAT.IHDoNothing;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.helpers.IncrementalClaspSAT.InterruptHandler;
@@ -241,7 +241,7 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 		System.err.println("Incremental Clasp running time:"+(compTime2-compTime1));
 		
 		SATResult satResult = null;
-		HashSet<Litteral> assignment = new HashSet<Litteral>();
+		HashSet<Literal> assignment = new HashSet<Literal>();
 		int state = fLib.getResultState(fJNAResult);
 		if (fInterrupt)
 		{
@@ -287,8 +287,8 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 		return answer;
 	}
 
-	private HashSet<Litteral> parseAssignment(String assignment, HashSet<Long> litInActivatedClauses) {
-		HashSet<Litteral> set = new HashSet<Litteral>();
+	private HashSet<Literal> parseAssignment(String assignment, HashSet<Long> litInActivatedClauses) {
+		HashSet<Literal> set = new HashSet<Literal>();
 		StringTokenizer strtok = new StringTokenizer(assignment, ";");
 
 		while (strtok.hasMoreTokens())
@@ -299,7 +299,7 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 			long decompressValue = fCompressor.decompressVar(var);
 			if (litInActivatedClauses.contains(decompressValue))
 			{
-				Litteral aLit = new Litteral(decompressValue, sign);
+				Literal aLit = new Literal(decompressValue, sign);
 				set.add(aLit);
 			}
 		}
@@ -504,11 +504,11 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 	protected class Message
 	{
 		private int fNumVars;
-		private HashSet<Litteral> fAssumptions;
-		private HashSet<OldClause> fClauses;
+		private HashSet<Literal> fAssumptions;
+		private HashSet<Clause> fClauses;
 		private HashSet<Long> fLitInActivatedClauses;
 		
-		public Message(int numVars, HashSet<Litteral> assumptions, HashSet<OldClause> clauses, HashSet<Long> litInActivatedClauses)
+		public Message(int numVars, HashSet<Literal> assumptions, HashSet<Clause> clauses, HashSet<Long> litInActivatedClauses)
 		{
 			fNumVars = numVars;
 			fAssumptions = assumptions;
@@ -537,7 +537,7 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 			return strBuffer.toString();
 		}
 		
-		protected String encodeLitteralSet(HashSet<Litteral> set)
+		protected String encodeLitteralSet(HashSet<Literal> set)
 		{
 			String str = StringUtils.join(set, " ");
 			return "a "+str+" 0";
@@ -548,11 +548,11 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 			return "p pcnf "+fNumVars+" "+numClauses;
 		}
 		
-		protected String encodeClauses(HashSet<OldClause> set)
+		protected String encodeClauses(HashSet<Clause> set)
 		{
 			StringBuffer strBuffer = new StringBuffer();
 			String prefix = "";
-			for (OldClause clause : set)
+			for (Clause clause : set)
 			{
 				strBuffer.append(prefix);
 				prefix = "\n";
@@ -561,7 +561,7 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 			return strBuffer.toString();
 		}
 		
-		protected String encodeClause(OldClause clause)
+		protected String encodeClause(Clause clause)
 		{
 			String str = StringUtils.join(clause, " ");
 			return str +" 0";
@@ -574,23 +574,23 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 		private long fCompressionMapMax = 1;
 		private long fNextControlLiteral = -1;
 		
-		private final HashMap<OldClause, Long> fControlVariables = new HashMap<OldClause, Long>();
-		private final HashSet<Litteral> fCompressedControlLitterals = new HashSet<Litteral>();
-		private final HashSet<Litteral> fActivatedCompressedControls = new HashSet<Litteral>();
+		private final HashMap<Clause, Long> fControlVariables = new HashMap<Clause, Long>();
+		private final HashSet<Literal> fCompressedControlLitterals = new HashSet<Literal>();
+		private final HashSet<Literal> fActivatedCompressedControls = new HashSet<Literal>();
 		
 		public Message compress(CNF cnf)
 		{
 			// set all control variables to true (so that clauses are not analysed).
-			for (Litteral lit : fActivatedCompressedControls)
+			for (Literal lit : fActivatedCompressedControls)
 			{
 				fCompressedControlLitterals.remove(lit);
-				fCompressedControlLitterals.add(new Litteral(lit.getVariable(), true));
+				fCompressedControlLitterals.add(new Literal(lit.getVariable(), true));
 			}
 			fActivatedCompressedControls.clear();
 
 			HashSet<Long> litInActivatedClauses = new HashSet<Long>();
-			HashSet<OldClause> newClauses = new HashSet<OldClause>();
-			for (OldClause clause : cnf)
+			HashSet<Clause> newClauses = new HashSet<Clause>();
+			for (Clause clause : cnf)
 			{
 				Long control = fControlVariables.get(clause);
 				if (control == null)
@@ -600,13 +600,13 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 					control = fNextControlLiteral;
 					fNextControlLiteral--;
 					// add the clause to new clauses
-					OldClause compressedClause = compressClause(clause, control);
+					Clause compressedClause = compressClause(clause, control);
 					newClauses.add(compressedClause);
 				}
-				fCompressedControlLitterals.remove(new Litteral(compressVar(control), true));
-				fCompressedControlLitterals.add(new Litteral(compressVar(control), false));
-				fActivatedCompressedControls.add(new Litteral(compressVar(control), false));
-				for (Litteral lit : clause)
+				fCompressedControlLitterals.remove(new Literal(compressVar(control), true));
+				fCompressedControlLitterals.add(new Literal(compressVar(control), false));
+				fActivatedCompressedControls.add(new Literal(compressVar(control), false));
+				for (Literal lit : clause)
 				{
 					litInActivatedClauses.add(lit.getVariable());
 				}
@@ -615,18 +615,18 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 			return message;
 		}
 		
-		protected OldClause compressClause(OldClause clause, long control)
+		protected Clause compressClause(Clause clause, long control)
 		{
-			OldClause newClause = new OldClause();
+			Clause newClause = new Clause();
 			// add the compressed lits to the clause
-			for (Litteral lit : clause)
+			for (Literal lit : clause)
 			{
 				Long compressedVar = compressVar(lit.getVariable());
-				newClause.add(new Litteral(compressedVar, lit.getSign()));
+				newClause.add(new Literal(compressedVar, lit.getSign()));
 			}
 			// add the control variable 
 			Long compressedVar = compressVar(control);
-			Litteral controlLit = new Litteral(compressedVar, true);
+			Literal controlLit = new Literal(compressedVar, true);
 			newClause.add(controlLit);
 			return newClause;
 		}

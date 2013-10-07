@@ -12,8 +12,8 @@ import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.base.OldClause;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Litteral;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Clause;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.base.IBijection;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.base.IdentityBijection;
 
@@ -101,11 +101,11 @@ public class SATEncoder implements ISATEncoder {
 			ArrayList<Integer> aStationInstanceDomain = new ArrayList<Integer>(Sets.intersection(aInstanceChannels, aStation.getDomain()));
 			
 			//A station must be on at least one channel,
-			OldClause aStationValidAssignmentBaseClause = new OldClause();
+			Clause aStationValidAssignmentBaseClause = new Clause();
 			for(Integer aChannel : aStationInstanceDomain)
 			{
 				
-				aStationValidAssignmentBaseClause.add(new Litteral(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(), aChannel)), true));
+				aStationValidAssignmentBaseClause.add(new Literal(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(), aChannel)), true));
 			}
 			aCNF.add(aStationValidAssignmentBaseClause);
 			
@@ -114,13 +114,13 @@ public class SATEncoder implements ISATEncoder {
 			{
 				for(int j=i+1;j<aStationInstanceDomain.size();j++)
 				{
-					OldClause aStationSingleAssignmentBaseClause = new OldClause();
+					Clause aStationSingleAssignmentBaseClause = new Clause();
 					
 					Integer aDomainChannel1 = aStationInstanceDomain.get(i);
-					aStationSingleAssignmentBaseClause.add(new Litteral(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aDomainChannel1)),false));
+					aStationSingleAssignmentBaseClause.add(new Literal(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aDomainChannel1)),false));
 					
 					Integer aDomainChannel2 = aStationInstanceDomain.get(j);
-					aStationSingleAssignmentBaseClause.add(new Litteral(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aDomainChannel2)),false));
+					aStationSingleAssignmentBaseClause.add(new Literal(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aDomainChannel2)),false));
 					
 					aCNF.add(aStationSingleAssignmentBaseClause);
 				}
@@ -147,9 +147,9 @@ public class SATEncoder implements ISATEncoder {
 					{
 						if(aStation.getID()<aInterferingStation.getID() && aStation.getDomain().contains(aChannel) && aInterferingStation.getDomain().contains(aChannel))
 						{
-							OldClause aCoChannelClause = new OldClause();
-							aCoChannelClause.add(new Litteral(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aChannel)),false));
-							aCoChannelClause.add(new Litteral(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aInterferingStation.getID(),aChannel)),false));
+							Clause aCoChannelClause = new Clause();
+							aCoChannelClause.add(new Literal(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aChannel)),false));
+							aCoChannelClause.add(new Literal(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aInterferingStation.getID(),aChannel)),false));
 							aCNF.add(aCoChannelClause);
 						}
 					}
@@ -178,9 +178,9 @@ public class SATEncoder implements ISATEncoder {
 						Integer aInterferingChannel = aChannel+1;
 						if( aStation.getDomain().contains(aChannel) && aInterferingStation.getDomain().contains(aInterferingChannel) && aInstanceChannels.contains(aInterferingChannel))
 						{
-							OldClause aAdjChannelClause = new OldClause();
-							aAdjChannelClause.add(new Litteral(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aChannel)),false));
-							aAdjChannelClause.add(new Litteral(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aInterferingStation.getID(),aInterferingChannel)),false));
+							Clause aAdjChannelClause = new Clause();
+							aAdjChannelClause.add(new Literal(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aChannel)),false));
+							aAdjChannelClause.add(new Literal(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aInterferingStation.getID(),aInterferingChannel)),false));
 							aCNF.add(aAdjChannelClause);
 						}
 					}

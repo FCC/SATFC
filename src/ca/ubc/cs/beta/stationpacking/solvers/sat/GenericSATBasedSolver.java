@@ -24,7 +24,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Litteral;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATDecoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ISATSolver;
@@ -108,7 +108,7 @@ public class GenericSATBasedSolver implements ISolver {
 			if(aComponentResult.getResult().equals(SATResult.SAT))
 			{
 				HashMap<Long,Boolean> aLitteralChecker = new HashMap<Long,Boolean>();
-				for(Litteral aLiteral : aComponentResult.getAssignment())
+				for(Literal aLiteral : aComponentResult.getAssignment())
 				{
 					boolean aSign = aLiteral.getSign(); 
 					long aVariable = aLiteral.getVariable();

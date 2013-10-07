@@ -12,13 +12,13 @@ import org.apache.commons.lang3.StringUtils;
  * A SAT formula in Conjunctive Normal Form (a conjunction of clauses - AND's of OR's of litterals). Implementation wise just a clause set wrapper. 
  * @author afrechet
  */
-public class CNF implements Collection<OldClause>{
+public class CNF implements Collection<Clause>{
 	
-	private final Collection<OldClause> fClauses;
+	private final Collection<Clause> fClauses;
 	
 	public CNF()
 	{
-		fClauses = new ArrayDeque<OldClause>();
+		fClauses = new ArrayDeque<Clause>();
 	}
 	
 	/**
@@ -33,11 +33,11 @@ public class CNF implements Collection<OldClause>{
 		int aNumClauses = fClauses.size();
 		long aMaxVariable = 0;
 		
-		for(OldClause aClause : fClauses)
+		for(Clause aClause : fClauses)
 		{
 			ArrayList<String> aLitteralStrings = new ArrayList<String>();
 			
-			for(Litteral aLitteral : aClause)
+			for(Literal aLitteral : aClause)
 			{
 				if(aLitteral.getVariable()<=0)
 				{
@@ -73,9 +73,9 @@ public class CNF implements Collection<OldClause>{
 	{
 		Collection<Long> aVariables = new HashSet<Long>();
 		
-		for(OldClause aClause : fClauses)
+		for(Clause aClause : fClauses)
 		{
-			for(Litteral aLitteral : aClause)
+			for(Literal aLitteral : aClause)
 			{
 				aVariables.add(aLitteral.getVariable());
 			}
@@ -88,7 +88,7 @@ public class CNF implements Collection<OldClause>{
 	public String toString()
 	{
 		ArrayDeque<String> aClauseStrings = new ArrayDeque<String>();
-		for(OldClause aClause : fClauses)
+		for(Clause aClause : fClauses)
 		{
 			aClauseStrings.add("("+aClause.toString()+")");
 		}
@@ -111,7 +111,7 @@ public class CNF implements Collection<OldClause>{
 	}
 
 	@Override
-	public Iterator<OldClause> iterator() {
+	public Iterator<Clause> iterator() {
 		return fClauses.iterator();
 	}
 
@@ -126,7 +126,7 @@ public class CNF implements Collection<OldClause>{
 	}
 
 	@Override
-	public boolean add(OldClause e) {
+	public boolean add(Clause e) {
 		return fClauses.add(e);
 	}
 
@@ -141,7 +141,7 @@ public class CNF implements Collection<OldClause>{
 	}
 
 	@Override
-	public boolean addAll(Collection<? extends OldClause> c) {
+	public boolean addAll(Collection<? extends Clause> c) {
 		return fClauses.addAll(c);
 	}
 

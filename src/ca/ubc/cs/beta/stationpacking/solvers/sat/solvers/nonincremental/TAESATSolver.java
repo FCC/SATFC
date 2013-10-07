@@ -17,7 +17,7 @@ import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluator;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Litteral;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
 
 /**
@@ -82,7 +82,7 @@ public class TAESATSolver extends AbstractCompressedSATSolver{
 		AlgorithmRun aRun = aRuns.iterator().next();
 		double aRuntime = aRun.getRuntime();				
 		SATResult aResult;
-		HashSet<Litteral> aAssignment = new HashSet<Litteral>();
+		HashSet<Literal> aAssignment = new HashSet<Literal>();
 		
 		//Post process the result from the TAE.
 		switch (aRun.getRunResult()){
@@ -101,7 +101,7 @@ public class TAESATSolver extends AbstractCompressedSATSolver{
 					boolean aSign = !aLiteral.contains("-"); 
 					long aVariable = Long.valueOf(aLiteral.replace("-", ""));
 					
-					aAssignment.add(new Litteral(aVariable,aSign));
+					aAssignment.add(new Literal(aVariable,aSign));
 				}
 				break;
 			case UNSAT:
