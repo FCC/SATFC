@@ -96,32 +96,6 @@ public class CNF implements Collection<Clause>{
 	}
 
 	@Override
-	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = prime * result
-				+ ((fClauses == null) ? 0 : fClauses.hashCode());
-		return result;
-	}
-
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		CNF other = (CNF) obj;
-		if (fClauses == null) {
-			if (other.fClauses != null)
-				return false;
-		} else if (!fClauses.equals(other.fClauses))
-			return false;
-		return true;
-	}
-
-	@Override
 	public int size() {
 		return fClauses.size();
 	}
