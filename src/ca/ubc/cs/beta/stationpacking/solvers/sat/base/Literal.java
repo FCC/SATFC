@@ -4,7 +4,7 @@ package ca.ubc.cs.beta.stationpacking.solvers.sat.base;
  * The construction blocks of SAT clauses, consists of an integral variable (long) and its sign/negation (true=not negated, false=negated). 
  * @author afrechet
  */
-public class Litteral {
+public class Literal {
 
 	private final long fVariable;
 	private final boolean fSign;
@@ -13,7 +13,7 @@ public class Litteral {
 	 * @param aVariable - the litteral's (positive) variable.
 	 * @param aSign - the litteral's sign/negation (true=not negated, false=negated).
 	 */
-	public Litteral(long aVariable,boolean aSign)
+	public Literal(long aVariable,boolean aSign)
 	{
 		/*
 		 * TODO Litterals should not be allowed to be < 0 , but to support the current incremental code, we let it be.
@@ -53,7 +53,7 @@ public class Litteral {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		Litteral other = (Litteral) obj;
+		Literal other = (Literal) obj;
 		if (fSign != other.fSign)
 			return false;
 		if (fVariable != other.fVariable)

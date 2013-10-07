@@ -2,7 +2,7 @@ package ca.ubc.cs.beta.stationpacking.solvers.base;
 
 import java.io.Serializable;
 import java.util.HashSet;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Litteral;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
 
 public class SATSolverResult implements Serializable {
 
@@ -13,13 +13,13 @@ public class SATSolverResult implements Serializable {
 	private static final long serialVersionUID = 1L;
 	private SATResult fResult;
 	private double fRuntime;
-	private HashSet<Litteral> fAssignment;
+	private HashSet<Literal> fAssignment;
 	
-	public SATSolverResult(SATResult aResult, double aRuntime, HashSet<Litteral> aAssignment)
+	public SATSolverResult(SATResult aResult, double aRuntime, HashSet<Literal> aAssignment)
 	{
 		fResult = aResult;
 		fRuntime = aRuntime;
-		fAssignment = new HashSet<Litteral>(aAssignment);
+		fAssignment = new HashSet<Literal>(aAssignment);
 	}
 	
 	public SATResult getResult(){
@@ -31,9 +31,9 @@ public class SATSolverResult implements Serializable {
 		return fRuntime;
 	}
 	
-	public HashSet<Litteral> getAssignment()
+	public HashSet<Literal> getAssignment()
 	{
-		return new HashSet<Litteral>(fAssignment); 
+		return new HashSet<Literal>(fAssignment); 
 	}
 	
 	
