@@ -2,6 +2,7 @@ package ca.ubc.cs.beta.stationpacking.solvers.sat.base;
 
 import java.util.ArrayDeque;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.TreeSet;
 
@@ -18,7 +19,7 @@ public class Clause implements Collection<Litteral>{
 	
 	public Clause()
 	{
-		fLitterals = new ArrayDeque<Litteral>();
+		fLitterals = new HashSet<Litteral>();
 	}
 	
 	public Collection<Litteral> getLitterals()
