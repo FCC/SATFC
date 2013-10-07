@@ -28,6 +28,7 @@ import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerS
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerSolverInterrupter;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.SolvingJob;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.daemon.ThreadedSolverServerParameters;
+import ca.ubc.cs.beta.stationpacking.utils.RunnableUtils;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;
@@ -35,7 +36,6 @@ import com.beust.jcommander.ParameterException;
 public class ThreadedSolverServerExecutor {
 
 	private static Logger log = LoggerFactory.getLogger(ThreadedSolverServerExecutor.class);
-	
 	
 	private final static AtomicInteger TERMINATION_STATUS = new AtomicInteger(0);
 	
@@ -120,9 +120,9 @@ public class ThreadedSolverServerExecutor {
 		
 		//Submit and start producers and consumers.
 		
-		submitRunnable(aServerListener);
-		submitRunnable(aServerResponder);
-		submitRunnable(aServerSolver);
+		RunnableUtils.submitRunnable(EXECUTOR_SERVICE, UNCAUGHT_EXCEPTION_HANDLER, aServerListener);
+		RunnableUtils.submitRunnable(EXECUTOR_SERVICE, UNCAUGHT_EXCEPTION_HANDLER, aServerSolver);
+		RunnableUtils.submitRunnable(EXECUTOR_SERVICE, UNCAUGHT_EXCEPTION_HANDLER, aServerResponder);
 		
 		try {
 			EXECUTOR_SERVICE.awaitTermination(365*10, TimeUnit.DAYS);
@@ -135,25 +135,4 @@ public class ThreadedSolverServerExecutor {
 		
 	}
 	
-	/**
-	 * Wrapper method around runnables to make executor service catch uncaught exceptions.
-	 * @param r - a runnable.
-	 */
-	private static void submitRunnable(final Runnable r)
-	{
-		EXECUTOR_SERVICE.submit(
-				new Runnable() {
-					@Override
-					public void run() {
-						// TODO Auto-generated method stub
-						try {
-							r.run();
-						}  catch(Throwable t)
-						{
-							UNCAUGHT_EXCEPTION_HANDLER.uncaughtException(Thread.currentThread(), t);
-						}
-					}
-							
-				});
-	}
 }

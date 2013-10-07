@@ -16,7 +16,7 @@ import com.sun.jna.Pointer;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Litteral;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.jnalibraries.ClaspLibrary;
 import ca.ubc.cs.beta.stationpacking.utils.Holder;
@@ -132,7 +132,7 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		timer.cancel();
 		
 		SATResult satResult = null;
-		HashSet<Litteral> assignment = new HashSet<Litteral>();
+		HashSet<Literal> assignment = new HashSet<Literal>();
 		int state = fClaspLibrary.getResultState(result);
 		
 		if (fInterrupt.compareAndSet(true, false))
@@ -179,16 +179,16 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		return answer;
 	}
 
-	public static HashSet<Litteral> parseAssignment(String assignment)
+	public static HashSet<Literal> parseAssignment(String assignment)
 	{
-		HashSet<Litteral> set = new HashSet<Litteral>();
+		HashSet<Literal> set = new HashSet<Literal>();
 		StringTokenizer strtok = new StringTokenizer(assignment, ";");
 		while (strtok.hasMoreTokens())
 		{
 			int intLit = Integer.valueOf(strtok.nextToken());
 			int var = Math.abs(intLit);
 			boolean sign = intLit > 0;
-			Litteral aLit = new Litteral(var, sign);
+			Literal aLit = new Literal(var, sign);
 			set.add(aLit);
 		}
 		return set;
