@@ -49,7 +49,6 @@ public class ServerSolver implements Runnable {
 		
 		log.info("Server's solver is processing solving commands on a single thread.");
 		
-		
 			try
 			{
 				while(true)
