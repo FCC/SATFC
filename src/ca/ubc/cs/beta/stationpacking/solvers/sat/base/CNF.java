@@ -12,13 +12,13 @@ import org.apache.commons.lang3.StringUtils;
  * A SAT formula in Conjunctive Normal Form (a conjunction of clauses - AND's of OR's of litterals). Implementation wise just a clause set wrapper. 
  * @author afrechet
  */
-public class CNF implements Collection<Clause>{
+public class CNF implements Collection<OldClause>{
 	
-	private final Collection<Clause> fClauses;
+	private final Collection<OldClause> fClauses;
 	
 	public CNF()
 	{
-		fClauses = new ArrayDeque<Clause>();
+		fClauses = new ArrayDeque<OldClause>();
 	}
 	
 	/**
@@ -33,7 +33,7 @@ public class CNF implements Collection<Clause>{
 		int aNumClauses = fClauses.size();
 		long aMaxVariable = 0;
 		
-		for(Clause aClause : fClauses)
+		for(OldClause aClause : fClauses)
 		{
 			ArrayList<String> aLitteralStrings = new ArrayList<String>();
 			
@@ -73,7 +73,7 @@ public class CNF implements Collection<Clause>{
 	{
 		Collection<Long> aVariables = new HashSet<Long>();
 		
-		for(Clause aClause : fClauses)
+		for(OldClause aClause : fClauses)
 		{
 			for(Litteral aLitteral : aClause)
 			{
@@ -88,7 +88,7 @@ public class CNF implements Collection<Clause>{
 	public String toString()
 	{
 		ArrayDeque<String> aClauseStrings = new ArrayDeque<String>();
-		for(Clause aClause : fClauses)
+		for(OldClause aClause : fClauses)
 		{
 			aClauseStrings.add("("+aClause.toString()+")");
 		}
@@ -111,7 +111,7 @@ public class CNF implements Collection<Clause>{
 	}
 
 	@Override
-	public Iterator<Clause> iterator() {
+	public Iterator<OldClause> iterator() {
 		return fClauses.iterator();
 	}
 
@@ -126,7 +126,7 @@ public class CNF implements Collection<Clause>{
 	}
 
 	@Override
-	public boolean add(Clause e) {
+	public boolean add(OldClause e) {
 		return fClauses.add(e);
 	}
 
@@ -141,7 +141,7 @@ public class CNF implements Collection<Clause>{
 	}
 
 	@Override
-	public boolean addAll(Collection<? extends Clause> c) {
+	public boolean addAll(Collection<? extends OldClause> c) {
 		return fClauses.addAll(c);
 	}
 
