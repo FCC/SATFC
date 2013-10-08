@@ -7,11 +7,11 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractSATSolver;
 public class CompleteProblemIncrementalClaspSATWrapper extends AbstractSATSolver{
 
 	private final static double INITIAL_CUTOFF = 2;
-	private OldIncrementalClaspSATSolver fIncrementalSATSolver;
+	private IncrementalClaspSATSolver fIncrementalSATSolver;
 	
 	public CompleteProblemIncrementalClaspSATWrapper(String libraryPath, String parameters, long seed, CNF aCompleteProblem)
 	{
-		fIncrementalSATSolver = new OldIncrementalClaspSATSolver(libraryPath, parameters, seed);
+		fIncrementalSATSolver = new IncrementalClaspSATSolver(libraryPath, parameters, seed);
 		//Set the incremental 
 		fIncrementalSATSolver.solve(aCompleteProblem, INITIAL_CUTOFF, seed);
 	}

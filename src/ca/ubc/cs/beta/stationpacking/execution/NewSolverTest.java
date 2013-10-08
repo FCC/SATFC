@@ -29,7 +29,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSo
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ISATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental.CompleteProblemIncrementalClaspSATWrapper;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental.OldIncrementalClaspSATSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental.IncrementalClaspSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.ClaspSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.TAESATSolver;
 
@@ -99,7 +99,7 @@ public class NewSolverTest {
 			
 			SATEncoder aEncoder = new SATEncoder(aStationManager, aConstraintManager);
 			
-			AbstractSATSolver incClaspSATSolver = new OldIncrementalClaspSATSolver(usePath, ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13, 1);
+			AbstractSATSolver incClaspSATSolver = new IncrementalClaspSATSolver(usePath, ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13, 1);
 			
 			/*
 			 * 

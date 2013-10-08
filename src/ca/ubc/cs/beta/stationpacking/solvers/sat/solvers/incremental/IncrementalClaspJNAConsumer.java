@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental.queued;
+package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental;
 
 import java.util.Random;
 import java.util.Timer;
@@ -9,9 +9,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.ubc.cs.beta.aclib.misc.watch.StopWatch;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.jnalibraries.IncrementalClaspLibrary;
+import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
@@ -42,7 +42,7 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 	private AtomicBoolean fTerminated = new AtomicBoolean(false);
 	private AtomicBoolean fSolving = new AtomicBoolean(false); // true when the library is actively solving a problem
 	
-	private StopWatch fSolveTimeStopWatch = new StopWatch();
+	private Watch fSolveTimeStopWatch = new Watch();
 	
 	/**
 	 * Constructs a problem consumer that feeds problems to incremental clasp (in an online fashion) and sends back answers, 
@@ -228,7 +228,7 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 			}
 			
 			// Check if we should continue solving.
-			return fTerminated.get();
+			return !fTerminated.get();
 		}
 		
 	};
