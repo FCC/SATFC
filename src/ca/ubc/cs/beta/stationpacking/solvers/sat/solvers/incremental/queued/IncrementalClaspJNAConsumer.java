@@ -57,7 +57,6 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 				//Solve the problem by offering it to the JNA library.
 				//TODO duplicate IncrementalClaspSATSolver code.
 				
-			------------------------------------------------
 			
 				//Get problem answer from library.
 				//TODO duplicate IncrementalClaspSATSolver code.
