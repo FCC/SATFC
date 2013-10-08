@@ -1,21 +1,25 @@
 package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental;
 
+import java.util.ArrayDeque;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.StringTokenizer;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.TreeSet;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
+import com.sun.jna.Memory;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 
@@ -62,7 +66,7 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 	private final IncrementalClaspLibrary.jnaIncRead fReadCallback = new IncrementalClaspLibrary.jnaIncRead()
 	{
 		@Override
-		public String read() {
+		public Pointer read() {
 			// the first run is launched before any call to solve, so it must be waiting on the problem.
 			if (!fFirstCall.get())
 			{
@@ -90,14 +94,14 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 
 			// wait until we get a new problem
 			try {
-				fLocks.problemEncoding.waitUntilNotEqual("", new IHDoNothing());
+				fLocks.problemEncoding.waitUntilNotNull(new IHDoNothing());
 			} catch (InterruptedException e) {
 				// do nothing as the thread isn't solving anything
 			}
 
-			String problem = fLocks.problemEncoding.getHolderValue();
-
-			fLocks.problemEncoding.setAndSignal("");
+			Pointer problem = fLocks.problemEncoding.getHolderValue();
+		
+			fLocks.problemEncoding.setAndSignal(null);
 			// set the interrupt flag to false as we start a new computation
 			fInterrupt = false;
 			return problem;
@@ -191,7 +195,7 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 		}
 		
 		Message message = fCompressor.compress(aCNF);
-		String encoding = message.encode();
+		Pointer encoding = message.encode();
 		
 		long compTime1 = System.currentTimeMillis();
 		
@@ -261,7 +265,7 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 			else if (state == 1)
 			{
 				satResult = SATResult.SAT;
-				assignment = parseAssignment(fLib.getResultAssignment(fJNAResult), message.getLitInActivatedClauses());
+				assignment = parseAssignment(fLib.getResultAssignment(fJNAResult), aCNF.getVariables());
 			}
 			else 
 			{
@@ -272,6 +276,8 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 
 		long time2 = System.currentTimeMillis();
 
+		message.clear();
+		
 		// set the result holder to false
 		fLocks.resultObtained.setAndSignal(false);
 		// we have read the signal so signal the read thread that it can continue
@@ -287,7 +293,8 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 		return answer;
 	}
 
-	private HashSet<Literal> parseAssignment(String assignment, HashSet<Long> litInActivatedClauses) {
+
+	private HashSet<Literal> parseAssignment(String assignment, Collection<Long> CNFVars) {
 		HashSet<Literal> set = new HashSet<Literal>();
 		StringTokenizer strtok = new StringTokenizer(assignment, ";");
 
@@ -297,12 +304,13 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 			int var = Math.abs(intLit);
 			boolean sign = intLit > 0;
 			long decompressValue = fCompressor.decompressVar(var);
-			if (litInActivatedClauses.contains(decompressValue))
+			if (CNFVars.contains(decompressValue))
 			{
 				Literal aLit = new Literal(decompressValue, sign);
 				set.add(aLit);
 			}
 		}
+
 		return set;
 	}
 
@@ -318,7 +326,10 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 		fContinueCallbackHolder.set(false);
 		interrupt();
 		
-		fLocks.problemEncoding.setAndSignal("exit");
+		// termniation message is [0] = -1;
+		Pointer message= new Memory(1 * Native.getNativeSize(Integer.TYPE));
+		message.setInt(0 * Native.getNativeSize(Integer.TYPE), -1);
+		fLocks.problemEncoding.setAndSignal(message);
 		
 		try {
 			fLocks.notifyShutdown.waitUntilEqual(true, new IHDoNothing());
@@ -349,7 +360,7 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 	{
 		public Lock lock = new ReentrantLock();
 		
-		public ConditionHolder<String> problemEncoding = new ConditionHolder<String>(lock.newCondition(), new Holder<String>(""));
+		public ConditionHolder<Pointer> problemEncoding = new ConditionHolder<Pointer>(lock.newCondition(), new Holder<Pointer>(null));
 		public ConditionHolder<Boolean> resultRead = new ConditionHolder<Boolean>(lock.newCondition(), new Holder<Boolean>(false));
 		public ConditionHolder<Boolean> resultObtained = new ConditionHolder<Boolean>(lock.newCondition(), new Holder<Boolean>(false));
 		public ConditionHolder<Boolean> notifyShutdown = new ConditionHolder<Boolean>(lock.newCondition(), new Holder<Boolean>(false));
@@ -444,6 +455,29 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 				}
 			}
 			
+			public void waitUntilNotNull(InterruptHandler interruptHandler) throws InterruptedException
+			{
+				lock.lock();
+				try
+				{
+					while (holder.get() == null)
+					{
+						try
+						{
+							condition.await();
+						}
+						catch (InterruptedException e)
+						{
+							interruptHandler.handle(e);
+						}
+					}
+				}
+				finally
+				{
+					lock.unlock();
+				}
+			}
+			
 			public T getHolderValue()
 			{
 				lock.lock();
@@ -504,67 +538,93 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 	protected class Message
 	{
 		private int fNumVars;
-		private HashSet<Literal> fAssumptions;
+		private TreeSet<Literal> fAssumptions;
+		private ArrayDeque<Long> fNewControlVariables;
 		private HashSet<Clause> fClauses;
-		private HashSet<Long> fLitInActivatedClauses;
-		
-		public Message(int numVars, HashSet<Literal> assumptions, HashSet<Clause> clauses, HashSet<Long> litInActivatedClauses)
+		Pointer fEncoding = null;
+
+		public Message(int numVars, TreeSet<Literal> assumptions, HashSet<Clause> clauses, ArrayDeque<Long> newControlVariables)
 		{
+		
 			fNumVars = numVars;
 			fAssumptions = assumptions;
 			fClauses = clauses;
-			fLitInActivatedClauses = litInActivatedClauses;
+			fNewControlVariables = newControlVariables;
 		}
 		
-		public HashSet<Long> getLitInActivatedClauses()
+		public Pointer encode()
 		{
-			return fLitInActivatedClauses;
-		}
-		
-		public String encode()
-		{
-			log.info("Encoding the super giga string.");
-			StringBuffer strBuffer = new StringBuffer();
-			strBuffer.append(encodeParameterLine(fNumVars, fClauses.size()));
-			strBuffer.append("\n");
-			strBuffer.append(encodeLitteralSet(fAssumptions));
-			strBuffer.append("\n");
-			strBuffer.append(encodeClauses(fClauses));
-			log.info("Done encoding the super giga string.");
-			System.err.println(strBuffer.length());
-			
-			
-			return strBuffer.toString();
-		}
-		
-		protected String encodeLitteralSet(HashSet<Literal> set)
-		{
-			String str = StringUtils.join(set, " ");
-			return "a "+str+" 0";
-		}
-		
-		protected String encodeParameterLine(int numVars, int numClauses)
-		{
-			return "p pcnf "+fNumVars+" "+numClauses;
-		}
-		
-		protected String encodeClauses(HashSet<Clause> set)
-		{
-			StringBuffer strBuffer = new StringBuffer();
-			String prefix = "";
-			for (Clause clause : set)
+
+			if (fEncoding == null)
 			{
-				strBuffer.append(prefix);
-				prefix = "\n";
-				strBuffer.append(encodeClause(clause));
+				createEncoding();
 			}
-			return strBuffer.toString();
+			return fEncoding;
 		}
 		
-		protected String encodeClause(Clause clause)
+		public void clear()
 		{
-			String str = StringUtils.join(clause, " ");
-			return str +" 0";
+			fEncoding = null;
+		}
+		
+		/**
+		 * Format
+		 * [0]: size of array
+ 		 * [1]: total number of variables
+		 * [2]: number of new clauses
+		 * [3]: number of control literals of clauses that need to be solved // MUST BE INCREASING
+		 * [4..(4+[2]-1)]: new control variables (1 per new clause)
+		 * [(4+[2])..(4+[2]+[3]-1)]: control literals that are true // MUST BE SORTED, MUST ALL BE FALSE i.e. negated
+		 * [(4+[2]+[3])..end]: new clauses separated by 0s.
+		 * 
+		 * or
+		 * 
+		 * [0]: -1 = terminate the solver.
+		 * @return
+		 */
+		protected void createEncoding()
+		{
+			int size = getIntSize();
+			Pointer message= new Memory(size * Native.getNativeSize(Integer.TYPE));
+			message.setInt(0 * Native.getNativeSize(Integer.TYPE), size);
+			message.setInt(1 * Native.getNativeSize(Integer.TYPE), fNumVars);
+			message.setInt(2 * Native.getNativeSize(Integer.TYPE), fClauses.size());
+			message.setInt(3 * Native.getNativeSize(Integer.TYPE), fAssumptions.size());
+
+			int i = 4;
+			for (long newControl : fNewControlVariables)
+			{
+				message.setInt(i * Native.getNativeSize(Integer.TYPE), (int) newControl);
+				i++;
+			}
+			for (Literal trueControl : fAssumptions)
+			{
+				message.setInt(i * Native.getNativeSize(Integer.TYPE), (trueControl.getSign()?1:-1) * (int) trueControl.getVariable());
+				i++;
+			}
+			for (Clause clause : fClauses)
+			{
+				for (Literal lit : clause)
+				{
+					message.setInt(i * Native.getNativeSize(Integer.TYPE), (lit.getSign()?1:-1) * (int) lit.getVariable());
+					i++;
+				}
+				message.setInt(i * Native.getNativeSize(Integer.TYPE), 0);
+				i++;
+			}
+			fEncoding = message;
+		}
+		
+		protected int getIntSize()	
+		{
+			int size = 4;//size of array
+			size += fClauses.size();
+			size += fAssumptions.size();
+			for (Clause clause : fClauses)
+			{
+				size += clause.size()+1; // +1 because the clause needs to be terminated by a 0.
+			}
+			return size;
 		}
 	}
 	
@@ -575,21 +635,21 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 		private long fNextControlLiteral = -1;
 		
 		private final HashMap<Clause, Long> fControlVariables = new HashMap<Clause, Long>();
-		private final HashSet<Literal> fCompressedControlLitterals = new HashSet<Literal>();
-		private final HashSet<Literal> fActivatedCompressedControls = new HashSet<Literal>();
+		private final TreeSet<Literal> fActivatedCompressedControls = new TreeSet<Literal>(new Comparator<Literal>() {
+			@Override
+			public int compare(Literal o1, Literal o2) {
+				return Long.compare(o1.getVariable(), o2.getVariable());
+			}
+		});
 		
 		public Message compress(CNF cnf)
 		{
 			// set all control variables to true (so that clauses are not analysed).
-			for (Literal lit : fActivatedCompressedControls)
-			{
-				fCompressedControlLitterals.remove(lit);
-				fCompressedControlLitterals.add(new Literal(lit.getVariable(), true));
-			}
+
 			fActivatedCompressedControls.clear();
 
-			HashSet<Long> litInActivatedClauses = new HashSet<Long>();
 			HashSet<Clause> newClauses = new HashSet<Clause>();
+			ArrayDeque<Long> newControlVariables = new ArrayDeque<Long>();
 			for (Clause clause : cnf)
 			{
 				Long control = fControlVariables.get(clause);
@@ -602,16 +662,12 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 					// add the clause to new clauses
 					Clause compressedClause = compressClause(clause, control);
 					newClauses.add(compressedClause);
+					newControlVariables.add(compressVar(control));
 				}
-				fCompressedControlLitterals.remove(new Literal(compressVar(control), true));
-				fCompressedControlLitterals.add(new Literal(compressVar(control), false));
 				fActivatedCompressedControls.add(new Literal(compressVar(control), false));
-				for (Literal lit : clause)
-				{
-					litInActivatedClauses.add(lit.getVariable());
-				}
+				
 			}
-			Message message = new Message(fCompressionMap.size(), fCompressedControlLitterals, newClauses, litInActivatedClauses);
+			Message message = new Message(fCompressionMap.size(), fActivatedCompressedControls, newClauses, newControlVariables);
 			return message;
 		}
 		
