@@ -18,7 +18,8 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractSATSolver;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental.IncrementalClaspSATSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental.OldIncrementalClaspSATSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental.queued.IncrementalClaspSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.ClaspSATSolver;
 
 public class ClaspSATSolverSelectorBundle implements ISolverBundle{

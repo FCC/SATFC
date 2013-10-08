@@ -1,7 +1,9 @@
 package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental.queued;
 
 import java.lang.Thread.UncaughtExceptionHandler;
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.StringTokenizer;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
@@ -9,6 +11,8 @@ import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.sun.jna.Pointer;
 
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATSolverResult;
@@ -22,11 +26,13 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver {
 	private static Logger log = LoggerFactory.getLogger(IncrementalClaspSATSolver.class);
 	
 	private final BlockingQueue<IncrementalProblem> fProblemQueue;
-	private final BlockingQueue<SATSolverResult> fAnswerQueue;
+	private final BlockingQueue<IncrementalResult> fAnswerQueue;
 	
 	private final ExecutorService fExecutorService;
 	
 	private final IncrementalClaspJNAConsumer fConsumer;
+	
+	private final IncrementalCompressor fCompressor;
 	
 	public IncrementalClaspSATSolver(String libraryPath, String parameters, long seed)
 	{
@@ -34,7 +40,7 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver {
 		 * Create encoding structures
 		 */
 		log.debug("Creating encoding structures.");
-		//TODO (setup the required objects to encode problem instance into an incremental problem.)
+		fCompressor = new IncrementalCompressor();
 		
 		/*
 		 * Create consumer.
@@ -42,9 +48,9 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver {
 		log.debug("Creating Clasp JNA consumer.");
 		//Initialize communication queues.
 		fProblemQueue = new ArrayBlockingQueue<IncrementalProblem>(1);
-		fAnswerQueue = new ArrayBlockingQueue<SATSolverResult>(1);
+		fAnswerQueue = new ArrayBlockingQueue<IncrementalResult>(1);
 		
-		fConsumer = constructConsumer();
+		fConsumer = new IncrementalClaspJNAConsumer(libraryPath, parameters, seed, fProblemQueue, fAnswerQueue);
 		
 		/*
 		 * Launch consumer.
@@ -54,15 +60,6 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver {
 		fExecutorService = Executors.newCachedThreadPool();
 		
 		launchConsumer();
-	}
-	
-	/**
-	 * Constructs an IncrementalClaspJNAConsumer to be used in solving.
-	 */
-	private IncrementalClaspJNAConsumer constructConsumer()
-	{
-		//TODO (construct a consumer, setting up incremental Clasp library and whatnot.)
-		throw new UnsupportedOperationException("constructConsumer() is not implemented.");
 	}
 	
 	/**
@@ -92,11 +89,12 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver {
 	public SATSolverResult solve(CNF aCNF, double aCutoff, long aSeed) {
 		
 		//Encode the CNF into an IncrementalProblem.
-		//TODO (construct the incremental problem.)
-		IncrementalProblem problem = null;
+		Pointer problemPointer = fCompressor.compress(aCNF);
+		IncrementalProblem problem = new IncrementalProblem(problemPointer,aCutoff, aSeed);
 		
 		//Give it to the consumer.
 		try {
+			log.debug("Submitting problem.");
 			fProblemQueue.put(problem);
 		} catch (InterruptedException e) {
 			log.error("Incremental Clasp SAT Solver's put() method was interrupted, propagating interruption ({}).",e.getMessage());
@@ -106,18 +104,43 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver {
 		
 		
 		//Wait for an answer.
-		SATSolverResult answer;
+		IncrementalResult answer;
 		try {
 			answer = fAnswerQueue.take();
+			log.debug("Got anser.");
 		} catch (InterruptedException e) {
 			log.error("Incremental Clasp SAT Solver's take() method was interrupted, propagating interruption ({}).",e.getMessage());
 			Thread.currentThread().interrupt();
 			return new SATSolverResult(SATResult.INTERRUPTED, 0.0, new HashSet<Literal>());
 		}
 		
-		//Return answer.
-		return answer;
+		log.debug("Post-processing result.");
+		//Post-process answer for decompression.
+		HashSet<Literal> assignment = parseAssignment(answer.getAssignment(), aCNF.getVariables());
 		
+		//Return answer.
+		return new SATSolverResult(answer.getSATResult(), answer.getRuntime(), assignment);
+		
+	}
+	
+	private HashSet<Literal> parseAssignment(String assignment, Collection<Long> CNFVars) {
+		HashSet<Literal> set = new HashSet<Literal>();
+		StringTokenizer strtok = new StringTokenizer(assignment, ";");
+
+		while (strtok.hasMoreTokens())
+		{
+			int intLit = Integer.valueOf(strtok.nextToken());
+			int var = Math.abs(intLit);
+			boolean sign = intLit > 0;
+			long decompressValue = fCompressor.decompressVar(var);
+			if (CNFVars.contains(decompressValue))
+			{
+				Literal aLit = new Literal(decompressValue, sign);
+				set.add(aLit);
+			}
+		}
+
+		return set;
 	}
 
 	@Override
@@ -132,7 +155,8 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver {
 		fConsumer.notifyShutdown();
 		log.debug("Shutting down execution service.");
 		fExecutorService.shutdownNow();
-		
 	}
+	
+	
 
 }
