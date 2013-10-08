@@ -30,7 +30,7 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 	private final static int MAX_NUMBER_OF_PARAMETERS = 128;
 	private final IncrementalClaspLibrary fLib;
 	private String fParameters;
-	private Long fSeed;
+	private long fSeed;
 	
 	private Pointer fJNAFacade;
 	private Pointer fJNAResult;
@@ -68,6 +68,9 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 		testLibrary();
 	}
 	
+	/**
+	 * Test the current incremental clasp library. Checks if the given string of parameters and seed are valid.
+	 */
 	private void testLibrary()
 	{
 		if (fParameters.contains("--seed"))
@@ -131,8 +134,13 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 	{
 		if (fSolving.get())
 		{
+			log.debug("Interrupting Clasp library.");
 			fInterrupted.set(true);
 			fLib.interrupt(fJNAFacade);
+		}
+		else
+		{
+			log.debug("Not currently solving, no problem to interrupt.");
 		}
 	}
 	
@@ -141,27 +149,32 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 	 */
 	public void notifyShutdown()
 	{
-		//TODO
+		//TODO Implement shutting down.
 	}
 	
+	/**
+	 * Call back object used by JNA Clasp library when in need of a next problem to solve.
+	 */
 	private final IncrementalClaspLibrary.jnaIncRead fReadProblemCallback = new IncrementalClaspLibrary.jnaIncRead()
 	{
 		@Override
 		public Pointer read() {
+			
 			takeProblem();
 			
 			// reset the flags
 			fTimedOut.set(false);
 			fInterrupted.set(false);
+			fSolving.set(true);
 			
 			fSolveTimeStopWatch.start();
-			fSolving.set(true);
 			
 			// create the time thread to set cutoff
 			Timer timer = new Timer();
 			timer.schedule(new TimerTask() {
 				@Override
 				public void run() {
+					log.debug("Solving timed out.");
 					fLib.interrupt(fJNAFacade);
 					fTimedOut.set(true);
 				}
@@ -171,12 +184,21 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 		}
 	};
 	
+	/**
+	 * Take a problem from the problem queue.
+	 */
 	private void takeProblem()
 	{
 		IncrementalProblem problem;
-		log.info("Incremental Claso Consumer is taking a problem.");
+		log.info("Incremental Clasp Consumer is taking a problem from queue.");
 		try {
 			problem = fProblemQueue.take();
+			
+			if(problem.getSeed()!=fSeed)
+			{
+				throw new IllegalStateException("Cannot solve a problem with seed "+problem.getSeed()+" different than seed "+fSeed+" provided on construction.");
+			}
+			
 			fCurrentIncrementalProblem = problem;
 		} catch (InterruptedException e) {
 			log.error("Incremental Clasp Consumer was interrupted while waiting for new problem.",e.getMessage());
@@ -184,6 +206,9 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 		}
 	}
 	
+	/**
+	 * Call back object used by JNA Clasp library when in need of a next problem to solve.
+	 */
 	private final IncrementalClaspLibrary.jnaIncContinue fProcessAnswerAndContinueCallback = new IncrementalClaspLibrary.jnaIncContinue() 
 	{
 
@@ -191,8 +216,10 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 		public boolean doContinue() {
 			// Retrieve answer and fill the answer queue.
 			fSolving.set(false);
-			long time = fSolveTimeStopWatch.stop();
-			IncrementalResult result = getSolverResult((double)time/1000.0);
+			
+			log.debug("Came back from solving - processing result.");
+	
+			IncrementalResult result = getSolverResult();
 			try {
 				fAnswerQueue.put(result);
 			} catch (InterruptedException e) {
@@ -206,8 +233,15 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 		
 	};
 
-	private IncrementalResult getSolverResult(double aRuntime)
+	/**
+	 * Extract solver result from JNA Clasp library.
+	 * @return an increment result.
+	 */
+	private IncrementalResult getSolverResult()
 	{
+		long time = fSolveTimeStopWatch.stop();
+		double runtime = (double)time/1000.0;
+		
 		SATResult satResult;
 		String assignment = "";
 		int state = fLib.getResultState(fJNAResult);
@@ -236,7 +270,7 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 				log.error("Clasp crashed!");
 			}
 		}
-		return new IncrementalResult(satResult, assignment, aRuntime);
+		return new IncrementalResult(satResult, assignment, runtime);
 	}
 	
 }
