@@ -40,12 +40,12 @@ import ca.ubc.cs.beta.stationpacking.utils.Holder;
  * @author gsauln
  *
  */
-public class IncrementalClaspSATSolver extends AbstractSATSolver 
+public class OldIncrementalClaspSATSolver extends AbstractSATSolver 
 {
 	// C++
 	// create the parser for the problem format
 	
-	private static Logger log = LoggerFactory.getLogger(IncrementalClaspSATSolver.class);
+	private static Logger log = LoggerFactory.getLogger(OldIncrementalClaspSATSolver.class);
 	
 	private IncrementalClaspLibrary fLib = null;
 	private String fParameters;
@@ -117,12 +117,12 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver
 	
 
 	
-	public IncrementalClaspSATSolver(String libraryPath, String parameters, long seed)
+	public OldIncrementalClaspSATSolver(String libraryPath, String parameters, long seed)
 	{
 		init(libraryPath, parameters, 128, seed);
 	}
 	
-	public IncrementalClaspSATSolver(String libraryPath, String parameters, int maxArgs, long seed)
+	public OldIncrementalClaspSATSolver(String libraryPath, String parameters, int maxArgs, long seed)
 	{
 		init(libraryPath, parameters, maxArgs, seed);
 	}

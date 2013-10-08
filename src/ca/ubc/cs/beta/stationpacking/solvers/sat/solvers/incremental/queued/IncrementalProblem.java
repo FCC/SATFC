@@ -6,11 +6,13 @@ public class IncrementalProblem {
 
 	private final double fCutoffTime;
 	private final Pointer fProblemPointer;
+	private final long fSeed;
 	
-	public IncrementalProblem(double cutoffTime, Pointer problemPointer)
+	public IncrementalProblem(Pointer problemPointer, double cutoffTime, long seed )
 	{
 		fCutoffTime = cutoffTime;
 		fProblemPointer = problemPointer;
+		fSeed = seed;
 	}
 	
 	public double getCutoffTime() {
@@ -19,6 +21,11 @@ public class IncrementalProblem {
 
 	public Pointer getProblemPointer() {
 		return fProblemPointer;
+	}
+	
+	public long getSeed()
+	{
+		return fSeed;
 	}
 
 
