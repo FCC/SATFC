@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental.queued;
+package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental;
 
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.Collection;
@@ -107,7 +107,7 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver {
 		IncrementalResult answer;
 		try {
 			answer = fAnswerQueue.take();
-			log.debug("Got anser.");
+			log.debug("Got answer from queue.");
 		} catch (InterruptedException e) {
 			log.error("Incremental Clasp SAT Solver's take() method was interrupted, propagating interruption ({}).",e.getMessage());
 			Thread.currentThread().interrupt();
