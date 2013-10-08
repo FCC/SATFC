@@ -161,6 +161,7 @@ public class ServerSolver implements Runnable {
 					}
 					catch(Exception e)
 					{
+						e.printStackTrace();
 						String aError = "Got an exception while trying to execute a solving command ("+e.getMessage()+")";
 						log.error(aError);
 						try
