@@ -10,7 +10,7 @@ public interface IncrementalClaspLibrary extends ClaspLibrary
 	 */
 	interface jnaIncRead extends Callback
 	{
-		String read();
+		Pointer read();
 	}
 
 	/**

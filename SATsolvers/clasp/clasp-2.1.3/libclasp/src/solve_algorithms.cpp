@@ -109,9 +109,20 @@ bool solve(SharedContext& ctx, const SolveParams& p, const LitVec& assumptions, 
 /////////////////////////////////////////////////////////////////////////////////////////
 // SolveAlgorithm
 /////////////////////////////////////////////////////////////////////////////////////////
-SolveAlgorithm::SolveAlgorithm(const SolveLimits& lim) : limits_(lim)  {
+SolveAlgorithm::SolveAlgorithm(const SolveLimits& lim) : limits_(lim), interrupt_(false)  {
 }
 SolveAlgorithm::~SolveAlgorithm() {}
+
+bool SolveAlgorithm::checkInterrupt()
+{
+	bool res = false;
+	if (interrupt_)
+	{
+		res = true;
+	}
+	interrupt_ = false;
+	return res;
+}
 
 bool SolveAlgorithm::backtrackFromModel(Solver& s) { 
 	return s.sharedContext()->enumerator()->backtrackFromModel(s) == Enumerator::enumerate_continue;
@@ -172,6 +183,7 @@ bool SolveAlgorithm::initPath(Solver& s, const LitVec& path, InitParams& params)
 ValueRep SolveAlgorithm::solvePath(Solver& s, const SolveParams& p, SolveLimits& lim) {
 	if (s.hasConflict()) return value_false;
 	if (lim.reached())   return value_free;
+	if (checkInterrupt()) return value_false;
 	struct  ConflictLimits {
 		uint64 restart; // current restart limit
 		uint64 reduce;  // current reduce limit
@@ -224,7 +236,7 @@ ValueRep SolveAlgorithm::solvePath(Solver& s, const SolveParams& p, SolveLimits&
 		rsLimit     = nextUp;
 	}
 	EventType progress(s, SolvePathEvent::event_restart, 0, 0);
-	while (result == value_free && cLimit.global) {
+	while (result == value_free && cLimit.global && !checkInterrupt()) {// added interrupt_ in order to handle terminate
 		uint64 minLimit = cLimit.min(); assert(minLimit);
 		sLimit.learnts  = (uint32)dbSizeLimit.clamp(dbMax + (db.pinned*p.reduce.strategy.noGlue));
 		sLimit.conflicts= minLimit;
@@ -322,7 +334,7 @@ ValueRep SolveAlgorithm::solvePath(Solver& s, const SolveParams& p, SolveLimits&
 /////////////////////////////////////////////////////////////////////////////////////////
 // SimpleSolve
 /////////////////////////////////////////////////////////////////////////////////////////
-bool SimpleSolve::terminate() { return false; }
+bool SimpleSolve::terminate() { setInterrupt(); return true; } // sets the interrupt flag to true to terminate the algorithm.
 bool SimpleSolve::doSolve(Solver& s, const SolveParams& p) {
 	s.stats.reset();
 	Enumerator*  enumerator = s.sharedContext()->enumerator();

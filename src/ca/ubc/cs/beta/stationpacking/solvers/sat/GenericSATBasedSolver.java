@@ -166,6 +166,10 @@ public class GenericSATBasedSolver implements ISolver {
 		//Post-process the result for correctness.
 		if(aResult.getResult().equals(SATResult.SAT))
 		{
+			
+			System.err.println(aResult.getAssignment());
+			
+			
 			log.info("Independently verifying the veracity of returned assignment");
 			//Check assignment has the right number of stations
 			int aAssignmentSize = 0;

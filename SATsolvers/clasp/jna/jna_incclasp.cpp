@@ -6,6 +6,8 @@
 #include "jna_incclasp.h"
 #include <clasp/clause.h>
 
+using namespace std;
+
 namespace JNA
 {
 
@@ -28,83 +30,108 @@ bool parseLitVec(StreamSource& in, LitVec& vec)
 	return false;
 }
 
-JNAIncProblem::JNAIncProblem(const char* (*readCallback)()) : readCallback_(readCallback) {}
+JNAIncProblem::JNAIncProblem(void* (*readCallback)()) : readCallback_(readCallback) {}
 
+/**
+* Format
+* [0]: size of array
+* [1]: total number of variables
+* [2]: number of new clauses
+* [3]: number of control literals of clauses that need to be solved // MUST BE INCREASING
+* [4..(4+[2]-1)]: new control variables (1 per new clause)
+* [(4+[2])..(4+[2]+[3]-1)]: control literals that are true // MUST BE SORTED
+* [(4+[2]+[3])..end]: new clauses separated by 0s.
+* 
+* or
+* 
+* [0]: -1 = terminate the solver.
+*/
 bool JNAIncProblem::read(ApiPtr api, uint32 properties)
 {
-	const char* problem = readCallback_();
 
+	void* _problem = readCallback_();
+        int* problem = reinterpret_cast<int*>(_problem);
+
+	int aSize = problem[0];
 	// initialize variables
-	std::istringstream istr(problem);
-	StreamSource in(istr);
 
 	SharedContext& ctx = *(api.ctx);
 	ClauseCreator cc(ctx.master());
 
-	int state = 1; // 1, we need to read the p line; 2, we need to read the a line; 3 we need to read the new clauses, 0 stop and parsing completed successfully, -1..-n stop and an error occured
-
-	int numClauses = 0;
-	int clauseCount = 0;
-	LitVec clause;
-
-	// start parsing the message and update the problem
-	in.skipWhite();
-	if (match(in, "exit", false))
+	if (aSize == -1) // exit command
 	{
 		return false;
-	}
-	// parse the problem
-	while (state > 0)
+	}	
+
+	// increase the number of vars needed
+	while (ctx.numVars() < problem[1])
 	{
-		in.skipWhite();
-		if (*in == 'c') { skipLine(in); continue; } // skip comments (should not have any but...)
-		if (state == 1) // read the p line
-		{
-			if (!match(in, "p ", false)) { state = -1; continue;}
-			if (!match(in, "pcnf ", false)) { state = -2; continue;}
-			int totalVars = 0;
-			// check the total number of vars and increase the count in the ctx
-			if (!in.parseInt(totalVars, 1, INT_MAX)) { state = -3; continue;}
-			while (ctx.numVars() < totalVars)
-			{
-				ctx.addVar(Var_t::atom_var);
-			}
-			ctx.symTab().startInit();
-                        ctx.symTab().endInit(SymbolTable::map_direct, totalVars+1);
+		ctx.addVar(Var_t::atom_var);
+	}
+	ctx.symTab().startInit();
+	ctx.symTab().endInit(SymbolTable::map_direct, problem[1]+1);
 
-			// set the number of clauses to read.
-			if (!in.parseInt(numClauses, 0, INT_MAX)) { state = -4; continue;}
-			state = 2;
+	// set the index
+	int index = 4;
+
+	// add the new control variables
+	for (int i = 0; i < problem[2]; i++)
+	{
+		int lit = problem[index+i];
+		if (lit < 0) lit *= -1;
+		allControls_.push_back(lit);
+	}
+	index += problem[2];
+
+	// set the true control literals i.e. assumptions
+	assumptions_.clear();
+	assumptions_.reserve(allControls_.size());
+	Literal rLit;
+	int j = 0;
+	for (int i = 0; i < allControls_.size(); i++)
+	{
+		int cControl = allControls_.at(i);
+		if (j < problem[3] && -problem[index + j] == cControl)
+		{
+			int lit = problem[index + j];	
+			rLit = negLit(-lit);
+			assumptions_.push_back(rLit);
+			j++;
 		}
-		else if (state == 2) // read the a line
+		else
 		{
-			assumptions_.clear();
-			if (!match(in, "a ", false)) { state = -5; continue;}
-			if (!parseLitVec(in, assumptions_)) { state = -6; continue;}
-			state = 3;
-			ctx.startAddConstraints();
-		}
-		else if (state == 3) // read the new clause
-		{
-			if (clauseCount == numClauses) { state = 0; continue;}
-			clause.clear();
-			if (!parseLitVec(in, clause)) { state = -7; continue;}
-
-			// add clause to context
-			cc.start();
-			for (LitVec::iterator it = clause.begin(); it != clause.end(); ++it) 
-			{
-				cc.add(*it);
-                        } 
-                        if (!cc.end()) { state = -8; continue;}
-
-			clauseCount++;
+			rLit = posLit(cControl);
+			assumptions_.push_back(rLit);
 		}
 	}
+	index += problem[3];
 
-	if (state == 0) return true;
-	return false;
+	// add new clauses
+	LitVec clause;
+	ctx.startAddConstraints();
+	for (int clauseCount = 0; clauseCount < problem[2]; clauseCount++)
+	{
+		// create the clause
+		clause.clear();
+		while (problem[index] != 0)
+		{
+			int lit = problem[index];
+			rLit = lit >= 0 ? posLit(lit) : negLit(-lit);
+			clause.push_back(rLit);
+			index++;
+		}
+		// add the clause
+		cc.start();
+                for (LitVec::iterator it = clause.begin(); it != clause.end(); ++it) 
+                {
+			cc.add(*it);
+                } 
+                cc.end();
+		index++;
+	}
+	return true;
 }
+
 
 void JNAIncProblem::getAssumptions(Clasp::LitVec& vec) 
 {
@@ -129,7 +156,7 @@ void solveIncremental(JNAFacade &facade, JNAIncProblem& problem, JNAConfig& conf
 
 } //end JNA namespace
 
-void* createIncProblem(const char* (*_readCallback)())
+void* createIncProblem(void* (*_readCallback)())
 {
 	JNA::JNAIncProblem* problem = new JNA::JNAIncProblem(_readCallback);
 	return problem;
