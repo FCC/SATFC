@@ -1,37 +1,97 @@
 package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental.queued;
 
+import java.util.Random;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.ubc.cs.beta.stationpacking.solvers.base.SATSolverResult;
+import ca.ubc.cs.beta.aclib.misc.watch.StopWatch;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.jnalibraries.IncrementalClaspLibrary;
+
+import com.sun.jna.Native;
+import com.sun.jna.Pointer;
 
 /**
  * Consumer runnable in charge of feeding problems for and reading answers from the JNA clasp library (in an online fashion since we're working incrementally).
- * @author alex
+ * @author alex, gsauln
  */
 public class IncrementalClaspJNAConsumer implements Runnable{
 
 	private static Logger log = LoggerFactory.getLogger(IncrementalClaspJNAConsumer.class);
 	
 	private final BlockingQueue<IncrementalProblem> fProblemQueue;
-	private final BlockingQueue<SATSolverResult> fAnswerQueue;
+	private final BlockingQueue<IncrementalResult> fAnswerQueue;
+	
+	private final static int MAX_NUMBER_OF_PARAMETERS = 128;
+	private final IncrementalClaspLibrary fLib;
+	private String fParameters;
+	private Long fSeed;
+	
+	private Pointer fJNAFacade;
+	private Pointer fJNAResult;
+
+	private IncrementalProblem fCurrentIncrementalProblem;
+	
+	private AtomicBoolean fInterrupted = new AtomicBoolean(false);
+	private AtomicBoolean fTimedOut = new AtomicBoolean(false); // true if the library timed out during solving.
+	private AtomicBoolean fTerminated = new AtomicBoolean(false);
+	private AtomicBoolean fSolving = new AtomicBoolean(false); // true when the library is actively solving a problem
+	
+	private StopWatch fSolveTimeStopWatch = new StopWatch();
 	
 	/**
 	 * Constructs a problem consumer that feeds problems to incremental clasp (in an online fashion) and sends back answers, 
 	 * all through thread safe blocking queues.
 	 */
-	public IncrementalClaspJNAConsumer(IncrementalClaspLibrary aIncrementalClaspLibrary,BlockingQueue<IncrementalProblem> aProblemQueue, BlockingQueue<SATSolverResult> aAnswerQueue)
+	public IncrementalClaspJNAConsumer(String aIncrementalClaspLibraryPath,
+										String aParameters,
+										long aSeed,
+										BlockingQueue<IncrementalProblem> aProblemQueue, 
+										BlockingQueue<IncrementalResult> aAnswerQueue)
 	{
 		//Setup the queues.
 		fProblemQueue = aProblemQueue;
 		fAnswerQueue = aAnswerQueue;
 		
 		//Setup the necessary library components.
-		//TODO
+		fLib = (IncrementalClaspLibrary) Native.loadLibrary(aIncrementalClaspLibraryPath, IncrementalClaspLibrary.class);
+		fJNAFacade = fLib.createFacade();
+		fJNAResult = fLib.createResult();
+		fParameters = aParameters;
+		fSeed = aSeed;
 		
+		testLibrary();
+	}
+	
+	private void testLibrary()
+	{
+		if (fParameters.contains("--seed"))
+		{
+			throw new IllegalArgumentException("The parameter string cannot contain a seed as it is set upon the first call to solve!");
+		}
+		
+		// check if the configuration is valid.
+		String params = fParameters+" --seed=1";
+		Pointer config = fLib.createConfig(params, params.length(), MAX_NUMBER_OF_PARAMETERS);
+		try {
+			int status = fLib.getConfigStatus(config);
+			if (status == 2)
+			{
+				String configError = fLib.getConfigErrorMessage(config);
+				String claspError = fLib.getConfigClaspErrorMessage(config);
+				String error = configError + "\n" + claspError;
+				throw new IllegalArgumentException(error);
+			}
+		}
+		finally 
+		{
+			fLib.destroyConfig(config);
+		}
 	}
 	
 	@Override
@@ -39,44 +99,29 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 		Thread.currentThread().setName("Incremental Clasp JNA Consumer");
 		
 		log.info("Incremental Clasp JNA Consumer processing problems on a single thread.");
-		try
-		{
-			while(true)
-			{
-				//Take problem from problem queue.
-				IncrementalProblem problem;
-				try {
-					problem = fProblemQueue.take();
-				} catch (InterruptedException e) {
-					log.error("Incremental Clasp JNA Consumer's take() method was interrupted, propagating interruption ({}).",e.getMessage());
-					Thread.currentThread().interrupt();
-					return;
-				}
-				
-				
-				//Solve the problem by offering it to the JNA library.
-				//TODO duplicate IncrementalClaspSATSolver code.
-				
-			
-				//Get problem answer from library.
-				//TODO duplicate IncrementalClaspSATSolver code.
-				SATSolverResult answer = null;
-				
-				try {
-					fAnswerQueue.put(answer);
-				} catch (InterruptedException e) {
-					log.error("Incremental Clasp JNA Consumer's put() method was interrupted, propagating interruption ({}).",e.getMessage());
-					Thread.currentThread().interrupt();
-					return;
-				}
-			
-			}
-		}
-		finally
-		{
-			log.info("Shutting down Incremental Clasp JNA Consumer.");
-			//TODO Shutdown the library.
-		}
+
+		// Create the configuration object
+		// the construction of the config should always work as it as been
+		// checked in the constructor.
+		int seed = (new Random(fSeed)).nextInt();
+		String params = fParameters + " --seed=" + seed;
+		Pointer config = fLib.createConfig(params, params.length(),	MAX_NUMBER_OF_PARAMETERS);
+
+		// create Problem object and give the callback function.
+		Pointer problem = fLib.createIncProblem(fReadProblemCallback);
+
+		// Create incremental controller
+		Pointer control = fLib.createIncControl(fProcessAnswerAndContinueCallback, fJNAResult);
+
+		// call solve incremental, the thread will stop here until the call
+		// is terminated by incremental control returning false.
+		fLib.jnasolveIncremental(fJNAFacade, problem, config, control, fJNAResult);
+
+		// destroy all objects created in this call
+		log.info("Shutting down Incremental Clasp JNA Consumer.");
+		fLib.destroyConfig(config);
+		fLib.destroyProblem(problem);
+		fLib.destroyIncControl(control);
 	}
 	
 	/**
@@ -84,7 +129,11 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 	 */
 	public void interrupt()
 	{
-		//TODO
+		if (fSolving.get())
+		{
+			fInterrupted.set(true);
+			fLib.interrupt(fJNAFacade);
+		}
 	}
 	
 	/**
@@ -94,5 +143,100 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 	{
 		//TODO
 	}
+	
+	private final IncrementalClaspLibrary.jnaIncRead fReadProblemCallback = new IncrementalClaspLibrary.jnaIncRead()
+	{
+		@Override
+		public Pointer read() {
+			takeProblem();
+			
+			// reset the flags
+			fTimedOut.set(false);
+			fInterrupted.set(false);
+			
+			fSolveTimeStopWatch.start();
+			fSolving.set(true);
+			
+			// create the time thread to set cutoff
+			Timer timer = new Timer();
+			timer.schedule(new TimerTask() {
+				@Override
+				public void run() {
+					fLib.interrupt(fJNAFacade);
+					fTimedOut.set(true);
+				}
+			}, (long)(fCurrentIncrementalProblem.getCutoffTime()*1000));
+			
+			return fCurrentIncrementalProblem.getProblemPointer();
+		}
+	};
+	
+	private void takeProblem()
+	{
+		IncrementalProblem problem;
+		log.info("Incremental Claso Consumer is taking a problem.");
+		try {
+			problem = fProblemQueue.take();
+			fCurrentIncrementalProblem = problem;
+		} catch (InterruptedException e) {
+			log.error("Incremental Clasp Consumer was interrupted while waiting for new problem.",e.getMessage());
+			Thread.currentThread().interrupt();
+		}
+	}
+	
+	private final IncrementalClaspLibrary.jnaIncContinue fProcessAnswerAndContinueCallback = new IncrementalClaspLibrary.jnaIncContinue() 
+	{
 
+		@Override
+		public boolean doContinue() {
+			// Retrieve answer and fill the answer queue.
+			fSolving.set(false);
+			long time = fSolveTimeStopWatch.stop();
+			IncrementalResult result = getSolverResult((double)time/1000.0);
+			try {
+				fAnswerQueue.put(result);
+			} catch (InterruptedException e) {
+				log.error("Incremental Clasp Consumer was interrupted while putting the answer.",e.getMessage());
+				Thread.currentThread().interrupt();
+			}
+			
+			// Check if we should continue solving.
+			return fTerminated.get();
+		}
+		
+	};
+
+	private IncrementalResult getSolverResult(double aRuntime)
+	{
+		SATResult satResult;
+		String assignment = "";
+		int state = fLib.getResultState(fJNAResult);
+		if (fInterrupted.compareAndSet(true, false))
+		{
+			satResult = SATResult.INTERRUPTED;
+		}
+		else if (fTimedOut.compareAndSet(true, false))
+		{
+			satResult = SATResult.TIMEOUT;
+		}
+		else 
+		{
+			if (state == 0)
+			{
+				satResult = SATResult.UNSAT;
+			}
+			else if (state == 1)
+			{
+				satResult = SATResult.SAT;
+				assignment = fLib.getResultAssignment(fJNAResult);
+			}
+			else 
+			{
+				satResult = SATResult.CRASHED;
+				log.error("Clasp crashed!");
+			}
+		}
+		return new IncrementalResult(satResult, assignment, aRuntime);
+	}
+	
 }
