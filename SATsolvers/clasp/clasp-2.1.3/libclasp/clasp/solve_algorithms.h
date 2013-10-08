@@ -274,11 +274,14 @@ protected:
 	const LitVec& getInitialPath()     const { return assumptions_; }
 	const SolveLimits& getSolveLimits()const { return limits_; }
 	void               setSolveLimits(const SolveLimits& x) { limits_ = x; }
+	bool checkInterrupt(); // return true if interrupt_ is is set to true and clears the flag if so.
+	void setInterrupt() { interrupt_ = true; } // set the interrupt flag
 private:
 	SolveAlgorithm(const SolveAlgorithm&);
 	SolveAlgorithm& operator=(const SolveAlgorithm&);
-	SolveLimits    limits_;
 	LitVec         assumptions_;
+	SolveLimits    limits_;
+	volatile bool interrupt_; // added in order to handle terminate - gsauln
 };
 //! A basic algorithm for single-threaded sequential solving.
 class SimpleSolve : public SolveAlgorithm {
