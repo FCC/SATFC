@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental.queued;
+package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental;
 
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 
