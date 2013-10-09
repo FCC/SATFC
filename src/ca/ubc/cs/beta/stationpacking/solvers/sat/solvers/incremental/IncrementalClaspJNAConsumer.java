@@ -18,6 +18,9 @@ import com.sun.jna.Pointer;
 
 /**
  * Consumer runnable in charge of feeding problems for and reading answers from the JNA clasp library (in an online fashion since we're working incrementally).
+ * 
+ * NOT THREAD SAFE.
+ * 
  * @author alex, gsauln
  */
 public class IncrementalClaspJNAConsumer implements Runnable{
@@ -27,6 +30,7 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 	private final BlockingQueue<IncrementalProblem> fProblemQueue;
 	private final BlockingQueue<IncrementalResult> fAnswerQueue;
 	
+	//Library 
 	private final static int MAX_NUMBER_OF_PARAMETERS = 128;
 	private final IncrementalClaspLibrary fLib;
 	private String fParameters;
@@ -35,8 +39,12 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 	private Pointer fJNAFacade;
 	private Pointer fJNAResult;
 
-	private IncrementalProblem fCurrentIncrementalProblem;
 	
+	//Current job objects.
+	private IncrementalProblem fCurrentIncrementalProblem;
+	private Timer fCurrentProblemTimer;
+	
+	//Solving status flag.
 	private AtomicBoolean fInterrupted = new AtomicBoolean(false);
 	private AtomicBoolean fTimedOut = new AtomicBoolean(false); // true if the library timed out during solving.
 	private AtomicBoolean fTerminated = new AtomicBoolean(false);
@@ -170,12 +178,12 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 			fSolveTimeStopWatch.start();
 			
 			// create the time thread to set cutoff
-			Timer timer = new Timer();
-			timer.schedule(new TimerTask() {
+			fCurrentProblemTimer = new Timer();
+			fCurrentProblemTimer.schedule(new TimerTask() {
 				@Override
 				public void run() {
 					log.debug("Solving timed out.");
-					fLib.interrupt(fJNAFacade);
+					interrupt();
 					fTimedOut.set(true);
 				}
 			}, (long)(fCurrentIncrementalProblem.getCutoffTime()*1000));
@@ -216,6 +224,7 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 		public boolean doContinue() {
 			// Retrieve answer and fill the answer queue.
 			fSolving.set(false);
+			fCurrentProblemTimer.cancel();
 			
 			log.debug("Came back from solving - processing result.");
 	
@@ -245,13 +254,20 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 		SATResult satResult;
 		String assignment = "";
 		int state = fLib.getResultState(fJNAResult);
-		if (fInterrupted.compareAndSet(true, false))
-		{
-			satResult = SATResult.INTERRUPTED;
-		}
-		else if (fTimedOut.compareAndSet(true, false))
+		
+		/*
+		 * The order in which the status flags are checked is important.
+		 * The timeout flag needs to be checked first because a timed out job will/can
+		 * be both timed out AND interrupted.
+		 */
+		if (fTimedOut.compareAndSet(true, false))
 		{
 			satResult = SATResult.TIMEOUT;
+			fInterrupted.set(false);
+		}
+		else if (fInterrupted.compareAndSet(true, false))
+		{
+			satResult = SATResult.INTERRUPTED;
 		}
 		else 
 		{
