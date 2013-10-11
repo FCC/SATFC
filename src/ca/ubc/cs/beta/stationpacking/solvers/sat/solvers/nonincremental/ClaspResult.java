@@ -1,14 +1,14 @@
-package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental;
+package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental;
 
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 
-public class IncrementalResult {
+public class ClaspResult {
 
 	private final SATResult fSATResult;
-	private final String fAssignment;
+	private final int[] fAssignment;
 	private final double fRuntime;
 	
-	public IncrementalResult(SATResult satResult, String assignment, double runtime)
+	public ClaspResult(SATResult satResult, int[] assignment, double runtime)
 	{
 		fSATResult = satResult;
 		fAssignment = assignment;
@@ -18,7 +18,7 @@ public class IncrementalResult {
 	public SATResult getSATResult() {
 		return fSATResult;
 	}
-	public String getAssignment() {
+	public int[] getAssignment() {
 		return fAssignment;
 	}
 	public double getRuntime() {
