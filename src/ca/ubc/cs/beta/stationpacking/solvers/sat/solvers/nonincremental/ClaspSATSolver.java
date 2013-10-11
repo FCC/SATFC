@@ -182,7 +182,7 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		double runtime = (double)timeInMillis/1000.0;
 		
 		SATResult satResult;
-		int[] assignment = {};
+		int[] assignment = {0};
 		int state = library.getResultState(JNAResult);
 		
 		/*
