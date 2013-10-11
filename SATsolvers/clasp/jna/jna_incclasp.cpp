@@ -64,7 +64,8 @@ bool JNAIncProblem::read(ApiPtr api, uint32 properties)
 	}	
 
 	// increase the number of vars needed
-	while (ctx.numVars() < problem[1])
+	unsigned int problem1 = (unsigned int) problem[1];
+	while (ctx.numVars() < problem1)
 	{
 		ctx.addVar(Var_t::atom_var);
 	}
@@ -88,7 +89,7 @@ bool JNAIncProblem::read(ApiPtr api, uint32 properties)
 	assumptions_.reserve(allControls_.size());
 	Literal rLit;
 	int j = 0;
-	for (int i = 0; i < allControls_.size(); i++)
+	for (unsigned int i = 0; i < allControls_.size(); i++)
 	{
 		int cControl = allControls_.at(i);
 		if (j < problem[3] && -problem[index + j] == cControl)

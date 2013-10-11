@@ -92,21 +92,23 @@ bool JNAProblem::read(ApiPtr p, uint32 properties) {
 
 // JNAResults
 
-JNAResult::JNAResult() : state_(r_UNKNOWN) {}
+JNAResult::JNAResult() : state_(r_UNKNOWN), assignment_(NULL) {}
 
-// save the last result in a string object.
+// save the assignment in an array of ints where the first value is the size of the array.
 void JNAResult::event(const Solver& s, Event e, ClaspFacade&f)
 {
 	if (e == Clasp::ClaspFacade::event_model) {
-		assignment_.clear();
-		std::ostringstream ostr;
 		const Clasp::SymbolTable& index = s.sharedContext()->symTab();
+		//delete the old array and create a new one
+		delete[] assignment_;
+		assignment_ = new int[index.size()];
+		assignment_[0] = index.size();
+		int i = 1;
 		for (Var v = 1; v < index.size(); ++v)
 		{
-			ostr << (s.value(v) == value_false ? "-":"") << v << ";";
+			assignment_[i] = (s.value(v) == value_false ? -1:1)*v;
+			i++;
 		}
-		assignment_ = ostr.str();
-		assignment_.erase(assignment_.size()-1);
 		state_ = r_SAT;
 	}
 }
@@ -121,7 +123,7 @@ std::string JNAResult::getWarning()
 	return warning_;
 }
 
-std::string JNAResult::getAssignment()
+int* JNAResult::getAssignment()
 {
 	return assignment_;
 }
@@ -140,7 +142,8 @@ void JNAResult::reset()
 {
 	state_ = r_UNKNOWN;
 	warning_ = "";
-	assignment_ = "";
+	delete[] assignment_;
+	assignment_ = NULL;
 }
 
 JNAFacade::JNAFacade() {}
@@ -239,10 +242,10 @@ const char* getResultWarning(void* _result)
 	return result->getWarning().c_str();
 }
 
-const char* getResultAssignment(void* _result)
+int* getResultAssignment(void* _result)
 {
 	JNA::JNAResult* result = reinterpret_cast<JNA::JNAResult*>(_result);
-	return result->getAssignment().c_str();
+	return result->getAssignment();
 }
 
 void resetResult(void* _result)
