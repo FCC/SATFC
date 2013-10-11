@@ -38,7 +38,7 @@ echo "PROJECT_ROOT := $CLASP" > PROJECT_ROOT
 
 make
 
-#make clean
+make clean1
 
 rm CLASP_CONFIG
 rm PROJECT_ROOT
