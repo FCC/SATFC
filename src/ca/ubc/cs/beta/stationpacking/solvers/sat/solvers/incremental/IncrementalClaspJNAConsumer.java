@@ -175,6 +175,9 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 			fInterrupted.set(false);
 			fSolving.set(true);
 			
+			// Reset the state of the result object.
+			fLib.resetResult(fJNAResult);
+			
 			fSolveTimeStopWatch.start();
 			
 			// create the time thread to set cutoff
@@ -188,6 +191,7 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 				}
 			}, (long)(fCurrentIncrementalProblem.getCutoffTime()*1000));
 			
+			log.info("Starting to solve.");
 			return fCurrentIncrementalProblem.getProblemPointer();
 		}
 	};
@@ -201,6 +205,7 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 		log.info("Incremental Clasp Consumer is taking a problem from queue.");
 		try {
 			problem = fProblemQueue.take();
+			log.info("Got a problem from the queue.");
 			
 			if(problem.getSeed()!=fSeed)
 			{
@@ -286,6 +291,7 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 				log.error("Clasp crashed!");
 			}
 		}
+
 		return new IncrementalResult(satResult, assignment, runtime);
 	}
 	

@@ -124,7 +124,7 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver {
 	}
 	
 	private HashSet<Literal> parseAssignment(String assignment, Collection<Long> CNFVars) {
-		HashSet<Literal> set = new HashSet<Literal>();
+		HashSet<Literal> decompressedAssignment = new HashSet<Literal>();
 		StringTokenizer strtok = new StringTokenizer(assignment, ";");
 
 		while (strtok.hasMoreTokens())
@@ -136,11 +136,11 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver {
 			if (CNFVars.contains(decompressValue))
 			{
 				Literal aLit = new Literal(decompressValue, sign);
-				set.add(aLit);
+				decompressedAssignment.add(aLit);
 			}
 		}
 
-		return set;
+		return decompressedAssignment;
 	}
 
 	@Override
@@ -156,7 +156,5 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver {
 		log.debug("Shutting down execution service.");
 		fExecutorService.shutdownNow();
 	}
-	
-	
 
 }
