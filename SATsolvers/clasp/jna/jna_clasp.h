@@ -69,6 +69,8 @@ class JNAResult : public Clasp::ClaspFacade::Callback {
 public:
 	JNAResult();	
 
+	~JNAResult() { delete[] assignment_; }
+
 	// redefine the event to make it easier while writing code
 	typedef Clasp::ClaspFacade::Event Event;
 
@@ -94,14 +96,14 @@ public:
 
 	std::string getWarning();
 
-	std::string getAssignment();
+	int* getAssignment();
 
 	void reset();//reset the state of the problem as when it is created.
 
 private:
 	Result_State state_;
 	std::string warning_; // warning message if any.
-	std::string assignment_; // contains the true literals.
+	int* assignment_; // contains all the assignment of all the literals in the cnf.
 };
 
 class JNAFacade : public Clasp::ClaspFacade {
@@ -134,7 +136,7 @@ extern "C" {
 	void destroyResult(void* _result);
         int getResultState(void* _result);
         const char* getResultWarning(void* _result);
-        const char* getResultAssignment(void* _result);
+        int* getResultAssignment(void* _result);
 	void resetResult(void* _result);
 
 	// creates and destroys facades -> handles interrupts

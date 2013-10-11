@@ -2,6 +2,7 @@ package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.jnalibraries;
 
 import com.sun.jna.Library;
 import com.sun.jna.Pointer;
+import com.sun.jna.ptr.IntByReference;
 
 public interface ClaspLibrary extends Library 
 {
@@ -91,12 +92,12 @@ public interface ClaspLibrary extends Library
 	String getResultWarning(Pointer result);
 	
 	/**
-	 * Returns a string containing the assignment of the literals if the problem is SAT.  It is ";" separated, and all
-	 * literals contained are assumed to be true.
+	 * Returns a pointer containing the assignment of the literals if the problem is SAT. 
+	 * The first value corresponds to the size of the array.
 	 * @param result result object to return the assignment for.
-	 * @return a string containing the assignment of the literals if the problem is SAT.
+	 * @return a pointer containing the assignment of the literals if the problem is SAT.
 	 */
-	String getResultAssignment(Pointer result);
+	IntByReference getResultAssignment(Pointer result);
 
 	/**
 	 * Resets the result object to the default state: UNKNOWN with no warnings and assignments.
