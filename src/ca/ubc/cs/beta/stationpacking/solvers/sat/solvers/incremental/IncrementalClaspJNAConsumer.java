@@ -9,8 +9,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.jnalibraries.IncrementalClaspLibrary;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.ClaspResult;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.ClaspSATSolver;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
 import com.sun.jna.Native;
@@ -27,8 +28,8 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 
 	private static Logger log = LoggerFactory.getLogger(IncrementalClaspJNAConsumer.class);
 	
-	private final BlockingQueue<IncrementalProblem> fProblemQueue;
-	private final BlockingQueue<IncrementalResult> fAnswerQueue;
+	private final BlockingQueue<IncrementalClaspProblem> fProblemQueue;
+	private final BlockingQueue<ClaspResult> fAnswerQueue;
 	
 	//Library 
 	private final static int MAX_NUMBER_OF_PARAMETERS = 128;
@@ -41,7 +42,7 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 
 	
 	//Current job objects.
-	private IncrementalProblem fCurrentIncrementalProblem;
+	private IncrementalClaspProblem fCurrentIncrementalProblem;
 	private Timer fCurrentProblemTimer;
 	
 	//Solving status flag.
@@ -59,8 +60,8 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 	public IncrementalClaspJNAConsumer(String aIncrementalClaspLibraryPath,
 										String aParameters,
 										long aSeed,
-										BlockingQueue<IncrementalProblem> aProblemQueue, 
-										BlockingQueue<IncrementalResult> aAnswerQueue)
+										BlockingQueue<IncrementalClaspProblem> aProblemQueue, 
+										BlockingQueue<ClaspResult> aAnswerQueue)
 	{
 		//Setup the queues.
 		fProblemQueue = aProblemQueue;
@@ -201,7 +202,7 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 	 */
 	private void takeProblem()
 	{
-		IncrementalProblem problem;
+		IncrementalClaspProblem problem;
 		log.info("Incremental Clasp Consumer is taking a problem from queue.");
 		try {
 			problem = fProblemQueue.take();
@@ -233,7 +234,9 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 			
 			log.debug("Came back from solving - processing result.");
 	
-			IncrementalResult result = getSolverResult();
+			long timeInMillis = fSolveTimeStopWatch.stop();
+			
+			ClaspResult result = ClaspSATSolver.getSolverResult(fLib, fJNAResult, fTimedOut, fInterrupted, timeInMillis);
 			try {
 				fAnswerQueue.put(result);
 			} catch (InterruptedException e) {
@@ -246,53 +249,5 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 		}
 		
 	};
-
-	/**
-	 * Extract solver result from JNA Clasp library.
-	 * @return an increment result.
-	 */
-	private IncrementalResult getSolverResult()
-	{
-		long time = fSolveTimeStopWatch.stop();
-		double runtime = (double)time/1000.0;
-		
-		SATResult satResult;
-		String assignment = "";
-		int state = fLib.getResultState(fJNAResult);
-		
-		/*
-		 * The order in which the status flags are checked is important.
-		 * The timeout flag needs to be checked first because a timed out job will/can
-		 * be both timed out AND interrupted.
-		 */
-		if (fTimedOut.compareAndSet(true, false))
-		{
-			satResult = SATResult.TIMEOUT;
-			fInterrupted.set(false);
-		}
-		else if (fInterrupted.compareAndSet(true, false))
-		{
-			satResult = SATResult.INTERRUPTED;
-		}
-		else 
-		{
-			if (state == 0)
-			{
-				satResult = SATResult.UNSAT;
-			}
-			else if (state == 1)
-			{
-				satResult = SATResult.SAT;
-				assignment = fLib.getResultAssignment(fJNAResult);
-			}
-			else 
-			{
-				satResult = SATResult.CRASHED;
-				log.error("Clasp crashed!");
-			}
-		}
-
-		return new IncrementalResult(satResult, assignment, runtime);
-	}
 	
 }
