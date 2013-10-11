@@ -2,7 +2,6 @@ package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental;
 
 import java.util.HashSet;
 import java.util.Random;
-import java.util.StringTokenizer;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -12,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
+import com.sun.jna.ptr.IntByReference;
 
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATSolverResult;
@@ -19,7 +19,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.jnalibraries.ClaspLibrary;
-import ca.ubc.cs.beta.stationpacking.utils.Holder;
+import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
 /**
  * Implements a SAT solver using the jnaclasplibrary.so.  It gracefully handles thread interruptions while solve() is executing
@@ -35,6 +35,7 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 	private ClaspLibrary fClaspLibrary;
 	private String fParameters;
 	private int fMaxArgs;
+	private Watch fSolveTimeStopWatch = new Watch();
 	private final AtomicBoolean fInterrupt = new AtomicBoolean(false);
 	
 	public ClaspSATSolver(String libraryPath, String parameters)
@@ -88,9 +89,8 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 	 * @see ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ISATSolver#solve(ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF, double, long)
 	 */
 	@Override
-	public SATSolverResult solve(CNF aCNF, double aCutoff, long aSeed) {
-		long time1 = System.currentTimeMillis();
-		
+	public SATSolverResult solve(CNF aCNF, double aCutoff, long aSeed) 
+	{	
 		// create the facade
 		final Pointer facade = fClaspLibrary.createFacade();
 		
@@ -103,8 +103,9 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		// create the problem
 		Pointer problem = fClaspLibrary.createProblem(aCNF.toDIMACS(null));
 		final Pointer result = fClaspLibrary.createResult();
-		final Holder<Boolean> timeout = new Holder<Boolean>();
-		timeout.set(false);
+		final AtomicBoolean timedOut = new AtomicBoolean(false);
+		
+		fSolveTimeStopWatch.start();
 		
 		// Launches a timer that will set the interrupt flag of the result object to true after aCutOff seconds.
 		Timer timer = new Timer();
@@ -112,7 +113,7 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 			@Override
 			public void run() {
 				fClaspLibrary.interrupt(facade);
-				timeout.set(true);
+				timedOut.set(true);
 			}
 		}, (long)(aCutoff*1000));
 		// listens for thread interruption every 0.1 seconds, if the thread is interrupted, interrupt the library and return gracefully
@@ -131,35 +132,10 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		fClaspLibrary.jnasolve(facade, problem, config, result);
 		timer.cancel();
 		
-		SATResult satResult = null;
-		HashSet<Literal> assignment = new HashSet<Literal>();
-		int state = fClaspLibrary.getResultState(result);
+		long timeInMillis = fSolveTimeStopWatch.stop();
 		
-		if (fInterrupt.compareAndSet(true, false))
-		{
-			satResult = SATResult.INTERRUPTED;
-		}
-		else if (timeout.get())
-		{
-			satResult = SATResult.TIMEOUT;
-		}
-		else 
-		{
-			if (state == 0)
-			{
-				satResult = SATResult.UNSAT;
-			}
-			else if (state == 1)
-			{
-				satResult = SATResult.SAT;
-				assignment = parseAssignment(fClaspLibrary.getResultAssignment(result));
-			}
-			else 
-			{
-				satResult = SATResult.CRASHED;
-				log.error("Clasp crashed!");
-			}
-		}
+		ClaspResult claspResult = getSolverResult(fClaspLibrary, result, timedOut, fInterrupt, timeInMillis);
+		HashSet<Literal> assignment = parseAssignment(claspResult.getAssignment());
 
 		//clears memory
 		fClaspLibrary.destroyFacade(facade);
@@ -167,25 +143,15 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		fClaspLibrary.destroyProblem(problem);
 		fClaspLibrary.destroyResult(result);
 		
-		long time2 = System.currentTimeMillis();
-		
-		// should be null only if thread was interrupted.
-		SATSolverResult answer = null;
-		if (satResult != null)
-		{
-			answer = new SATSolverResult(satResult, (time2-time1)/1000.0, assignment);
-		}
-		
-		return answer;
+		return new SATSolverResult(claspResult.getSATResult(), claspResult.getRuntime(), assignment);
 	}
 
-	public static HashSet<Literal> parseAssignment(String assignment)
+	private HashSet<Literal> parseAssignment(int[] assignment)
 	{
 		HashSet<Literal> set = new HashSet<Literal>();
-		StringTokenizer strtok = new StringTokenizer(assignment, ";");
-		while (strtok.hasMoreTokens())
+		for (int i = 1; i < assignment[0]; i++)
 		{
-			int intLit = Integer.valueOf(strtok.nextToken());
+			int intLit = assignment[i];
 			int var = Math.abs(intLit);
 			boolean sign = intLit > 0;
 			Literal aLit = new Literal(var, sign);
@@ -201,6 +167,59 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 	public void interrupt() throws UnsupportedOperationException 
 	{
 		fInterrupt.set(true);
+	}
+	
+	/**
+	 * Extract solver result from JNA Clasp library.
+	 * @return an increment result.
+	 */
+	public static ClaspResult getSolverResult(ClaspLibrary library, 
+												Pointer JNAResult, 
+												AtomicBoolean timedOut, 
+												AtomicBoolean interrupted, 
+												long timeInMillis)
+	{
+		double runtime = (double)timeInMillis/1000.0;
+		
+		SATResult satResult;
+		int[] assignment = {};
+		int state = library.getResultState(JNAResult);
+		
+		/*
+		 * The order in which the status flags are checked is important.
+		 * The timeout flag needs to be checked first because a timed out job will/can
+		 * be both timed out AND interrupted.
+		 */
+		if (timedOut.compareAndSet(true, false))
+		{
+			satResult = SATResult.TIMEOUT;
+			interrupted.set(false);
+		}
+		else if (interrupted.compareAndSet(true, false))
+		{
+			satResult = SATResult.INTERRUPTED;
+		}
+		else 
+		{
+			if (state == 0)
+			{
+				satResult = SATResult.UNSAT;
+			}
+			else if (state == 1)
+			{
+				satResult = SATResult.SAT;
+				IntByReference pRef = library.getResultAssignment(JNAResult); 
+				int size = pRef.getValue();
+				assignment = pRef.getPointer().getIntArray(0, size);
+			}
+			else 
+			{
+				satResult = SATResult.CRASHED;
+				log.error("Clasp crashed!");
+			}
+		}
+
+		return new ClaspResult(satResult, assignment, runtime);
 	}
 
 }
