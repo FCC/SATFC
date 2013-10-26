@@ -103,12 +103,12 @@ public class ServerListener implements Runnable {
 					fServerSocket.receive(aReceivePacket);
 
 					//For security, filter non-localhost messages.
-					if (!InetAddress.getByName("localhost").equals(aReceivePacket.getAddress())) {
-						log.warn(
-								"Received request from a non-{}, ignoring request from {}.",
-								InetAddress.getByName("localhost"), aReceivePacket.getAddress());
-						continue;
-					}
+//					if (!InetAddress.getByName("localhost").equals(aReceivePacket.getAddress())) {
+//						log.warn(
+//								"Received request from a non-{}, ignoring request from {}.",
+//								InetAddress.getByName("localhost"), aReceivePacket.getAddress());
+//						continue;
+//					}
 
 					log.info("Received a packet.");
 					InetAddress aSendAddress = aReceivePacket.getAddress();

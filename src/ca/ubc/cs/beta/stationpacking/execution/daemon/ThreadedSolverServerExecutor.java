@@ -96,12 +96,31 @@ public class ThreadedSolverServerExecutor {
 		int aServerPort = aParameters.Port;
 		
 		DatagramSocket aServerSocket;
-		try {
-			aServerSocket = new DatagramSocket(aServerPort, InetAddress.getByName("localhost"));
-		} catch (SocketException e) {
-			throw new IllegalArgumentException("Could not create server socket ("+e.getMessage()+").");
-		} catch (UnknownHostException e1) {
-			throw new IllegalStateException("Cannot create socket at local host address ("+e1.getMessage()+").");
+		if(aParameters.AllowAnyone)
+		{
+			try {
+				aServerSocket = new DatagramSocket(aServerPort);
+				log.info("Server listening to any request.");
+			} catch (SocketException e) {
+				e.printStackTrace();
+				throw new IllegalArgumentException("Could not create server socket ("+e.getMessage()+").");
+			}	
+		}
+		else
+		{
+			try {
+				aServerSocket = new DatagramSocket(aServerPort, InetAddress.getLocalHost());
+				log.info("Server listening to requests on localhost.");
+			} 
+			catch (SocketException e) {
+				e.printStackTrace();
+				throw new IllegalArgumentException("Could not create server socket ("+e.getMessage()+").");
+			}
+			catch (UnknownHostException e1) {
+				e1.printStackTrace();
+				throw new IllegalArgumentException("Unknown local host ("+e1.getMessage()+").");
+			}
+			
 		}
 		
 		//Setup queues and solver state.
