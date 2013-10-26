@@ -27,6 +27,9 @@ public class ThreadedSolverServerParameters extends AbstractOptions {
 	@ParametersDelegate
 	public ClaspLibSATSolverParameters SolverParameters = new ClaspLibSATSolverParameters();
 	
+	@Parameter(names= "-ALLOW-ANYONE", description = "whether the server should listen to all message on its port, or just localhost ones.")
+	public boolean AllowAnyone = false;
+	
 	@Parameter(names = "-DATA-FOLDERNAME",description = "a list of data foldernames that the daemon should know about.", required=true)
 	public List<String> DataFoldernames;
 	
