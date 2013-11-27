@@ -28,7 +28,7 @@ public class ServerListener implements Runnable {
 	/*
 	 * Command fields.
 	 */
-	public final static String COMMANDSEP = ":";
+	public final static String COMMANDSEP = "%";
 	private enum ServerCommand {
 		TEST,
 		TERMINATE,
@@ -160,6 +160,7 @@ public class ServerListener implements Runnable {
 		}
 		catch(IllegalArgumentException e)
 		{
+			e.printStackTrace();
 			//Failed recognizing the message.
 			log.warn("Could not process server command {} ({}).",aServerCommandString,e.getMessage());
 			String aError = "Message received is not recognizable message string ("+aMessage+").";
@@ -219,7 +220,7 @@ public class ServerListener implements Runnable {
 			String[] aMessageParts = aMessage.split(COMMANDSEP);
 			if(aMessageParts.length==5)
 			{
-				//Assuming old job message with no id. ID will be attributed by itself.
+				//Assuming old job message with no id. ID will be attributed randomly.
 				String[] aOldMessageParts = aMessageParts;
 				aMessageParts = new String[6];
 				aMessageParts[0] = ServerCommand.SOLVE.toString();
