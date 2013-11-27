@@ -1,6 +1,7 @@
 package ca.ubc.cs.beta.stationpacking.execution.parameters.solver.daemon;
 
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -9,7 +10,10 @@ import org.slf4j.LoggerFactory;
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverManager;
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.clasp.ClaspSATSolverSelectorBundleFactory;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBundleFactory;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.clasp.ClaspSATSolverBundleFactory;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.sequential.SequentialSolverBundleFactory;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.simplebounderpresolver.SimpleBounderPresolverBundleFactory;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat.ClaspLibSATSolverParameters;
 
 import com.beust.jcommander.Parameter;
@@ -40,8 +44,19 @@ public class ThreadedSolverServerParameters extends AbstractOptions {
 	{
 		Logger log = LoggerFactory.getLogger(ThreadedSolverServerParameters.class);
 		
+		//Initialize the bundle factory in charge of clasp.
 		log.warn("Provided configuration for clasp will not be used. Instead, internal configurations are used on a per-instance basis.");
-		SolverManager aSolverManager = new SolverManager(new ClaspSATSolverSelectorBundleFactory(SolverParameters.Library));
+		ISolverBundleFactory clasp = new ClaspSATSolverBundleFactory(SolverParameters.Library);
+		
+		//Initialize the bundle factory in charge of our simple bounder pre-solver.
+		ISolverBundleFactory simplebounderpresolver = new SimpleBounderPresolverBundleFactory(clasp);
+		
+		//Add the bundle factories in order.
+		List<ISolverBundleFactory> solverBundleFactories = new ArrayList<ISolverBundleFactory>();
+		solverBundleFactories.add(simplebounderpresolver);
+		solverBundleFactories.add(clasp);
+		
+		SolverManager aSolverManager = new SolverManager(new SequentialSolverBundleFactory(solverBundleFactories));
 		
 		boolean isEmpty = true;
 		for(String aDataFoldername : DataFoldernames)

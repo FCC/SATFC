@@ -109,7 +109,7 @@ public class ThreadedSolverServerExecutor {
 		else
 		{
 			try {
-				aServerSocket = new DatagramSocket(aServerPort, InetAddress.getLocalHost());
+				aServerSocket = new DatagramSocket(aServerPort, InetAddress.getByName("localhost"));
 				log.info("Server listening to requests on localhost.");
 			} 
 			catch (SocketException e) {

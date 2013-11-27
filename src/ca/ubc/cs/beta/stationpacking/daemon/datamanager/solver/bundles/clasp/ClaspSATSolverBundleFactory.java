@@ -5,11 +5,11 @@ import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBu
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 
-public class ClaspSATSolverSelectorBundleFactory implements ISolverBundleFactory {
+public class ClaspSATSolverBundleFactory implements ISolverBundleFactory {
 
 	private final String fClaspLibrary;
 	
-	public ClaspSATSolverSelectorBundleFactory(String aClaspSATLibrary)
+	public ClaspSATSolverBundleFactory(String aClaspSATLibrary)
 	{
 		fClaspLibrary = aClaspSATLibrary;
 	}
@@ -17,7 +17,7 @@ public class ClaspSATSolverSelectorBundleFactory implements ISolverBundleFactory
 	@Override
 	public ISolverBundle getBundle(IStationManager aStationManager,
 			IConstraintManager aConstraintManager) {
-		return new ClaspSATSolverSelectorBundle(fClaspLibrary, aStationManager, aConstraintManager);
+		return new ClaspSATSolverBundle(fClaspLibrary, aStationManager, aConstraintManager);
 	}
 
 
