@@ -16,37 +16,49 @@ public class ConstraintGrouper implements IComponentGrouper{
 	
 	//NA - just assume that at least two feasible channels are adjacent (so that ADJ constraints are relevant).
 	public Set<Set<Station>> group(StationPackingInstance aInstance, IConstraintManager aConstraintManager){
+		
+		SimpleGraph<Station,DefaultEdge> aConstraintGraph = getConstraintGraph(aInstance, aConstraintManager);
+		
+		HashSet<Set<Station>> aGroups = new HashSet<Set<Station>>();
+		
+		ConnectivityInspector<Station, DefaultEdge> aConnectivityInspector = new ConnectivityInspector<Station,DefaultEdge>(aConstraintGraph);
+	
+		for(Set<Station> aConnectedComponent : aConnectivityInspector.connectedSets())
+		{
+			aGroups.add(aConnectedComponent);
+		}
+		
+		return aGroups;
+	}
+	
+	/**
+	 * @param aInstance - the instances that form the constraint graph's vertex set.
+	 * @param aConstraintManager - the constraint manager to use to form edges of the constraint graph.
+	 * @return the constraint graph.
+	 */
+	public static SimpleGraph<Station,DefaultEdge> getConstraintGraph(StationPackingInstance aInstance, IConstraintManager aConstraintManager)
+	{
 		Set<Station> aStations = aInstance.getStations();
 		Set<Integer> aInstanceDomain = aInstance.getChannels();
 		SimpleGraph<Station,DefaultEdge> aConstraintGraph = new SimpleGraph<Station,DefaultEdge>(DefaultEdge.class);
 		for(Station aStation : aStations){
 			aConstraintGraph.addVertex(aStation);
 		}
-		HashSet<Set<Station>> aGroups = new HashSet<Set<Station>>();
-		try{
-			for(Station aStation1 : aStations){
-				for(Station aStation2 : aConstraintManager.getCOInterferingStations(aStation1, aInstanceDomain)){
-					if(aConstraintGraph.containsVertex(aStation2)){
-						aConstraintGraph.addEdge(aStation1, aStation2);
-					}
-				}
-				for(Station aStation2 : aConstraintManager.getADJplusInterferingStations(aStation1,aInstanceDomain)){
-					if(aConstraintGraph.containsVertex(aStation2)){
-						aConstraintGraph.addEdge(aStation1, aStation2);
-					}
-				}
-			}
-			ConnectivityInspector<Station, DefaultEdge> aConnectivityInspector = new ConnectivityInspector<Station,DefaultEdge>(aConstraintGraph);
 		
-			for(Set<Station> aConnectedComponent : aConnectivityInspector.connectedSets())
-			{
-				aGroups.add(aConnectedComponent);
+		for(Station aStation1 : aStations){
+			for(Station aStation2 : aConstraintManager.getCOInterferingStations(aStation1, aInstanceDomain)){
+				if(aConstraintGraph.containsVertex(aStation2)){
+					aConstraintGraph.addEdge(aStation1, aStation2);
+				}
 			}
-		} catch(Exception e){
-			aGroups.add(aStations); //if there's an error, return a single component (should we instead pass the exception along?)
+			for(Station aStation2 : aConstraintManager.getADJplusInterferingStations(aStation1,aInstanceDomain)){
+				if(aConstraintGraph.containsVertex(aStation2)){
+					aConstraintGraph.addEdge(aStation1, aStation2);
+				}
+			}
 		}
-		return aGroups;
-
+		
+		return aConstraintGraph;
 	}
 }
 
