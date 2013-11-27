@@ -4,9 +4,11 @@ package ca.ubc.cs.beta.stationpacking.base;
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.codec.binary.Hex;
@@ -23,6 +25,8 @@ public class StationPackingInstance {
 	private final Set<Station> fStations;
 	private final Set<Integer> fChannels;
 	
+	private final HashMap<Station,Integer> fPreviousAssignment;
+	
 	/**
 	 * Create a station packing instance.
 	 * @param aStations - set of stations to pack.
@@ -32,6 +36,21 @@ public class StationPackingInstance {
 		
 		fChannels = Collections.unmodifiableSet(new HashSet<Integer>(aChannels));
 		fStations = Collections.unmodifiableSet(new HashSet<Station>(aStations));
+		fPreviousAssignment = new HashMap<Station,Integer>();
+	}
+	
+	/**
+	 * Create a station packing instance.
+	 * @param aStations - set of stations to pack.
+	 * @param aChannels - set of channels to pack in.
+	 * @param aPreviousAssignment - a map taking stations to the channels they were assigned to previously.
+	 */
+	public StationPackingInstance(Set<Station> aStations, Set<Integer> aChannels, Map<Station,Integer> aPreviousAssignment){
+		
+		fChannels = Collections.unmodifiableSet(new HashSet<Integer>(aChannels));
+		fStations = Collections.unmodifiableSet(new HashSet<Station>(aStations));
+		
+		fPreviousAssignment = new HashMap<Station,Integer>(aPreviousAssignment);
 	}
 	
 	//AF - Added a different way to print set of channels so that an Instance.toString() is easier to read in CSV.
@@ -65,25 +84,45 @@ public class StationPackingInstance {
 	}
 	
 	/**
-	 * @param aInstanceString - a string representation of the instance (should be the result of calling toString() on the instance).
+	 * Parses a string representation of an instance into an instance. 
+	 * <p>
+	 * If there are no previous assignment,
+	 * then the string representation is the result of calling the toString() method on the instance:
+	 * <br>
+	 * channel1-channel2-...-channelM_station1-station2-...-stationN
+	 * </p>
+	 * <p>
+	 * If there is a previous assignment, then the assignment is appended to the string representation as follows:
+	 * <br>
+	 * channel1-channel2-...-channelM_station1-station2-...-stationN_somestation1:somechannel1-somestation2:somechannel2-...-somestationk:somechannelk
+	 * </p>
+	 * 
+	 * @param aInstanceString - a string representation of the instance.
 	 * @param aStationManager - the station manager to pull stations from.
 	 * @return the instance represented by the string. 
 	 */
 	public static StationPackingInstance valueOf(String aInstanceString, IStationManager aStationManager)
 	{
-		String aChannelString = aInstanceString.split("_")[0];
-		String aStationString = aInstanceString.split("_")[1];
-	
+		
+		String[] aInstanceParts = aInstanceString.split("_");
+		
+		if(aInstanceParts.length!=2 && aInstanceParts.length!=3)
+		{
+			throw new IllegalArgumentException("Could not parse instance from "+aInstanceString);
+		}
+		
+		String aChannelString = aInstanceParts[0];
+		//Parse channels.
 		HashSet<Integer> aInstanceChannels = new HashSet<Integer>();
 		for(String aChannel : aChannelString.split("-"))
 		{
 			aInstanceChannels.add(Integer.valueOf(aChannel));
 		}
 		
+		String aStationString = aInstanceParts[1];
+		//Parse stations.
 		HashSet<Station> aInstanceStations = new HashSet<Station>();
-		
 		String[] aInstanceStationIDs = aStationString.split("-");
-		
 		for(String aStationID : aInstanceStationIDs)
 		{
 			aInstanceStations.add(aStationManager.getStationfromID(Integer.valueOf(aStationID)));
@@ -91,11 +130,34 @@ public class StationPackingInstance {
 		
 		if(aInstanceStations.size()!= aInstanceStationIDs.length)
 		{
-			
 			throw new IllegalStateException("Couldn't identify all stations from the instance's string representation");
 		}
 		
-		return new StationPackingInstance(aInstanceStations, aInstanceChannels);
+		//Parse assignment, if any.
+		if(aInstanceParts.length==3)
+		{
+			String aAssignmentString = aInstanceParts[2];
+			String[] aAssignmentParts = aAssignmentString.split("-");
+			
+			HashMap<Station,Integer> aInstancePreviousAssignment = new HashMap<Station,Integer>();
+			for(String aAssignmentPart : aAssignmentParts)
+			{
+				String aAssignmentStationString = aAssignmentPart.split(":")[0];
+				String aAssignmentChannelString = aAssignmentPart.split(":")[1];
+				
+				if(aInstancePreviousAssignment.put(aStationManager.getStationfromID(Integer.valueOf(aAssignmentStationString)), Integer.valueOf(aAssignmentChannelString))!=null)
+				{
+					throw new IllegalArgumentException("Station "+aAssignmentStationString+" is assigned a channel multiple times in provided instance string.");
+				}
+				
+			}
+			return new StationPackingInstance(aInstanceStations, aInstanceChannels, aInstancePreviousAssignment);
+		}
+		else
+		{
+			return new StationPackingInstance(aInstanceStations, aInstanceChannels);
+		}
+		
 	}
 
 	@Override
@@ -145,6 +207,14 @@ public class StationPackingInstance {
 	 */
 	public Set<Integer> getChannels(){
 		return fChannels;
+	}
+	
+	/**
+	 * @return a map taking stations to the (valid) channels they were assigned to previously (if any).
+	 */
+	public HashMap<Station,Integer> getPreviousAssignment()
+	{
+		return fPreviousAssignment;
 	}
 	
 	/**

@@ -36,6 +36,23 @@ public class SolverResult implements Serializable {
 		fAssignment = new HashMap<Integer,Set<Station>>(aAssignment);
 	}
 	
+	public SolverResult(SATResult aResult, double aRuntime)
+	{
+		if(aResult.equals(SATResult.SAT))
+		{
+			throw new IllegalArgumentException("Must provide a station assignment when creating a SAT solver result.");
+		}
+		
+		if(aRuntime<0 && Math.abs(aRuntime)!=0.0)
+		{
+			throw new IllegalArgumentException("Cannot create a solver result with negative runtime (runtime = "+aRuntime+").");
+		}
+		
+		fResult = aResult;
+		fRuntime = aRuntime;
+		fAssignment = new HashMap<Integer,Set<Station>>();
+	}
+	
 	public static SolverResult createTimeoutResult(double aRuntime)
 	{
 		return new SolverResult(SATResult.TIMEOUT,aRuntime,new HashMap<Integer,Set<Station>>());

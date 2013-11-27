@@ -50,7 +50,6 @@ public class GenericSATBasedSolver implements ISolver {
 		fSATSolver = aSATSolver;
 	}
 	
-	
 	@Override
 	public SolverResult solve(StationPackingInstance aInstance, double aCutoff,
 			long aSeed) {
