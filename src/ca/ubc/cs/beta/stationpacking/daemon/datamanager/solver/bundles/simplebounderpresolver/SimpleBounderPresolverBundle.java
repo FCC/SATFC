@@ -10,7 +10,7 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.DACConstraintManag
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
-import ca.ubc.cs.beta.stationpacking.solvers.simplebounder.SimpleBounderPresolver;
+import ca.ubc.cs.beta.stationpacking.solvers.certifierpresolvers.SimpleBounderPresolver;
 
 public class SimpleBounderPresolverBundle extends ASolverBundle {
 
@@ -24,7 +24,7 @@ public class SimpleBounderPresolverBundle extends ASolverBundle {
 	{
 		super(aStationManager,aConstraintManager);
 		
-		log.info("Initializing the UHF, LHVHF, HVHF simple bounder pre-solvers.");
+		log.debug("Initializing the UHF, LHVHF, HVHF simple bounder pre-solvers.");
 		StationPackingInstance UHFinstance = new StationPackingInstance(aStationManager.getStations(), DACConstraintManager.UHF_CHANNELS);
 		UHFpresolver = new SimpleBounderPresolver(aISolverBundle.getSolver(UHFinstance), 
 				this.getConstraintManager());

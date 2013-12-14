@@ -56,10 +56,17 @@ public class AsyncTAESolverParameters extends AbstractOptions{
 		log.info("Creating constraint grouper...");
 		IComponentGrouper aGrouper = new ConstraintGrouper();
 		
-		TargetAlgorithmEvaluator aTAE = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(AlgorithmExecutionOptions.taeOpts, AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null), false, AvailableTAEOptions);
+		TargetAlgorithmEvaluator aTAE = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(AlgorithmExecutionOptions.taeOpts, false, AvailableTAEOptions);
 		
 		log.info("Creating solver...");
-		AsyncTAEBasedSolver aSolver = new AsyncTAEBasedSolver(aConstraintManager, aCNFEncoder, aCNFLookup, aGrouper, aTAE, AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null));
+		AsyncTAEBasedSolver aSolver = new AsyncTAEBasedSolver(aConstraintManager,
+				aCNFEncoder,
+				aCNFLookup,
+				aGrouper,
+				aTAE,
+				AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null),
+				AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null).getParamFile().getDefaultConfiguration()
+				);
 		
 		return aSolver;
 	}

@@ -29,7 +29,7 @@ public class ClaspSATSolverBundle extends ASolverBundle{
 	{
 		super(aStationManager,aConstraintManager);
 		
-		log.info("Initializing clasp selector bundle.");
+		log.debug("Initializing clasp selector bundle.");
 		
 		SATCompressor aCompressor = new SATCompressor(this.getStationManager(), this.getConstraintManager());
 		IComponentGrouper aGrouper = new NoGrouper();
@@ -39,7 +39,7 @@ public class ClaspSATSolverBundle extends ASolverBundle{
 //		AbstractSATSolver aIncrementalClaspSATsolver = new IncrementalClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13, 1);
 //		fClaspGeneral = new SATBasedSolver(aIncrementalClaspSATsolver, aSATEncoder, aConstraintManager, aGrouper);
 		
-		log.info("Initializing clasp solvers.");
+		log.debug("Initializing clasp solvers.");
 		AbstractCompressedSATSolver aClaspSATsolver =  new ClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.ALL_CONFIG_11_13);
 		fClaspGeneral = new CompressedSATBasedSolver(aClaspSATsolver, aCompressor,  this.getConstraintManager(), aGrouper);
 		
@@ -56,17 +56,17 @@ public class ClaspSATSolverBundle extends ASolverBundle{
 		//Return the right solver based on the channels in the instance.
 		if(DACConstraintManager.HVHF_CHANNELS.containsAll(aInstance.getChannels()) || DACConstraintManager.LVHF_CHANNELS.containsAll(aInstance.getChannels()))
 		{
-			log.info("Returning clasp configured for VHF (September 2013).");
+			log.debug("Returning clasp configured for VHF (September 2013).");
 			return fClaspHVHF;
 		}
 		else if(DACConstraintManager.UHF_CHANNELS.containsAll(aInstance.getChannels()))
 		{
-			log.info("Returning clasp configured for UHF (November 2013).");
+			log.debug("Returning clasp configured for UHF (November 2013).");
 			return fClaspUHF;
 		}
 		else
 		{
-			log.info("Returning general configured clasp (November 2013).");
+			log.debug("Returning general configured clasp (November 2013).");
 			return fClaspGeneral;
 		}
 	}

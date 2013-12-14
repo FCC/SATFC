@@ -5,7 +5,6 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -17,8 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aclib.misc.jcommander.JCommanderHelper;
-import ca.ubc.cs.beta.aclib.misc.options.UsageSection;
-import ca.ubc.cs.beta.aclib.options.ConfigToLaTeX;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverManager;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.listener.ServerListener;
@@ -30,12 +27,9 @@ import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.Solving
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.daemon.ThreadedSolverServerParameters;
 import ca.ubc.cs.beta.stationpacking.utils.RunnableUtils;
 
-import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;
 
 public class ThreadedSolverServerExecutor {
-
-	private static Logger log = LoggerFactory.getLogger(ThreadedSolverServerExecutor.class);
 	
 	private final static AtomicInteger TERMINATION_STATUS = new AtomicInteger(0);
 	
@@ -55,9 +49,9 @@ public class ThreadedSolverServerExecutor {
 				
 				e.printStackTrace();
 				
-				log.error("Thread {} died with an exception ({}).",t.getName(),e.getMessage());
+				System.err.println("Thread "+t.getName()+" died with an exception ("+e.getMessage()+").");
 				
-				log.error("Stopping service :( .");
+				System.err.println("Stopping service :( .");
 				EXECUTOR_SERVICE.shutdownNow();
 				
 				TERMINATION_STATUS.set(1);
@@ -69,25 +63,22 @@ public class ThreadedSolverServerExecutor {
 	private final static ExecutorService EXECUTOR_SERVICE = Executors.newCachedThreadPool();
 	
 	public static void main(String[] args) {
+		
+		System.out.println("Launching SATFC.");
+		
 		//Parse the command line arguments in a parameter object.
 		ThreadedSolverServerParameters aParameters = new ThreadedSolverServerParameters();
-		JCommander aParameterParser = JCommanderHelper.getJCommander(aParameters, TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators());
+		//Check for help
 		try
 		{
-			aParameterParser.parse(args);
+			JCommanderHelper.parseCheckingForHelpAndVersion(args, aParameters,TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators());
 		}
 		catch (ParameterException aParameterException)
 		{
-			List<UsageSection> sections = ConfigToLaTeX.getParameters(aParameters, TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators());
-			
-			boolean showHiddenParameters = false;
-			
-			//A much nicer usage screen than JCommander's 
-			ConfigToLaTeX.usage(sections, showHiddenParameters);
-			
-			log.error(aParameterException.getMessage());
-			return;
+			throw aParameterException;
 		}
+		aParameters.LoggingOptions.initializeLogging();
+		Logger log = LoggerFactory.getLogger(ThreadedSolverServerExecutor.class);
 		
 		//Setup the solver manager.
 		SolverManager aSolverManager = aParameters.getSolverManager();
@@ -110,7 +101,7 @@ public class ThreadedSolverServerExecutor {
 		{
 			try {
 				aServerSocket = new DatagramSocket(aServerPort, InetAddress.getByName("localhost"));
-				log.info("Server listening to requests on localhost.");
+				log.info("Server listening to requests only from localhost.");
 			} 
 			catch (SocketException e) {
 				e.printStackTrace();
