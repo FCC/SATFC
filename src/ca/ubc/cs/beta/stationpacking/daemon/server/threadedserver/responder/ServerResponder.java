@@ -72,6 +72,7 @@ private final static int MAXPACKETSIZE = 65000;
 				try {
 					sendMessage(aServerResponse.getMessage(),aServerResponse.getAddress(),aServerResponse.getPort());
 				} catch (IOException e) {
+					e.printStackTrace();
 					log.error("Could not send message ({}).",e.getMessage());
 					throw new IllegalStateException("Error trying to send a message back ");
 				}
@@ -97,6 +98,8 @@ private final static int MAXPACKETSIZE = 65000;
 
 		byte[] aSendBytes = aMessage.getBytes(Charset.forName("ASCII"));
 
+		log.info("Sending message back to client.");
+		
 		if (aSendBytes.length > MAXPACKETSIZE) {
 			log.error("Response is too big to send to client, please adjust packet size in both client and server ("
 					+ aSendBytes.length + " > " + MAXPACKETSIZE + ")");
@@ -108,7 +111,7 @@ private final static int MAXPACKETSIZE = 65000;
 		DatagramPacket sendPacket = new DatagramPacket(aSendBytes,
 				aSendBytes.length, aAddress, aPort);
 		
-		log.info("Sending message \"{}\" to "+aAddress+" port "+aPort,aMessage);
+		log.debug("Sending message \"{}\" to "+aAddress+" port "+aPort,aMessage);
 		fServerSocket.send(sendPacket);
 	}
 

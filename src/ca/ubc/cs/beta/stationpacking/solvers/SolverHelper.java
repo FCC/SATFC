@@ -16,7 +16,83 @@ public class SolverHelper {
 	{
 		//Cannot construct a solver helper object.
 	}
-
+	
+	/**
+	 * Combine the results of solving a single station packing instance in different ways.
+	 * @param aComponentResults
+	 * @return
+	 */
+	public static SolverResult combineResults(Collection<SolverResult> aComponentResults)
+	{
+		double runtime = 0.0;
+		HashSet<SATResult> SATresults = new HashSet<SATResult>();
+		
+		for(SolverResult solverResult : aComponentResults)
+		{
+			runtime += solverResult.getRuntime();
+			SATresults.add(solverResult.getResult());
+		}
+		
+		SATResult SATresult = SATResult.CRASHED;
+		//Combine SAT results.
+		if(SATresults.isEmpty())
+		{
+			SATresult = SATResult.TIMEOUT;
+		}
+		else if(SATresults.size()==1)
+		{
+			SATresult = SATresults.iterator().next();
+		}
+		else if(SATresults.contains(SATResult.SAT))
+		{
+			SATresult = SATResult.SAT;
+		}
+		else if(SATresults.contains(SATResult.UNSAT))
+		{
+			SATresult = SATResult.UNSAT;
+		}
+		else if(SATresults.contains(SATResult.INTERRUPTED))
+		{
+			SATresult = SATResult.INTERRUPTED;
+		}
+		else if(SATresults.contains(SATResult.CRASHED))
+		{
+			SATresult = SATResult.CRASHED;
+		}
+		else if(SATresults.contains(SATResult.TIMEOUT) || SATresults.contains(SATResult.KILLED))
+		{
+			SATresult = SATResult.TIMEOUT;
+		}
+		
+		if(SATresult.equals(SATResult.KILLED))
+		{
+			SATresult = SATResult.TIMEOUT;
+		}
+		
+		//Find assignment.
+		Map<Integer,Set<Station>> assignment = new HashMap<Integer,Set<Station>>();
+		if(SATresult.equals(SATResult.SAT))
+		{
+			for(SolverResult solverResult : aComponentResults)
+			{
+				if(solverResult.getResult().equals(SATResult.SAT))
+				{
+					assignment = solverResult.getAssignment();
+					break;
+				}
+			}
+		}
+		
+		return new SolverResult(SATresult,runtime,assignment);
+		
+	}
+	
+	
+	/**
+	 * Merge the results of solving multiple disconnected components of a same station packing problem.
+	 * @param aComponentResults
+	 * @return
+	 */
 	public static SolverResult mergeComponentResults(Collection<SolverResult> aComponentResults){
 		double aRuntime = 0.0;
 		

@@ -1,15 +1,9 @@
 package ca.ubc.cs.beta.stationpacking.execution;
 
 import java.io.File;
-import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aclib.execconfig.AlgorithmExecutionOptions;
 import ca.ubc.cs.beta.aclib.misc.jcommander.JCommanderHelper;
-import ca.ubc.cs.beta.aclib.misc.options.UsageSection;
-import ca.ubc.cs.beta.aclib.options.ConfigToLaTeX;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorBuilder;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
@@ -33,7 +27,6 @@ import com.beust.jcommander.ParameterException;
 
 public class NewSolverTest {
 
-	private static Logger log = LoggerFactory.getLogger(NewSolverTest.class);
 	
 	/**
 	 * @param args
@@ -43,22 +36,16 @@ public class NewSolverTest {
 
 		//Parse the command line arguments in a parameter object.
 		InstanceGenerationParameters aInstanceGenerationParameters = new InstanceGenerationParameters();
-		JCommander aParameterParser = JCommanderHelper.getJCommander(aInstanceGenerationParameters, TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators());
+		//Check for help
+		JCommander aParameterParser = JCommanderHelper.parseCheckingForHelpAndVersion(args, aInstanceGenerationParameters,TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators());
+		
 		try
 		{
 			aParameterParser.parse(args);
 		}
 		catch (ParameterException aParameterException)
 		{
-			List<UsageSection> sections = ConfigToLaTeX.getParameters(aInstanceGenerationParameters, TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators());
-			
-			boolean showHiddenParameters = false;
-			
-			//A much nicer usage screen than JCommander's 
-			ConfigToLaTeX.usage(sections, showHiddenParameters);
-			
-			log.error(aParameterException.getMessage());
-			return;
+			throw aParameterException;
 		}
 		
 		InstanceGeneration aInstanceGeneration = null;
@@ -81,8 +68,12 @@ public class NewSolverTest {
 			 * I used some of the TAE options from the parameter object to set up a TAE based SAT solver, you should set up your "library" based SAT solver.
 			 */
 			
-			ISATSolver aTAESATSolver = new TAESATSolver(TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(aAlgorithmExecutionOptions.taeOpts, aAlgorithmExecutionOptions.getAlgorithmExecutionConfig(null), false, aInstanceGenerationParameters.SolverParameters.TAESolverParameters.AvailableTAEOptions),
+			ISATSolver aTAESATSolver = new TAESATSolver(
+					TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(aAlgorithmExecutionOptions.taeOpts,
+							false,
+							aInstanceGenerationParameters.SolverParameters.TAESolverParameters.AvailableTAEOptions),
 					aAlgorithmExecutionOptions.getAlgorithmExecutionConfig(null).getParamFile().getDefaultConfiguration(),
+					aAlgorithmExecutionOptions.getAlgorithmExecutionConfig(null),
 					aCNFDir);
 			
 			String aAlexLibPath = "/ubc/cs/project/arrow/afrechet/git/FCCStationPacking/SATsolvers/clasp/jna/libjnaclasp.so";

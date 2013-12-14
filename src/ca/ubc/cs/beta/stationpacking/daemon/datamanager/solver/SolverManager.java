@@ -49,7 +49,7 @@ public class SolverManager {
 	 */
 	public boolean addData(String path) throws FileNotFoundException
 	{	
-		log.info("Adding data from {} to solver manager.",path);
+		log.debug("Adding data from {} to solver manager.",path);
 		
 		ISolverBundle bundle = fSolverData.get(path);
 		if (bundle != null)
@@ -78,7 +78,7 @@ public class SolverManager {
 		ISolverBundle bundle = fSolverData.get(path);
 		if (bundle == null)
 		{
-			log.info("Requested data from {} not available, will try to add it.",path);
+			log.warn("Requested data from {} not available, will try to add it.",path);
 			addData(path);
 			bundle = fSolverData.get(path);
 		}

@@ -31,7 +31,7 @@ public class SequentialSolversComposite implements ISolver{
 		
 		for(int i=0;i<fSolvers.size() && aRemainingCutoff>0.1;i++)
 		{
-			log.info("Trying solver {}.",i);
+			log.debug("Trying solver {}.",i);
 			
 			SolverResult result = fSolvers.get(i).solve(aInstance, aRemainingCutoff, aSeed);
 			results.add(result);
@@ -43,7 +43,7 @@ public class SequentialSolversComposite implements ISolver{
 			}
 		}
 		
-		return SolverHelper.mergeComponentResults(results);
+		return SolverHelper.combineResults(results);
 	}
 
 	@Override

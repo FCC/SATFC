@@ -36,8 +36,12 @@ public class TAESATSolverParameters extends AbstractOptions implements ISATSolve
 		
 		AlgorithmExecutionOptions.paramFileDelegate.paramFile = AlgorithmExecutionOptions.algoExecDir+File.separatorChar+"sw_parameterspaces"+File.separatorChar+"sw_"+Solver+".txt";
 		
-		return new TAESATSolver(TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(AlgorithmExecutionOptions.taeOpts, AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null), false, AvailableTAEOptions),
+		return new TAESATSolver(
+				TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(AlgorithmExecutionOptions.taeOpts,
+						false,
+						AvailableTAEOptions),
 				AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null).getParamFile().getDefaultConfiguration(),
+				AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null),
 				CNFDirectory);
 	}
 
