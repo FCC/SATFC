@@ -55,7 +55,7 @@ public class GenericSATBasedSolver implements ISolver {
 			long aSeed) {
 		AutoStartStopWatch aSolveWatch = new AutoStartStopWatch();
 		
-		log.info("Solving instance of {}...",aInstance.getInfo());
+		log.debug("Solving instance of {}...",aInstance.getInfo());
 
 		Set<Integer> aChannelRange = aInstance.getChannels();
 		
@@ -63,17 +63,17 @@ public class GenericSATBasedSolver implements ISolver {
 		HashSet<SolverResult> aComponentResults = new HashSet<SolverResult>();
 		
 		Set<Set<Station>> aStationComponents = fComponentGrouper.group(aInstance,fConstraintManager);
-		log.info("Problem separated in {} groups.",aStationComponents.size());
+		log.debug("Problem separated in {} groups.",aStationComponents.size());
 		
 		for(Set<Station> aStationComponent : aStationComponents)
 		{
 			StationPackingInstance aComponentInstance = new StationPackingInstance(aStationComponent,aChannelRange);
 			
-			log.info("Encoding subproblem in CNF.");
+			log.debug("Encoding subproblem in CNF.");
 			Pair<CNF,ISATDecoder> aEncoding = fSATEncoder.encode(aInstance);
 			CNF aCNF = aEncoding.getKey();
 			ISATDecoder aDecoder = aEncoding.getValue();
-			log.info("CNF has {} clauses.",aCNF.size());
+			log.debug("CNF has {} clauses.",aCNF.size());
 			
 			//Check if CNF should be saved.
 			if(SAVE_CNF)
@@ -99,10 +99,10 @@ public class GenericSATBasedSolver implements ISolver {
 				break;
 			}
 			
-			log.info("Solving the subproblem CNF.");
+			log.debug("Solving the subproblem CNF.");
 			SATSolverResult aComponentResult = fSATSolver.solve(aCNF, aRemainingCutoff, aSeed);
 			
-			log.info("Parsing result.");
+			log.debug("Parsing result.");
 			Map<Integer,Set<Station>> aStationAssignment = new HashMap<Integer,Set<Station>>();
 			if(aComponentResult.getResult().equals(SATResult.SAT))
 			{
@@ -159,14 +159,14 @@ public class GenericSATBasedSolver implements ISolver {
 		
 		SolverResult aResult = SolverHelper.mergeComponentResults(aComponentResults);
 		
-		log.info("...done.");
-		log.info("Cleaning up...");
+		log.debug("...done.");
+		log.debug("Cleaning up...");
 		
 		//Post-process the result for correctness.
 		if(aResult.getResult().equals(SATResult.SAT))
 		{
 			
-			log.info("Independently verifying the veracity of returned assignment");
+			log.debug("Independently verifying the veracity of returned assignment");
 			//Check assignment has the right number of stations
 			int aAssignmentSize = 0;
 			for(Integer aChannel : aResult.getAssignment().keySet())
@@ -192,13 +192,13 @@ public class GenericSATBasedSolver implements ISolver {
 			}
 			else
 			{
-				log.info("Assignment was independently verified to be satisfiable.");
+				log.debug("Assignment was independently verified to be satisfiable.");
 			}
 		}
-		log.info("...done.");
+		log.debug("...done.");
 		
-		log.info("Result : {}",aResult);
-		log.info("Total time taken "+aSolveWatch.stop()/1000.0+" seconds");
+		log.debug("Result : {}",aResult);
+		log.debug("Total time taken "+aSolveWatch.stop()/1000.0+" seconds");
 		
 		return aResult;
 	}

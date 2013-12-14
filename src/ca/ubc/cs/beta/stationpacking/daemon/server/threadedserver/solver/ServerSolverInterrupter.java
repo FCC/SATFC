@@ -124,12 +124,12 @@ public class ServerSolverInterrupter {
 	{
 		if(fCurrentJobID.equals(aJobID))
 		{
-			log.info("Job {} was current job, interrupting it.",aJobID);
+			log.debug("Job {} was current job, interrupting it.",aJobID);
 			fCurrentSolver.interrupt();
 		}
 		else
 		{
-			log.info("Adding job {} to the set of (to-be) interrupted jobs.",aJobID);
+			log.debug("Adding job {} to the set of (to-be) interrupted jobs.",aJobID);
 			fInterruptedJobIDs.add(aJobID);
 		}
 	}
@@ -146,7 +146,7 @@ public class ServerSolverInterrupter {
 		}
 		else
 		{
-			log.info("Interrupting current job with ID {}.",fCurrentJobID);
+			log.debug("Interrupting current job with ID {}.",fCurrentJobID);
 			fCurrentSolver.interrupt();
 		}
 	}

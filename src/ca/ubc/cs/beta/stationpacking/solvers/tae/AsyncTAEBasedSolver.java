@@ -15,7 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aclib.algorithmrun.AlgorithmRun;
-import ca.ubc.cs.beta.aclib.configspace.ParamConfigurationSpace;
+import ca.ubc.cs.beta.aclib.configspace.ParamConfiguration;
 import ca.ubc.cs.beta.aclib.execconfig.AlgorithmExecutionConfig;
 import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstance;
 import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstanceSeedPair;
@@ -46,8 +46,10 @@ public class AsyncTAEBasedSolver {
 	
 	private static Logger log = LoggerFactory.getLogger(TAEBasedSolver.class);
 	
-	private ParamConfigurationSpace fParamConfigurationSpace;
-	private TargetAlgorithmEvaluator fTargetAlgorithmEvaluator;
+	private TargetAlgorithmEvaluator fTAE;
+	private AlgorithmExecutionConfig fExecConfig;
+	private ParamConfiguration fParamConfig;
+	
 	private IComponentGrouper fGrouper;
 	private IConstraintManager fManager;
 	private ISATEncoder fEncoder;
@@ -60,11 +62,17 @@ public class AsyncTAEBasedSolver {
 	 * @param aCNFEncoder - the encoder in charge of taking constraints and an instance and producing a CNF clause set.
 	 * @param aLookup - the CNF lookup in charge of monitoring CNFs.
 	 * @param aGrouper - the component grouper in charge of partitioning instance in subinstances.
-	 * @param aTAE - an AClib Target Algorithm Evaluator in charge of running SAT solver.
-	 * @param aTAEExecConfig - the TAE's configuration.
+	 * @param aTargetAlgorithmEvaluator - target algorithm evaluator to use.
+	 * @param aExecutionConfig - the execution config for the algorithm we want to execute.
+	 * @param aParamConfig - the parameter configuration for the algorithm we want to execute.
 	 */
-	public AsyncTAEBasedSolver(IConstraintManager aConstraintManager, ISATEncoder aCNFEncoder,
-			ICNFResultLookup aLookup, IComponentGrouper aGrouper, TargetAlgorithmEvaluator aTAE, AlgorithmExecutionConfig aTAEExecConfig) {
+	public AsyncTAEBasedSolver(IConstraintManager aConstraintManager,
+			ISATEncoder aCNFEncoder,
+			ICNFResultLookup aLookup,
+			IComponentGrouper aGrouper,
+			TargetAlgorithmEvaluator aTargetAlgorithmEvaluator,
+			AlgorithmExecutionConfig aExecutionConfig,
+			ParamConfiguration aParamConfig) {
 		
 		fEncoder = aCNFEncoder;
 		fManager = aConstraintManager;
@@ -78,8 +86,10 @@ public class AsyncTAEBasedSolver {
 			throw new IllegalArgumentException("The CNF lookup must be asynchronous! "+e.getMessage());
 		}
 		
-		fParamConfigurationSpace  = aTAEExecConfig.getParamFile();
-		fTargetAlgorithmEvaluator = aTAE;
+		fTAE = aTargetAlgorithmEvaluator;
+		fParamConfig  = aParamConfig;
+		fExecConfig = aExecutionConfig;
+		
 	}
 
 
@@ -276,7 +286,7 @@ public class AsyncTAEBasedSolver {
 			//Create the run config and add it to the to-do list.
 			ProblemInstance aProblemInstance = new ProblemInstance(aCNFFileName);
 			ProblemInstanceSeedPair aProblemInstanceSeedPair = new ProblemInstanceSeedPair(aProblemInstance,aSeed);
-			RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aCutoff, fParamConfigurationSpace.getDefaultConfiguration());
+			RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aCutoff, fParamConfig,fExecConfig);
 			
 			aToSolveInstances.put(aRunConfig,aComponentInstance);
 			aComponentDecoders.put(aRunConfig, aDecoder);
@@ -287,22 +297,22 @@ public class AsyncTAEBasedSolver {
 		List<RunConfig> aRunConfigs = new ArrayList<RunConfig>(aToSolveInstances.keySet());
 		
 		//We are not providing any preempting observer when doing async runs as we do not want to kill (possibly) shared instances.
-		fTargetAlgorithmEvaluator.evaluateRunsAsync(aRunConfigs,getCompilingCallback(aInstance,aAsynchronousReporter,aToSolveInstances,aComponentDecoders));
+		fTAE.evaluateRunsAsync(aRunConfigs,getCompilingCallback(aInstance,aAsynchronousReporter,aToSolveInstances,aComponentDecoders));
 		
 	}
 	
 	
 	public void waitForFinish()
 	{
-		fTargetAlgorithmEvaluator.waitForOutstandingEvaluations();
+		fTAE.waitForOutstandingEvaluations();
 		notifyShutdown();
 	}
 	
 	
 	public void notifyShutdown() {
-		if(fTargetAlgorithmEvaluator != null)
+		if(fTAE != null)
 		{
-			fTargetAlgorithmEvaluator.notifyShutdown();
+			fTAE.notifyShutdown();
 		}
 		
 	}

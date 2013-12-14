@@ -56,7 +56,7 @@ public class TAESolverParameters extends AbstractOptions implements ISolverParam
 		
 		AlgorithmExecutionOptions.paramFileDelegate.paramFile = AlgorithmExecutionOptions.algoExecDir+File.separatorChar+"sw_parameterspaces"+File.separatorChar+"sw_"+Solver+".txt";
 		
-		TargetAlgorithmEvaluator aTAE = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(AlgorithmExecutionOptions.taeOpts, AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null), false, AvailableTAEOptions);
+		TargetAlgorithmEvaluator aTAE = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(AlgorithmExecutionOptions.taeOpts, false, AvailableTAEOptions);
 		
 		log.info("Creating CNF encoder...");
 		ISATEncoder aCNFEncoder = new SATEncoder(aStationManager, aConstraintManager);
@@ -68,7 +68,14 @@ public class TAESolverParameters extends AbstractOptions implements ISolverParam
 		IComponentGrouper aGrouper = new ConstraintGrouper();
 		
 		log.info("Creating solver...");
-		TAEBasedSolver aSolver = new TAEBasedSolver(aConstraintManager, aCNFEncoder, aCNFLookup, aGrouper, aTAE, AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null),KeepCNF);
+		TAEBasedSolver aSolver = new TAEBasedSolver(aConstraintManager,
+				aCNFEncoder,
+				aCNFLookup,
+				aGrouper,
+				aTAE,
+				AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null),
+				AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null).getParamFile().getDefaultConfiguration(),
+				KeepCNF);
 		
 		return aSolver;
 	}

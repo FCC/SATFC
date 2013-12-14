@@ -67,6 +67,16 @@ public class SolverResult implements Serializable {
 		return fRuntime;
 	}
 	
+	/**
+	 * @param aResult - a solver result.
+	 * @param aTime - some time in seconds.
+	 * @return a new solver result with runtime increased by the given amount of time. 
+	 */
+	public static SolverResult addTime(SolverResult aResult, double aTime)
+	{
+		return new SolverResult(aResult.getResult(), aResult.getRuntime()+aTime,aResult.getAssignment());
+	}
+	
 	public Map<Integer,Set<Station>> getAssignment()
 	{
 		return new HashMap<Integer,Set<Station>>(fAssignment); 

@@ -35,13 +35,35 @@ public class CNFExtractor {
 	
 	private static Logger log = LoggerFactory.getLogger(CNFExtractor.class);
 	
+	private final static String USAGE = "Usage:\n\n" +
+										"java -jar CNFExtractor.jar <output directory> <question filename 1> ... <question filename k>\n\n"+
+										"Transforms a FCC Incentive Auctions Reverse Auction Simulator feasibility checking question file\n"+
+										"into the related DIMACS CNF SAT formula according to SATFC's feasibility checking SAT encoding.\n\n"+
+										"<output directory> -- directory where output CNFs will be written.\n"+
+										"<question filename i> -- the filename of a feasibility checking question to convert to CNF.";
 	/**
 	 * @param args
 	 */
 	public static void main(String[] args) {
 		
-		DataManager aDataManager = new DataManager();
+		//Check for help or invalid number of arguments.
+		boolean needHelp = false;
+		for(String arg : args)
+		{
+			if(arg.equals("-h") || arg.equals("-help") || arg.equals("--help") || arg.equals("--h"))
+			{
+				needHelp = true;
+				break;
+			}
+		}
+		if(needHelp || args.length<=1)
+		{
+			System.out.println(USAGE);
+			return;
+		}
 		
+		
+		DataManager aDataManager = new DataManager();
 		String aCNFdir = args[0];
 		if(aCNFdir.charAt(aCNFdir.length()-1) != File.separatorChar)
 		{
@@ -68,7 +90,8 @@ public class CNFExtractor {
 			try {
 				br = new BufferedReader(new FileReader(aQuestionFilename));
 			} catch (FileNotFoundException e) {
-				throw new IllegalArgumentException("Could not read from question file "+aQuestionFilename+" ("+e.getMessage()+").");
+				e.printStackTrace();
+				throw new IllegalArgumentException("Could not read from question file "+aQuestionFilename+".");
 			}
 			String line;
 			try {
@@ -100,7 +123,8 @@ public class CNFExtractor {
 				}
 				br.close();
 			} catch (IOException e) {
-				throw new IllegalStateException("Encountered an error while reading question file ("+e.getMessage()+").");
+				e.printStackTrace();
+				throw new IllegalStateException("Encountered an error while reading question file.");
 			}
 			
 			ManagerBundle aManagerBundle = null;
@@ -110,7 +134,8 @@ public class CNFExtractor {
 				try {
 					aManagerBundle = aDataManager.getData(aStationConfig);
 				} catch (FileNotFoundException e) {
-					throw new IllegalArgumentException("Provided STATION_CONFIG "+aStationConfig+" is not valid ("+e.getMessage()+").");
+					e.printStackTrace();
+					throw new IllegalArgumentException("Provided STATION_CONFIG in question file "+aStationConfig+" cannot be found.");
 				}
 			}
 			else
@@ -157,12 +182,12 @@ public class CNFExtractor {
 				}
 				else
 				{
-					throw new IllegalArgumentException("Unrecognized value "+aBand+" for BAND entry in question file "+aQuestionFilename);
+					throw new IllegalArgumentException("Unrecognized value "+aBand+" for BAND entry in question file "+aQuestionFilename+".");
 				}
 			}
 			else
 			{
-				throw new IllegalArgumentException("Did not find BAND in question file "+aQuestionFilename);
+				throw new IllegalArgumentException("Did not find BAND in question file "+aQuestionFilename+".");
 			}
 			
 			List<Integer> aSortedStations = new ArrayList<Integer>(aPackingStations);
@@ -173,7 +198,7 @@ public class CNFExtractor {
 			log.info("Packing channels: {}.",StringUtils.join(aSortedChannels,","));
 			log.info("Stations : {}.", StringUtils.join(aSortedStations,","));
 			
-			log.info("Getting station packing instance ...");
+			log.info("Creating station packing instance ...");
 			
 			IStationManager aStationManager = aManagerBundle.getStationManager();
 			IConstraintManager aConstraintManager = aManagerBundle.getConstraintManager();
@@ -192,9 +217,10 @@ public class CNFExtractor {
 			log.info("Saving CNF to {}...",aCNFFilename);
 			
 			try {
-				FileUtils.writeStringToFile(new File(aCNFFilename), aCNF.toDIMACS(new String[]{"FCC Station Packing Instance","Channels: "+StringUtils.join(aSortedChannels,","),"Stations: "+StringUtils.join(aSortedStations,",")}));
+				FileUtils.writeStringToFile(new File(aCNFFilename), aCNF.toDIMACS(new String[]{"FCC Feasibility Checking Instance","Original Question File: "+aQuestionFilename,"Channels: "+StringUtils.join(aSortedChannels,","),"Stations: "+StringUtils.join(aSortedStations,",")}));
 			} catch (IOException e) {
-				throw new IllegalStateException("Could not write CNF to file ("+e.getMessage()+").");
+				e.printStackTrace();
+				throw new IllegalStateException("Could not write CNF to file.");
 			}
 		}
 	}
