@@ -1,19 +1,21 @@
 package ca.ubc.cs.beta.stationpacking.execution.parameters.solver.daemon;
 
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ca.ubc.cs.beta.aclib.logging.ComplexLoggingOptions;
+import ca.ubc.cs.beta.aclib.logging.LoggingOptions;
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverManager;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBundle;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBundleFactory;
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.clasp.ClaspSATSolverBundleFactory;
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.sequential.SequentialSolverBundleFactory;
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.simplebounderpresolver.SimpleBounderPresolverBundleFactory;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.SATFCSolverBundle;
+import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
+import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat.ClaspLibSATSolverParameters;
 
 import com.beust.jcommander.Parameter;
@@ -27,6 +29,11 @@ import com.beust.jcommander.ParametersDelegate;
 @UsageTextField(title="FCC StationPacking Daemon Solver Options",description="Parameters required to launch a daemon solver.")
 public class ThreadedSolverServerParameters extends AbstractOptions {	
 	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
 	//Solver parameters
 	@ParametersDelegate
 	public ClaspLibSATSolverParameters SolverParameters = new ClaspLibSATSolverParameters();
@@ -40,24 +47,33 @@ public class ThreadedSolverServerParameters extends AbstractOptions {
 	@Parameter(names = "-PORT",description = "the localhost UDP port to listen to", required=true, validateWith=PortValidator.class)
 	public int Port;
 	
+	@ParametersDelegate
+	public LoggingOptions LoggingOptions = new ComplexLoggingOptions();
+	
 	public SolverManager getSolverManager()
 	{
 		Logger log = LoggerFactory.getLogger(ThreadedSolverServerParameters.class);
 		
-		//Initialize the bundle factory in charge of clasp.
-		log.warn("Provided configuration for clasp will not be used. Instead, internal configurations are used on a per-instance basis.");
-		ISolverBundleFactory clasp = new ClaspSATSolverBundleFactory(SolverParameters.Library);
+		//Setup solvers.
+		final String clasplibrary = SolverParameters.Library; 
+		SolverManager aSolverManager = new SolverManager(
+				new ISolverBundleFactory() {
+			
+					@Override
+					public ISolverBundle getBundle(IStationManager aStationManager,
+							IConstraintManager aConstraintManager) {
+						
+						/*
+						 * Set what solver selector will be used here.
+						 */
+						return new SATFCSolverBundle(clasplibrary, aStationManager, aConstraintManager);
+						
+					}
+				}
+				
+				);
 		
-		//Initialize the bundle factory in charge of our simple bounder pre-solver.
-		ISolverBundleFactory simplebounderpresolver = new SimpleBounderPresolverBundleFactory(clasp);
-		
-		//Add the bundle factories in order.
-		List<ISolverBundleFactory> solverBundleFactories = new ArrayList<ISolverBundleFactory>();
-		solverBundleFactories.add(simplebounderpresolver);
-		solverBundleFactories.add(clasp);
-		
-		SolverManager aSolverManager = new SolverManager(new SequentialSolverBundleFactory(solverBundleFactories));
-		
+		//Gather any necessary station packing data.
 		boolean isEmpty = true;
 		for(String aDataFoldername : DataFoldernames)
 		{

@@ -1,14 +1,12 @@
 package ca.ubc.cs.beta.stationpacking.execution;
 
 import java.util.ArrayList;
-import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aclib.misc.jcommander.JCommanderHelper;
-import ca.ubc.cs.beta.aclib.misc.options.UsageSection;
-import ca.ubc.cs.beta.aclib.options.ConfigToLaTeX;
+import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
@@ -30,22 +28,15 @@ public class AsyncInstanceResolvingExecutor {
 		
 		//Parse the command line arguments in a parameter object.
 		AsyncResolvingParameters aInstanceResolvingParameters = new AsyncResolvingParameters();
-		JCommander aParameterParser = JCommanderHelper.getJCommander(aInstanceResolvingParameters, aInstanceResolvingParameters.SolverParameters.AvailableTAEOptions);
+	JCommander aParameterParser = JCommanderHelper.parseCheckingForHelpAndVersion(args, aInstanceResolvingParameters,TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators());
+		
 		try
 		{
 			aParameterParser.parse(args);
 		}
 		catch (ParameterException aParameterException)
 		{
-			List<UsageSection> sections = ConfigToLaTeX.getParameters(aInstanceResolvingParameters,aInstanceResolvingParameters.SolverParameters.AvailableTAEOptions);
-			
-			boolean showHiddenParameters = false;
-			
-			//A much nicer usage screen than JCommander's 
-			ConfigToLaTeX.usage(sections, showHiddenParameters);
-			
-			log.error(aParameterException.getMessage());
-			return;
+			throw aParameterException;
 		}
 		
 		AsynchronousLocalExperimentReporter aReporter = aInstanceResolvingParameters.getExperimentReporter();

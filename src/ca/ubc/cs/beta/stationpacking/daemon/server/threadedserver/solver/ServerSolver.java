@@ -84,8 +84,8 @@ public class ServerSolver implements Runnable {
 					InetAddress aSendAddress = aSolvingJob.getSendAddress();
 					int aSendPort = aSolvingJob.getSendPort();
 					
-					log.info("Got solving job with ID {}.",aID);
-					log.info("Beginning to solve...");
+					log.debug("Got solving job with ID {}.",aID);
+					log.debug("Setting up solving environment...");
 					
 					ISolverBundle aBundle;
 					try 
@@ -117,7 +117,6 @@ public class ServerSolver implements Runnable {
 						throw e;
 					}
 
-	
 					ISolver aSolver = aBundle.getSolver(aInstance);
 					
 					double aOverhead = aOverheadWatch.stop()/1000.0;
@@ -141,7 +140,7 @@ public class ServerSolver implements Runnable {
 						continue;
 					}
 					
-					log.info("Beginning to solve...");
+					log.debug("Beginning to solve...");
 									
 					//Notify the start of the solving.
 					fSolverState.notifyStart(aID, aSolver);
@@ -152,6 +151,7 @@ public class ServerSolver implements Runnable {
 						try
 						{
 							aResult = aSolver.solve(aInstance, aCutoff, aSeed);
+							log.debug("Problem solved.");
 						}
 						finally
 						{
@@ -184,6 +184,7 @@ public class ServerSolver implements Runnable {
 						String aAnswer = StringUtils.join(new String[]{"ANSWER",aID,aResult.toParsableString()},ServerListener.COMMANDSEP);
 						try
 						{
+							log.debug("Sending back an answer.");
 							fServerResponseQueue.put(new ServerResponse(aAnswer,aSendAddress,aSendPort));
 						}
 						catch(InterruptedException e1)

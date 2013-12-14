@@ -10,6 +10,7 @@ import org.apache.commons.lang3.RandomStringUtils;
 
 import ca.ubc.cs.beta.aclib.algorithmrun.AlgorithmRun;
 import ca.ubc.cs.beta.aclib.configspace.ParamConfiguration;
+import ca.ubc.cs.beta.aclib.execconfig.AlgorithmExecutionConfig;
 import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstance;
 import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstanceSeedPair;
 import ca.ubc.cs.beta.aclib.runconfig.RunConfig;
@@ -27,19 +28,25 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSo
 public class TAESATSolver extends AbstractCompressedSATSolver{
 	
 	private final TargetAlgorithmEvaluator fTAE;
+	private final AlgorithmExecutionConfig fExecConfig;
 	private final ParamConfiguration fParamConfiguration;
 	private final String fCNFDir;
 	
 	/**
 	 * Builds a TAE based SAT solver.
-	 * @param aTAE - the TAE to execute a SAT solver.
-	 * @param aParamConfigurationSpace - a param configuration space for the TAE.
-	 * @param aCNFDir - a CNF directory in which to execute 
+	 * @param aTargetAlgorithmEvaluator - target algorithm evaluator to use.
+	 * @param aExecutionConfig - the execution config for the SAT solver we want to execute.
+	 * @param aParamConfig - the parameter configuration for the SAT solver we want to execute.
+	 * @param aCNFDir - a CNF directory in which to execute. 
 	 */
-	public TAESATSolver(TargetAlgorithmEvaluator aTAE, ParamConfiguration aParamConfiguration, String aCNFDir)
+	public TAESATSolver(TargetAlgorithmEvaluator aTargetAlgorithmEvaluator,
+			ParamConfiguration aParamConfig,
+			AlgorithmExecutionConfig aExecConfig,
+			String aCNFDir)
 	{
-		fTAE = aTAE;
-		fParamConfiguration = aParamConfiguration;
+		fTAE = aTargetAlgorithmEvaluator;
+		fExecConfig = aExecConfig;
+		fParamConfiguration = aParamConfig;
 		fCNFDir = aCNFDir;
 	}
 	
@@ -71,7 +78,7 @@ public class TAESATSolver extends AbstractCompressedSATSolver{
 		//Create the run config.
 		ProblemInstance aProblemInstance = new ProblemInstance(aCNFFilename);
 		ProblemInstanceSeedPair aProblemInstanceSeedPair = new ProblemInstanceSeedPair(aProblemInstance,aSeed);
-		RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aCutoff, fParamConfiguration);
+		RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aCutoff, fParamConfiguration,fExecConfig);
 		
 		//Execute it.
 		List<AlgorithmRun> aRuns = fTAE.evaluateRun(aRunConfig);

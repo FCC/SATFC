@@ -94,7 +94,7 @@ public class StationPackingInstance {
 	 * <p>
 	 * If there is a previous assignment, then the assignment is appended to the string representation as follows:
 	 * <br>
-	 * channel1-channel2-...-channelM_station1-station2-...-stationN_somestation1:somechannel1-somestation2:somechannel2-...-somestationk:somechannelk
+	 * channel1-channel2-...-channelM_station1-station2-...-stationN_somestation1,somechannel1-somestation2,somechannel2-...-somestationk,somechannelk
 	 * </p>
 	 * 
 	 * @param aInstanceString - a string representation of the instance.
@@ -142,8 +142,8 @@ public class StationPackingInstance {
 			HashMap<Station,Integer> aInstancePreviousAssignment = new HashMap<Station,Integer>();
 			for(String aAssignmentPart : aAssignmentParts)
 			{
-				String aAssignmentStationString = aAssignmentPart.split(":")[0];
-				String aAssignmentChannelString = aAssignmentPart.split(":")[1];
+				String aAssignmentStationString = aAssignmentPart.split(",")[0];
+				String aAssignmentChannelString = aAssignmentPart.split(",")[1];
 				
 				if(aInstancePreviousAssignment.put(aStationManager.getStationfromID(Integer.valueOf(aAssignmentStationString)), Integer.valueOf(aAssignmentChannelString))!=null)
 				{

@@ -1,13 +1,9 @@
 package ca.ubc.cs.beta.stationpacking.execution.instancegeneration;
 
-import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aclib.misc.jcommander.JCommanderHelper;
-import ca.ubc.cs.beta.aclib.misc.options.UsageSection;
-import ca.ubc.cs.beta.aclib.options.ConfigToLaTeX;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.instancegeneration.InstanceGenerationParameters;
 import ca.ubc.cs.beta.stationpacking.experiment.InstanceGeneration;
@@ -26,22 +22,16 @@ public class InstanceGenerationExecutor {
 
 		//Parse the command line arguments in a parameter object.
 		InstanceGenerationParameters aInstanceGenerationParameters = new InstanceGenerationParameters();
-		JCommander aParameterParser = JCommanderHelper.getJCommander(aInstanceGenerationParameters, TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators());
+		//Check for help
+		JCommander aParameterParser = JCommanderHelper.parseCheckingForHelpAndVersion(args, aInstanceGenerationParameters,TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators());
+		
 		try
 		{
 			aParameterParser.parse(args);
 		}
 		catch (ParameterException aParameterException)
 		{
-			List<UsageSection> sections = ConfigToLaTeX.getParameters(aInstanceGenerationParameters, TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators());
-			
-			boolean showHiddenParameters = false;
-			
-			//A much nicer usage screen than JCommander's 
-			ConfigToLaTeX.usage(sections, showHiddenParameters);
-			
-			log.error(aParameterException.getMessage());
-			return;
+			throw aParameterException;
 		}
 		
 		InstanceGeneration aInstanceGeneration = null;

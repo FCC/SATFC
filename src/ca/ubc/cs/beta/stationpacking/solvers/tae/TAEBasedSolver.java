@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 import ca.ubc.cs.beta.aclib.algorithmrun.AlgorithmRun;
 import ca.ubc.cs.beta.aclib.algorithmrun.RunResult;
 import ca.ubc.cs.beta.aclib.algorithmrun.kill.KillableAlgorithmRun;
-import ca.ubc.cs.beta.aclib.configspace.ParamConfigurationSpace;
+import ca.ubc.cs.beta.aclib.configspace.ParamConfiguration;
 import ca.ubc.cs.beta.aclib.execconfig.AlgorithmExecutionConfig;
 import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstance;
 import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstanceSeedPair;
@@ -47,8 +47,9 @@ public class TAEBasedSolver implements ISolver{
 	
 	private static Logger log = LoggerFactory.getLogger(TAEBasedSolver.class);
 	
-	private ParamConfigurationSpace fParamConfigurationSpace;
-	private TargetAlgorithmEvaluator fTargetAlgorithmEvaluator;
+	private TargetAlgorithmEvaluator fTAE;
+	private AlgorithmExecutionConfig fExecConfig;
+	private ParamConfiguration fParamConfig;
 	
 	private IConstraintManager fManager;
 	private ICNFResultLookup fLookup;
@@ -64,19 +65,27 @@ public class TAEBasedSolver implements ISolver{
 	 * @param aSATEncoder - the encoder in charge of taking constraints and an instance and producing a CNF clause set.
 	 * @param aLookup - the CNF lookup in charge of monitoring CNFs.
 	 * @param aGrouper - the component grouper in charge of partitioning instance in subinstances.
-	 * @param aTAE - an AClib Target Algorithm Evaluator in charge of running SAT solver.
-	 * @param aTAEExecConfig - the TAE's configuration.
+	 * @param aTargetAlgorithmEvaluator - target algorithm evaluator to use.
+	 * @param aExecutionConfig - the execution config for the algorithm we want to execute.
+	 * @param aParamConfig - the parameter configuration for the algorithm we want to execute.
 	 */
-	public TAEBasedSolver(IConstraintManager aConstraintManager, ISATEncoder aSATEncoder,
-			ICNFResultLookup aLookup, IComponentGrouper aGrouper, TargetAlgorithmEvaluator aTAE, AlgorithmExecutionConfig aTAEExecConfig, boolean aKeepCNFs) {
+	public TAEBasedSolver(IConstraintManager aConstraintManager,
+			ISATEncoder aSATEncoder,
+			ICNFResultLookup aLookup,
+			IComponentGrouper aGrouper,
+			TargetAlgorithmEvaluator aTargetAlgorithmEvaluator,
+			AlgorithmExecutionConfig aExecutionConfig,
+			ParamConfiguration aParamConfig,
+			boolean aKeepCNFs) {
 		
 		fEncoder = aSATEncoder;
 		fManager = aConstraintManager;
 		fGrouper = aGrouper;
 		fLookup = aLookup;
 		
-		fParamConfigurationSpace  = aTAEExecConfig.getParamFile();
-		fTargetAlgorithmEvaluator = aTAE;
+		fTAE = aTargetAlgorithmEvaluator;
+		fExecConfig  = aExecutionConfig;
+		fParamConfig = aParamConfig;
 		
 		fKeepCNFs = aKeepCNFs;
 	}
@@ -203,7 +212,7 @@ public class TAEBasedSolver implements ISolver{
 				//Create the run config and add it to the to-do list.
 				ProblemInstance aProblemInstance = new ProblemInstance(aCNFFileName);
 				ProblemInstanceSeedPair aProblemInstanceSeedPair = new ProblemInstanceSeedPair(aProblemInstance,aSeed);
-				RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aCutoff, fParamConfigurationSpace.getDefaultConfiguration());
+				RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aCutoff, fParamConfig,fExecConfig);
 				
 				aToSolveInstances.put(aRunConfig,aComponentInstance);
 				aComponentDecoders.put(aRunConfig, aDecoder);
@@ -213,7 +222,7 @@ public class TAEBasedSolver implements ISolver{
 		
 		//Execute the runs
 		List<RunConfig> aRunConfigs = new ArrayList<RunConfig>(aToSolveInstances.keySet());
-		List<AlgorithmRun> aRuns = fTargetAlgorithmEvaluator.evaluateRun(aRunConfigs,getPreemptingObserver());
+		List<AlgorithmRun> aRuns = fTAE.evaluateRun(aRunConfigs,getPreemptingObserver());
 		
 		
 		for(AlgorithmRun aRun : aRuns)
@@ -374,9 +383,9 @@ public class TAEBasedSolver implements ISolver{
 
 	@Override
 	public void notifyShutdown() {
-		if(fTargetAlgorithmEvaluator != null)
+		if(fTAE != null)
 		{
-			fTargetAlgorithmEvaluator.notifyShutdown();
+			fTAE.notifyShutdown();
 		}
 		
 	}

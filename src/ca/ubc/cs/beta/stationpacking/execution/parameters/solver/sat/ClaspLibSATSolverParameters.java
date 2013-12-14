@@ -23,7 +23,7 @@ public class ClaspLibSATSolverParameters extends AbstractOptions implements ISAT
 	public String Library;
 	
 	@UsageTextField(defaultValues="-See code-")
-	@Parameter(names = "--configuration", description = "clasp configuration.")
+	@Parameter(names = "--configuration", description = "clasp configuration to use (may not be used).")
 	public String Configuration = ORIGINAL_CONFIG_03_13;
 	
 	                              

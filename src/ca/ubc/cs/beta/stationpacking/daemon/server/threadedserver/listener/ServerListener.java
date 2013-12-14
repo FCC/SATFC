@@ -28,7 +28,7 @@ public class ServerListener implements Runnable {
 	/*
 	 * Command fields.
 	 */
-	public final static String COMMANDSEP = "%";
+	public final static String COMMANDSEP = ":";
 	private enum ServerCommand {
 		TEST,
 		TERMINATE,
@@ -97,7 +97,7 @@ public class ServerListener implements Runnable {
 
 				try {
 					//Listen to the socket.
-					log.info("Listening to socket at "+fServerSocket.getLocalAddress()+" port "+fServerSocket.getLocalPort());
+					log.debug("Listening to socket at "+fServerSocket.getLocalAddress()+" port "+fServerSocket.getLocalPort());
 					DatagramPacket aReceivePacket = new DatagramPacket(
 							aReceiveData, aReceiveData.length);
 					fServerSocket.receive(aReceivePacket);
@@ -110,7 +110,7 @@ public class ServerListener implements Runnable {
 //						continue;
 //					}
 
-					log.info("Received a packet.");
+					log.debug("Received a packet.");
 					InetAddress aSendAddress = aReceivePacket.getAddress();
 					int aSendPort = aReceivePacket.getPort();
 					
@@ -119,12 +119,19 @@ public class ServerListener implements Runnable {
 					
 					String aMessage = new String(aReceiveData,"ASCII").trim();
 
-					log.info("Message received: \"{}\"",aMessage);
+					log.debug("Message received: \"{}\"",aMessage);
 
 					//Process message
 					try
 					{
-						if(!processCommand(aMessage, aSendAddress, aSendPort))return;
+						if(!processCommand(aMessage, aSendAddress, aSendPort))
+						{
+							//Command says we should exit.
+							
+							//TODO should the other threads be terminated, or is that good enough?
+							System.exit(0);
+							return;
+						}
 					}
 					catch(InterruptedException e)
 					{
@@ -146,7 +153,8 @@ public class ServerListener implements Runnable {
 	
 	/**
 	 * @param aMessage - a command message.
-	 * @param aSendPort - the (localhost) port that sent the message.
+	 * @param aSendPort - the port that sent the message.
+	 * @param aSendAddress - the address that sent the message.
 	 * @return false if (listening thread) must terminate, true otherwise.
 	 */
 	private boolean processCommand(String aMessage, InetAddress aSendAddress, int aSendPort) throws InterruptedException
@@ -162,7 +170,7 @@ public class ServerListener implements Runnable {
 		{
 			e.printStackTrace();
 			//Failed recognizing the message.
-			log.warn("Could not process server command {} ({}).",aServerCommandString,e.getMessage());
+			log.error("Could not process server command {} ({}).",aServerCommandString,e.getMessage());
 			String aError = "Message received is not recognizable message string ("+aMessage+").";
 			log.warn(aError);
 			fServerResponseQueue.put(new ServerResponse("ERROR"+COMMANDSEP+aError,aSendAddress,aSendPort));
@@ -237,23 +245,24 @@ public class ServerListener implements Runnable {
 			}
 			
 			aID = aMessageParts[1].trim();
-			log.info("Problem ID {}, with",aID);
+			log.debug("Problem ID {}, with",aID);
 			
 			aDataFoldername = aMessageParts[2];
-			log.info("data from {}, and",aDataFoldername);
+			log.debug("data from {}, and",aDataFoldername);
 			
 			aInstanceString = aMessageParts[3];
-			log.info("instance {}, and",aInstanceString);
+			log.debug("instance {}, and",aInstanceString);
 
 			aCutoff = Double.valueOf(aMessageParts[4]);
-			log.info("cutoff {} s, and",aCutoff);
+			log.debug("cutoff {} s, and",aCutoff);
 
 			aSeed = Long.valueOf(aMessageParts[5]);
-			log.info("seed {}, and",aSeed);
+			log.debug("seed {}, and",aSeed);
 		}
 		catch(Exception e)
 		{
-			log.warn("There was an exception while parsing the solve message ({}).",e.getMessage());
+			e.printStackTrace();
+			log.error("There was an exception while parsing the solve message ({}).",e.getMessage());
 			fServerResponseQueue.put(new ServerResponse("ERROR"+COMMANDSEP+e.getMessage(),aSendAddress,aSendPort));
 			return true;
 		}
@@ -276,7 +285,7 @@ public class ServerListener implements Runnable {
 				fSolverState.interruptCurrentJob();
 			}
 			
-			log.info("Enqueuing instance with ID {}.",aID);
+			log.debug("Enqueuing instance with ID {}.",aID);
 			fSolvingJobQueue.put(new SolvingJob(aID, aDataFoldername, aInstanceString, aRemainingTime, aSeed, aSendAddress, aSendPort));
 		}
 
@@ -313,6 +322,7 @@ public class ServerListener implements Runnable {
 		}
 		catch(Exception e)
 		{
+			e.printStackTrace();
 			log.warn("There was an exception while parsing the interrupt message ({}).",e.getMessage());
 			fServerResponseQueue.put(new ServerResponse("ERROR"+COMMANDSEP+e.getMessage(),aSendAddress,aSendPort));
 		}
