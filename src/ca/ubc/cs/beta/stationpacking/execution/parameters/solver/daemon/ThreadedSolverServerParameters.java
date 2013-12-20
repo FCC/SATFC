@@ -1,6 +1,7 @@
 package ca.ubc.cs.beta.stationpacking.execution.parameters.solver.daemon;
 
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -42,7 +43,7 @@ public class ThreadedSolverServerParameters extends AbstractOptions {
 	public boolean AllowAnyone = false;
 	
 	@Parameter(names = "-DATA-FOLDERNAME",description = "a list of data foldernames that the daemon should know about.", required=true)
-	public List<String> DataFoldernames;
+	public List<String> DataFoldernames = new ArrayList<String>();
 	
 	@Parameter(names = "-PORT",description = "the localhost UDP port to listen to", required=true, validateWith=PortValidator.class)
 	public int Port;
