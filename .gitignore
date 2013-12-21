@@ -12,3 +12,4 @@
 /bin
 /Arguments
 /deliverable
+lib/redis-client/*.class
