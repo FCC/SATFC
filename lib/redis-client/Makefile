@@ -1,7 +1,5 @@
-JEDIS_JAR = jedis-2.1.0.jar
-JSON_JAR = gson-2.2.4.jar
-JPATH = $(JEDIS_JAR):$(JSON_JAR):.
-JFLAGS = -cp $(JPATH)
+CLASSPATH = `ruby collect_classpath.rb`
+JFLAGS = -cp $(CLASSPATH)
 JC = javac
 JAVA = java
 JCFLAGS = -Xlint:unchecked
