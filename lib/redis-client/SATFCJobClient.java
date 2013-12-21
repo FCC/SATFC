@@ -3,6 +3,7 @@ import redis.clients.jedis.Transaction;
 
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
@@ -193,6 +194,7 @@ public class SATFCJobClient implements Runnable {
 		watch.start();
 		
 		//Static problem parameters that are not provided.
+		try {
 		InetAddress dummyAddress = InetAddress.getLocalHost();
 		int dummyPort = 111111;
 		long seed = 1;
@@ -214,9 +216,9 @@ public class SATFCJobClient implements Runnable {
 		/*
 		 * TODO This should be an instance string as outlined in the SATFC readme:
 		 * 
-		 * "A formatted instance string is simply a Ò-Ó-separated list of channels, a Ò-Ó-separated list
-		 * of stations and an optional previously valid partial channel assignment (in the form of a Ò-Ó-separated
-		 * list of station-channel assignments joined by Ò,Ó), all joined by a Ò_Ó. For example, the feasibility 
+		 * "A formatted instance string is simply a O-O-separated list of channels, a O-O-separated list
+		 * of stations and an optional previously valid partial channel assignment (in the form of a O-O-separated
+		 * list of station-channel assignments joined by O,O), all joined by a O_O. For example, the feasibility 
 		 * checking problem of packing stations 100,231 and 597 into channels 14,15,16,17 and 18 with previous 
 		 * assignment 231 to 16 and 597 to 18 is represented by the following formatted instance string:
 		 * 
@@ -302,6 +304,12 @@ public class SATFCJobClient implements Runnable {
 		FeasibilityResult result = new FeasibilityResult(new_station, answer, answerMessage, time, time, witness);
 		
 		return result;
+		
+		} catch (UnknownHostException e) {
+			throw new RuntimeException(e);
+		} catch (InterruptedException e) {
+			throw new RuntimeException(e);
+		}
 	}
 	
 	// Poll the server for work, and do work when it appears.
