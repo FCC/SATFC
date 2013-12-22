@@ -15,7 +15,7 @@ default: classes
 classes: $(CLASSES:.java=.class)
 
 run: classes
-	$(JAVA) $(JFLAGS) SATFCJobClient
+	$(JAVA) $(JFLAGS) SATFCJobClient $(ARGS)
 
 clean:
 	$(RM) *.class
