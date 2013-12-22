@@ -430,7 +430,7 @@ public class SATFCJobClient implements Runnable {
     			parser.parseArgument(args);
     			if (options.should_show_help) {
     				parser.printUsage(System.err);
-    				System.exit(2);
+    				System.exit(0);
     			}
     		} catch (CmdLineException e) {
 				System.err.println(e.getMessage());
