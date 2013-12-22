@@ -34,5 +34,6 @@
 	<classpathentry kind="lib" path="lib/aclib-experimental/spi-0.2.4.jar"/>
 	<classpathentry kind="lib" path="lib/redis-client/jedis-2.1.0.jar"/>
 	<classpathentry kind="lib" path="lib/redis-client/gson-2.2.4.jar"/>
+	<classpathentry kind="lib" path="lib/redis-client/args4j-2.0.21.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
