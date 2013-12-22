@@ -27,6 +27,9 @@ import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
 import com.google.gson.*;
 
+import org.kohsuke.args4j.Option;
+import org.kohsuke.args4j.CmdLineParser;
+import org.kohsuke.args4j.CmdLineException;
 
 // Poll the Job Caster server (Redis) and solve problems as they appear
 //
@@ -79,7 +82,7 @@ public class SATFCJobClient implements Runnable {
 	 * can be executed in parallel with a thread pool.
 	 * @author afrechet
 	 */
-	public SATFCJobClient(Object options, 
+	public SATFCJobClient(Options options, 
 			BlockingQueue<SolvingJob> aSATFCJobQueue,
 			BlockingQueue<ServerResponse> aSATFCAnswerQueue) {
 		
@@ -93,7 +96,7 @@ public class SATFCJobClient implements Runnable {
 		
 
 		//?? use options
-		_caster = new JobCaster();
+		_caster = new JobCaster(options.redis_url);
 		_statistics = new HashMap<String, Object>();
 	}
 	
@@ -174,7 +177,6 @@ public class SATFCJobClient implements Runnable {
 	//
 	// For now we pause for a random time up to timeout, and then return NO.
 	FeasibilityResult run_feasibility_check(ProblemSet problem_set, int new_station) {
-			
 		long sleep_time = (long)(Math.random() * problem_set.get_timeout_ms());
 		sleep_for(sleep_time);
 		
@@ -330,14 +332,14 @@ public class SATFCJobClient implements Runnable {
 				
 				double start_time = now();
 				
-        _statistics.put("latest_problem", start_time);
+				_statistics.put("latest_problem", start_time);
 
 				String problem_set_json = _caster.get_problem_set(problem_set_id);
 				
 				ProblemSet problem_set = new ProblemSet(problem_set_json);
 				
 				//!! This is the integration point with their software.
-        FeasibilityResult result = run_feasibility_check(problem_set, Integer.parseInt(new_station));
+				FeasibilityResult result = run_feasibility_check(problem_set, Integer.parseInt(new_station));
 
 				report("Result from checker was " + result.get_answer());
 				
@@ -362,11 +364,11 @@ public class SATFCJobClient implements Runnable {
 				
 				report("Answer to return is " + answer_json);
         
-        _caster.send_assignment(problem_set_id, new_station, gson.toJson(result.get_witness_assignment()));
-        _caster.send_answer(problem_set_id, answer_json);
+				_caster.send_assignment(problem_set_id, new_station, gson.toJson(result.get_witness_assignment()));
+				_caster.send_answer(problem_set_id, answer_json);
  
-        // 
-        // record_fc answer, Time.now - start_time
+				// 
+				// record_fc answer, Time.now - start_time
 			} else if (_caster.is_alive()) {
 	      report("No work at the moment. Trying again.");
 	    } else {
@@ -409,10 +411,39 @@ public class SATFCJobClient implements Runnable {
 	}
 	
 	private final static ExecutorService EXECUTOR_SERVICE = Executors.newCachedThreadPool();
+
+	static class Options {
+		// Look here <https://github.com/kohsuke/args4j/blob/master/rgs4j/examples/SampleMain.java>, here <http://www.whenbrainsfly.om/2009/05/args4j-is-magic/>, and here <http://args4j.kohsuke.org/> or examples.
+		
+		@Option(name="-r", aliases={"--redis_url"}, metaVar="url",
+			usage="The url of the JobCaster (redis) server")
+    	String redis_url;
+    	
+    	@Option(name="-h", aliases={"--help"},
+    		usage="Show this message")
+    	boolean should_show_help;
+    	
+    	static Options parse(String[] args) {
+    		Options options = new Options();
+    		CmdLineParser parser = new CmdLineParser(options);
+    		try {
+    			parser.parseArgument(args);
+    			if (options.should_show_help) {
+    				parser.printUsage(System.err);
+    				System.exit(2);
+    			}
+    		} catch (CmdLineException e) {
+				System.err.println(e.getMessage());
+				parser.printUsage(System.err);
+				System.exit(2);
+			}
+    		return options;
+    	}
+    }
 	
 	public static void main(String[] args) {
 		
-		Object options = new Object(); //?? init options
+		Options options = Options.parse(args);
 		
 		/*
 		 * Initialize SATFC's ServerSolver.
@@ -555,7 +586,8 @@ class JobCaster {
 		
 	Jedis _jedis;
 	
-	JobCaster() {
+	JobCaster(String url) {
+		//?? Use the url.
 		_jedis = new Jedis(REDIS_SERVER_URL);
 	}
 	
@@ -564,8 +596,8 @@ class JobCaster {
 	}
 	
 	void report_error(String error_msg) {
-    _jedis.lpush(CLIENT_ERROR_KEY, error_msg);
-  }
+		_jedis.lpush(CLIENT_ERROR_KEY, error_msg);
+	}
 	
 	void report_status(String client_id, String status) {
 		Transaction tx = _jedis.multi();
@@ -587,14 +619,14 @@ class JobCaster {
 	// Wait for a job to appear in the appropriate list, returning it.  We return nil
 	// if no such job appears by the timeout.
 	String block_for_job() {
-    List<String> result = _jedis.brpop(JOB_BLOCK_TIMEOUT, JOB_LIST_KEY);
-
+		List<String> result = _jedis.brpop(JOB_BLOCK_TIMEOUT, JOB_LIST_KEY);
+		
 		if (result == null) {
-		  return null;
+			return null;
 		} else {
-      return result.get(1);
-    }
-  }
+    		return result.get(1);
+		}
+	}
 
 	String get_problem_set(String problem_set_id) {
 		return _jedis.get(problem_set_key_for(problem_set_id));
@@ -605,7 +637,7 @@ class JobCaster {
 	static final String JOB_LIST_KEY = "jobs";
 	static final String CLIENT_IDS_SET = "client_ids";
 	static final String CLIENT_STATUS_PREFIX = "client.status";
-  static final String CLIENT_ERROR_KEY = "client_errors";
+	static final String CLIENT_ERROR_KEY = "client_errors";
 	static final String ANSWER_PREFIX = "answer";
 	static final String PROBLEM_SET_PREFIX = "problem_set";
 	
@@ -617,9 +649,9 @@ class JobCaster {
 		return ANSWER_PREFIX+"."+problem_set_id+".answers";
 	}
 	
-  String assignment_key_for(String problem_set_id, String station_id) {
-    return ANSWER_PREFIX + "." + problem_set_id + "." + station_id;
-  }
+	String assignment_key_for(String problem_set_id, String station_id) {
+		return ANSWER_PREFIX + "." + problem_set_id + "." + station_id;
+	}
 	
 	String problem_set_key_for(String problem_set_id) {
 		return PROBLEM_SET_PREFIX + "." + problem_set_id;
