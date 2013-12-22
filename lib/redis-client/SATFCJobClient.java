@@ -1,10 +1,14 @@
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.Response;
 import redis.clients.jedis.Transaction;
 
+import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -12,7 +16,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import ca.ubc.cs.beta.aclib.misc.watch.AutoStartStopWatch;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverManager;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.listener.ServerListener;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.responder.ServerResponse;
@@ -21,15 +24,19 @@ import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerS
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.SolvingJob;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.daemon.ThreadedSolverServerParameters;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
-import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.utils.RunnableUtils;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
-import com.google.gson.*;
-
+import org.apache.commons.io.IOUtils;
 import org.kohsuke.args4j.Option;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.CmdLineException;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 
 // Poll the Job Caster server (Redis) and solve problems as they appear
 //
@@ -94,13 +101,15 @@ public class SATFCJobClient implements Runnable {
 		fSATFCJobQueue = aSATFCJobQueue;
 		fSATFCAnswerQueue = aSATFCAnswerQueue;
 		
-
-		//?? use options
 		_caster = new JobCaster(options.redis_url);
+		_client_id = _caster.get_new_client_id();
 		_statistics = new HashMap<String, Object>();
 	}
 	
+	Gson _gson = new Gson();
 	JobCaster _caster;
+	String _client_id;
+	long _created_at = (long)now();
 	Map<String, Object> _statistics;
 	
 	double _last_status_report_time;
@@ -119,14 +128,47 @@ public class SATFCJobClient implements Runnable {
 	
 	////////////////////////////
 	// Parts of status reports
-	String client_id() {
-		return "java_framework_dude";
+	
+	String get_ip() {
+		try {
+			Process process = Runtime.getRuntime().exec("curl -s http://ipecho.net/plain");
+			return IOUtils.toString(process.getInputStream());
+		} catch (IOException e) {
+			return "";
+		}
 	}
 	
-	String status() {
-		// Hard coded value grabbed from a JSONing of some ruby data in the right format.  Clients should be able to read this OK.
-		// The real value should be a JSONed hash.  See the old #status in satfc_job_client_logic.rb
-	    return "{\"id\":\"client_id\",\"report_time\":1387468010,\"location\":\"my_location\",\"start_time\":1387468010,\"satfc_port\":49149,\"statistics\":{},\"solver_status\":[\"status OK\",1387468010,17]}";		
+	String _location;
+	String location() {
+		if (_location == null) {
+			_location = System.getenv().get("WAN_IP");
+			if (_location == null) {
+				report("Getting IP from http://ipecho.net/plain.  Set WAN_IP environment variable to make this go faster.");
+				_location = get_ip();
+				report("IP is "+_location);
+			}
+			if (_location == null || _location.isEmpty()) {
+				_location = "N/A";
+			}
+		}
+		return _location;
+	}
+	
+	JsonObject status() {
+		JsonObject json = new JsonObject();
+		json.addProperty("id", _client_id);
+		json.addProperty("report_time", (long)now());
+		json.addProperty("location", location());
+		json.addProperty("start_time", _created_at);
+		json.add("statistics", _gson.toJsonTree(_statistics));
+		
+		JsonArray solver_status = new JsonArray();
+		solver_status.add(new JsonPrimitive(_solver_status));
+		solver_status.add(new JsonPrimitive(_solver_status_updated));
+		solver_status.add(new JsonPrimitive(_solutions_since_satfc_reset));
+		json.add("solver_status", solver_status);
+		
+		return json;	
 	}
 	
 	String config_to_s() {
@@ -143,16 +185,28 @@ public class SATFCJobClient implements Runnable {
 		}
 		
 		report("Reporting status to server");
-		_caster.report_status(client_id(), status());
+		_caster.report_status(_client_id, status());
 		_last_status_report_time = now();
-	} 
-	
-	// TODO: fill me in with magic of some sort
-	String location() {
-		return "127.0.0.1";
 	}
 	
-	// TODO: remember the best way to do this in the face of static typing
+	String _solver_status;
+	long _solver_status_updated;
+	//TODO also set in #solve method of Ruby code and in the #work_loop.  What is a parallel here?
+	void set_solver_status(String message) {
+		_solver_status = message;
+		_solver_status_updated = (long)now();
+	}
+	
+	long _solutions_since_satfc_reset = 0;
+	// TODO: Call reset_successful_solution_count and increment_successful_solution_count at the proper times.
+	void reset_successful_solution_count() {
+		_solutions_since_satfc_reset = 0;
+	}
+	void increment_successful_solution_count() {
+		++_solutions_since_satfc_reset;
+	}
+	
+	//TODO: remember the best way to do this in the face of static typing
 	//	
 	// private void increment_statistic(String stat, Number delta) {
 	// 	if (!_statistics.containsKey(stat)) {
@@ -277,7 +331,7 @@ public class SATFCJobClient implements Runnable {
 					break;
 			}
 			
-			double runtime = Double.valueOf(resultParts[1]);
+			//double runtime = Double.valueOf(resultParts[1]);
 			
 			
 			if(resultParts.length==3)
@@ -316,7 +370,9 @@ public class SATFCJobClient implements Runnable {
 	
 	// Poll the server for work, and do work when it appears.
 	@Override
-	public void run() {		
+	public void run() {
+		set_solver_status("SATFC server starting normally");
+		
 		for (;;) {
 			report_status();
 			
@@ -338,7 +394,7 @@ public class SATFCJobClient implements Runnable {
 				
 				ProblemSet problem_set = new ProblemSet(problem_set_json);
 				
-				//!! This is the integration point with their software.
+				//TODO This is the integration point with their software.
 				FeasibilityResult result = run_feasibility_check(problem_set, Integer.parseInt(new_station));
 
 				report("Result from checker was " + result.get_answer());
@@ -346,7 +402,7 @@ public class SATFCJobClient implements Runnable {
 				Gson gson = new Gson();
 				report("Json version of result is " + gson.toJson(result));
 
-				//!! return the answer
+				//TODO return the answer
 				Map<String, Double> time_data = new HashMap<String, Double>();
 				time_data.put("satfc_time", result.get_time());
 				time_data.put("satfc_wall_clock", result.get_wall_clock());
@@ -465,7 +521,7 @@ public class SATFCJobClient implements Runnable {
 		ServerSolverInterrupter aSolverState = new ServerSolverInterrupter();
 		ServerSolver aServerSolver = new ServerSolver(aSolverManager, aSolverState, aSolvingJobQueue, aServerResponseQueue);
 
-		SATFCJobClient aSATFCJobClient = new SATFCJobClient(options,aSolvingJobQueue,aServerResponseQueue);
+		SATFCJobClient aSATFCJobClient = new SATFCJobClient(options, aSolvingJobQueue, aServerResponseQueue);
 		
 		/*
 		 * Must run both SATFCJobClient and SATFC's ServerSolver.
@@ -585,9 +641,10 @@ class JobCaster {
 	static final String REDIS_SERVER_URL = "localhost";
 		
 	Jedis _jedis;
+	Gson _gson = new Gson();
 	
 	JobCaster(String url) {
-		//?? Use the url.
+		//TODO Use the url.
 		_jedis = new Jedis(REDIS_SERVER_URL);
 	}
 	
@@ -599,11 +656,15 @@ class JobCaster {
 		_jedis.lpush(CLIENT_ERROR_KEY, error_msg);
 	}
 	
-	void report_status(String client_id, String status) {
+	String get_new_client_id() {
+		return get_new_seq_val(CLIENT_ID_SEQ);
+	}
+	
+	void report_status(String client_id, JsonObject status) {
 		Transaction tx = _jedis.multi();
 		tx.sadd(CLIENT_IDS_SET, client_id);
-		// Set the status and give it an expriation time.
-		tx.set(client_status_key_for(client_id), status); //?? status.to_json
+		// Set the status and give it an expiration time.
+		tx.set(client_status_key_for(client_id), _gson.toJson(status));
 		tx.expire(client_status_key_for(client_id), CLIENT_STATUS_REPORT_EXPIRATION);
 		tx.exec();
 	}
@@ -635,11 +696,20 @@ class JobCaster {
 	
 	static final int    JOB_BLOCK_TIMEOUT = 5; // seconds
 	static final String JOB_LIST_KEY = "jobs";
+	static final String CLIENT_ID_SEQ = "client_id_seq";
 	static final String CLIENT_IDS_SET = "client_ids";
 	static final String CLIENT_STATUS_PREFIX = "client.status";
 	static final String CLIENT_ERROR_KEY = "client_errors";
 	static final String ANSWER_PREFIX = "answer";
 	static final String PROBLEM_SET_PREFIX = "problem_set";
+	
+	String get_new_seq_val(String key) {
+		Transaction tx = _jedis.multi();
+		tx.incr(key);
+		Response<String> response = tx.get(key);
+		tx.exec();
+		return response.get();
+	}
 	
 	String client_status_key_for(String client_id) {
 		return CLIENT_STATUS_PREFIX+"."+client_id;
