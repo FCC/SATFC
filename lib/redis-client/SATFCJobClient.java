@@ -2,6 +2,7 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Response;
 import redis.clients.jedis.Transaction;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.InetAddress;
@@ -38,10 +39,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 
-// Poll the Job Caster server (Redis) and solve problems as they appear
-//
-// TODO: see run_feasibility_check().
 /*
+ * Poll the Job Caster server (Redis) and solve problems as they appear
+ * 
  * Made SATFCJobClient implement Runnable (it already had a run method) so that
  * both it and SATFC Solver Server can be executed at the same time.
  */
@@ -101,21 +101,23 @@ public class SATFCJobClient implements Runnable {
 		fSATFCJobQueue = aSATFCJobQueue;
 		fSATFCAnswerQueue = aSATFCAnswerQueue;
 		
+		_constraint_sets_directory = options.constraint_sets_directory;
 		_caster = new JobCaster(options.redis_url);
 		_client_id = _caster.get_new_client_id();
 		_statistics = new HashMap<String, Object>();
 	}
 	
 	Gson _gson = new Gson();
+	String _constraint_sets_directory;
 	JobCaster _caster;
 	String _client_id;
-	long _created_at = (long)now();
+	long _created_at = now();
 	Map<String, Object> _statistics;
 	
 	double _last_status_report_time;
 	
-	double now() {
-		return System.currentTimeMillis() / 1000.0;
+	long now() {
+		return System.currentTimeMillis() / 1000;
 	}
 	
 	void sleep_for(long milliseconds) {
@@ -157,7 +159,7 @@ public class SATFCJobClient implements Runnable {
 	JsonObject status() {
 		JsonObject json = new JsonObject();
 		json.addProperty("id", _client_id);
-		json.addProperty("report_time", (long)now());
+		json.addProperty("report_time", now());
 		json.addProperty("location", location());
 		json.addProperty("start_time", _created_at);
 		json.add("statistics", _gson.toJsonTree(_statistics));
@@ -189,12 +191,22 @@ public class SATFCJobClient implements Runnable {
 		_last_status_report_time = now();
 	}
 	
+	void record_fc(Object ans, long working_time) {
+		//TODO copy #record_fc from Ruby code.
+	}
+	
+	void record_poll_time(long period) {
+		Object poll_time_wrapper = _statistics.get("poll_time");
+		long poll_time = poll_time_wrapper == null ? 0 : (long)poll_time_wrapper;
+		_statistics.put("poll_time", poll_time);
+	}
+	
 	String _solver_status;
 	long _solver_status_updated;
 	//TODO also set in #solve method of Ruby code and in the #work_loop.  What is a parallel here?
 	void set_solver_status(String message) {
 		_solver_status = message;
-		_solver_status_updated = (long)now();
+		_solver_status_updated = now();
 	}
 	
 	long _solutions_since_satfc_reset = 0;
@@ -229,8 +241,13 @@ public class SATFCJobClient implements Runnable {
 	//////////////////////////
 	// Solve a problem.
 	//
-	// For now we pause for a random time up to timeout, and then return NO.
 	FeasibilityResult run_feasibility_check(ProblemSet problem_set, int new_station) {
+		boolean use_stub = false;
+		//use_stub = true;
+		return use_stub ?  stub_feasibility_check(problem_set, new_station) : run_SATFC(problem_set, new_station);
+	}
+	
+	FeasibilityResult stub_feasibility_check(ProblemSet problem_set, int new_station) {
 		long sleep_time = (long)(Math.random() * problem_set.get_timeout_ms());
 		sleep_for(sleep_time);
 		
@@ -262,12 +279,12 @@ public class SATFCJobClient implements Runnable {
 		String id = "SATFCJobClientID";
 		
 		/*
-		 * TODO It seems constraint_set() is the name of the folder containing constraint interference
-		 * and domain constraints. Make sure datafoldername is a valid path to the actual problem set, because SATFC
-		 * may need to actually read the constraints. So either add a static path before get_constraint_set() or change
-		 * the constraint_set's to actually be folder paths.
+		 * Since constraint_set() is the name of the folder containing constraint interference
+		 * and domain constraints, we use the argument -c (--constraint_sets_directory) to provide the location of
+		 * the directory containing individual constraint sets.
 		 */
-		String datafoldername = problem_set.get_constraint_set();
+		String constraint_set = problem_set.get_constraint_set();
+		String datafoldername = new File(_constraint_sets_directory, constraint_set).getPath();
 		
 		/*
 		 * TODO This should be an instance string as outlined in the SATFC readme:
@@ -376,25 +393,25 @@ public class SATFCJobClient implements Runnable {
 		for (;;) {
 			report_status();
 			
+			long start_poll = now(); 
 			String job = _caster.block_for_job();
+			record_poll_time(now() - start_poll);
 			
 			if (job != null) {
 				report("Found job " + job);
-				
-				// We have a problem to work on
+								
+				// We have a problem to work on.
 				String[] parts = job.split(":");
 				String new_station = parts[0];
 				String problem_set_id = parts[1];
 				
-				double start_time = now();
-				
+				long start_time = now();
 				_statistics.put("latest_problem", start_time);
 
 				String problem_set_json = _caster.get_problem_set(problem_set_id);
-				
 				ProblemSet problem_set = new ProblemSet(problem_set_json);
 				
-				//TODO This is the integration point with their software.
+				//TODO This is the integration point with their software. -- and it doesn't work at all!
 				FeasibilityResult result = run_feasibility_check(problem_set, Integer.parseInt(new_station));
 
 				report("Result from checker was " + result.get_answer());
@@ -402,11 +419,11 @@ public class SATFCJobClient implements Runnable {
 				Gson gson = new Gson();
 				report("Json version of result is " + gson.toJson(result));
 
-				//TODO return the answer
+				//TODO return the answer -- We can review returning the answer after we have real answers to return.
 				Map<String, Double> time_data = new HashMap<String, Double>();
 				time_data.put("satfc_time", result.get_time());
 				time_data.put("satfc_wall_clock", result.get_wall_clock());
-				time_data.put("total_job_client_time", now() - start_time);
+				time_data.put("total_job_client_time", (double)now() - start_time);
 				
 				Object[] answer_raw = new Object[] {
 					location(),
@@ -422,14 +439,13 @@ public class SATFCJobClient implements Runnable {
         
 				_caster.send_assignment(problem_set_id, new_station, gson.toJson(result.get_witness_assignment()));
 				_caster.send_answer(problem_set_id, answer_json);
- 
-				// 
-				// record_fc answer, Time.now - start_time
+				
+				record_fc(answer_raw, now() - start_time);
 			} else if (_caster.is_alive()) {
-	      report("No work at the moment. Trying again.");
-	    } else {
-	      report("Experienced timeout, connection lost? Trying again.");
-	    }
+				report("No work at the moment. Trying again.");
+			} else {
+				report("Experienced timeout, connection lost? Trying again.");
+			}
 		}
 	}
 	
@@ -474,6 +490,10 @@ public class SATFCJobClient implements Runnable {
 		@Option(name="-r", aliases={"--redis_url"}, metaVar="url",
 			usage="The url of the JobCaster (redis) server")
     	String redis_url;
+		
+		@Option(name="-c", aliases={"--constraint_sets_directory"}, metaVar="path",
+			usage="Path to a directory of constraint sets.  Contents should be of the form $constraint_set_name/{domains,interferences}.csv.")
+		String constraint_sets_directory;
     	
     	@Option(name="-h", aliases={"--help"},
     		usage="Show this message")
