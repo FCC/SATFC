@@ -3,6 +3,7 @@ import redis.clients.jedis.Response;
 import redis.clients.jedis.Transaction;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.InetAddress;
@@ -38,6 +39,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
+import com.sun.jna.Platform;
 
 /*
  * Poll the Job Caster server (Redis) and solve problems as they appear
@@ -529,10 +531,27 @@ public class SATFCJobClient implements Runnable {
 		 * These options are usually read from args with jCommander; if this would be interesting, just ask me.
 		 * 
 		 * @afrechet
+		 * 
+		 * For now, it's easiest to find the SATsolvers directory from walking up from the current directory
+		 * looking for fcc-station-packing.
+		 * 
+		 * @wtaysom
 		 */
-		ThreadedSolverServerParameters aParameters = new ThreadedSolverServerParameters();			
-		//TODO: Put your library path here, or grab it from the args. (replace string)
-		aParameters.SolverParameters.Library = "/Users/MightyByte/paxos-downloads/satfc/SATsolvers/clasp/jna/libjnaclasp.so";
+		ThreadedSolverServerParameters aParameters = new ThreadedSolverServerParameters();
+		try {
+			File current_working_directory = new File(".");
+			File fcc_station_packing_root = current_working_directory.getCanonicalFile();
+			while (fcc_station_packing_root != null && !fcc_station_packing_root.getName().equals("fcc-station-packing")) {
+				fcc_station_packing_root = fcc_station_packing_root.getParentFile(); 
+			}
+			if (fcc_station_packing_root == null) {
+				throw new FileNotFoundException("Unable to find fcc-station-packing as a parent of "+current_working_directory.getCanonicalPath());
+			}
+			String file_name = Platform.isMac() ? "libjnaclasp.dylib" : "libjnaclasp.so";			
+			aParameters.SolverParameters.Library = new File(fcc_station_packing_root, "SATsolvers/clasp/jna/"+file_name).getCanonicalPath();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 				
 		BlockingQueue<SolvingJob> aSolvingJobQueue = new LinkedBlockingQueue<SolvingJob>();
 		BlockingQueue<ServerResponse> aServerResponseQueue = new LinkedBlockingQueue<ServerResponse>();
