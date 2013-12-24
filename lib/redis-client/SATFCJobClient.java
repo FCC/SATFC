@@ -256,6 +256,20 @@ public class SATFCJobClient implements Runnable {
 		return new FeasibilityResult(new_station, Answer.NO, "Immediately answered NO", sleep_time / 1000.0, sleep_time / 1000.0, null);
 	}
 	
+	private long problem_id = 0;
+	String next_problem_id() {
+		++problem_id;
+		return Long.toString(problem_id);
+	}
+	
+	// Indexed by band.
+	private static final int[][] CHANNELS_FOR_BAND = {
+		{},
+		{2, 3, 4, 5, 6},
+		{7, 8, 9, 10, 11, 12, 13},
+		{14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51}
+	};
+	
 	/**
 	 * Converts a given problem to a SATFC format, submit it to SATFC then wait for an answer.
 	 * @param problem_set - station packing problem.
@@ -278,7 +292,7 @@ public class SATFCJobClient implements Runnable {
 		 * Parse problem into solving job for solver server.
 		 */
 		double cutoff = problem_set.get_timeout_ms()/1000.0;
-		String id = "SATFCJobClientID";
+		String problem_id = next_problem_id();
 		
 		/*
 		 * Since constraint_set() is the name of the folder containing constraint interference
@@ -289,22 +303,53 @@ public class SATFCJobClient implements Runnable {
 		String datafoldername = new File(_constraint_sets_directory, constraint_set).getPath();
 		
 		/*
-		 * TODO This should be an instance string as outlined in the SATFC readme:
+		 * Create an instance string as outlined in the SATFC [readme](
+		 * https://docs.google.com/document/d/1TuuFr6lxOjv7QMPZztIFzS_34TaE6-qeNJjaHufOrAE/edit):
 		 * 
-		 * "A formatted instance string is simply a O-O-separated list of channels, a O-O-separated list
-		 * of stations and an optional previously valid partial channel assignment (in the form of a O-O-separated
-		 * list of station-channel assignments joined by O,O), all joined by a O_O. For example, the feasibility 
-		 * checking problem of packing stations 100,231 and 597 into channels 14,15,16,17 and 18 with previous 
-		 * assignment 231 to 16 and 597 to 18 is represented by the following formatted instance string:
+		 * "A formatted instance string is simply a [dash] "-"-separated list of channels, a [dash] "-"-separated list
+		 * of stations and an optional previously valid partial channel assignment (in the form of a [dash] "-"-separated
+		 * list of station-channel assignments joined by [commas] ","), all [three parts] joined by a "_" [underscore].
+		 * For example, the feasibility checking problem of packing stations 100,231 and 597 into channels 14,15,16,17
+		 * and 18 with previous assignment 231 to 16 and 597 to 18 is represented by the following formatted instance
+		 * string:
 		 * 
-		 * 14-15-16-17-18_100-231-597_231,16-597,18"
+		 *   14-15-16-17-18_100-231-597_231,16-597,18
 		 * 
-		 * I am not sure the right information is provided through problem_set and new_station, so I am letting
-		 * you guys figure out how to construct this string from the given objects.
 		 */
-		String instance = "REPLACE ME";
+		// channels
+		StringBuilder instance = new StringBuilder();
+		for (int channel : CHANNELS_FOR_BAND[problem_set._band]) {
+			if (channel > problem_set._highest) {
+				break;
+			}
+			instance.append(channel);
+			instance.append('-');
+		}
+		instance.setLength(instance.length() - 1);
+		instance.append('_');
 		
-		SolvingJob solvingJob = new SolvingJob(id, datafoldername, instance, cutoff, seed, dummyAddress, dummyPort);
+		// stations
+		if (problem_set._tentative_assignment != null) {
+			for (int station : problem_set._tentative_assignment.keySet()) {
+				instance.append(station);
+				instance.append('-');
+			}
+		}
+		instance.append(new_station);
+		
+		// optional previously valid partial channel assignment
+		if (problem_set._tentative_assignment != null && !problem_set._tentative_assignment.isEmpty()) {
+			instance.append('_');
+			for (Map.Entry<Integer, Integer> entry : problem_set._tentative_assignment.entrySet()) {
+				instance.append(entry.getKey());
+				instance.append(',');
+				instance.append(entry.getValue());
+				instance.append('-');
+			}
+			instance.setLength(instance.length() - 1);
+		}
+		
+		SolvingJob solvingJob = new SolvingJob(problem_id, datafoldername, instance.toString(), cutoff, seed, dummyAddress, dummyPort);
 		
 		
 		/*
@@ -601,7 +646,7 @@ class ProblemSet {
 		JsonParser parser = new JsonParser();
 		JsonObject problem_set_details = parser.parse(json_details).getAsJsonObject();
 	
-	  JsonArray data = problem_set_details.get("data").getAsJsonArray();
+		JsonArray data = problem_set_details.get("data").getAsJsonArray();
 	
 		// See JobCaster::ProblemSet for format.
 		// We should perhaps simplify the encoding now that we have to unpack it by hand.
