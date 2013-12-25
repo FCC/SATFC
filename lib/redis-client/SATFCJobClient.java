@@ -330,7 +330,7 @@ public class SATFCJobClient implements Runnable {
 		
 		// stations
 		if (problem_set._tentative_assignment != null) {
-			for (int station : problem_set._tentative_assignment.keySet()) {
+			for (String station : problem_set._tentative_assignment.keySet()) {
 				instance.append(station);
 				instance.append('-');
 			}
@@ -338,16 +338,23 @@ public class SATFCJobClient implements Runnable {
 		instance.append(new_station);
 		
 		// optional previously valid partial channel assignment
-		if (problem_set._tentative_assignment != null && !problem_set._tentative_assignment.isEmpty()) {
-			instance.append('_');
-			for (Map.Entry<Integer, Integer> entry : problem_set._tentative_assignment.entrySet()) {
-				instance.append(entry.getKey());
-				instance.append(',');
-				instance.append(entry.getValue());
-				instance.append('-');
-			}
-			instance.setLength(instance.length() - 1);
-		}
+		//
+		// TODO: this isn't working.  The JSON parsing helpfully parses -1 as -1.0 (stored in an Integer ????)
+		//       The float is confusing things, I think.  In any case, when the currently assignmed channel is -1
+		//       it probably shouldn't count at all.  For now let's not worry about passing the existing 
+		//       assignment as a hint.
+		//
+		
+		// if (problem_set._tentative_assignment != null && !problem_set._tentative_assignment.isEmpty()) {
+		// 	instance.append('_');
+		// 	for (Map.Entry<String, Integer> entry : problem_set._tentative_assignment.entrySet()) {
+		// 		instance.append(entry.getKey());
+		// 		instance.append(',');
+		// 		instance.append(entry.getValue());
+		// 		instance.append('-');
+		// 	}
+		// 	instance.setLength(instance.length() - 1);
+		// }
 		
 		SolvingJob solvingJob = new SolvingJob(problem_id, datafoldername, instance.toString(), cutoff, seed, dummyAddress, dummyPort);
 		
@@ -631,23 +638,23 @@ public class SATFCJobClient implements Runnable {
 // Thin wrapper to unpack the json version and provide accessors
 // Wow.  I do not miss Java at times like this. :(
 class ProblemSet {
-	
 	int _band;
 	int _highest;
 	String _constraint_set;
 	String _fc_config; // ignored
 	String _fc_approach; // ignored
 	int _timeout_ms;
-	Map<Integer, Integer> _tentative_assignment;
+	Map<String, Integer> _tentative_assignment;
 	String _testing_flag;
-	
+
+
 	// Parse from the json encoding.
 	public ProblemSet(String json_details) {
 		JsonParser parser = new JsonParser();
 		JsonObject problem_set_details = parser.parse(json_details).getAsJsonObject();
-	
+
 		JsonArray data = problem_set_details.get("data").getAsJsonArray();
-	
+
 		// See JobCaster::ProblemSet for format.
 		// We should perhaps simplify the encoding now that we have to unpack it by hand.
 		_band = data.get(0).getAsInt();
@@ -657,62 +664,65 @@ class ProblemSet {
 		_fc_approach = data.get(4).getAsString();
 		_timeout_ms = data.get(5).getAsInt();
 
-		// TODO: how to decode the tentative assignment, which is a map of integers (station ids) to integers (channels)?
-		// Gson gson=new Gson(); 
-		// String assignment_json = data.get(6).getAsString();
-		// 
-		// _tentative_assignment = new HashMap<Integer, Integer>();
-		// _tentative_assignment = (Map<Integer, Integer>) gson.fromJson(assignment_json, _tentative_assignment.getClass());
-		
+		// UNCOMMENT ME TO DECODE CURRENT ASSIGNMENT
+		// TODO: This code now works, sort of.
+		//    - although we expect to get Integer values in the Hash, we seem to get Floats, like -1.0 (instead of -1)
+		//    - The solver currently chokes when it gets the problem, in code above.
+		//
+		Gson gson=new Gson();
+		_tentative_assignment = new HashMap<String, Integer>();
+		_tentative_assignment = (Map<String, Integer>) gson.fromJson(data.get(6), _tentative_assignment.getClass());
+
 		if (data.get(7).isJsonNull()) {
 			_testing_flag = null;
 		} else {
-		  _testing_flag = data.get(7).getAsString();
+			_testing_flag = data.get(7).getAsString();
 		}
 	}
-	
+
 	//////////////////////
 	// Acceessors
 	int get_band() {
 		return _band;
 	}
-	
+
 	int get_highest() {
 		return _highest;
 	}
-	
+
 	String get_constraint_set() {
 		return _constraint_set;
 	}
-	
+
 	String get_fc_config() {
 		return _fc_config;
 	}
-	
+
 	String get_fc_approach() {
 		return _fc_approach;
 	}
-	
+
 	int get_timeout_ms() {
 		return _timeout_ms;
 	}
-	
-	Map<Integer, Integer> get_tentative_assignment() {
+
+	Map<String, Integer> get_tentative_assignment() {
 		return _tentative_assignment;
 	}
-	
+
 	String get_testing_flag() {
 		return _testing_flag;
 	}
-	
+
 	public String toString() {
 		return "[band: " + _band +
-		       ", highest: " + _highest +
-		       ", constraint set: " + _constraint_set +
-					 ", fc_config: " + _fc_config +
-					 ", fc_approach: " + _fc_approach +
-					 ", timeout_ms: " + _timeout_ms +
-					 ", testing_flag: " + _testing_flag + "]";
+			", highest: " + _highest +
+			", constraint set: " + _constraint_set +
+			", fc_config: " + _fc_config +
+			", fc_approach: " + _fc_approach +
+			", timeout_ms: " + _timeout_ms +
+			", tentative_assignment: " + _tentative_assignment +
+			", testing_flag: " + _testing_flag + "]";
 	}
 }
 
