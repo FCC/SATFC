@@ -1,8 +1,9 @@
 CLASSPATH = `ruby collect_classpath.rb`
-JFLAGS = -cp $(CLASSPATH)
+JFLAGS = -classpath $(CLASSPATH)
 JC = javac
 JAVA = java
-JCFLAGS = -Xlint:unchecked
+JDB = jdb
+JCFLAGS = -g -Xlint:unchecked
 
 .SUFFIXES: .java .class
 .java.class:
@@ -16,6 +17,9 @@ classes: $(CLASSES:.java=.class)
 
 run: classes
 	$(JAVA) $(JFLAGS) SATFCJobClient $(ARGS)
+
+run_db: classes
+	$(JDB) $(JFLAGS) SATFCJobClient $(ARGS)
 
 clean:
 	$(RM) *.class
