@@ -34,6 +34,7 @@ import org.kohsuke.args4j.Option;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.CmdLineException;
 
+import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -341,25 +342,22 @@ public class SATFCJobClient implements Runnable {
 		}
 		
 		// optional previously valid partial channel assignment
-		//
-		// TODO: this isn't working.  The JSON parsing helpfully parses -1 as -1.0 (stored in an Integer ????)
-		//       The float is confusing things, I think.  In any case, when the currently assignmed channel is -1
-		//       it probably shouldn't count at all.  For now let's not worry about passing the existing 
-		//       assignment as a hint.
-		//
+		 if (problem_set._tentative_assignment != null && !problem_set._tentative_assignment.isEmpty()) {
+		 	instance.append('_');
+		 	for (Map.Entry<String, Integer> entry : problem_set._tentative_assignment.entrySet()) {
+		 		if (entry.getValue().equals(-1)) { // Skip -1 assignments.
+		 			continue;
+		 		}
+		 		instance.append(entry.getKey());
+		 		instance.append(',');
+		 		instance.append(entry.getValue());
+		 		instance.append('-');
+		 	}
+		 	instance.setLength(instance.length() - 1);
+		 }
 		
-		// if (problem_set._tentative_assignment != null && !problem_set._tentative_assignment.isEmpty()) {
-		// 	instance.append('_');
-		// 	for (Map.Entry<String, Integer> entry : problem_set._tentative_assignment.entrySet()) {
-		// 		instance.append(entry.getKey());
-		// 		instance.append(',');
-		// 		instance.append(entry.getValue());
-		// 		instance.append('-');
-		// 	}
-		// 	instance.setLength(instance.length() - 1);
-		// }
-		
-		String instance_string = instance.toString(); 
+		String instance_string = instance.toString();
+		report("Solve instance "+instance_string);
 		SolvingJob solvingJob = new SolvingJob(problem_id, datafoldername, instance_string, cutoff, seed, dummyAddress, dummyPort);
 		
 		
@@ -666,15 +664,11 @@ class ProblemSet {
 		_fc_approach = data.get(4).getAsString();
 		_timeout_ms = data.get(5).getAsInt();
 
-		// UNCOMMENT ME TO DECODE CURRENT ASSIGNMENT
-		// TODO: This code now works, sort of.
-		//    - although we expect to get Integer values in the Hash, we seem to get Floats, like -1.0 (instead of -1)
-		//    - The solver currently chokes when it gets the problem, in code above.
-		//
 		Gson gson=new Gson();
-		_tentative_assignment = new HashMap<String, Integer>();
-		_tentative_assignment = (Map<String, Integer>) gson.fromJson(data.get(6), _tentative_assignment.getClass());
-
+		_tentative_assignment = gson.fromJson(data.get(6), new TypeToken<HashMap<String, Integer>>(){
+			static final long serialVersionUID = 1007; // to avoid warning.
+		}.getType());
+		
 		if (data.get(7).isJsonNull()) {
 			_testing_flag = null;
 		} else {
