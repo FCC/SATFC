@@ -469,15 +469,13 @@ public class SATFCJobClient implements Runnable {
 				String problem_set_json = _caster.get_problem_set(problem_set_id);
 				ProblemSet problem_set = new ProblemSet(problem_set_json);
 				
-				//TODO This is the integration point with their software. -- and it doesn't work at all!
 				FeasibilityResult result = run_feasibility_check(problem_set, Integer.parseInt(new_station));
-
+				
 				report("Result from checker was " + result.get_answer());
 				
 				Gson gson = new Gson();
 				report("Json version of result is " + gson.toJson(result));
-
-				//TODO return the answer -- We can review returning the answer after we have real answers to return.
+				
 				Map<String, Double> time_data = new HashMap<String, Double>();
 				time_data.put("satfc_time", result.get_time());
 				time_data.put("satfc_wall_clock", result.get_wall_clock());
@@ -742,7 +740,9 @@ class JobCaster {
 	Gson _gson = new Gson();
 	
 	JobCaster(String url) {
-		//TODO Use the url.
+		if (url == null) {
+			url = REDIS_SERVER_URL;
+		}
 		_jedis = new Jedis(REDIS_SERVER_URL);
 	}
 	
