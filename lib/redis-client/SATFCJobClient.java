@@ -335,7 +335,10 @@ public class SATFCJobClient implements Runnable {
 				instance.append('-');
 			}
 		}
-		instance.append(new_station);
+		if (problem_set._tentative_assignment == null ||
+				!problem_set._tentative_assignment.keySet().contains(Integer.toString(new_station))) {
+			instance.append(new_station);
+		}
 		
 		// optional previously valid partial channel assignment
 		//
@@ -356,7 +359,8 @@ public class SATFCJobClient implements Runnable {
 		// 	instance.setLength(instance.length() - 1);
 		// }
 		
-		SolvingJob solvingJob = new SolvingJob(problem_id, datafoldername, instance.toString(), cutoff, seed, dummyAddress, dummyPort);
+		String instance_string = instance.toString(); 
+		SolvingJob solvingJob = new SolvingJob(problem_id, datafoldername, instance_string, cutoff, seed, dummyAddress, dummyPort);
 		
 		
 		/*
