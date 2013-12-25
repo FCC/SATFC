@@ -371,7 +371,7 @@ public class SATFCJobClient implements Runnable {
 		 */
 		ServerResponse solverResponse = fSATFCAnswerQueue.take();
 		
-		double time = watch.stop();
+		double time = watch.stop() / 1000.0;
 		
 		/*
 		 * Parse answer from solver server.
