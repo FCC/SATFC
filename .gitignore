@@ -13,3 +13,8 @@
 /Arguments
 /deliverable
 lib/redis-client/*.class
+src/ca/ubc/cs/beta/stationpacking/base/StationPackingInstance.class
+src/ca/ubc/cs/beta/stationpacking/daemon/server/threadedserver/solver/ServerSolver$ProblemInitializingOverheadTimeoutException.class
+src/ca/ubc/cs/beta/stationpacking/daemon/server/threadedserver/solver/ServerSolver$SolverServerStateInterruptedException.class
+src/ca/ubc/cs/beta/stationpacking/daemon/server/threadedserver/solver/ServerSolver$SolvingInterrupedException.class
+src/ca/ubc/cs/beta/stationpacking/daemon/server/threadedserver/solver/ServerSolver.class
