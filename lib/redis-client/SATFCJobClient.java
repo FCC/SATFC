@@ -11,10 +11,8 @@ import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -22,6 +20,9 @@ import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverManager;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.listener.ServerListener;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.responder.ServerResponse;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerSolver;
+import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerSolver.ProblemInitializingOverheadTimeoutException;
+import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerSolver.SolverServerStateInterruptedException;
+import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerSolver.SolvingInterrupedException;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerSolverInterrupter;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.SolvingJob;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.daemon.ThreadedSolverServerParameters;
@@ -53,11 +54,10 @@ public class SATFCJobClient implements Runnable {
 	public enum Answer { YES, NO, UNKNOWN, ERROR }
 	
 	/*
-	 * Queues to submit SATFC jobs and get answers.
-	 * @author afrechet
+	 * A SolverServer for doing the hard work of unpacking and solving problems.
+	 * @author wtaysom
 	 */
-	private final BlockingQueue<SolvingJob> fSATFCJobQueue;
-	private final BlockingQueue<ServerResponse> fSATFCAnswerQueue;
+	private final ServerSolver fServerSolver;
 	
 	////////////////////////////////////////////////
 	// Simple class to hold hetrogenous data
@@ -92,17 +92,13 @@ public class SATFCJobClient implements Runnable {
 	 * can be executed in parallel with a thread pool.
 	 * @author afrechet
 	 */
-	public SATFCJobClient(Options options, 
-			BlockingQueue<SolvingJob> aSATFCJobQueue,
-			BlockingQueue<ServerResponse> aSATFCAnswerQueue) {
+	public SATFCJobClient(Options options, ServerSolver aServerSolver) {
 		
 		/*
-		 * The only connection points this object needs from SATFC is the ServerSolver job queue to
-		 * submit jobs to, and server response queue to get answers from. 
-		 * @afrechet 
+		 * We call ServerSolver.solve directly in order to avoid the complexity of threads and job queues.
+		 * @wtaysom 
 		 */
-		fSATFCJobQueue = aSATFCJobQueue;
-		fSATFCAnswerQueue = aSATFCAnswerQueue;
+		fServerSolver = aServerSolver;
 		
 		_constraint_sets_directory = options.constraint_sets_directory;
 		_caster = new JobCaster(options.redis_url);
@@ -360,16 +356,12 @@ public class SATFCJobClient implements Runnable {
 		report("Solve instance "+instance_string);
 		SolvingJob solvingJob = new SolvingJob(problem_id, datafoldername, instance_string, cutoff, seed, dummyAddress, dummyPort);
 		
-		
-		/*
-		 * Enqueue solving job.
-		 */
-		fSATFCJobQueue.put(solvingJob);
-		
-		/*
-		 * Wait for answer from solver server.
-		 */
-		ServerResponse solverResponse = fSATFCAnswerQueue.take();
+		ServerResponse solverResponse;
+		try {
+			solverResponse = fServerSolver.solve(solvingJob);
+		} catch (ProblemInitializingOverheadTimeoutException e) {
+			solverResponse = e.answerResponse;
+		}
 		
 		double time = watch.stop() / 1000.0;
 		
@@ -434,9 +426,7 @@ public class SATFCJobClient implements Runnable {
 		
 		return result;
 		
-		} catch (UnknownHostException e) {
-			throw new RuntimeException(e);
-		} catch (InterruptedException e) {
+		} catch (UnknownHostException | SolverServerStateInterruptedException | SolvingInterrupedException e) {
 			throw new RuntimeException(e);
 		}
 	}
@@ -605,20 +595,16 @@ public class SATFCJobClient implements Runnable {
 			throw new RuntimeException(e);
 		}
 				
-		BlockingQueue<SolvingJob> aSolvingJobQueue = new LinkedBlockingQueue<SolvingJob>();
-		BlockingQueue<ServerResponse> aServerResponseQueue = new LinkedBlockingQueue<ServerResponse>();
-		
 		SolverManager aSolverManager = aParameters.getSolverManager();
 		ServerSolverInterrupter aSolverState = new ServerSolverInterrupter();
-		ServerSolver aServerSolver = new ServerSolver(aSolverManager, aSolverState, aSolvingJobQueue, aServerResponseQueue);
+		ServerSolver aServerSolver = new ServerSolver(aSolverManager, aSolverState, null, null);
 
-		SATFCJobClient aSATFCJobClient = new SATFCJobClient(options, aSolvingJobQueue, aServerResponseQueue);
+		SATFCJobClient aSATFCJobClient = new SATFCJobClient(options, aServerSolver);
 		
 		/*
 		 * Must run both SATFCJobClient and SATFC's ServerSolver.
 		 * @author afrechet 
 		 */
-		RunnableUtils.submitRunnable(EXECUTOR_SERVICE, UNCAUGHT_EXCEPTION_HANDLER, aServerSolver);
 		RunnableUtils.submitRunnable(EXECUTOR_SERVICE, UNCAUGHT_EXCEPTION_HANDLER, aSATFCJobClient);
 		
 		try {

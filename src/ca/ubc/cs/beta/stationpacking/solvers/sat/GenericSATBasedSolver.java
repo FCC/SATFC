@@ -99,7 +99,7 @@ public class GenericSATBasedSolver implements ISolver {
 				break;
 			}
 			
-			log.debug("Solving the subproblem CNF.");
+			log.debug("Solving the subproblem CNF with "+aRemainingCutoff+"s remaining.");
 			SATSolverResult aComponentResult = fSATSolver.solve(aCNF, aRemainingCutoff, aSeed);
 			
 			log.debug("Parsing result.");
