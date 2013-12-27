@@ -110,12 +110,12 @@ public class SATFCJobClient implements Runnable {
 	String _constraint_sets_directory;
 	JobCaster _caster;
 	String _client_id;
-	long _created_at = now();
+	long _created_at = (long)now();
 	Map<String, Object> _statistics;
 	
 	double _last_status_report_time;
 	
-	long now() {
+	double now() {
 		return System.currentTimeMillis() / 1000;
 	}
 	
@@ -190,52 +190,36 @@ public class SATFCJobClient implements Runnable {
 		_last_status_report_time = now();
 	}
 	
-	void record_fc(Object ans, long working_time) {
-		//TODO copy #record_fc from Ruby code.
+	void increment_statistic(String key, double increment) {
+		Double wrapper = (Double)_statistics.get(key);
+		double aggregate = wrapper == null ? 0 : wrapper.doubleValue();
+		_statistics.put(key, aggregate);
 	}
 	
-	void record_poll_time(long period) {
-		Object poll_time_wrapper = _statistics.get("poll_time");
-		long poll_time = poll_time_wrapper == null ? 0 : (long)poll_time_wrapper;
-		_statistics.put("poll_time", poll_time);
+	void record_fc(String new_station, String answer, double satfc_time, double working_time) {
+		increment_statistic(answer, 1);
+		increment_statistic("satfc_time", satfc_time);
+		increment_statistic("working_time", working_time);		
+	}
+
+	void record_poll_time(double period) {
+		increment_statistic("poll_time", period);
 	}
 	
 	String _solver_status;
-	long _solver_status_updated;
-	//TODO also set in #solve method of Ruby code and in the #work_loop.  What is a parallel here?
+	double _solver_status_updated;
 	void set_solver_status(String message) {
 		_solver_status = message;
 		_solver_status_updated = now();
 	}
 	
 	long _solutions_since_satfc_reset = 0;
-	// TODO: Call reset_successful_solution_count and increment_successful_solution_count at the proper times.
 	void reset_successful_solution_count() {
 		_solutions_since_satfc_reset = 0;
 	}
 	void increment_successful_solution_count() {
 		++_solutions_since_satfc_reset;
-	}
-	
-	//TODO: remember the best way to do this in the face of static typing
-	//	
-	// private void increment_statistic(String stat, Number delta) {
-	// 	if (!_statistics.containsKey(stat)) {
-	// 		_statistics.set(stat, 0);
-	// 	}
-	// 	_statistics.set(stat, (Number)(_statistics.get(stat)) + delta);
-	// }
-	// 
-	// void record_fc(FeasibilityResult result, double working_time) {
-	// 	Answer answer = result.get_answer().to_s().toLowerCase();
-	//     double satfc_time = result.get_time();
-	//     
-	// 	increment_statistic(answer, 1);
-	// 	increment_statistic("satfc_time", satfc_time);
-	// 	increment_statistic("working_time", working_time);
-	//   }
-	
-	
+	}	
 	
 	//////////////////////////
 	// Solve a problem.
@@ -439,19 +423,20 @@ public class SATFCJobClient implements Runnable {
 		for (;;) {
 			report_status();
 			
-			long start_poll = now(); 
+			double start_poll = now(); 
 			String job = _caster.block_for_job();
 			record_poll_time(now() - start_poll);
 			
 			if (job != null) {
-				report("Found job " + job);
+				report("Found job "+job);
+				set_solver_status("SATFC server found job "+job);
 								
 				// We have a problem to work on.
 				String[] parts = job.split(":");
 				String new_station = parts[0];
 				String problem_set_id = parts[1];
 				
-				long start_time = now();
+				double start_time = now();
 				_statistics.put("latest_problem", start_time);
 
 				String problem_set_json = _caster.get_problem_set(problem_set_id);
@@ -469,10 +454,11 @@ public class SATFCJobClient implements Runnable {
 				time_data.put("satfc_wall_clock", result.get_wall_clock());
 				time_data.put("total_job_client_time", (double)now() - start_time);
 				
+				String answer = result.get_answer().toString().toLowerCase();
 				Object[] answer_raw = new Object[] {
 					location(),
 					new_station,
-					result.get_answer().toString().toLowerCase(),
+					answer,
 					result.get_message(),
 					time_data
 				};
@@ -480,11 +466,13 @@ public class SATFCJobClient implements Runnable {
 				String answer_json = gson.toJson(answer_raw);
 				
 				report("Answer to return is " + answer_json);
+				set_solver_status("SATFC server has answer for job "+job);
         
 				_caster.send_assignment(problem_set_id, new_station, gson.toJson(result.get_witness_assignment()));
 				_caster.send_answer(problem_set_id, answer_json);
 				
-				record_fc(answer_raw, now() - start_time);
+				record_fc(new_station, answer, result.get_time(), now() - start_time);
+				increment_successful_solution_count();
 			} else if (_caster.is_alive()) {
 				report("No work at the moment. Trying again.");
 			} else {
