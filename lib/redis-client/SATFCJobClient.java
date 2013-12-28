@@ -173,7 +173,7 @@ public class SATFCJobClient implements Runnable {
 	}
 	
 	String config_to_s() {
-		return "DummyJavaClient";
+		return "JavaJobClient";
 	}
 	
 	void report(String msg) {
@@ -634,8 +634,22 @@ class ProblemSet {
 		_band = data.get(0).getAsInt();
 		_highest = data.get(1).getAsInt();
 		_constraint_set = data.get(2).getAsString();
-		_fc_config = data.get(3).getAsString();
-		_fc_approach = data.get(4).getAsString();
+
+		_fc_config = null;
+		// NOTE: getAsString() sometimes complains java.lang.UnsupportedOperationException: JsonNull, even though
+		//       we have checked for it.  We never consume _fc_config, so let's ignore it for now.
+		// if (data.get(3).isJsonNull()) {
+		// 	_fc_config = null;
+		// } else {
+		// 	_fc_config = data.get(3).getAsString();
+		// }
+
+		if (data.get(4).isJsonNull()) {
+			_fc_approach = null;
+		} else {
+			_fc_approach = data.get(4).getAsString();
+		}
+
 		_timeout_ms = data.get(5).getAsInt();
 
 		Gson gson=new Gson();
