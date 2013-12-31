@@ -725,7 +725,7 @@ class JobCaster {
 		if (url == null) {
 			url = REDIS_SERVER_URL;
 		}
-		_jedis = new Jedis(REDIS_SERVER_URL);
+		_jedis = new Jedis(url);
 	}
 	
 	boolean is_alive() {
