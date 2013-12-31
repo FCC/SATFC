@@ -1,6 +1,7 @@
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Response;
 import redis.clients.jedis.Transaction;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -101,13 +102,44 @@ public class SATFCJobClient implements Runnable {
 		fServerSolver = aServerSolver;
 		
 		_constraint_sets_directory = options.constraint_sets_directory;
-		_caster = new JobCaster(options.redis_url);
-		_client_id = _caster.get_new_client_id();
 		_statistics = new HashMap<String, Object>();
+		
+		_redis_url = options.redis_url;
+		for (;;) {
+			try {
+				reconnect();
+				_client_id = _caster.get_new_client_id();
+				break;
+			} catch (JedisConnectionException e) {
+				// Try again.
+			}
+		}
+	}
+	
+	static final long RETRY_DELAY = 3000;
+	
+	void reconnect() {
+		_caster = null;
+		for (;;) {
+			try {
+				_caster = new JobCaster(_redis_url);
+				_caster.is_alive(); // throws JedisConnectionException if there's a connection problem.
+				break;
+			} catch (JedisConnectionException e) {
+				report("Cannot contact Redis at "+_redis_url+".  Retry in "+RETRY_DELAY+"ms.");
+				
+				try {
+					Thread.sleep(RETRY_DELAY);
+				} catch (InterruptedException e1) {
+					// Go ahead and continue.
+				}
+			}
+		}		
 	}
 	
 	Gson _gson = new Gson();
 	String _constraint_sets_directory;
+	String _redis_url;
 	JobCaster _caster;
 	String _client_id;
 	long _created_at = (long)now();
@@ -421,62 +453,66 @@ public class SATFCJobClient implements Runnable {
 		set_solver_status("SATFC server starting normally");
 		
 		for (;;) {
-			report_status();
-			
-			double start_poll = now(); 
-			String job = _caster.block_for_job();
-			record_poll_time(now() - start_poll);
-			
-			if (job != null) {
-				report("Found job "+job);
-				set_solver_status("SATFC server found job "+job);
-								
-				// We have a problem to work on.
-				String[] parts = job.split(":");
-				String new_station = parts[0];
-				String problem_set_id = parts[1];
+			try {
+				report_status();
 				
-				double start_time = now();
-				_statistics.put("latest_problem", start_time);
-
-				String problem_set_json = _caster.get_problem_set(problem_set_id);
-				ProblemSet problem_set = new ProblemSet(problem_set_json);
+				double start_poll = now(); 
+				String job = _caster.block_for_job();
+				record_poll_time(now() - start_poll);
 				
-				FeasibilityResult result = run_feasibility_check(problem_set, Integer.parseInt(new_station));
-				
-				report("Result from checker was " + result.get_answer());
-				
-				Gson gson = new Gson();
-				report("Json version of result is " + gson.toJson(result));
-				
-				Map<String, Double> time_data = new HashMap<String, Double>();
-				time_data.put("satfc_time", result.get_time());
-				time_data.put("satfc_wall_clock", result.get_wall_clock());
-				time_data.put("total_job_client_time", (double)now() - start_time);
-				
-				String answer = result.get_answer().toString().toLowerCase();
-				Object[] answer_raw = new Object[] {
-					location(),
-					new_station,
-					answer,
-					result.get_message(),
-					time_data
-				};
-				
-				String answer_json = gson.toJson(answer_raw);
-				
-				report("Answer to return is " + answer_json);
-				set_solver_status("SATFC server has answer for job "+job);
-        
-				_caster.send_assignment(problem_set_id, new_station, gson.toJson(result.get_witness_assignment()));
-				_caster.send_answer(problem_set_id, answer_json);
-				
-				record_fc(new_station, answer, result.get_time(), now() - start_time);
-				increment_successful_solution_count();
-			} else if (_caster.is_alive()) {
-				report("No work at the moment. Trying again.");
-			} else {
-				report("Experienced timeout, connection lost? Trying again.");
+				if (job != null) {
+					report("Found job "+job);
+					set_solver_status("SATFC server found job "+job);
+									
+					// We have a problem to work on.
+					String[] parts = job.split(":");
+					String new_station = parts[0];
+					String problem_set_id = parts[1];
+					
+					double start_time = now();
+					_statistics.put("latest_problem", start_time);
+	
+					String problem_set_json = _caster.get_problem_set(problem_set_id);
+					ProblemSet problem_set = new ProblemSet(problem_set_json);
+					
+					FeasibilityResult result = run_feasibility_check(problem_set, Integer.parseInt(new_station));
+					
+					report("Result from checker was " + result.get_answer());
+					
+					Gson gson = new Gson();
+					report("Json version of result is " + gson.toJson(result));
+					
+					Map<String, Double> time_data = new HashMap<String, Double>();
+					time_data.put("satfc_time", result.get_time());
+					time_data.put("satfc_wall_clock", result.get_wall_clock());
+					time_data.put("total_job_client_time", (double)now() - start_time);
+					
+					String answer = result.get_answer().toString().toLowerCase();
+					Object[] answer_raw = new Object[] {
+						location(),
+						new_station,
+						answer,
+						result.get_message(),
+						time_data
+					};
+					
+					String answer_json = gson.toJson(answer_raw);
+					
+					report("Answer to return is " + answer_json);
+					set_solver_status("SATFC server has answer for job "+job);
+	        
+					_caster.send_assignment(problem_set_id, new_station, gson.toJson(result.get_witness_assignment()));
+					_caster.send_answer(problem_set_id, answer_json);
+					
+					record_fc(new_station, answer, result.get_time(), now() - start_time);
+					increment_successful_solution_count();
+				} else if (_caster.is_alive()) {
+					report("No work at the moment. Trying again.");
+				} else {
+					report("Experienced timeout, connection lost? Trying again.");
+				}
+			} catch (JedisConnectionException e) {
+				reconnect();
 			}
 		}
 	}
