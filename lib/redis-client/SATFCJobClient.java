@@ -520,6 +520,11 @@ public class SATFCJobClient implements Runnable {
 				}
 			} catch (JedisConnectionException e) {
 				reconnect();
+			} catch (Exception e) {
+				report("Unusual exception:");
+				e.printStackTrace();
+				set_solver_status("Encountered an unusual exception: "+e.getMessage());
+				report_status();
 			}
 		}
 	}
