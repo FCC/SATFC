@@ -72,6 +72,19 @@ public class DACConstraintManager implements IConstraintManager{
 			Integer aID;
 			Station aStation;
 			while((aLine = aReader.readNext())!=null){	//NA - perform some sanity checks
+				
+				/*
+				 * As a temporary measure swap ADJ+1 with ADJ-1.  Here is probably a better way to handle this below,
+				 * but someone else should sanity check this.
+				 * 
+				 * @author wtaysom
+				 */
+				if (aLine[0].replaceAll("\\s", "").equals("ADJ+1")) {
+					aLine[0] = "ADJ-1";
+				} else if (aLine[0].replaceAll("\\s", "").equals("ADJ-1")) {
+					aLine[0] = "ADJ+1";
+				}
+				
 				aID = Integer.valueOf(aLine[3].replaceAll("\\s", ""));
 				if((aStation=fStations.get(aID)) != null){
 					Integer aChannelLower = Integer.valueOf(aLine[1].replaceAll("\\s", ""));
