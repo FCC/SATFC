@@ -329,8 +329,9 @@ public class SATFCJobClient implements Runnable {
 				ProblemSet problem_set = new ProblemSet(problem_set_json);
 				
 				//!! This is the integration point with their software.
-        FeasibilityResult result = run_feasibility_check(problem_set, Integer.parseInt(new_station));
-
+        //FeasibilityResult result = run_feasibility_check(problem_set, Integer.parseInt(new_station));
+		FeasibilityResult result = run_SATFC(problem_set, Integer.parseInt(new_station));
+				
 				report("Result from checker was " + result.get_answer());
 				
 				Gson gson = new Gson();
