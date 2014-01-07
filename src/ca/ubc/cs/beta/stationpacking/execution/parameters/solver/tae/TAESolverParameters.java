@@ -56,6 +56,7 @@ public class TAESolverParameters extends AbstractOptions implements ISolverParam
 		
 		AlgorithmExecutionOptions.paramFileDelegate.paramFile = AlgorithmExecutionOptions.algoExecDir+File.separatorChar+"sw_parameterspaces"+File.separatorChar+"sw_"+Solver+".txt";
 		
+		@SuppressWarnings("deprecation")
 		TargetAlgorithmEvaluator aTAE = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(AlgorithmExecutionOptions.taeOpts, false, AvailableTAEOptions);
 		
 		log.info("Creating CNF encoder...");

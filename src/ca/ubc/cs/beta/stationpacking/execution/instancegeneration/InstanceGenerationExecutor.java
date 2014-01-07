@@ -1,8 +1,5 @@
 package ca.ubc.cs.beta.stationpacking.execution.instancegeneration;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import ca.ubc.cs.beta.aclib.misc.jcommander.JCommanderHelper;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.instancegeneration.InstanceGenerationParameters;
@@ -13,7 +10,7 @@ import com.beust.jcommander.ParameterException;
 
 public class InstanceGenerationExecutor {
 
-	private static Logger log = LoggerFactory.getLogger(InstanceGenerationExecutor.class);
+	//private static Logger log = LoggerFactory.getLogger(InstanceGenerationExecutor.class);
 	
 	/**
 	 * @param args
