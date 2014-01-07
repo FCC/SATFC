@@ -126,7 +126,7 @@ public class SATFCJobClient implements Runnable {
 				_caster.is_alive(); // throws JedisConnectionException if there's a connection problem.
 				break;
 			} catch (JedisConnectionException e) {
-				report("Cannot contact Redis at "+_redis_url+".  Retry in "+RETRY_DELAY+"ms.");
+				report("Cannot contact Redis at "+_redis_url+".  Retry in "+RETRY_DELAY+"ms.  "+e.getMessage());
 				
 				try {
 					Thread.sleep(RETRY_DELAY);
