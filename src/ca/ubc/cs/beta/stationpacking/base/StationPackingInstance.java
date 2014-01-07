@@ -125,7 +125,9 @@ public class StationPackingInstance {
 		String[] aInstanceStationIDs = aStationString.split("-");
 		for(String aStationID : aInstanceStationIDs)
 		{
-			aInstanceStations.add(aStationManager.getStationfromID(Integer.valueOf(aStationID)));
+			if (!aInstanceStations.add(aStationManager.getStationfromID(Integer.valueOf(aStationID)))) {
+				throw new IllegalStateException("Duplicate of station "+aStationID+" found in instance string.");
+			};
 		}
 		
 		if(aInstanceStations.size()!= aInstanceStationIDs.length)
