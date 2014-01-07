@@ -1,11 +1,23 @@
-{\rtf1\ansi\ansicpg1252\cocoartf1138\cocoasubrtf470
-{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\rtf1\ansi\ansicpg1252\cocoartf1265
+\cocoascreenfonts1{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
 {\colortbl;\red255\green255\blue255;}
-\margl1440\margr1440\vieww10780\viewh7840\viewkind0
+\margl1440\margr1440\vieww15060\viewh16000\viewkind0
 \pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
 
 \f0\fs24 \cf0 \ul \ulc0 The steps required to get the incremental solver working:\ulnone \
 1. Compile the source code into a dynamic library. Chris helped me with this (i.e. he did it all by modifying the makefile appropriately), so I unfortunately can't provide guidance about how to do it in the future. \
+\
+Compiling clasp for OS X Mavericks is a bit tricky.  From clasp-2.1.3/libclasp/clasp/util/platform.h, to overcome errors you need to remove:\
+\
+	template <bool> struct static_assertion;\
+	template <>     struct static_assertion<true> \{\};\
+\
+	#if !defined(__cplusplus) || __cplusplus < 201103L\
+	#define static_assert(x, message) (void)sizeof(static_assertion< (x) >)\
+	#endif\
+\
+Since this is a headache, you can find a prebuilt version at SATsolvers/clasp/jna/libjnaclasp.dylib.\
+\
 2. Because glueminisat code is written in c++, when it is compiled it is first translated to c, mangling the names. Thus, you can't directly call the c++ functions from Java. Instead, I have added pure c functions in a block in Solver.cc: \
 \
 //Added by narnosti\
@@ -19,6 +31,7 @@ These functions can only use c primitives, so vectors and solver objects are pas
 If you're working with a solver that was written in pure c (rather than c++), you might not need to modify the c code much or at all, since names (hopefully) won't be mangled - you may be able to call the functions directly from java.\
 \
 3. To call these c functions from Java,  adding a function with the same signature to the "GMSLibrary" interface in GlueMiniSatLibrary.java.\
+\
 4. Then, write the methods in the IncrementalSATLibrary interface using the functions in the GMSLibrary.\
 \
 \
