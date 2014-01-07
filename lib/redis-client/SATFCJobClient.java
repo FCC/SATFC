@@ -217,7 +217,8 @@ public class SATFCJobClient implements Runnable {
 			return;
 		}
 		
-		report("Reporting status to server");
+		String location = _redis_url == null ? "localhost" : _redis_url;
+		report("Reporting status to server at "+location+".");
 		_caster.report_status(_client_id, status());
 		_last_status_report_time = now();
 	}
