@@ -1,10 +1,9 @@
-JEDIS_JAR = jedis-2.1.0.jar
-JSON_JAR = gson-2.2.4.jar
-JPATH = $(JEDIS_JAR):$(JSON_JAR):.
-JFLAGS = -cp $(JPATH)
+CLASSPATH = `ruby collect_classpath.rb`
+JFLAGS = -classpath $(CLASSPATH)
 JC = javac
 JAVA = java
-JCFLAGS = -Xlint:unchecked
+JDB = jdb
+JCFLAGS = -g -Xlint:unchecked
 
 .SUFFIXES: .java .class
 .java.class:
@@ -17,7 +16,10 @@ default: classes
 classes: $(CLASSES:.java=.class)
 
 run: classes
-	$(JAVA) $(JFLAGS) SATFCJobClient
+	$(JAVA) $(JFLAGS) SATFCJobClient $(ARGS)
+
+run_db: classes
+	$(JDB) $(JFLAGS) SATFCJobClient $(ARGS)
 
 clean:
 	$(RM) *.class
