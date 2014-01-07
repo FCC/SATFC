@@ -225,7 +225,7 @@ public class SATFCJobClient implements Runnable {
 	void increment_statistic(String key, double increment) {
 		Double wrapper = (Double)_statistics.get(key);
 		double aggregate = wrapper == null ? 0 : wrapper.doubleValue();
-		_statistics.put(key, aggregate);
+		_statistics.put(key, aggregate + increment);
 	}
 	
 	void record_fc(String new_station, String answer, double satfc_time, double working_time) {
