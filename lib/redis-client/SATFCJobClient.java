@@ -1,36 +1,52 @@
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.Response;
 import redis.clients.jedis.Transaction;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.InetAddress;
-import java.util.*;
-import java.util.concurrent.BlockingQueue;
+import java.net.UnknownHostException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import ca.ubc.cs.beta.aclib.misc.watch.AutoStartStopWatch;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverManager;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.listener.ServerListener;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.responder.ServerResponse;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerSolver;
+import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerSolver.ProblemInitializingOverheadTimeoutException;
+import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerSolver.SolverServerStateInterruptedException;
+import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerSolver.SolvingInterrupedException;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerSolverInterrupter;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.SolvingJob;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.daemon.ThreadedSolverServerParameters;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
-import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.utils.RunnableUtils;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
-import com.google.gson.*;
+import org.apache.commons.io.IOUtils;
+import org.kohsuke.args4j.Option;
+import org.kohsuke.args4j.CmdLineParser;
+import org.kohsuke.args4j.CmdLineException;
 
+import com.google.common.reflect.TypeToken;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
+import com.sun.jna.Platform;
 
-// Poll the Job Caster server (Redis) and solve problems as they appear
-//
-// TODO: see run_feasibility_check().
 /*
+ * Poll the Job Caster server (Redis) and solve problems as they appear
+ * 
  * Made SATFCJobClient implement Runnable (it already had a run method) so that
  * both it and SATFC Solver Server can be executed at the same time.
  */
@@ -39,11 +55,10 @@ public class SATFCJobClient implements Runnable {
 	public enum Answer { YES, NO, UNKNOWN, ERROR }
 	
 	/*
-	 * Queues to submit SATFC jobs and get answers.
-	 * @author afrechet
+	 * A SolverServer for doing the hard work of unpacking and solving problems.
+	 * @author wtaysom
 	 */
-	private final BlockingQueue<SolvingJob> fSATFCJobQueue;
-	private final BlockingQueue<ServerResponse> fSATFCAnswerQueue;
+	private final ServerSolver fServerSolver;
 	
 	////////////////////////////////////////////////
 	// Simple class to hold hetrogenous data
@@ -78,31 +93,62 @@ public class SATFCJobClient implements Runnable {
 	 * can be executed in parallel with a thread pool.
 	 * @author afrechet
 	 */
-	public SATFCJobClient(Object options, 
-			BlockingQueue<SolvingJob> aSATFCJobQueue,
-			BlockingQueue<ServerResponse> aSATFCAnswerQueue) {
+	public SATFCJobClient(Options options, ServerSolver aServerSolver) {
 		
 		/*
-		 * The only connection points this object needs from SATFC is the ServerSolver job queue to
-		 * submit jobs to, and server response queue to get answers from. 
-		 * @afrechet 
+		 * We call ServerSolver.solve directly in order to avoid the complexity of threads and job queues.
+		 * @wtaysom 
 		 */
-		fSATFCJobQueue = aSATFCJobQueue;
-		fSATFCAnswerQueue = aSATFCAnswerQueue;
+		fServerSolver = aServerSolver;
 		
-
-		//?? use options
-		_caster = new JobCaster();
+		_constraint_sets_directory = options.constraint_sets_directory;
 		_statistics = new HashMap<String, Object>();
+		
+		_redis_url = options.redis_url;
+		for (;;) {
+			try {
+				reconnect();
+				_client_id = _caster.get_new_client_id();
+				break;
+			} catch (JedisConnectionException e) {
+				// Try again.
+			}
+		}
 	}
 	
+	static final long RETRY_DELAY = 3000;
+	
+	void reconnect() {
+		_caster = null;
+		for (;;) {
+			try {
+				_caster = new JobCaster(_redis_url);
+				_caster.is_alive(); // throws JedisConnectionException if there's a connection problem.
+				break;
+			} catch (JedisConnectionException e) {
+				report("Cannot contact Redis at "+_redis_url+".  Retry in "+RETRY_DELAY+"ms.");
+				
+				try {
+					Thread.sleep(RETRY_DELAY);
+				} catch (InterruptedException e1) {
+					// Go ahead and continue.
+				}
+			}
+		}		
+	}
+	
+	Gson _gson = new Gson();
+	String _constraint_sets_directory;
+	String _redis_url;
 	JobCaster _caster;
+	String _client_id;
+	long _created_at = (long)now();
 	Map<String, Object> _statistics;
 	
 	double _last_status_report_time;
 	
 	double now() {
-		return System.currentTimeMillis() / 1000.0;
+		return System.currentTimeMillis() / 1000;
 	}
 	
 	void sleep_for(long milliseconds) {
@@ -115,18 +161,51 @@ public class SATFCJobClient implements Runnable {
 	
 	////////////////////////////
 	// Parts of status reports
-	String client_id() {
-		return "java_framework_dude";
+	
+	String get_ip() {
+		try {
+			Process process = Runtime.getRuntime().exec("curl -s http://ipecho.net/plain");
+			return IOUtils.toString(process.getInputStream());
+		} catch (IOException e) {
+			return "";
+		}
 	}
 	
-	String status() {
-		// Hard coded value grabbed from a JSONing of some ruby data in the right format.  Clients should be able to read this OK.
-		// The real value should be a JSONed hash.  See the old #status in satfc_job_client_logic.rb
-	    return "{\"id\":\"client_id\",\"report_time\":1387468010,\"location\":\"my_location\",\"start_time\":1387468010,\"satfc_port\":49149,\"statistics\":{},\"solver_status\":[\"status OK\",1387468010,17]}";		
+	String _location;
+	String location() {
+		if (_location == null) {
+			_location = System.getenv().get("WAN_IP");
+			if (_location == null) {
+				report("Getting IP from http://ipecho.net/plain.  Set WAN_IP environment variable to make this go faster.");
+				_location = get_ip();
+				report("IP is "+_location);
+			}
+			if (_location == null || _location.isEmpty()) {
+				_location = "N/A";
+			}
+		}
+		return _location;
+	}
+	
+	JsonObject status() {
+		JsonObject json = new JsonObject();
+		json.addProperty("id", _client_id);
+		json.addProperty("report_time", now());
+		json.addProperty("location", location());
+		json.addProperty("start_time", _created_at);
+		json.add("statistics", _gson.toJsonTree(_statistics));
+		
+		JsonArray solver_status = new JsonArray();
+		solver_status.add(new JsonPrimitive(_solver_status));
+		solver_status.add(new JsonPrimitive(_solver_status_updated));
+		solver_status.add(new JsonPrimitive(_solutions_since_satfc_reset));
+		json.add("solver_status", solver_status);
+		
+		return json;	
 	}
 	
 	String config_to_s() {
-		return "DummyJavaClient";
+		return "JavaJobClient";
 	}
 	
 	void report(String msg) {
@@ -139,46 +218,70 @@ public class SATFCJobClient implements Runnable {
 		}
 		
 		report("Reporting status to server");
-		_caster.report_status(client_id(), status());
+		_caster.report_status(_client_id, status());
 		_last_status_report_time = now();
-	} 
-	
-	// TODO: fill me in with magic of some sort
-	String location() {
-		return "127.0.0.1";
 	}
 	
-	// TODO: remember the best way to do this in the face of static typing
-	//	
-	// private void increment_statistic(String stat, Number delta) {
-	// 	if (!_statistics.containsKey(stat)) {
-	// 		_statistics.set(stat, 0);
-	// 	}
-	// 	_statistics.set(stat, (Number)(_statistics.get(stat)) + delta);
-	// }
-	// 
-	// void record_fc(FeasibilityResult result, double working_time) {
-	// 	Answer answer = result.get_answer().to_s().toLowerCase();
-	//     double satfc_time = result.get_time();
-	//     
-	// 	increment_statistic(answer, 1);
-	// 	increment_statistic("satfc_time", satfc_time);
-	// 	increment_statistic("working_time", working_time);
-	//   }
+	void increment_statistic(String key, double increment) {
+		Double wrapper = (Double)_statistics.get(key);
+		double aggregate = wrapper == null ? 0 : wrapper.doubleValue();
+		_statistics.put(key, aggregate);
+	}
 	
+	void record_fc(String new_station, String answer, double satfc_time, double working_time) {
+		increment_statistic(answer, 1);
+		increment_statistic("satfc_time", satfc_time);
+		increment_statistic("working_time", working_time);		
+	}
+
+	void record_poll_time(double period) {
+		increment_statistic("poll_time", period);
+	}
 	
+	String _solver_status;
+	double _solver_status_updated;
+	void set_solver_status(String message) {
+		_solver_status = message;
+		_solver_status_updated = now();
+	}
+	
+	long _solutions_since_satfc_reset = 0;
+	void reset_successful_solution_count() {
+		_solutions_since_satfc_reset = 0;
+	}
+	void increment_successful_solution_count() {
+		++_solutions_since_satfc_reset;
+	}	
 	
 	//////////////////////////
 	// Solve a problem.
 	//
-	// For now we pause for a random time up to timeout, and then return NO.
 	FeasibilityResult run_feasibility_check(ProblemSet problem_set, int new_station) {
-			
+		boolean use_stub = false;
+		//use_stub = true;
+		return use_stub ?  stub_feasibility_check(problem_set, new_station) : run_SATFC(problem_set, new_station);
+	}
+	
+	FeasibilityResult stub_feasibility_check(ProblemSet problem_set, int new_station) {
 		long sleep_time = (long)(Math.random() * problem_set.get_timeout_ms());
 		sleep_for(sleep_time);
 		
 		return new FeasibilityResult(new_station, Answer.NO, "Immediately answered NO", sleep_time / 1000.0, sleep_time / 1000.0, null);
 	}
+	
+	private long problem_id = 0;
+	String next_problem_id() {
+		++problem_id;
+		return Long.toString(problem_id);
+	}
+	
+	// Indexed by band.
+	private static final int[][] CHANNELS_FOR_BAND = {
+		{},
+		{2, 3, 4, 5, 6},
+		{7, 8, 9, 10, 11, 12, 13},
+		{14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51}
+	};
 	
 	/**
 	 * Converts a given problem to a SATFC format, submit it to SATFC then wait for an answer.
@@ -193,6 +296,7 @@ public class SATFCJobClient implements Runnable {
 		watch.start();
 		
 		//Static problem parameters that are not provided.
+		try {
 		InetAddress dummyAddress = InetAddress.getLocalHost();
 		int dummyPort = 111111;
 		long seed = 1;
@@ -201,46 +305,81 @@ public class SATFCJobClient implements Runnable {
 		 * Parse problem into solving job for solver server.
 		 */
 		double cutoff = problem_set.get_timeout_ms()/1000.0;
-		String id = "SATFCJobClientID";
+		String problem_id = next_problem_id();
 		
 		/*
-		 * TODO It seems constraint_set() is the name of the folder containing constraint interference
-		 * and domain constraints. Make sure datafoldername is a valid path to the actual problem set, because SATFC
-		 * may need to actually read the constraints. So either add a static path before get_constraint_set() or change
-		 * the constraint_set's to actually be folder paths.
+		 * Since constraint_set() is the name of the folder containing constraint interference
+		 * and domain constraints, we use the argument -c (--constraint_sets_directory) to provide the location of
+		 * the directory containing individual constraint sets.
 		 */
-		String datafoldername = problem_set.get_constraint_set();
+		String constraint_set = problem_set.get_constraint_set();
+		String datafoldername = new File(_constraint_sets_directory, constraint_set).getPath();
 		
 		/*
-		 * TODO This should be an instance string as outlined in the SATFC readme:
+		 * Create an instance string as outlined in the SATFC [readme](
+		 * https://docs.google.com/document/d/1TuuFr6lxOjv7QMPZztIFzS_34TaE6-qeNJjaHufOrAE/edit):
 		 * 
-		 * "A formatted instance string is simply a Ò-Ó-separated list of channels, a Ò-Ó-separated list
-		 * of stations and an optional previously valid partial channel assignment (in the form of a Ò-Ó-separated
-		 * list of station-channel assignments joined by Ò,Ó), all joined by a Ò_Ó. For example, the feasibility 
-		 * checking problem of packing stations 100,231 and 597 into channels 14,15,16,17 and 18 with previous 
-		 * assignment 231 to 16 and 597 to 18 is represented by the following formatted instance string:
+		 * "A formatted instance string is simply a [dash] "-"-separated list of channels, a [dash] "-"-separated list
+		 * of stations and an optional previously valid partial channel assignment (in the form of a [dash] "-"-separated
+		 * list of station-channel assignments joined by [commas] ","), all [three parts] joined by a "_" [underscore].
+		 * For example, the feasibility checking problem of packing stations 100,231 and 597 into channels 14,15,16,17
+		 * and 18 with previous assignment 231 to 16 and 597 to 18 is represented by the following formatted instance
+		 * string:
 		 * 
-		 * 14-15-16-17-18_100-231-597_231,16-597,18"
+		 *   14-15-16-17-18_100-231-597_231,16-597,18
 		 * 
-		 * I am not sure the right information is provided through problem_set and new_station, so I am letting
-		 * you guys figure out how to construct this string from the given objects.
 		 */
-		String instance = "REPLACE ME";
+		// channels
+		StringBuilder instance = new StringBuilder();
+		for (int channel : CHANNELS_FOR_BAND[problem_set._band]) {
+			if (channel > problem_set._highest) {
+				break;
+			}
+			instance.append(channel);
+			instance.append('-');
+		}
+		instance.setLength(instance.length() - 1);
+		instance.append('_');
 		
-		SolvingJob solvingJob = new SolvingJob(id, datafoldername, instance, cutoff, seed, dummyAddress, dummyPort);
+		// stations
+		if (problem_set._tentative_assignment != null) {
+			for (String station : problem_set._tentative_assignment.keySet()) {
+				instance.append(station);
+				instance.append('-');
+			}
+		}
+		if (problem_set._tentative_assignment == null ||
+				!problem_set._tentative_assignment.keySet().contains(Integer.toString(new_station))) {
+			instance.append(new_station);
+		}
 		
+		// optional previously valid partial channel assignment
+		 if (problem_set._tentative_assignment != null && !problem_set._tentative_assignment.isEmpty()) {
+		 	instance.append('_');
+		 	for (Map.Entry<String, Integer> entry : problem_set._tentative_assignment.entrySet()) {
+		 		if (entry.getValue().equals(-1)) { // Skip -1 assignments.
+		 			continue;
+		 		}
+		 		instance.append(entry.getKey());
+		 		instance.append(',');
+		 		instance.append(entry.getValue());
+		 		instance.append('-');
+		 	}
+		 	instance.setLength(instance.length() - 1);
+		 }
 		
-		/*
-		 * Enqueue solving job.
-		 */
-		fSATFCJobQueue.put(solvingJob);
+		String instance_string = instance.toString();
+		report("Solve instance "+instance_string);
+		SolvingJob solvingJob = new SolvingJob(problem_id, datafoldername, instance_string, cutoff, seed, dummyAddress, dummyPort);
 		
-		/*
-		 * Wait for answer from solver server.
-		 */
-		ServerResponse solverResponse = fSATFCAnswerQueue.take();
+		ServerResponse solverResponse;
+		try {
+			solverResponse = fServerSolver.solve(solvingJob);
+		} catch (ProblemInitializingOverheadTimeoutException e) {
+			solverResponse = e.answerResponse;
+		}
 		
-		double time = watch.stop();
+		double time = watch.stop() / 1000.0;
 		
 		/*
 		 * Parse answer from solver server.
@@ -273,7 +412,7 @@ public class SATFCJobClient implements Runnable {
 					break;
 			}
 			
-			double runtime = Double.valueOf(resultParts[1]);
+			//double runtime = Double.valueOf(resultParts[1]);
 			
 			
 			if(resultParts.length==3)
@@ -302,68 +441,91 @@ public class SATFCJobClient implements Runnable {
 		FeasibilityResult result = new FeasibilityResult(new_station, answer, answerMessage, time, time, witness);
 		
 		return result;
+		
+		} catch (UnknownHostException | SolverServerStateInterruptedException | SolvingInterrupedException e) {
+			throw new RuntimeException(e);
+		}
 	}
 	
 	// Poll the server for work, and do work when it appears.
 	@Override
-	public void run() {		
+	public void run() {
+		set_solver_status("SATFC server starting normally");
+		
 		for (;;) {
-			report_status();
-			
-			String job = _caster.block_for_job();
-			
-			if (job != null) {
-				report("Found job " + job);
+			try {
+				report_status();
 				
-				// We have a problem to work on
-				String[] parts = job.split(":");
-				String new_station = parts[0];
-				String problem_set_id = parts[1];
+				double start_poll = now(); 
+				String job = _caster.block_for_job();
+				record_poll_time(now() - start_poll);
 				
-				double start_time = now();
-				
-        _statistics.put("latest_problem", start_time);
-
-				String problem_set_json = _caster.get_problem_set(problem_set_id);
-				
-				ProblemSet problem_set = new ProblemSet(problem_set_json);
-				
-				//!! This is the integration point with their software.
-        FeasibilityResult result = run_feasibility_check(problem_set, Integer.parseInt(new_station));
-
-				report("Result from checker was " + result.get_answer());
-				
-				Gson gson = new Gson();
-				report("Json version of result is " + gson.toJson(result));
-
-				//!! return the answer
-				Map<String, Double> time_data = new HashMap<String, Double>();
-				time_data.put("satfc_time", result.get_time());
-				time_data.put("satfc_wall_clock", result.get_wall_clock());
-				time_data.put("total_job_client_time", now() - start_time);
-				
-				Object[] answer_raw = new Object[] {
-					location(),
-					new_station,
-					result.get_answer().toString().toLowerCase(),
-					result.get_message(),
-					time_data
-				};
-				
-				String answer_json = gson.toJson(answer_raw);
-				
-				report("Answer to return is " + answer_json);
-        
-        _caster.send_assignment(problem_set_id, new_station, gson.toJson(result.get_witness_assignment()));
-        _caster.send_answer(problem_set_id, answer_json);
- 
-        // 
-        // record_fc answer, Time.now - start_time
-			} else if (_caster.is_alive()) {
-	      report("No work at the moment. Trying again.");
-	    } else {
-	      report("Experienced timeout, connection lost? Trying again.");
-	    }
+				if (job != null) {
+					report("Found job "+job);
+					set_solver_status("SATFC server found job "+job);
+									
+					// We have a problem to work on.
+					String[] parts = job.split(":");
+					String new_station = parts[0];
+					String problem_set_id = parts[1];
+					
+					double start_time = now();
+					_statistics.put("latest_problem", start_time);
+	
+					String problem_set_json = _caster.get_problem_set(problem_set_id);
+					if (problem_set_json == null) {
+						String missing_problem_set = "missing problem set "+problem_set_id;
+						set_solver_status(missing_problem_set);
+						report_status();
+						report(missing_problem_set);
+						continue;
+					}
+					ProblemSet problem_set = new ProblemSet(problem_set_json);
+					
+					FeasibilityResult result = run_feasibility_check(problem_set, Integer.parseInt(new_station));
+					
+					report("Result from checker was " + result.get_answer());
+					
+					Gson gson = new Gson();
+					report("Json version of result is " + gson.toJson(result));
+					
+					Map<String, Double> time_data = new HashMap<String, Double>();
+					time_data.put("satfc_time", result.get_time());
+					time_data.put("satfc_wall_clock", result.get_wall_clock());
+					time_data.put("total_job_client_time", (double)now() - start_time);
+					
+					String answer = result.get_answer().toString().toLowerCase();
+					Object[] answer_raw = new Object[] {
+						location(),
+						new_station,
+						answer,
+						result.get_message(),
+						time_data
+					};
+					
+					String answer_json = gson.toJson(answer_raw);
+					
+					report("Answer to return is " + answer_json);
+					set_solver_status("SATFC server has answer for job "+job);
+	        
+					_caster.send_assignment(problem_set_id, new_station, gson.toJson(result.get_witness_assignment()));
+					_caster.send_answer(problem_set_id, answer_json);
+					
+					record_fc(new_station, answer, result.get_time(), now() - start_time);
+					increment_successful_solution_count();
+				} else if (_caster.is_alive()) {
+					report("No work at the moment. Trying again.");
+				} else {
+					report("Experienced timeout, connection lost? Trying again.");
+				}
+			} catch (JedisConnectionException e) {
+				reconnect();
+			} catch (Exception e) {
+				report("Unusual exception:");
+				e.printStackTrace();
+				set_solver_status("Encountered an unusual exception: "+e.getMessage());
+				report_status();
+			}
 		}
 	}
 	
@@ -401,10 +563,43 @@ public class SATFCJobClient implements Runnable {
 	}
 	
 	private final static ExecutorService EXECUTOR_SERVICE = Executors.newCachedThreadPool();
+
+	static class Options {
+		// Look here <https://github.com/kohsuke/args4j/blob/master/rgs4j/examples/SampleMain.java>, here <http://www.whenbrainsfly.om/2009/05/args4j-is-magic/>, and here <http://args4j.kohsuke.org/> or examples.
+		
+		@Option(name="-r", aliases={"--redis_url"}, metaVar="url",
+			usage="The url of the JobCaster (redis) server")
+    	String redis_url;
+		
+		@Option(name="-c", aliases={"--constraint_sets_directory"}, metaVar="path",
+			usage="Path to a directory of constraint sets.  Contents should be of the form $constraint_set_name/{domains,interferences}.csv.")
+		String constraint_sets_directory;
+    	
+    	@Option(name="-h", aliases={"--help"},
+    		usage="Show this message")
+    	boolean should_show_help;
+    	
+    	static Options parse(String[] args) {
+    		Options options = new Options();
+    		CmdLineParser parser = new CmdLineParser(options);
+    		try {
+    			parser.parseArgument(args);
+    			if (options.should_show_help) {
+    				parser.printUsage(System.err);
+    				System.exit(0);
+    			}
+    		} catch (CmdLineException e) {
+				System.err.println(e.getMessage());
+				parser.printUsage(System.err);
+				System.exit(2);
+			}
+    		return options;
+    	}
+    }
 	
 	public static void main(String[] args) {
 		
-		Object options = new Object(); //?? init options
+		Options options = Options.parse(args);
 		
 		/*
 		 * Initialize SATFC's ServerSolver.
@@ -414,25 +609,38 @@ public class SATFCJobClient implements Runnable {
 		 * These options are usually read from args with jCommander; if this would be interesting, just ask me.
 		 * 
 		 * @afrechet
+		 * 
+		 * For now, it's easiest to find the SATsolvers directory from walking up from the current directory
+		 * looking for fcc-station-packing.
+		 * 
+		 * @wtaysom
 		 */
-		ThreadedSolverServerParameters aParameters = new ThreadedSolverServerParameters();			
-		//TODO: Put your library path here, or grab it from the args. (replace string)
-		aParameters.SolverParameters.Library = "/Users/MightyByte/paxos-downloads/satfc/SATsolvers/clasp/jna/libjnaclasp.so";
+		ThreadedSolverServerParameters aParameters = new ThreadedSolverServerParameters();
+		try {
+			File current_working_directory = new File(".");
+			File fcc_station_packing_root = current_working_directory.getCanonicalFile();
+			while (fcc_station_packing_root != null && !fcc_station_packing_root.getName().equals("fcc-station-packing")) {
+				fcc_station_packing_root = fcc_station_packing_root.getParentFile(); 
+			}
+			if (fcc_station_packing_root == null) {
+				throw new FileNotFoundException("Unable to find fcc-station-packing as a parent of "+current_working_directory.getCanonicalPath());
+			}
+			String file_name = Platform.isMac() ? "libjnaclasp.dylib" : "libjnaclasp.so";			
+			aParameters.SolverParameters.Library = new File(fcc_station_packing_root, "SATsolvers/clasp/jna/"+file_name).getCanonicalPath();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 				
-		BlockingQueue<SolvingJob> aSolvingJobQueue = new LinkedBlockingQueue<SolvingJob>();
-		BlockingQueue<ServerResponse> aServerResponseQueue = new LinkedBlockingQueue<ServerResponse>();
-		
 		SolverManager aSolverManager = aParameters.getSolverManager();
 		ServerSolverInterrupter aSolverState = new ServerSolverInterrupter();
-		ServerSolver aServerSolver = new ServerSolver(aSolverManager, aSolverState, aSolvingJobQueue, aServerResponseQueue);
+		ServerSolver aServerSolver = new ServerSolver(aSolverManager, aSolverState, null, null);
 
-		SATFCJobClient aSATFCJobClient = new SATFCJobClient(options,aSolvingJobQueue,aServerResponseQueue);
+		SATFCJobClient aSATFCJobClient = new SATFCJobClient(options, aServerSolver);
 		
 		/*
 		 * Must run both SATFCJobClient and SATFC's ServerSolver.
 		 * @author afrechet 
 		 */
-		RunnableUtils.submitRunnable(EXECUTOR_SERVICE, UNCAUGHT_EXCEPTION_HANDLER, aServerSolver);
 		RunnableUtils.submitRunnable(EXECUTOR_SERVICE, UNCAUGHT_EXCEPTION_HANDLER, aSATFCJobClient);
 		
 		try {
@@ -452,88 +660,101 @@ public class SATFCJobClient implements Runnable {
 // Thin wrapper to unpack the json version and provide accessors
 // Wow.  I do not miss Java at times like this. :(
 class ProblemSet {
-	
 	int _band;
 	int _highest;
 	String _constraint_set;
 	String _fc_config; // ignored
 	String _fc_approach; // ignored
 	int _timeout_ms;
-	Map<Integer, Integer> _tentative_assignment;
+	Map<String, Integer> _tentative_assignment;
 	String _testing_flag;
-	
+
+
 	// Parse from the json encoding.
 	public ProblemSet(String json_details) {
 		JsonParser parser = new JsonParser();
 		JsonObject problem_set_details = parser.parse(json_details).getAsJsonObject();
-	
-	  JsonArray data = problem_set_details.get("data").getAsJsonArray();
-	
+
+		JsonArray data = problem_set_details.get("data").getAsJsonArray();
+
 		// See JobCaster::ProblemSet for format.
 		// We should perhaps simplify the encoding now that we have to unpack it by hand.
 		_band = data.get(0).getAsInt();
 		_highest = data.get(1).getAsInt();
 		_constraint_set = data.get(2).getAsString();
-		_fc_config = data.get(3).getAsString();
-		_fc_approach = data.get(4).getAsString();
+
+		_fc_config = null;
+		// NOTE: getAsString() sometimes complains java.lang.UnsupportedOperationException: JsonNull, even though
+		//       we have checked for it.  We never consume _fc_config, so let's ignore it for now.
+		// if (data.get(3).isJsonNull()) {
+		// 	_fc_config = null;
+		// } else {
+		// 	_fc_config = data.get(3).getAsString();
+		// }
+
+		if (data.get(4).isJsonNull()) {
+			_fc_approach = null;
+		} else {
+			_fc_approach = data.get(4).getAsString();
+		}
+
 		_timeout_ms = data.get(5).getAsInt();
 
-		// TODO: how to decode the tentative assignment, which is a map of integers (station ids) to integers (channels)?
-		// Gson gson=new Gson(); 
-		// String assignment_json = data.get(6).getAsString();
-		// 
-		// _tentative_assignment = new HashMap<Integer, Integer>();
-		// _tentative_assignment = (Map<Integer, Integer>) gson.fromJson(assignment_json, _tentative_assignment.getClass());
+		Gson gson=new Gson();
+		_tentative_assignment = gson.fromJson(data.get(6), new TypeToken<HashMap<String, Integer>>(){
+			static final long serialVersionUID = 1007; // to avoid warning.
+		}.getType());
 		
 		if (data.get(7).isJsonNull()) {
 			_testing_flag = null;
 		} else {
-		  _testing_flag = data.get(7).getAsString();
+			_testing_flag = data.get(7).getAsString();
 		}
 	}
-	
+
 	//////////////////////
 	// Acceessors
 	int get_band() {
 		return _band;
 	}
-	
+
 	int get_highest() {
 		return _highest;
 	}
-	
+
 	String get_constraint_set() {
 		return _constraint_set;
 	}
-	
+
 	String get_fc_config() {
 		return _fc_config;
 	}
-	
+
 	String get_fc_approach() {
 		return _fc_approach;
 	}
-	
+
 	int get_timeout_ms() {
 		return _timeout_ms;
 	}
-	
-	Map<Integer, Integer> get_tentative_assignment() {
+
+	Map<String, Integer> get_tentative_assignment() {
 		return _tentative_assignment;
 	}
-	
+
 	String get_testing_flag() {
 		return _testing_flag;
 	}
-	
+
 	public String toString() {
 		return "[band: " + _band +
-		       ", highest: " + _highest +
-		       ", constraint set: " + _constraint_set +
-					 ", fc_config: " + _fc_config +
-					 ", fc_approach: " + _fc_approach +
-					 ", timeout_ms: " + _timeout_ms +
-					 ", testing_flag: " + _testing_flag + "]";
+			", highest: " + _highest +
+			", constraint set: " + _constraint_set +
+			", fc_config: " + _fc_config +
+			", fc_approach: " + _fc_approach +
+			", timeout_ms: " + _timeout_ms +
+			", tentative_assignment: " + _tentative_assignment +
+			", testing_flag: " + _testing_flag + "]";
 	}
 }
 
@@ -546,9 +767,13 @@ class JobCaster {
 	static final String REDIS_SERVER_URL = "localhost";
 		
 	Jedis _jedis;
+	Gson _gson = new Gson();
 	
-	JobCaster() {
-		_jedis = new Jedis(REDIS_SERVER_URL);
+	JobCaster(String url) {
+		if (url == null) {
+			url = REDIS_SERVER_URL;
+		}
+		_jedis = new Jedis(url);
 	}
 	
 	boolean is_alive() {
@@ -556,14 +781,18 @@ class JobCaster {
 	}
 	
 	void report_error(String error_msg) {
-    _jedis.lpush(CLIENT_ERROR_KEY, error_msg);
-  }
+		_jedis.lpush(CLIENT_ERROR_KEY, error_msg);
+	}
 	
-	void report_status(String client_id, String status) {
+	String get_new_client_id() {
+		return get_new_seq_val(CLIENT_ID_SEQ);
+	}
+	
+	void report_status(String client_id, JsonObject status) {
 		Transaction tx = _jedis.multi();
 		tx.sadd(CLIENT_IDS_SET, client_id);
-		// Set the status and give it an expriation time.
-		tx.set(client_status_key_for(client_id), status); //?? status.to_json
+		// Set the status and give it an expiration time.
+		tx.set(client_status_key_for(client_id), _gson.toJson(status));
 		tx.expire(client_status_key_for(client_id), CLIENT_STATUS_REPORT_EXPIRATION);
 		tx.exec();
 	}
@@ -579,14 +808,14 @@ class JobCaster {
 	// Wait for a job to appear in the appropriate list, returning it.  We return nil
 	// if no such job appears by the timeout.
 	String block_for_job() {
-    List<String> result = _jedis.brpop(JOB_BLOCK_TIMEOUT, JOB_LIST_KEY);
-
+		List<String> result = _jedis.brpop(JOB_BLOCK_TIMEOUT, JOB_LIST_KEY);
+		
 		if (result == null) {
-		  return null;
+			return null;
 		} else {
-      return result.get(1);
-    }
-  }
+    		return result.get(1);
+		}
+	}
 
 	String get_problem_set(String problem_set_id) {
 		return _jedis.get(problem_set_key_for(problem_set_id));
@@ -595,11 +824,20 @@ class JobCaster {
 	
 	static final int    JOB_BLOCK_TIMEOUT = 5; // seconds
 	static final String JOB_LIST_KEY = "jobs";
+	static final String CLIENT_ID_SEQ = "client_id_seq";
 	static final String CLIENT_IDS_SET = "client_ids";
 	static final String CLIENT_STATUS_PREFIX = "client.status";
-  static final String CLIENT_ERROR_KEY = "client_errors";
+	static final String CLIENT_ERROR_KEY = "client_errors";
 	static final String ANSWER_PREFIX = "answer";
 	static final String PROBLEM_SET_PREFIX = "problem_set";
+	
+	String get_new_seq_val(String key) {
+		Transaction tx = _jedis.multi();
+		tx.incr(key);
+		Response<String> response = tx.get(key);
+		tx.exec();
+		return response.get();
+	}
 	
 	String client_status_key_for(String client_id) {
 		return CLIENT_STATUS_PREFIX+"."+client_id;
@@ -609,9 +847,9 @@ class JobCaster {
 		return ANSWER_PREFIX+"."+problem_set_id+".answers";
 	}
 	
-  String assignment_key_for(String problem_set_id, String station_id) {
-    return ANSWER_PREFIX + "." + problem_set_id + "." + station_id;
-  }
+	String assignment_key_for(String problem_set_id, String station_id) {
+		return ANSWER_PREFIX + "." + problem_set_id + "." + station_id;
+	}
 	
 	String problem_set_key_for(String problem_set_id) {
 		return PROBLEM_SET_PREFIX + "." + problem_set_id;
