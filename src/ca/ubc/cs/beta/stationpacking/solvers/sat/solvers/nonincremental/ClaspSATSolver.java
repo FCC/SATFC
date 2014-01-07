@@ -129,10 +129,12 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		}, 0, 100);
 
 		// Start solving
+		log.debug("Send problem to clasp cutting off after "+aCutoff+"s");
 		fClaspLibrary.jnasolve(facade, problem, config, result);
 		timer.cancel();
 		
 		long timeInMillis = fSolveTimeStopWatch.stop();
+		log.debug("Spent "+(timeInMillis / 1000.0)+"s in clasp.");
 		
 		ClaspResult claspResult = getSolverResult(fClaspLibrary, result, timedOut, fInterrupt, timeInMillis);
 		HashSet<Literal> assignment = parseAssignment(claspResult.getAssignment());
