@@ -17,9 +17,9 @@ import au.com.bytecode.opencsv.CSVReader;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 
-/* NA - Code to read the new DAC file format
- * 
- */
+/** NA - Code to read the new DAC file format
+ * @deprecated
+ **/
 public class DACConstraintManager implements IConstraintManager{
 	
 	private static Logger log = LoggerFactory.getLogger(DACConstraintManager.class);

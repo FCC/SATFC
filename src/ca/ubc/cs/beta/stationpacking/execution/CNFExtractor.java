@@ -17,19 +17,19 @@ import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Predicate;
-import com.google.common.collect.Collections2;
-
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.data.DataManager;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.data.ManagerBundle;
-import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.DACConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATDecoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
+import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
+
+import com.google.common.base.Predicate;
+import com.google.common.collect.Collections2;
 
 public class CNFExtractor {
 	
@@ -154,7 +154,7 @@ public class CNFExtractor {
 						final Integer aFilterHighest = aHighest;
 						aPackingChannels = new HashSet<Integer>(
 									Collections2.filter(
-										DACConstraintManager.UHF_CHANNELS, 
+											StationPackingUtils.UHF_CHANNELS, 
 										new Predicate<Integer>()
 										{
 											@Override
@@ -174,11 +174,11 @@ public class CNFExtractor {
 				}
 				else if(aBand.equals("LVHF") || aBand.equals("1"))
 				{
-					aPackingChannels = DACConstraintManager.LVHF_CHANNELS;
+					aPackingChannels = StationPackingUtils.LVHF_CHANNELS;
 				}
 				else if(aBand.equals("HVHF") || aBand.equals("UVHF") || aBand.equals("2"))
 				{
-					aPackingChannels = DACConstraintManager.HVHF_CHANNELS;
+					aPackingChannels = StationPackingUtils.HVHF_CHANNELS;
 				}
 				else
 				{
