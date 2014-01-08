@@ -102,6 +102,7 @@ public class SATFCJobClient implements Runnable {
 		fServerSolver = aServerSolver;
 		
 		_constraint_sets_directory = options.constraint_sets_directory;
+		report("Using constraints in "+_constraint_sets_directory+".");
 		_statistics = new HashMap<String, Object>();
 		
 		_redis_url = options.redis_url;
@@ -315,6 +316,7 @@ public class SATFCJobClient implements Runnable {
 		 */
 		String constraint_set = problem_set.get_constraint_set();
 		String datafoldername = new File(_constraint_sets_directory, constraint_set).getPath();
+		report("Using constraint set at "+datafoldername+".");
 		
 		/*
 		 * Create an instance string as outlined in the SATFC [readme](
