@@ -57,6 +57,11 @@ public class ServerSolver implements Runnable {
 		private static final long serialVersionUID = 1L;
 	}
 	
+	/**
+	 * Exception
+	 * @author afrechet, wtaysom
+	 *
+	 */
 	public static class ProblemInitializingOverheadTimeoutException extends Exception {
 		private static final long serialVersionUID = 1L;
 		
@@ -69,13 +74,19 @@ public class ServerSolver implements Runnable {
 		}
 	}
 	
-	/*
+	/**
 	 * Separate solving from queueing to allow the use of ServerSolver logic without a separate thread.
-	 *   
+	 * 
+	 * @param aSolvingJob - the job to solve.
+	 * @return the server response resulting from solving the provided job (might be an error response if a problem was encountered).
+	 * @throws SolverServerStateInterruptedException - if a job is interrupted by the solver server interrupter.
+	 * @throws ProblemInitializingOverheadTimeoutException
 	 * @see SATFCJobClient
 	 * @author wtaysom
 	 */
-	public ServerResponse solve(SolvingJob aSolvingJob) throws SolverServerStateInterruptedException, ProblemInitializingOverheadTimeoutException, SolvingInterrupedException {
+	public ServerResponse solve(SolvingJob aSolvingJob) throws SolverServerStateInterruptedException,
+															ProblemInitializingOverheadTimeoutException,
+															SolvingInterrupedException {
 		AutoStartStopWatch aOverheadWatch = new AutoStartStopWatch();
 		
 		String aID = aSolvingJob.getID();
@@ -194,7 +205,7 @@ public class ServerSolver implements Runnable {
 					}
 					
 					try {
-					ServerResponse aServerResponse = solve(aSolvingJob);
+						ServerResponse aServerResponse = solve(aSolvingJob);
 						try
 						{
 							log.debug("Sending back an answer.");
