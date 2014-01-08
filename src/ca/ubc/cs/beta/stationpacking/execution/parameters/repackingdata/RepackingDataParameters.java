@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aclib.options.AbstractOptions;
-import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.DACConstraintManager;
+import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.ChannelSpecificConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.DomainStationManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
@@ -40,7 +40,7 @@ public class RepackingDataParameters extends AbstractOptions{
 		log.info("Constraint a constraint manager for the given stations...");
 		try
 		{
-			return new DACConstraintManager(aStationManager,ConstraintFilename);
+			return new ChannelSpecificConstraintManager(aStationManager,ConstraintFilename);
 		}
 		catch(IOException e)
 		{

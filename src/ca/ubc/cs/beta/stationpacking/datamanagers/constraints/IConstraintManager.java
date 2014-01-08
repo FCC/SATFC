@@ -13,25 +13,25 @@ public interface IConstraintManager {
 	
 	/**
 	 * @param aStation - a (source) station of interest.
-	 * @param aChannelRange - a range of channel on which we want to know constraints (usually a fixed band UHF, L-VHF or H-VHF).
-	 * @return all the (target) stations that cannot be on the same channel from the channel range on which the source station is, <i> i.e. </i> if s is the
-	 * source station and C the channel range, then the set of stations T returned is such that, for all t in T,
+	 * @param aChannel - a channel on which we wish to know interfering stations.
+	 * @return all the (target) stations that cannot be on the same given channel, <i> i.e. </i> if s is the
+	 * source station and c the given channel, then the set of stations T returned is such that, for all t in T,
 	 * <p>
-	 * s and t cannot be both on c for all c in C
+	 * s and t cannot be both on c
 	 * </p>
 	 */
-	public Set<Station> getCOInterferingStations(Station aStation, Set<Integer> aChannelRange);
+	public Set<Station> getCOInterferingStations(Station aStation, int aChannel);
 	
 	/**
 	 * @param aStation - a (source) station of interest.
-	 * @param aChannelRange - a range of channel on which we want to know constraints (usually a fixed band UHF, L-VHF or H-VHF).
-	 * @return all the (target) stations that cannot be on a channel that is one above a channel from the channel range on which the source station is, <i> i.e. </i> if s is the
-	 * source station and C the channel range, then the set of stations T returned is such that, for all t in T,
+	 * @param aChannel - a channel on which we wish to know interfering stations.
+	 * @return all the (target) stations that cannot be on a channel that is one above the given channel on which the source station is, <i> i.e. </i> if s is the
+	 * source station and c the given channel, then the set of stations T returned is such that, for all t in T,
 	 * <p>
 	 * s cannot be on c at the same time as t is on c+1 for all c in C
 	 * </p> 
 	 */
-	public Set<Station> getADJplusInterferingStations(Station aStation, Set<Integer> aChannelRange);
+	public Set<Station> getADJplusInterferingStations(Station aStation, int aChannel);
 	
 	/**
 	 * @param aAssignment - an assignment of channels to (set of) stations.
