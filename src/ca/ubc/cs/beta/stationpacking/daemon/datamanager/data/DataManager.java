@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.HashMap;
 
-import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.DACConstraintManager;
+import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.ChannelSpecificConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.DomainStationManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
@@ -33,6 +33,7 @@ public class DataManager {
 	 */
 	public boolean addData(String path) throws FileNotFoundException
 	{
+		
 		ManagerBundle bundle = fData.get(path);
 		if (bundle != null)
 		{
@@ -41,7 +42,7 @@ public class DataManager {
 		else
 		{
 			IStationManager stationManager = new DomainStationManager(path+DOMAIN_FILE);
-			IConstraintManager constraintManager = new DACConstraintManager(stationManager, path+INTERFERENCES_FILE);
+			IConstraintManager constraintManager = new ChannelSpecificConstraintManager(stationManager, path+INTERFERENCES_FILE);
 			fData.put(path, new ManagerBundle(stationManager, constraintManager));
 			return true;
 		}

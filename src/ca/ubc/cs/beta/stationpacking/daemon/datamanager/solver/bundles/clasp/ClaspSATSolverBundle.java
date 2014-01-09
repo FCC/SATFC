@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ASolverBundle;
-import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.DACConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat.ClaspLibSATSolverParameters;
@@ -16,6 +15,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.CompressedSATBasedSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.ClaspSATSolver;
+import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
 
 public class ClaspSATSolverBundle extends ASolverBundle{
 	
@@ -54,12 +54,12 @@ public class ClaspSATSolverBundle extends ASolverBundle{
 	public ISolver getSolver(StationPackingInstance aInstance) {
 		
 		//Return the right solver based on the channels in the instance.
-		if(DACConstraintManager.HVHF_CHANNELS.containsAll(aInstance.getChannels()) || DACConstraintManager.LVHF_CHANNELS.containsAll(aInstance.getChannels()))
+		if(StationPackingUtils.HVHF_CHANNELS.containsAll(aInstance.getChannels()) || StationPackingUtils.LVHF_CHANNELS.containsAll(aInstance.getChannels()))
 		{
 			log.debug("Returning clasp configured for VHF (September 2013).");
 			return fClaspHVHF;
 		}
-		else if(DACConstraintManager.UHF_CHANNELS.containsAll(aInstance.getChannels()))
+		else if(StationPackingUtils.UHF_CHANNELS.containsAll(aInstance.getChannels()))
 		{
 			log.debug("Returning clasp configured for UHF (November 2013).");
 			return fClaspUHF;
