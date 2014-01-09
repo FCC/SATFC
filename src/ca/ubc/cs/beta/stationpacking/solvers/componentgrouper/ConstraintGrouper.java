@@ -13,8 +13,8 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager
 
 public class ConstraintGrouper implements IComponentGrouper{
 	
-	
 	//NA - just assume that at least two feasible channels are adjacent (so that ADJ constraints are relevant).
+	@Override
 	public Set<Set<Station>> group(StationPackingInstance aInstance, IConstraintManager aConstraintManager){
 		
 		SimpleGraph<Station,DefaultEdge> aConstraintGraph = getConstraintGraph(aInstance, aConstraintManager);
@@ -46,14 +46,28 @@ public class ConstraintGrouper implements IComponentGrouper{
 		}
 		
 		for(Station aStation1 : aStations){
-			for(Station aStation2 : aConstraintManager.getCOInterferingStations(aStation1, aInstanceDomain)){
-				if(aConstraintGraph.containsVertex(aStation2)){
-					aConstraintGraph.addEdge(aStation1, aStation2);
+			for(Integer channel : aInstanceDomain)
+			{
+				for(Station aStation2 : aConstraintManager.getCOInterferingStations(aStation1, channel)){
+					if(aStation1.getDomain().contains(channel))
+					{
+						if(aConstraintGraph.containsVertex(aStation2)){
+							aConstraintGraph.addEdge(aStation1, aStation2);
+						}
+					}
 				}
-			}
-			for(Station aStation2 : aConstraintManager.getADJplusInterferingStations(aStation1,aInstanceDomain)){
-				if(aConstraintGraph.containsVertex(aStation2)){
-					aConstraintGraph.addEdge(aStation1, aStation2);
+				
+				int channelp1 = channel+1;
+				if(aInstanceDomain.contains(channelp1))
+				{
+					for(Station aStation2 : aConstraintManager.getADJplusInterferingStations(aStation1,channel)){
+						if(aStation2.getDomain().contains(channelp1))
+						{
+							if(aConstraintGraph.containsVertex(aStation2)){
+								aConstraintGraph.addEdge(aStation1, aStation2);
+							}
+						}
+					}
 				}
 			}
 		}

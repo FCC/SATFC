@@ -6,11 +6,11 @@ import org.slf4j.LoggerFactory;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ASolverBundle;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBundle;
-import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.DACConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.certifierpresolvers.SimpleBounderPresolver;
+import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
 
 public class SimpleBounderPresolverBundle extends ASolverBundle {
 
@@ -25,15 +25,15 @@ public class SimpleBounderPresolverBundle extends ASolverBundle {
 		super(aStationManager,aConstraintManager);
 		
 		log.debug("Initializing the UHF, LHVHF, HVHF simple bounder pre-solvers.");
-		StationPackingInstance UHFinstance = new StationPackingInstance(aStationManager.getStations(), DACConstraintManager.UHF_CHANNELS);
+		StationPackingInstance UHFinstance = new StationPackingInstance(aStationManager.getStations(), StationPackingUtils.UHF_CHANNELS);
 		UHFpresolver = new SimpleBounderPresolver(aISolverBundle.getSolver(UHFinstance), 
 				this.getConstraintManager());
 		
-		StationPackingInstance HVHFinstance = new StationPackingInstance(aStationManager.getStations(), DACConstraintManager.HVHF_CHANNELS);
+		StationPackingInstance HVHFinstance = new StationPackingInstance(aStationManager.getStations(), StationPackingUtils.HVHF_CHANNELS);
 		HVHFpresolver = new SimpleBounderPresolver(aISolverBundle.getSolver(HVHFinstance), 
 				this.getConstraintManager());
 		
-		StationPackingInstance LVHFinstance = new StationPackingInstance(aStationManager.getStations(), DACConstraintManager.LVHF_CHANNELS);
+		StationPackingInstance LVHFinstance = new StationPackingInstance(aStationManager.getStations(), StationPackingUtils.LVHF_CHANNELS);
 		LVHFpresolver = new SimpleBounderPresolver(aISolverBundle.getSolver(LVHFinstance), 
 				this.getConstraintManager());
 		
@@ -42,15 +42,15 @@ public class SimpleBounderPresolverBundle extends ASolverBundle {
 	
 	@Override
 	public ISolver getSolver(StationPackingInstance aInstance) {
-		if(DACConstraintManager.HVHF_CHANNELS.containsAll(aInstance.getChannels()))
+		if(StationPackingUtils.HVHF_CHANNELS.containsAll(aInstance.getChannels()))
 		{
 			return HVHFpresolver;
 		}
-		else if(DACConstraintManager.LVHF_CHANNELS.containsAll(aInstance.getChannels()))
+		else if(StationPackingUtils.LVHF_CHANNELS.containsAll(aInstance.getChannels()))
 		{
 			return LVHFpresolver;
 		}
-		else if(DACConstraintManager.UHF_CHANNELS.containsAll(aInstance.getChannels()))
+		else if(StationPackingUtils.UHF_CHANNELS.containsAll(aInstance.getChannels()))
 		{
 			return UHFpresolver;
 		}
