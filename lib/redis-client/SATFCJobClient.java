@@ -2,6 +2,7 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Response;
 import redis.clients.jedis.Transaction;
 import redis.clients.jedis.exceptions.JedisConnectionException;
+import redis.clients.jedis.exceptions.JedisDataException;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -509,7 +510,7 @@ public class SATFCJobClient implements Runnable {
 					
 					String answer_json = gson.toJson(answer_raw);
 					
-					report("Answer to return is " + answer_json);
+					report("Answer to return is "+answer_json+"\n\n");
 					set_solver_status("SATFC server has answer for job "+job);
 	        
 					_caster.send_assignment(problem_set_id, new_station, gson.toJson(result.get_witness_assignment()));
@@ -768,16 +769,34 @@ class JobCaster {
 	static final int CLIENT_STATUS_REPORT_INTERVAL = 5;
 	static final int CLIENT_STATUS_REPORT_EXPIRATION = 5 * 60;
 	
-	static final String REDIS_SERVER_URL = "localhost";
+	static final String DEFAULT_JOB_CASTER_URL = "localhost";
+	
+	// Taken from Tokens::TOKEN in fcctv/trunk/tokens.rb.
+	static final String TOKEN = "a052a4001fddb5f13686cfce7325e2b94a93061328c4abb1ac60d6463df1b377";
 		
 	Jedis _jedis;
 	Gson _gson = new Gson();
 	
 	JobCaster(String url) {
 		if (url == null) {
-			url = REDIS_SERVER_URL;
+			url = DEFAULT_JOB_CASTER_URL;
 		}
 		_jedis = new Jedis(url);
+		try {
+			_jedis.auth(TOKEN);
+		} catch (JedisDataException e) {
+			if (e.getMessage().equals("ERR Client sent AUTH, but no password is set")) {
+				String specifics = url == "localhost" ?
+						"If you are running a test, be sure start Redis using ./redis-server-with-auth from fcctv/trunk." :
+						"If you are running against an EC2 broker, be sure that /etc/redis/redis.conf has requirepass set to #{TOKEN}.";
+				throw new JedisDataException(e.getMessage()+".  "+specifics);
+			} else if (e.getMessage().equals("ERR invalid password")) {
+				throw new JedisDataException(e.getMessage()+
+					".  TOKEN \""+TOKEN+"\" should match Tokens::TOKEN in fcctv/trunk/tokens.rb.");
+			} else {
+				throw e;
+			}
+		}
 	}
 	
 	boolean is_alive() {
