@@ -463,6 +463,7 @@ public class SATFCJobClient implements Runnable {
 				String job = _caster.block_for_job();
 				record_poll_time(now() - start_poll);
 				
+
 				if (job != null) {
 					report("Found job "+job);
 					set_solver_status("SATFC server found job "+job);

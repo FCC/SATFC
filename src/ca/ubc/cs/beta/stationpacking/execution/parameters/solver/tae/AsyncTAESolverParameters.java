@@ -56,6 +56,7 @@ public class AsyncTAESolverParameters extends AbstractOptions{
 		log.info("Creating constraint grouper...");
 		IComponentGrouper aGrouper = new ConstraintGrouper();
 		
+		@SuppressWarnings("deprecation")
 		TargetAlgorithmEvaluator aTAE = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(AlgorithmExecutionOptions.taeOpts, false, AvailableTAEOptions);
 		
 		log.info("Creating solver...");

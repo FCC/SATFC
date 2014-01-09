@@ -4,6 +4,7 @@ import java.io.File;
 
 import ca.ubc.cs.beta.aclib.execconfig.AlgorithmExecutionOptions;
 import ca.ubc.cs.beta.aclib.misc.jcommander.JCommanderHelper;
+import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluator;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorBuilder;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
@@ -68,10 +69,13 @@ public class NewSolverTest {
 			 * I used some of the TAE options from the parameter object to set up a TAE based SAT solver, you should set up your "library" based SAT solver.
 			 */
 			
+			@SuppressWarnings("deprecation")
+			TargetAlgorithmEvaluator aTAE = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(aAlgorithmExecutionOptions.taeOpts,
+					false,
+					aInstanceGenerationParameters.SolverParameters.TAESolverParameters.AvailableTAEOptions);
+			
 			ISATSolver aTAESATSolver = new TAESATSolver(
-					TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(aAlgorithmExecutionOptions.taeOpts,
-							false,
-							aInstanceGenerationParameters.SolverParameters.TAESolverParameters.AvailableTAEOptions),
+					aTAE,
 					aAlgorithmExecutionOptions.getAlgorithmExecutionConfig(null).getParamFile().getDefaultConfiguration(),
 					aAlgorithmExecutionOptions.getAlgorithmExecutionConfig(null),
 					aCNFDir);
