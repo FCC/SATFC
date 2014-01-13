@@ -476,23 +476,25 @@ public class SATFCJobClient implements Runnable {
 					
 					double start_time = now();
 					_statistics.put("latest_problem", start_time);
-	
+					
+					Gson gson = new Gson();
+					FeasibilityResult result;
+					
 					String problem_set_json = _caster.get_problem_set(problem_set_id);
 					if (problem_set_json == null) {
 						String missing_problem_set = "missing problem set "+problem_set_id;
 						set_solver_status(missing_problem_set);
 						report_status();
 						report(missing_problem_set);
-						continue;
+						
+						result = new FeasibilityResult(Integer.parseInt(new_station), Answer.ERROR, missing_problem_set, 0.0, 0.0, null);
+					} else {
+						ProblemSet problem_set = new ProblemSet(problem_set_json);
+						result = run_feasibility_check(problem_set, Integer.parseInt(new_station));
+						
+						report("Result from checker was " + result.get_answer());
+						report("Json version of result is " + gson.toJson(result));
 					}
-					ProblemSet problem_set = new ProblemSet(problem_set_json);
-					
-					FeasibilityResult result = run_feasibility_check(problem_set, Integer.parseInt(new_station));
-					
-					report("Result from checker was " + result.get_answer());
-					
-					Gson gson = new Gson();
-					report("Json version of result is " + gson.toJson(result));
 					
 					Map<String, Double> time_data = new HashMap<String, Double>();
 					time_data.put("satfc_time", result.get_time());
