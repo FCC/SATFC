@@ -512,6 +512,13 @@ public class SATFCJobClient implements Runnable {
 						report("Unusual exception (with feasibility checking):");
 						e.printStackTrace();
 						set_solver_status("Encountered an unusual exception (with feasibility checking): "+e.getMessage());
+						report_status();
+						
+						JsonObject error_json = new JsonObject();
+						error_json.addProperty("job", job);
+						error_json.addProperty("location", location());
+						error_json.addProperty("error message", e.getMessage());
+						_caster.report_error(error_json.toString());
 						
 						double time = now() - start_time;
 						result = new FeasibilityResult(Integer.parseInt(new_station), Answer.ERROR, e.getMessage(), time, time, null);
