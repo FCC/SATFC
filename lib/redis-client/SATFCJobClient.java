@@ -52,6 +52,7 @@ import com.sun.jna.Platform;
  * both it and SATFC Solver Server can be executed at the same time.
  */
 public class SATFCJobClient implements Runnable {
+	public static final String VERSION = "2014-01-14"; // Generally use the release date.
 	
 	public enum Answer { YES, NO, UNKNOWN, ERROR }
 	
@@ -116,6 +117,8 @@ public class SATFCJobClient implements Runnable {
 				// Try again.
 			}
 		}
+		
+		_name = options.name;
 	}
 	
 	static final long RETRY_DELAY = 3000;
@@ -142,6 +145,7 @@ public class SATFCJobClient implements Runnable {
 	Gson _gson = new Gson();
 	String _constraint_sets_directory;
 	String _redis_url;
+	String _name;
 	JobCaster _caster;
 	String _client_id;
 	long _created_at = (long)now();
@@ -165,26 +169,33 @@ public class SATFCJobClient implements Runnable {
 	// Parts of status reports
 	
 	String get_ip() {
+		String ip = "unkown";
 		try {
 			Process process = Runtime.getRuntime().exec("curl -s http://ipecho.net/plain");
-			return IOUtils.toString(process.getInputStream());
-		} catch (IOException e) {
-			return "";
-		}
+			String result = IOUtils.toString(process.getInputStream());
+			if (result.length() <= "000.000.000.000".length()) { // guard against HTTP 500 errors, etc.
+				ip = result;
+			}
+		} catch (IOException e) {}
+		return ip;
 	}
 	
 	String _location;
 	String location() {
 		if (_location == null) {
-			_location = System.getenv().get("WAN_IP");
-			if (_location == null) {
+			String ip = System.getenv().get("WAN_IP");
+			if (ip == null) {
 				report("Getting IP from http://ipecho.net/plain.  Set WAN_IP environment variable to make this go faster.");
-				_location = get_ip();
-				report("IP is "+_location);
+				ip = get_ip();
+				report("IP is "+ip);
 			}
-			if (_location == null || _location.isEmpty()) {
-				_location = "N/A";
+			
+			_location = ip;
+			if (_name != null) {
+				_location += " #"+_name;
 			}
+			
+			_location += " v"+VERSION;
 		}
 		return _location;
 	}
@@ -591,6 +602,10 @@ public class SATFCJobClient implements Runnable {
 		@Option(name="-c", aliases={"--constraint_sets_directory"}, metaVar="path",
 			usage="Path to a directory of constraint sets.  Contents should be of the form $constraint_set_name/{domains,interferences}.csv.")
 		String constraint_sets_directory;
+		
+		@Option(name="-n", aliases={"--name"}, metaVar="name",
+			usage="Name for this SATFCJobClient instance.")
+		String name;
     	
     	@Option(name="-h", aliases={"--help"},
     		usage="Show this message")
