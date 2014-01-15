@@ -18,6 +18,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import ca.ubc.cs.beta.aclib.logging.LogLevel;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverManager;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.listener.ServerListener;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.responder.ServerResponse;
@@ -672,6 +673,14 @@ public class SATFCJobClient implements Runnable {
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
+		
+		/*
+		 * Set logging options.
+		 * Note that conf/logback.xml needs to be packaged with executable for logging to work properly.
+		 */
+		aParameters.LoggingOptions.logLevel = LogLevel.INFO;
+		aParameters.LoggingOptions.initializeLogging();
+		
 				
 		SolverManager aSolverManager = aParameters.getSolverManager();
 		ServerSolverInterrupter aSolverState = new ServerSolverInterrupter();

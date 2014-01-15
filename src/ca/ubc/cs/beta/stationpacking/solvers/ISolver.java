@@ -4,13 +4,23 @@ import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 
 /**
+ * <p>
  * Solves station packing problem instance.
- * Usually a (fancy) wrapper around a SAT solver.
+ * </p>
+ * <p>
+ * Strongly suggested to use notifyShutdown() once finished with the solver (so that all resources can be released). 
+ * </p>
  * @author afrechet
- *
  */
 public interface ISolver {
 	
+	/**
+	 * Solve a station packing instance under the provided CPU time cutoff and given seed.
+	 * @param aInstance - the instance to solved.
+	 * @param aCutoff - the CPU time cutoff to use.
+	 * @param aSeed - the execution seed.
+	 * @return
+	 */
 	public SolverResult solve(StationPackingInstance aInstance, double aCutoff, long aSeed);
 	
 	/**
