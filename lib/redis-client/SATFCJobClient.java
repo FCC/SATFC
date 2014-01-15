@@ -2,6 +2,7 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Response;
 import redis.clients.jedis.Transaction;
 import redis.clients.jedis.exceptions.JedisConnectionException;
+import redis.clients.jedis.exceptions.JedisDataException;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -51,6 +52,7 @@ import com.sun.jna.Platform;
  * both it and SATFC Solver Server can be executed at the same time.
  */
 public class SATFCJobClient implements Runnable {
+	public static final String VERSION = "2014-01-14"; // Generally use the release date.
 	
 	public enum Answer { YES, NO, UNKNOWN, ERROR }
 	
@@ -102,6 +104,7 @@ public class SATFCJobClient implements Runnable {
 		fServerSolver = aServerSolver;
 		
 		_constraint_sets_directory = options.constraint_sets_directory;
+		report("Using constraints in "+_constraint_sets_directory+".");
 		_statistics = new HashMap<String, Object>();
 		
 		_redis_url = options.redis_url;
@@ -114,6 +117,8 @@ public class SATFCJobClient implements Runnable {
 				// Try again.
 			}
 		}
+		
+		_name = options.name;
 	}
 	
 	static final long RETRY_DELAY = 3000;
@@ -126,7 +131,7 @@ public class SATFCJobClient implements Runnable {
 				_caster.is_alive(); // throws JedisConnectionException if there's a connection problem.
 				break;
 			} catch (JedisConnectionException e) {
-				report("Cannot contact Redis at "+_redis_url+".  Retry in "+RETRY_DELAY+"ms.");
+				report("Cannot contact Redis at "+_redis_url+".  Retry in "+RETRY_DELAY+"ms.  "+e.getMessage());
 				
 				try {
 					Thread.sleep(RETRY_DELAY);
@@ -140,6 +145,7 @@ public class SATFCJobClient implements Runnable {
 	Gson _gson = new Gson();
 	String _constraint_sets_directory;
 	String _redis_url;
+	String _name;
 	JobCaster _caster;
 	String _client_id;
 	long _created_at = (long)now();
@@ -163,26 +169,33 @@ public class SATFCJobClient implements Runnable {
 	// Parts of status reports
 	
 	String get_ip() {
+		String ip = "unkown";
 		try {
 			Process process = Runtime.getRuntime().exec("curl -s http://ipecho.net/plain");
-			return IOUtils.toString(process.getInputStream());
-		} catch (IOException e) {
-			return "";
-		}
+			String result = IOUtils.toString(process.getInputStream());
+			if (result.length() <= "000.000.000.000".length()) { // guard against HTTP 500 errors, etc.
+				ip = result;
+			}
+		} catch (IOException e) {}
+		return ip;
 	}
 	
 	String _location;
 	String location() {
 		if (_location == null) {
-			_location = System.getenv().get("WAN_IP");
-			if (_location == null) {
+			String ip = System.getenv().get("WAN_IP");
+			if (ip == null) {
 				report("Getting IP from http://ipecho.net/plain.  Set WAN_IP environment variable to make this go faster.");
-				_location = get_ip();
-				report("IP is "+_location);
+				ip = get_ip();
+				report("IP is "+ip);
 			}
-			if (_location == null || _location.isEmpty()) {
-				_location = "N/A";
+			
+			_location = ip;
+			if (_name != null) {
+				_location += " #"+_name;
 			}
+			
+			_location += " v"+VERSION;
 		}
 		return _location;
 	}
@@ -217,7 +230,8 @@ public class SATFCJobClient implements Runnable {
 			return;
 		}
 		
-		report("Reporting status to server");
+		String location = _redis_url == null ? "localhost" : _redis_url;
+		report("Reporting status to server at "+location+".");
 		_caster.report_status(_client_id, status());
 		_last_status_report_time = now();
 	}
@@ -225,7 +239,7 @@ public class SATFCJobClient implements Runnable {
 	void increment_statistic(String key, double increment) {
 		Double wrapper = (Double)_statistics.get(key);
 		double aggregate = wrapper == null ? 0 : wrapper.doubleValue();
-		_statistics.put(key, aggregate);
+		_statistics.put(key, aggregate + increment);
 	}
 	
 	void record_fc(String new_station, String answer, double satfc_time, double working_time) {
@@ -297,6 +311,7 @@ public class SATFCJobClient implements Runnable {
 		
 		//Static problem parameters that are not provided.
 		try {
+			
 			InetAddress dummyAddress = InetAddress.getLocalHost();
 			int dummyPort = 111111;
 			long seed = 1;
@@ -314,6 +329,7 @@ public class SATFCJobClient implements Runnable {
 			 */
 			String constraint_set = problem_set.get_constraint_set();
 			String datafoldername = new File(_constraint_sets_directory, constraint_set).getPath();
+			report("Using constraint set at "+datafoldername+".");
 			
 			/*
 			 * Create an instance string as outlined in the SATFC [readme](
@@ -341,6 +357,7 @@ public class SATFCJobClient implements Runnable {
 			instance.setLength(instance.length() - 1);
 			instance.append('_');
 			
+	
 			// stations
 			if (problem_set._tentative_assignment != null) {
 				for (String station : problem_set._tentative_assignment.keySet()) {
@@ -433,7 +450,7 @@ public class SATFCJobClient implements Runnable {
 					}
 				}
 			}
-			
+				
 			/*
 			 * Also piping in as message the full answerMessage (which might be pretty long), but may be useful for debugging purpose.
 			 * Might want to remove it.
@@ -441,8 +458,9 @@ public class SATFCJobClient implements Runnable {
 			FeasibilityResult result = new FeasibilityResult(new_station, answer, answerMessage, time, time, witness);
 			
 			return result;
-		
-		} catch (UnknownHostException | SolverServerStateInterruptedException | SolvingInterrupedException e) {
+			
+		} 
+			catch (UnknownHostException | SolverServerStateInterruptedException | SolvingInterrupedException e) {
 			throw new RuntimeException(e);
 		}
 	}
@@ -472,23 +490,42 @@ public class SATFCJobClient implements Runnable {
 					
 					double start_time = now();
 					_statistics.put("latest_problem", start_time);
-	
-					String problem_set_json = _caster.get_problem_set(problem_set_id);
-					if (problem_set_json == null) {
-						String missing_problem_set = "missing problem set "+problem_set_id;
-						set_solver_status(missing_problem_set);
-						report_status();
-						report(missing_problem_set);
-						continue;
-					}
-					ProblemSet problem_set = new ProblemSet(problem_set_json);
-					
-					FeasibilityResult result = run_feasibility_check(problem_set, Integer.parseInt(new_station));
-					
-					report("Result from checker was " + result.get_answer());
 					
 					Gson gson = new Gson();
-					report("Json version of result is " + gson.toJson(result));
+					FeasibilityResult result;
+					
+					try {
+						String problem_set_json = _caster.get_problem_set(problem_set_id);
+						if (problem_set_json == null) {
+							String missing_problem_set = "missing problem set "+problem_set_id;
+							set_solver_status(missing_problem_set);
+							report_status();
+							report(missing_problem_set);
+							
+							double time = now() - start_time;
+							result = new FeasibilityResult(Integer.parseInt(new_station), Answer.ERROR, missing_problem_set, time, time, null);
+						} else {
+							ProblemSet problem_set = new ProblemSet(problem_set_json);
+							result = run_feasibility_check(problem_set, Integer.parseInt(new_station));
+							
+							report("Result from checker was " + result.get_answer());
+							report("Json version of result is " + gson.toJson(result));
+						}
+					} catch (Exception e) {
+						report("Unusual exception (with feasibility checking):");
+						e.printStackTrace();
+						set_solver_status("Encountered an unusual exception (with feasibility checking): "+e.getMessage());
+						report_status();
+						
+						JsonObject error_json = new JsonObject();
+						error_json.addProperty("job", job);
+						error_json.addProperty("location", location());
+						error_json.addProperty("error message", e.getMessage());
+						_caster.report_error(error_json.toString());
+						
+						double time = now() - start_time;
+						result = new FeasibilityResult(Integer.parseInt(new_station), Answer.ERROR, e.getMessage(), time, time, null);
+					}
 					
 					Map<String, Double> time_data = new HashMap<String, Double>();
 					time_data.put("satfc_time", result.get_time());
@@ -506,7 +543,7 @@ public class SATFCJobClient implements Runnable {
 					
 					String answer_json = gson.toJson(answer_raw);
 					
-					report("Answer to return is " + answer_json);
+					report("Answer to return is "+answer_json+"\n\n");
 					set_solver_status("SATFC server has answer for job "+job);
 	        
 					_caster.send_assignment(problem_set_id, new_station, gson.toJson(result.get_witness_assignment()));
@@ -522,9 +559,9 @@ public class SATFCJobClient implements Runnable {
 			} catch (JedisConnectionException e) {
 				reconnect();
 			} catch (Exception e) {
-				report("Unusual exception:");
+				report("Unusual exception (with Redis communication):");
 				e.printStackTrace();
-				set_solver_status("Encountered an unusual exception: "+e.getMessage());
+				set_solver_status("Encountered an unusual exception (with Redis communication): "+e.getMessage());
 				report_status();
 			}
 		}
@@ -575,6 +612,10 @@ public class SATFCJobClient implements Runnable {
 		@Option(name="-c", aliases={"--constraint_sets_directory"}, metaVar="path",
 			usage="Path to a directory of constraint sets.  Contents should be of the form $constraint_set_name/{domains,interferences}.csv.")
 		String constraint_sets_directory;
+		
+		@Option(name="-n", aliases={"--name"}, metaVar="name",
+			usage="Name for this SATFCJobClient instance.")
+		String name;
     	
     	@Option(name="-h", aliases={"--help"},
     		usage="Show this message")
@@ -765,16 +806,34 @@ class JobCaster {
 	static final int CLIENT_STATUS_REPORT_INTERVAL = 5;
 	static final int CLIENT_STATUS_REPORT_EXPIRATION = 5 * 60;
 	
-	static final String REDIS_SERVER_URL = "localhost";
+	static final String DEFAULT_JOB_CASTER_URL = "localhost";
+	
+	// Taken from Tokens::TOKEN in fcctv/trunk/tokens.rb.
+	static final String TOKEN = "a052a4001fddb5f13686cfce7325e2b94a93061328c4abb1ac60d6463df1b377";
 		
 	Jedis _jedis;
 	Gson _gson = new Gson();
 	
 	JobCaster(String url) {
 		if (url == null) {
-			url = REDIS_SERVER_URL;
+			url = DEFAULT_JOB_CASTER_URL;
 		}
 		_jedis = new Jedis(url);
+		try {
+			_jedis.auth(TOKEN);
+		} catch (JedisDataException e) {
+			if (e.getMessage().equals("ERR Client sent AUTH, but no password is set")) {
+				String specifics = url == "localhost" ?
+						"If you are running a test, be sure start Redis using ./redis-server-with-auth from fcctv/trunk." :
+						"If you are running against an EC2 broker, be sure that /etc/redis/redis.conf has requirepass set to #{TOKEN}.";
+				throw new JedisDataException(e.getMessage()+".  "+specifics);
+			} else if (e.getMessage().equals("ERR invalid password")) {
+				throw new JedisDataException(e.getMessage()+
+					".  TOKEN \""+TOKEN+"\" should match Tokens::TOKEN in fcctv/trunk/tokens.rb.");
+			} else {
+				throw e;
+			}
+		}
 	}
 	
 	boolean is_alive() {

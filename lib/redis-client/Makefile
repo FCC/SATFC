@@ -23,3 +23,7 @@ run_db: classes
 
 clean:
 	$(RM) *.class
+	# Removing all class files is in order.
+	# It does confuse git because they are expected to be placed in jars.
+	# The easist solution is to just use Eclipse.
+	find ../../ -name *.class -exec rm -f '{}' \;
