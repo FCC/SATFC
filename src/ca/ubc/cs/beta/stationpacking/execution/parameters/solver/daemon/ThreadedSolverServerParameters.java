@@ -49,7 +49,7 @@ public class ThreadedSolverServerParameters extends AbstractOptions {
 	public int Port;
 	
 	@ParametersDelegate
-	public LoggingOptions LoggingOptions = new ComplexLoggingOptions();
+	public ComplexLoggingOptions LoggingOptions = new ComplexLoggingOptions();
 	
 	public SolverManager getSolverManager()
 	{
