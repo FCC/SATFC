@@ -72,19 +72,6 @@ public class DACConstraintManager implements IConstraintManager{
 			Integer aID;
 			Station aStation;
 			while((aLine = aReader.readNext())!=null){	//NA - perform some sanity checks
-				
-				/*
-				 * As a temporary measure swap ADJ+1 with ADJ-1.  Here is probably a better way to handle this below,
-				 * but someone else should sanity check this.
-				 * 
-				 * @author wtaysom
-				 */
-				if (aLine[0].replaceAll("\\s", "").equals("ADJ+1")) {
-					aLine[0] = "ADJ-1";
-				} else if (aLine[0].replaceAll("\\s", "").equals("ADJ-1")) {
-					aLine[0] = "ADJ+1";
-				}
-				
 				aID = Integer.valueOf(aLine[3].replaceAll("\\s", ""));
 				if((aStation=fStations.get(aID)) != null){
 					Integer aChannelLower = Integer.valueOf(aLine[1].replaceAll("\\s", ""));
@@ -106,7 +93,14 @@ public class DACConstraintManager implements IConstraintManager{
 							if(aString.length()>0){
 								Integer aID2 = Integer.valueOf(aString);
 								if(fStations.containsKey(aID2)){ //NA - don't assume that CO constraints are symmetric
-									aCOConstraints.get(aChannelType).get(aStation).add(fStations.get(aID2)); 
+									aCOConstraints.get(aChannelType).get(aStation).add(fStations.get(aID2));
+									
+									/*
+									 * CO constraints should be symmetric though.
+									 * 
+									 * @author wtaysom
+									 */
+									aCOConstraints.get(aChannelType).get(fStations.get(aID2)).add(aStation);
 								} else {
 									aReader.close();
 									throw new IllegalStateException("Station "+aID2+" not fount in fStations.");
@@ -119,8 +113,21 @@ public class DACConstraintManager implements IConstraintManager{
 							if(aString.length()>0){
 								Integer aID2 = Integer.valueOf(aString);
 								if(fStations.containsKey(aID2)){ //NA - ADJ+1 constraints are asymmetric
-									aADJminusConstraints.get(aChannelType).get(aStation).add(fStations.get(aID2)); 
-									aADJplusConstraints.get(aChannelType).get(fStations.get(aID2)).add(aStation);
+									/*
+									 * Switched semantics with ADJ-1.
+									 * 
+									 * @author wtaysom
+									 */
+									aADJminusConstraints.get(aChannelType).get(fStations.get(aID2)).add(aStation);
+									aADJplusConstraints.get(aChannelType).get(aStation).add(fStations.get(aID2));
+									
+									/*
+									 * Add CO constraints too.
+									 * 
+									 * @author wtaysom
+									 */
+									aCOConstraints.get(aChannelType).get(aStation).add(fStations.get(aID2));
+									aCOConstraints.get(aChannelType).get(fStations.get(aID2)).add(aStation);
 								} else {
 									aReader.close();
 									throw new IllegalArgumentException("Station "+aID2+" not fount in fStations.");
@@ -134,8 +141,21 @@ public class DACConstraintManager implements IConstraintManager{
 						if(aString.length()>0){
 							Integer aID2 = Integer.valueOf(aString);
 							if(fStations.containsKey(aID2)){ //NA - ADJ-1 constraints are asymmetric
-								aADJminusConstraints.get(aChannelType).get(fStations.get(aID2)).add(aStation);
-								aADJplusConstraints.get(aChannelType).get(aStation).add(fStations.get(aID2)); 
+								/*
+								 * Switched semantics with ADJ+1.
+								 * 
+								 * @author wtaysom
+								 */
+								aADJminusConstraints.get(aChannelType).get(aStation).add(fStations.get(aID2)); 
+								aADJplusConstraints.get(aChannelType).get(fStations.get(aID2)).add(aStation);
+								
+								/*
+								 * Add CO constraints too.
+								 * 
+								 * @author wtaysom
+								 */
+								aCOConstraints.get(aChannelType).get(aStation).add(fStations.get(aID2));
+								aCOConstraints.get(aChannelType).get(fStations.get(aID2)).add(aStation);
 							} else {
 								aReader.close();
 								throw new IllegalArgumentException("Station "+aID2+" not fount in fStations.");
