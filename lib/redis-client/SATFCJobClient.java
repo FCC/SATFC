@@ -297,150 +297,150 @@ public class SATFCJobClient implements Runnable {
 		
 		//Static problem parameters that are not provided.
 		try {
-		InetAddress dummyAddress = InetAddress.getLocalHost();
-		int dummyPort = 111111;
-		long seed = 1;
-		
-		/*
-		 * Parse problem into solving job for solver server.
-		 */
-		double cutoff = problem_set.get_timeout_ms()/1000.0;
-		String problem_id = next_problem_id();
-		
-		/*
-		 * Since constraint_set() is the name of the folder containing constraint interference
-		 * and domain constraints, we use the argument -c (--constraint_sets_directory) to provide the location of
-		 * the directory containing individual constraint sets.
-		 */
-		String constraint_set = problem_set.get_constraint_set();
-		String datafoldername = new File(_constraint_sets_directory, constraint_set).getPath();
-		
-		/*
-		 * Create an instance string as outlined in the SATFC [readme](
-		 * https://docs.google.com/document/d/1TuuFr6lxOjv7QMPZztIFzS_34TaE6-qeNJjaHufOrAE/edit):
-		 * 
-		 * "A formatted instance string is simply a [dash] "-"-separated list of channels, a [dash] "-"-separated list
-		 * of stations and an optional previously valid partial channel assignment (in the form of a [dash] "-"-separated
-		 * list of station-channel assignments joined by [commas] ","), all [three parts] joined by a "_" [underscore].
-		 * For example, the feasibility checking problem of packing stations 100,231 and 597 into channels 14,15,16,17
-		 * and 18 with previous assignment 231 to 16 and 597 to 18 is represented by the following formatted instance
-		 * string:
-		 * 
-		 *   14-15-16-17-18_100-231-597_231,16-597,18
-		 * 
-		 */
-		// channels
-		StringBuilder instance = new StringBuilder();
-		for (int channel : CHANNELS_FOR_BAND[problem_set._band]) {
-			if (channel > problem_set._highest) {
-				break;
-			}
-			instance.append(channel);
-			instance.append('-');
-		}
-		instance.setLength(instance.length() - 1);
-		instance.append('_');
-		
-		// stations
-		if (problem_set._tentative_assignment != null) {
-			for (String station : problem_set._tentative_assignment.keySet()) {
-				instance.append(station);
+			InetAddress dummyAddress = InetAddress.getLocalHost();
+			int dummyPort = 111111;
+			long seed = 1;
+			
+			/*
+			 * Parse problem into solving job for solver server.
+			 */
+			double cutoff = problem_set.get_timeout_ms()/1000.0;
+			String problem_id = next_problem_id();
+			
+			/*
+			 * Since constraint_set() is the name of the folder containing constraint interference
+			 * and domain constraints, we use the argument -c (--constraint_sets_directory) to provide the location of
+			 * the directory containing individual constraint sets.
+			 */
+			String constraint_set = problem_set.get_constraint_set();
+			String datafoldername = new File(_constraint_sets_directory, constraint_set).getPath();
+			
+			/*
+			 * Create an instance string as outlined in the SATFC [readme](
+			 * https://docs.google.com/document/d/1TuuFr6lxOjv7QMPZztIFzS_34TaE6-qeNJjaHufOrAE/edit):
+			 * 
+			 * "A formatted instance string is simply a [dash] "-"-separated list of channels, a [dash] "-"-separated list
+			 * of stations and an optional previously valid partial channel assignment (in the form of a [dash] "-"-separated
+			 * list of station-channel assignments joined by [commas] ","), all [three parts] joined by a "_" [underscore].
+			 * For example, the feasibility checking problem of packing stations 100,231 and 597 into channels 14,15,16,17
+			 * and 18 with previous assignment 231 to 16 and 597 to 18 is represented by the following formatted instance
+			 * string:
+			 * 
+			 *   14-15-16-17-18_100-231-597_231,16-597,18
+			 * 
+			 */
+			// channels
+			StringBuilder instance = new StringBuilder();
+			for (int channel : CHANNELS_FOR_BAND[problem_set._band]) {
+				if (channel > problem_set._highest) {
+					break;
+				}
+				instance.append(channel);
 				instance.append('-');
 			}
-		}
-		if (problem_set._tentative_assignment == null ||
-				!problem_set._tentative_assignment.keySet().contains(Integer.toString(new_station))) {
-			instance.append(new_station);
-		}
-		
-		// optional previously valid partial channel assignment
-		 if (problem_set._tentative_assignment != null && !problem_set._tentative_assignment.isEmpty()) {
-		 	instance.append('_');
-		 	for (Map.Entry<String, Integer> entry : problem_set._tentative_assignment.entrySet()) {
-		 		if (entry.getValue().equals(-1)) { // Skip -1 assignments.
-		 			continue;
-		 		}
-		 		instance.append(entry.getKey());
-		 		instance.append(',');
-		 		instance.append(entry.getValue());
-		 		instance.append('-');
-		 	}
-		 	instance.setLength(instance.length() - 1);
-		 }
-		
-		String instance_string = instance.toString();
-		report("Solve instance "+instance_string);
-		SolvingJob solvingJob = new SolvingJob(problem_id, datafoldername, instance_string, cutoff, seed, dummyAddress, dummyPort);
-		
-		ServerResponse solverResponse;
-		try {
-			solverResponse = fServerSolver.solve(solvingJob);
-		} catch (ProblemInitializingOverheadTimeoutException e) {
-			solverResponse = e.answerResponse;
-		}
-		
-		double time = watch.stop() / 1000.0;
-		
-		/*
-		 * Parse answer from solver server.
-		 */
-		String answerMessage = solverResponse.getMessage();
-		String[] answerMessageParts = answerMessage.split(ServerListener.COMMANDSEP);
-		
-		Answer answer = Answer.UNKNOWN;
-		Map<Integer,Integer> witness = new HashMap<Integer,Integer>();
-		if(answerMessageParts[0].equals("ERROR"))
-		{
-			answer = Answer.ERROR;	
-		}
-		else if(answerMessageParts[0].equals("ANSWER"))
-		{
-			String resultString = answerMessageParts[2];
+			instance.setLength(instance.length() - 1);
+			instance.append('_');
 			
-			String[] resultParts = resultString.split(",");
-			
-			SATResult result = SATResult.valueOf(resultParts[0]);
-			switch(result)
-			{
-				case SAT:
-					answer = Answer.YES;
-					break;
-				case UNSAT:
-					answer = Answer.NO;
-					break;
-				default:
-					break;
+			// stations
+			if (problem_set._tentative_assignment != null) {
+				for (String station : problem_set._tentative_assignment.keySet()) {
+					instance.append(station);
+					instance.append('-');
+				}
+			}
+			if (problem_set._tentative_assignment == null ||
+					!problem_set._tentative_assignment.keySet().contains(Integer.toString(new_station))) {
+				instance.append(new_station);
 			}
 			
-			//double runtime = Double.valueOf(resultParts[1]);
+			// optional previously valid partial channel assignment
+			 if (problem_set._tentative_assignment != null && !problem_set._tentative_assignment.isEmpty()) {
+			 	instance.append('_');
+			 	for (Map.Entry<String, Integer> entry : problem_set._tentative_assignment.entrySet()) {
+			 		if (entry.getValue().equals(-1)) { // Skip -1 assignments.
+			 			continue;
+			 		}
+			 		instance.append(entry.getKey());
+			 		instance.append(',');
+			 		instance.append(entry.getValue());
+			 		instance.append('-');
+			 	}
+			 	instance.setLength(instance.length() - 1);
+			 }
 			
+			String instance_string = instance.toString();
+			report("Solve instance "+instance_string);
+			SolvingJob solvingJob = new SolvingJob(problem_id, datafoldername, instance_string, cutoff, seed, dummyAddress, dummyPort);
 			
-			if(resultParts.length==3)
+			ServerResponse solverResponse;
+			try {
+				solverResponse = fServerSolver.solve(solvingJob);
+			} catch (ProblemInitializingOverheadTimeoutException e) {
+				solverResponse = e.answerResponse;
+			}
+			
+			double time = watch.stop() / 1000.0;
+			
+			/*
+			 * Parse answer from solver server.
+			 */
+			String answerMessage = solverResponse.getMessage();
+			String[] answerMessageParts = answerMessage.split(ServerListener.COMMANDSEP);
+			
+			Answer answer = Answer.UNKNOWN;
+			Map<Integer,Integer> witness = new HashMap<Integer,Integer>();
+			if(answerMessageParts[0].equals("ERROR"))
 			{
-				String assignmentString = resultParts[2];
-				String[] assignmentStringParts = assignmentString.split(";");
+				answer = Answer.ERROR;	
+			}
+			else if(answerMessageParts[0].equals("ANSWER"))
+			{
+				String resultString = answerMessageParts[2];
 				
-				for(String channelAssignment : assignmentStringParts)
+				String[] resultParts = resultString.split(",");
+				
+				SATResult result = SATResult.valueOf(resultParts[0]);
+				switch(result)
 				{
-					int channel = Integer.valueOf(channelAssignment.split("-")[0]);
-					for(String stationString : channelAssignment.split("-")[1].split("_"))
+					case SAT:
+						answer = Answer.YES;
+						break;
+					case UNSAT:
+						answer = Answer.NO;
+						break;
+					default:
+						break;
+				}
+				
+				//double runtime = Double.valueOf(resultParts[1]);
+				
+				
+				if(resultParts.length==3)
+				{
+					String assignmentString = resultParts[2];
+					String[] assignmentStringParts = assignmentString.split(";");
+					
+					for(String channelAssignment : assignmentStringParts)
 					{
-						int station = Integer.valueOf(stationString);
-						
-						witness.put(station, channel);
-						
+						int channel = Integer.valueOf(channelAssignment.split("-")[0]);
+						for(String stationString : channelAssignment.split("-")[1].split("_"))
+						{
+							int station = Integer.valueOf(stationString);
+							
+							witness.put(station, channel);
+							
+						}
 					}
 				}
 			}
-		}
-		
-		/*
-		 * Also piping in as message the full answerMessage (which might be pretty long), but may be useful for debugging purpose.
-		 * Might want to remove it.
-		 */
-		FeasibilityResult result = new FeasibilityResult(new_station, answer, answerMessage, time, time, witness);
-		
-		return result;
+			
+			/*
+			 * Also piping in as message the full answerMessage (which might be pretty long), but may be useful for debugging purpose.
+			 * Might want to remove it.
+			 */
+			FeasibilityResult result = new FeasibilityResult(new_station, answer, answerMessage, time, time, witness);
+			
+			return result;
 		
 		} catch (UnknownHostException | SolverServerStateInterruptedException | SolvingInterrupedException e) {
 			throw new RuntimeException(e);
