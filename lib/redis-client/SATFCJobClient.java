@@ -640,7 +640,7 @@ public class SATFCJobClient implements Runnable {
 		 * 
 		 * These options are usually read from args with jCommander; if this would be interesting, just ask me.
 		 * 
-		 * TODO Flesh out options to define only the necessary components.
+		 * TODO @afrechet Flesh out options to define only the necessary components.
 		 * 
 		 * @afrechet
 		 * 
