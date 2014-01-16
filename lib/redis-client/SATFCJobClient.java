@@ -1,43 +1,41 @@
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.Response;
-import redis.clients.jedis.Transaction;
-import redis.clients.jedis.exceptions.JedisConnectionException;
-import redis.clients.jedis.exceptions.JedisDataException;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.commons.io.IOUtils;
+import org.kohsuke.args4j.CmdLineException;
+import org.kohsuke.args4j.CmdLineParser;
+import org.kohsuke.args4j.Option;
+
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.Response;
+import redis.clients.jedis.Transaction;
+import redis.clients.jedis.exceptions.JedisConnectionException;
+import redis.clients.jedis.exceptions.JedisDataException;
 import ca.ubc.cs.beta.aclib.logging.LogLevel;
+import ca.ubc.cs.beta.stationpacking.base.Station;
+import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverManager;
-import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.listener.ServerListener;
-import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.responder.ServerResponse;
-import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerSolver;
-import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerSolver.ProblemInitializingOverheadTimeoutException;
-import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerSolver.SolverServerStateInterruptedException;
-import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerSolver.SolvingInterrupedException;
-import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerSolverInterrupter;
-import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.SolvingJob;
+import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBundle;
+import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.daemon.ThreadedSolverServerParameters;
+import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.CPUTimeTerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.utils.RunnableUtils;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
-
-import org.apache.commons.io.IOUtils;
-import org.kohsuke.args4j.Option;
-import org.kohsuke.args4j.CmdLineParser;
-import org.kohsuke.args4j.CmdLineException;
 
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
@@ -59,10 +57,10 @@ public class SATFCJobClient implements Runnable {
 	public enum Answer { YES, NO, UNKNOWN, ERROR }
 	
 	/*
-	 * A SolverServer for doing the hard work of unpacking and solving problems.
+	 * A SolverManager to get you the good solver for your problem.
 	 * @author wtaysom
 	 */
-	private final ServerSolver fServerSolver;
+	private final SolverManager fSolverManager;
 	
 	////////////////////////////////////////////////
 	// Simple class to hold hetrogenous data
@@ -97,13 +95,9 @@ public class SATFCJobClient implements Runnable {
 	 * can be executed in parallel with a thread pool.
 	 * @author afrechet
 	 */
-	public SATFCJobClient(Options options, ServerSolver aServerSolver) {
+	public SATFCJobClient(Options options, SolverManager aSolverManager) {
 		
-		/*
-		 * We call ServerSolver.solve directly in order to avoid the complexity of threads and job queues.
-		 * @wtaysom 
-		 */
-		fServerSolver = aServerSolver;
+		fSolverManager = aSolverManager;
 		
 		_constraint_sets_directory = options.constraint_sets_directory;
 		report("Using constraints in "+_constraint_sets_directory+".");
@@ -312,159 +306,153 @@ public class SATFCJobClient implements Runnable {
 		watch.start();
 		
 		//Static problem parameters that are not provided.
-		try {
-			
-			InetAddress dummyAddress = InetAddress.getLocalHost();
-			int dummyPort = 111111;
-			long seed = 1;
-			
-			/*
-			 * Parse problem into solving job for solver server.
-			 */
-			double cutoff = problem_set.get_timeout_ms()/1000.0;
-			String problem_id = next_problem_id();
-			
-			/*
-			 * Since constraint_set() is the name of the folder containing constraint interference
-			 * and domain constraints, we use the argument -c (--constraint_sets_directory) to provide the location of
-			 * the directory containing individual constraint sets.
-			 */
-			String constraint_set = problem_set.get_constraint_set();
-			String datafoldername = new File(_constraint_sets_directory, constraint_set).getPath();
-			report("Using constraint set at "+datafoldername+".");
-			
-			/*
-			 * Create an instance string as outlined in the SATFC [readme](
-			 * https://docs.google.com/document/d/1TuuFr6lxOjv7QMPZztIFzS_34TaE6-qeNJjaHufOrAE/edit):
-			 * 
-			 * "A formatted instance string is simply a [dash] "-"-separated list of channels, a [dash] "-"-separated list
-			 * of stations and an optional previously valid partial channel assignment (in the form of a [dash] "-"-separated
-			 * list of station-channel assignments joined by [commas] ","), all [three parts] joined by a "_" [underscore].
-			 * For example, the feasibility checking problem of packing stations 100,231 and 597 into channels 14,15,16,17
-			 * and 18 with previous assignment 231 to 16 and 597 to 18 is represented by the following formatted instance
-			 * string:
-			 * 
-			 *   14-15-16-17-18_100-231-597_231,16-597,18
-			 * 
-			 */
-			// channels
-			StringBuilder instance = new StringBuilder();
-			for (int channel : CHANNELS_FOR_BAND[problem_set._band]) {
-				if (channel > problem_set._highest) {
-					break;
-				}
-				instance.append(channel);
-				instance.append('-');
+		long seed = 1;
+		
+		/**
+		 * Parse problem into solving job for solver server.
+		 * 
+		 * TODO It is not necessary to pass by a string to create a StationPackingInstance, but it is the easiest for now.
+		 */
+		
+		double cutoff = problem_set.get_timeout_ms()/1000.0;
+		
+		ITerminationCriterion terminationCriterion = new CPUTimeTerminationCriterion(cutoff);
+		
+		/*
+		 * Since constraint_set() is the name of the folder containing constraint interference
+		 * and domain constraints, we use the argument -c (--constraint_sets_directory) to provide the location of
+		 * the directory containing individual constraint sets.
+		 */
+		String constraint_set = problem_set.get_constraint_set();
+		String datafoldername = new File(_constraint_sets_directory, constraint_set).getPath();
+		report("Using constraint set at "+datafoldername+".");
+		
+		/*
+		 * Create an instance string as outlined in the SATFC [readme](
+		 * https://docs.google.com/document/d/1TuuFr6lxOjv7QMPZztIFzS_34TaE6-qeNJjaHufOrAE/edit):
+		 * 
+		 * "A formatted instance string is simply a [dash] "-"-separated list of channels, a [dash] "-"-separated list
+		 * of stations and an optional previously valid partial channel assignment (in the form of a [dash] "-"-separated
+		 * list of station-channel assignments joined by [commas] ","), all [three parts] joined by a "_" [underscore].
+		 * For example, the feasibility checking problem of packing stations 100,231 and 597 into channels 14,15,16,17
+		 * and 18 with previous assignment 231 to 16 and 597 to 18 is represented by the following formatted instance
+		 * string:
+		 * 
+		 *   14-15-16-17-18_100-231-597_231,16-597,18
+		 * 
+		 */
+		// channels
+		StringBuilder instance_string_builder = new StringBuilder();
+		for (int channel : CHANNELS_FOR_BAND[problem_set._band]) {
+			if (channel > problem_set._highest) {
+				break;
 			}
-			instance.setLength(instance.length() - 1);
-			instance.append('_');
-			
-	
-			// stations
-			if (problem_set._tentative_assignment != null) {
-				for (String station : problem_set._tentative_assignment.keySet()) {
-					instance.append(station);
-					instance.append('-');
-				}
-			}
-			if (problem_set._tentative_assignment == null ||
-					!problem_set._tentative_assignment.keySet().contains(Integer.toString(new_station))) {
-				instance.append(new_station);
-			}
-			
-			// optional previously valid partial channel assignment
-			 if (problem_set._tentative_assignment != null && !problem_set._tentative_assignment.isEmpty()) {
-			 	instance.append('_');
-			 	for (Map.Entry<String, Integer> entry : problem_set._tentative_assignment.entrySet()) {
-			 		if (entry.getValue().equals(-1)) { // Skip -1 assignments.
-			 			continue;
-			 		}
-			 		instance.append(entry.getKey());
-			 		instance.append(',');
-			 		instance.append(entry.getValue());
-			 		instance.append('-');
-			 	}
-			 	instance.setLength(instance.length() - 1);
-			 }
-			
-			String instance_string = instance.toString();
-			report("Solve instance "+instance_string);
-			SolvingJob solvingJob = new SolvingJob(problem_id, datafoldername, instance_string, new CPUTimeTerminationCriterion(cutoff), seed, dummyAddress, dummyPort);
-			
-			ServerResponse solverResponse;
-			try {
-				solverResponse = fServerSolver.solve(solvingJob);
-			} catch (ProblemInitializingOverheadTimeoutException e) {
-				solverResponse = e.answerResponse;
-			}
-			
-			double time = watch.stop() / 1000.0;
-			
-			/*
-			 * Parse answer from solver server.
-			 */
-			String answerMessage = solverResponse.getMessage();
-			String[] answerMessageParts = answerMessage.split(ServerListener.COMMANDSEP);
-			
-			Answer answer = Answer.UNKNOWN;
-			Map<Integer,Integer> witness = new HashMap<Integer,Integer>();
-			if(answerMessageParts[0].equals("ERROR"))
-			{
-				answer = Answer.ERROR;	
-			}
-			else if(answerMessageParts[0].equals("ANSWER"))
-			{
-				String resultString = answerMessageParts[2];
-				
-				String[] resultParts = resultString.split(",");
-				
-				SATResult result = SATResult.valueOf(resultParts[0]);
-				switch(result)
-				{
-					case SAT:
-						answer = Answer.YES;
-						break;
-					case UNSAT:
-						answer = Answer.NO;
-						break;
-					default:
-						break;
-				}
-				
-				//double runtime = Double.valueOf(resultParts[1]);
-				
-				
-				if(resultParts.length==3)
-				{
-					String assignmentString = resultParts[2];
-					String[] assignmentStringParts = assignmentString.split(";");
-					
-					for(String channelAssignment : assignmentStringParts)
-					{
-						int channel = Integer.valueOf(channelAssignment.split("-")[0]);
-						for(String stationString : channelAssignment.split("-")[1].split("_"))
-						{
-							int station = Integer.valueOf(stationString);
-							
-							witness.put(station, channel);
-							
-						}
-					}
-				}
-			}
-				
-			/*
-			 * Also piping in as message the full answerMessage (which might be pretty long), but may be useful for debugging purpose.
-			 * Might want to remove it.
-			 */
-			FeasibilityResult result = new FeasibilityResult(new_station, answer, answerMessage, time, time, witness);
-			
-			return result;
-			
-		} 
-			catch (UnknownHostException | SolverServerStateInterruptedException | SolvingInterrupedException e) {
-			throw new RuntimeException(e);
+			instance_string_builder.append(channel);
+			instance_string_builder.append('-');
 		}
+		instance_string_builder.setLength(instance_string_builder.length() - 1);
+		instance_string_builder.append('_');
+		
+		// stations
+		if (problem_set._tentative_assignment != null) {
+			for (String station : problem_set._tentative_assignment.keySet()) {
+				instance_string_builder.append(station);
+				instance_string_builder.append('-');
+			}
+		}
+		if (problem_set._tentative_assignment == null ||
+				!problem_set._tentative_assignment.keySet().contains(Integer.toString(new_station))) {
+			instance_string_builder.append(new_station);
+		}
+		
+		// optional previously valid partial channel assignment
+		 if (problem_set._tentative_assignment != null && !problem_set._tentative_assignment.isEmpty()) {
+		 	instance_string_builder.append('_');
+		 	for (Map.Entry<String, Integer> entry : problem_set._tentative_assignment.entrySet()) {
+		 		if (entry.getValue().equals(-1)) { // Skip -1 assignments.
+		 			continue;
+		 		}
+		 		instance_string_builder.append(entry.getKey());
+		 		instance_string_builder.append(',');
+		 		instance_string_builder.append(entry.getValue());
+		 		instance_string_builder.append('-');
+		 	}
+		 	instance_string_builder.setLength(instance_string_builder.length() - 1);
+		 }
+		
+		String instance_string = instance_string_builder.toString();
+		report("Solve instance "+instance_string);
+		
+		/**
+		 * Grab the solving components from solver manager.
+		 */
+		
+		//Grab the solving bundle corresponding to the data.
+		ISolverBundle bundle;
+		try {
+			bundle = fSolverManager.getData(datafoldername);
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+			throw new RuntimeException("Could not find the necessary problem data to instantiate SATFC.");
+		}
+		
+		//Grab the data managers from the bundle.
+		IStationManager stationManager = bundle.getStationManager();
+		
+		//Create the instance we want to solve from the instance string and data managers.
+		StationPackingInstance instance = StationPackingInstance.valueOf(instance_string, stationManager);
+		
+		//Do per instance solver selection with the bundle.
+		ISolver solver = bundle.getSolver(instance);
+		
+		/**
+		 * Solve the instance.
+		 */
+		
+		//Solve the instance
+		SolverResult result = solver.solve(instance, terminationCriterion, seed);
+		
+		double time = watch.stop() / 1000.0;
+		
+		
+		/**
+		 * Convert result into a feasibility result.
+		 */
+		
+		Answer answer = Answer.UNKNOWN;
+		double runtime = result.getRuntime();
+		Map<Integer,Integer> witness = new HashMap<Integer,Integer>();
+	
+		switch(result.getResult())
+		{
+			case SAT:
+				answer = Answer.YES;
+				break;
+			case UNSAT:
+				answer = Answer.NO;
+				break;
+			default:
+				break;
+		}
+		
+		
+		if(result.getResult().equals(SATResult.SAT))
+		{
+			for(Entry<Integer,Set<Station>> entry : result.getAssignment().entrySet())
+			{
+				int channel = entry.getKey();
+				for(Station station : entry.getValue())
+				{
+					witness.put(station.getID(), channel);
+				}
+			}
+		}
+		
+		//Also piping in as message the full solver result to string (which might be pretty long), but may be useful for debugging purpose.
+		FeasibilityResult feasibility_result = new FeasibilityResult(new_station, answer, result.toString(),runtime , time, witness);
+		
+		return feasibility_result;
+
 	}
 	
 	// Poll the server for work, and do work when it appears.
@@ -652,6 +640,8 @@ public class SATFCJobClient implements Runnable {
 		 * 
 		 * These options are usually read from args with jCommander; if this would be interesting, just ask me.
 		 * 
+		 * TODO Flesh out options to define only the necessary components.
+		 * 
 		 * @afrechet
 		 * 
 		 * For now, it's easiest to find the SATsolvers directory from walking up from the current directory
@@ -681,13 +671,10 @@ public class SATFCJobClient implements Runnable {
 		 */
 		aParameters.LoggingOptions.logLevel = LogLevel.INFO;
 		aParameters.LoggingOptions.initializeLogging();
-		
 				
 		SolverManager aSolverManager = aParameters.getSolverManager();
-		ServerSolverInterrupter aSolverState = new ServerSolverInterrupter();
-		ServerSolver aServerSolver = new ServerSolver(aSolverManager, aSolverState, null, null);
 
-		SATFCJobClient aSATFCJobClient = new SATFCJobClient(options, aServerSolver);
+		SATFCJobClient aSATFCJobClient = new SATFCJobClient(options, aSolverManager);
 		
 		/*
 		 * Must run both SATFCJobClient and SATFC's ServerSolver.
