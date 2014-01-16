@@ -16,6 +16,8 @@ import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.responder.Serv
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerSolverInterrupter;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.SolvingJob;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.CPUTimeTerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
 /**
  * Producer runnable that is in charge of listening to a socket for (UDP) command messages and enqueuing those commands or the response to those commands.
@@ -221,7 +223,7 @@ public class ServerListener implements Runnable {
 		String aID;
 		String aDataFoldername;
 		String aInstanceString;
-		double aCutoff;
+		ITerminationCriterion aTerminationCriterion;
 		long aSeed;
 		try
 		{
@@ -253,8 +255,9 @@ public class ServerListener implements Runnable {
 			aInstanceString = aMessageParts[3];
 			log.debug("instance {}, and",aInstanceString);
 
-			aCutoff = Double.valueOf(aMessageParts[4]);
+			double aCutoff = Double.valueOf(aMessageParts[4]);
 			log.debug("cutoff {} s, and",aCutoff);
+			aTerminationCriterion = new CPUTimeTerminationCriterion(aCutoff);
 
 			aSeed = Long.valueOf(aMessageParts[5]);
 			log.debug("seed {}, and",aSeed);
@@ -269,8 +272,7 @@ public class ServerListener implements Runnable {
 		
 		double aOverhead = aOverheadWatch.stop()/1000.0;
 		log.debug("Overhead of processing solve message {} s.",aOverhead);
-		double aRemainingTime = aCutoff-aOverhead;
-		if(aRemainingTime<=0)
+		if(aTerminationCriterion.hasToStop())
 		{
 			log.warn("Already have spent more than the required cutoff.");
 			fServerResponseQueue.put(new ServerResponse("INFO"+COMMANDSEP+"Already have spent more than the required cutoff.", aSendAddress, aSendPort));
@@ -286,7 +288,7 @@ public class ServerListener implements Runnable {
 			}
 			
 			log.debug("Enqueuing instance with ID {}.",aID);
-			fSolvingJobQueue.put(new SolvingJob(aID, aDataFoldername, aInstanceString, aRemainingTime, aSeed, aSendAddress, aSendPort));
+			fSolvingJobQueue.put(new SolvingJob(aID, aDataFoldername, aInstanceString, aTerminationCriterion, aSeed, aSendAddress, aSendPort));
 		}
 
 		return true;

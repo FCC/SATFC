@@ -1,22 +1,24 @@
 package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental;
 
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
+
 import com.sun.jna.Pointer;
 
 public class IncrementalClaspProblem {
 
-	private final double fCutoffTime;
+	private final ITerminationCriterion fTerminationCriterion;
 	private final Pointer fProblemPointer;
 	private final long fSeed;
 	
-	public IncrementalClaspProblem(Pointer problemPointer, double cutoffTime, long seed )
+	public IncrementalClaspProblem(Pointer problemPointer, ITerminationCriterion terminationCriterion, long seed )
 	{
-		fCutoffTime = cutoffTime;
+		fTerminationCriterion = terminationCriterion;
 		fProblemPointer = problemPointer;
 		fSeed = seed;
 	}
 	
-	public double getCutoffTime() {
-		return fCutoffTime;
+	public ITerminationCriterion getTerminationCriterion() {
+		return fTerminationCriterion;
 	}
 
 	public Pointer getProblemPointer() {

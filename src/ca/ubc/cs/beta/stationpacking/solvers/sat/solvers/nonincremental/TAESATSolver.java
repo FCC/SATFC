@@ -16,10 +16,11 @@ import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstanceSeedPair;
 import ca.ubc.cs.beta.aclib.runconfig.RunConfig;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluator;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
-import ca.ubc.cs.beta.stationpacking.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.base.SATSolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
 /**
  * Lean TAE based SAT solver.
@@ -52,7 +53,7 @@ public class TAESATSolver extends AbstractCompressedSATSolver{
 	
 	
 	@Override
-	public SATSolverResult solve(CNF aCNF, double aCutoff, long aSeed) {
+	public SATSolverResult solve(CNF aCNF, ITerminationCriterion aTerminationCriterion, long aSeed) {
 		
 		//Setup the CNF file and filename.
 		String aCNFFilename = fCNFDir + File.separator + RandomStringUtils.randomAlphabetic(15)+".cnf";
@@ -78,7 +79,7 @@ public class TAESATSolver extends AbstractCompressedSATSolver{
 		//Create the run config.
 		ProblemInstance aProblemInstance = new ProblemInstance(aCNFFilename);
 		ProblemInstanceSeedPair aProblemInstanceSeedPair = new ProblemInstanceSeedPair(aProblemInstance,aSeed);
-		RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aCutoff, fParamConfiguration,fExecConfig);
+		RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aTerminationCriterion.getRemainingTime(), fParamConfiguration,fExecConfig);
 		
 		//Execute it.
 		List<AlgorithmRun> aRuns = fTAE.evaluateRun(aRunConfig);
@@ -87,7 +88,10 @@ public class TAESATSolver extends AbstractCompressedSATSolver{
 			throw new IllegalStateException("Got multiple runs back from the TAE when solving a single CNF.");
 		}
 		AlgorithmRun aRun = aRuns.iterator().next();
-		double aRuntime = aRun.getRuntime();				
+		double aRuntime = aRun.getRuntime();
+		
+		aTerminationCriterion.notifyEvent(aRuntime);
+		
 		SATResult aResult;
 		HashSet<Literal> aAssignment = new HashSet<Literal>();
 		

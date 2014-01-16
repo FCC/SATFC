@@ -30,6 +30,7 @@ import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerS
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.SolvingJob;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.daemon.ThreadedSolverServerParameters;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.CPUTimeTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.utils.RunnableUtils;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
@@ -388,7 +389,7 @@ public class SATFCJobClient implements Runnable {
 			
 			String instance_string = instance.toString();
 			report("Solve instance "+instance_string);
-			SolvingJob solvingJob = new SolvingJob(problem_id, datafoldername, instance_string, cutoff, seed, dummyAddress, dummyPort);
+			SolvingJob solvingJob = new SolvingJob(problem_id, datafoldername, instance_string, new CPUTimeTerminationCriterion(cutoff), seed, dummyAddress, dummyPort);
 			
 			ServerResponse solverResponse;
 			try {

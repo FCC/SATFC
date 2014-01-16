@@ -2,8 +2,9 @@ package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental;
 
 import java.util.HashSet;
 import java.util.Random;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
@@ -13,19 +14,20 @@ import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.IntByReference;
 
+import ca.ubc.cs.beta.aclib.concurrent.threadfactory.SequentiallyNamedThreadFactory;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
-import ca.ubc.cs.beta.stationpacking.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.jnalibraries.ClaspLibrary;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
 /**
  * Implements a SAT solver using the jnaclasplibrary.so.  It gracefully handles thread interruptions while solve() is executing
  * and returns a null answer in that case.
- * @author gsauln
- *
+ * @author gsauln, afrechet
  */
 public class ClaspSATSolver extends AbstractCompressedSATSolver
 {
@@ -89,7 +91,7 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 	 * @see ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ISATSolver#solve(ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF, double, long)
 	 */
 	@Override
-	public SATSolverResult solve(CNF aCNF, double aCutoff, long aSeed) 
+	public SATSolverResult solve(CNF aCNF, ITerminationCriterion aTerminationCriterion, long aSeed) 
 	{	
 		// create the facade
 		final Pointer facade = fClaspLibrary.createFacade();
@@ -105,38 +107,53 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		final Pointer result = fClaspLibrary.createResult();
 		final AtomicBoolean timedOut = new AtomicBoolean(false);
 		
-		fSolveTimeStopWatch.start();
 		
-		// Launches a timer that will set the interrupt flag of the result object to true after aCutOff seconds.
-		Timer timer = new Timer();
-		timer.schedule(new TimerTask() {
+		
+		double cutoff = aTerminationCriterion.getRemainingTime();
+		ScheduledExecutorService timerService = Executors.newScheduledThreadPool(2,new SequentiallyNamedThreadFactory("Clasp SAT Solver Timers", true));
+		
+		// Launches a timer that will set the interrupt flag of the result object to true after aCutOff seconds. 
+		timerService.schedule(new Runnable(){
 			@Override
 			public void run() {
 				fClaspLibrary.interrupt(facade);
 				timedOut.set(true);
-			}
-		}, (long)(aCutoff*1000));
-		// listens for thread interruption every 0.1 seconds, if the thread is interrupted, interrupt the library and return gracefully
-		// while returning null (free library memory, etc.)
-		timer.schedule(new TimerTask() {
+			}}, (long) cutoff, TimeUnit.SECONDS);
+		// listens for thread interruption every 1 seconds, if the thread is interrupted, interrupt the library and return gracefully
+		//while returning null (free library memory, etc.)
+		timerService.scheduleWithFixedDelay(new Runnable(){
 			@Override
 			public void run() {
 				if (fInterrupt.get())
 				{
 					fClaspLibrary.interrupt(facade);
 				}
-			}
-		}, 0, 100);
+				
+			}}, 1, 1, TimeUnit.SECONDS);
 
 		// Start solving
-		log.debug("Send problem to clasp cutting off after "+aCutoff+"s");
+		log.debug("Send problem to clasp cutting off after "+cutoff+"s");
+		
+		fSolveTimeStopWatch.start();
 		fClaspLibrary.jnasolve(facade, problem, config, result);
-		timer.cancel();
+		
+		//Terminate timing tasks.
+		timerService.shutdown();
+		try {
+			if(!timerService.awaitTermination(3, TimeUnit.SECONDS))
+			{
+				throw new IllegalStateException("Could not terminate clasp timer tasks within 3 seconds.");
+			}
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+			throw new IllegalStateException("Interrupted while trying to terminate clasp timer tasks.");
+		}
 		
 		long timeInMillis = fSolveTimeStopWatch.stop();
-		log.debug("Spent "+(timeInMillis / 1000.0)+"s in clasp.");
 		
 		ClaspResult claspResult = getSolverResult(fClaspLibrary, result, timedOut, fInterrupt, timeInMillis);
+		aTerminationCriterion.notifyEvent(claspResult.getRuntime());
+		
 		HashSet<Literal> assignment = parseAssignment(claspResult.getAssignment());
 
 		//clears memory

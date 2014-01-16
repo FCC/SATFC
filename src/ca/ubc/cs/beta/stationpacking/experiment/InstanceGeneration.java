@@ -13,6 +13,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.reporters.IExperimentReporter;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.CPUTimeTerminationCriterion;
 
 
 /**
@@ -54,7 +55,7 @@ public class InstanceGeneration {
 			
 			aStations.add(aStation);
 			StationPackingInstance aInstance = new StationPackingInstance(aStations,aChannelRange);
-				SolverResult aRunResult = fSolver.solve(aInstance,aCutoff,aSeed);
+				SolverResult aRunResult = fSolver.solve(aInstance,new CPUTimeTerminationCriterion(aCutoff),aSeed);
 				log.info("Result: {}",aRunResult);
 				fExperimentReporter.report(aInstance, aRunResult);
 				if(!aRunResult.getResult().equals(SATResult.SAT)){

@@ -9,7 +9,7 @@ import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBu
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
-import ca.ubc.cs.beta.stationpacking.solvers.SequentialSolversComposite;
+import ca.ubc.cs.beta.stationpacking.solvers.composites.SequentialSolversComposite;
 
 public class SequentialSolverBundle extends ASolverBundle {
 

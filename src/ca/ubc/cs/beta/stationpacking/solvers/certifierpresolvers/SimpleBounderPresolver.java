@@ -18,6 +18,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.ConstraintGrouper;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
 import com.google.common.collect.Sets;
 
@@ -54,7 +55,7 @@ public class SimpleBounderPresolver implements ISolver{
 	
 	
 	@Override
-	public SolverResult solve(StationPackingInstance aInstance, double aCutoff,
+	public SolverResult solve(StationPackingInstance aInstance, ITerminationCriterion aTerminationCriterion,
 			long aSeed) {
 		
 		AutoStartStopWatch preWatch = new AutoStartStopWatch();
@@ -108,9 +109,9 @@ public class SimpleBounderPresolver implements ISolver{
 		StationPackingInstance UNSATboundInstance = new StationPackingInstance(topackStations, aInstance.getChannels(), previousAssignment);
 		
 		
-		if(aCutoff-aTimeSpent>0)
+		if(!aTerminationCriterion.hasToStop())
 		{
-			SolverResult UNSATboundResult = fSolver.solve(UNSATboundInstance, aCutoff-aTimeSpent, aSeed);
+			SolverResult UNSATboundResult = fSolver.solve(UNSATboundInstance, aTerminationCriterion, aSeed);
 			
 			aTimeSpent += UNSATboundResult.getRuntime();
 			
@@ -152,9 +153,9 @@ public class SimpleBounderPresolver implements ISolver{
 		StationPackingInstance SATboundInstance = new StationPackingInstance(reducedDomainStations, aInstance.getChannels(), previousAssignment);
 		
 		aTimeSpent += interWatch.stop()/1000.0;
-		if(aCutoff-aTimeSpent>0)
+		if(!aTerminationCriterion.hasToStop())
 		{
-			SolverResult SATboundResult = fSolver.solve(SATboundInstance, aCutoff-aTimeSpent, aSeed);
+			SolverResult SATboundResult = fSolver.solve(SATboundInstance, aTerminationCriterion, aSeed);
 			
 			aTimeSpent += SATboundResult.getRuntime();
 			
