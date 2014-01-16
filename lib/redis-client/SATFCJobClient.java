@@ -2,6 +2,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +34,9 @@ import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.CPUTimeTerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.DisjunctiveCompositeTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.WallclockTimeTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.utils.RunnableUtils;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
@@ -315,8 +318,9 @@ public class SATFCJobClient implements Runnable {
 		 */
 		
 		double cutoff = problem_set.get_timeout_ms()/1000.0;
-		
-		ITerminationCriterion terminationCriterion = new CPUTimeTerminationCriterion(cutoff);
+		ITerminationCriterion cputimeTermination = new CPUTimeTerminationCriterion(cutoff);
+		ITerminationCriterion walltimeTermination = new WallclockTimeTerminationCriterion(cutoff*1.5);
+		ITerminationCriterion terminationCriterion = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(cputimeTermination,walltimeTermination));
 		
 		/*
 		 * Since constraint_set() is the name of the folder containing constraint interference
@@ -435,7 +439,7 @@ public class SATFCJobClient implements Runnable {
 				break;
 		}
 		
-		
+		//witness assignment maps station (ID's) to the assigned channel.
 		if(result.getResult().equals(SATResult.SAT))
 		{
 			for(Entry<Integer,Set<Station>> entry : result.getAssignment().entrySet())
@@ -685,7 +689,8 @@ public class SATFCJobClient implements Runnable {
 		try {
 			EXECUTOR_SERVICE.awaitTermination(365*10, TimeUnit.DAYS);
 		} catch (InterruptedException e1) {
-			System.err.println("We are really amazed that we're seeing this right now ("+e1+").");
+			e1.printStackTrace();
+			System.err.println("SATFC job client executor service interrupted ("+e1+").");
 			return;
 		}
 	
