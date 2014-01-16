@@ -10,16 +10,17 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat.ClaspLibSATSolverParameters;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
-import ca.ubc.cs.beta.stationpacking.solvers.SequentialSolversComposite;
 import ca.ubc.cs.beta.stationpacking.solvers.certifierpresolvers.cgneighborhood.ConstraintGraphNeighborhoodPresolver;
 import ca.ubc.cs.beta.stationpacking.solvers.certifierpresolvers.cgneighborhood.StationSubsetSATCertifier;
 import ca.ubc.cs.beta.stationpacking.solvers.certifierpresolvers.cgneighborhood.StationSubsetUNSATCertifier;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.NoGrouper;
+import ca.ubc.cs.beta.stationpacking.solvers.composites.SequentialSolversComposite;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.CompressedSATBasedSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.ClaspSATSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.CPUTimeTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
 
 public class PreSolvingOnlySolverBundle extends ASolverBundle {
@@ -58,8 +59,8 @@ public class PreSolvingOnlySolverBundle extends ASolverBundle {
 				Arrays.asList(
 						(ISolver)new ConstraintGraphNeighborhoodPresolver(aConstraintManager, 
 								Arrays.asList(
-										new StationSubsetUNSATCertifier(UHFClaspBasedSolver,UNSATcertifiercutoff),
-										new StationSubsetSATCertifier(UHFClaspBasedSolver,SATcertifiercutoff)
+										new StationSubsetUNSATCertifier(UHFClaspBasedSolver,new CPUTimeTerminationCriterion(UNSATcertifiercutoff)),
+										new StationSubsetSATCertifier(UHFClaspBasedSolver,new CPUTimeTerminationCriterion(SATcertifiercutoff))
 								))
 						)
 				);
@@ -68,8 +69,8 @@ public class PreSolvingOnlySolverBundle extends ASolverBundle {
 				Arrays.asList(
 						(ISolver)new ConstraintGraphNeighborhoodPresolver(aConstraintManager, 
 								Arrays.asList(
-										new StationSubsetUNSATCertifier(VHFClaspBasedSolver,UNSATcertifiercutoff),
-										new StationSubsetSATCertifier(VHFClaspBasedSolver,SATcertifiercutoff)
+										new StationSubsetUNSATCertifier(VHFClaspBasedSolver,new CPUTimeTerminationCriterion(UNSATcertifiercutoff)),
+										new StationSubsetSATCertifier(VHFClaspBasedSolver,new CPUTimeTerminationCriterion(SATcertifiercutoff))
 								))
 						)
 				);

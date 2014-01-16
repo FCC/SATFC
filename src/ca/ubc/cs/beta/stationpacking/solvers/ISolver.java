@@ -2,6 +2,7 @@ package ca.ubc.cs.beta.stationpacking.solvers;
 
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
 /**
  * <p>
@@ -17,11 +18,11 @@ public interface ISolver {
 	/**
 	 * Solve a station packing instance under the provided CPU time cutoff and given seed.
 	 * @param aInstance - the instance to solved.
-	 * @param aCutoff - the CPU time cutoff to use.
+	 * @param aTerminationCriterion - the termination criterion for solver execution (usually cutoff time based).
 	 * @param aSeed - the execution seed.
 	 * @return
 	 */
-	public SolverResult solve(StationPackingInstance aInstance, double aCutoff, long aSeed);
+	public SolverResult solve(StationPackingInstance aInstance, ITerminationCriterion aTerminationCriterion, long aSeed);
 	
 	/**
 	 * Tries to stop the solve call if implemented, if not throws an UnsupportedOperationException.

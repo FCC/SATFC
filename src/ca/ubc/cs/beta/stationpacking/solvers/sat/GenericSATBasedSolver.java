@@ -20,7 +20,6 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.SolverHelper;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
-import ca.ubc.cs.beta.stationpacking.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
@@ -28,6 +27,8 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATDecoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ISATSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.base.SATSolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
 public class GenericSATBasedSolver implements ISolver {
 	
@@ -51,7 +52,7 @@ public class GenericSATBasedSolver implements ISolver {
 	}
 	
 	@Override
-	public SolverResult solve(StationPackingInstance aInstance, double aCutoff,
+	public SolverResult solve(StationPackingInstance aInstance, ITerminationCriterion aTerminationCriterion,
 			long aSeed) {
 		AutoStartStopWatch aSolveWatch = new AutoStartStopWatch();
 		
@@ -59,7 +60,6 @@ public class GenericSATBasedSolver implements ISolver {
 
 		Set<Integer> aChannelRange = aInstance.getChannels();
 		
-		double aRemainingCutoff = aCutoff;
 		HashSet<SolverResult> aComponentResults = new HashSet<SolverResult>();
 		
 		Set<Set<Station>> aStationComponents = fComponentGrouper.group(aInstance,fConstraintManager);
@@ -91,16 +91,13 @@ public class GenericSATBasedSolver implements ISolver {
 				}
 			}
 			
-			long aOverhead = aSolveWatch.time();
-			
-			aRemainingCutoff -= aOverhead/1000.0;
-			if(aRemainingCutoff<=0)
+			if(aTerminationCriterion.hasToStop())
 			{
 				break;
 			}
 			
-			log.debug("Solving the subproblem CNF with "+aRemainingCutoff+"s remaining.");
-			SATSolverResult aComponentResult = fSATSolver.solve(aCNF, aRemainingCutoff, aSeed);
+			log.debug("Solving the subproblem CNF with "+aTerminationCriterion.getRemainingTime()+" s remaining.");
+			SATSolverResult aComponentResult = fSATSolver.solve(aCNF, aTerminationCriterion, aSeed);
 			
 			log.debug("Parsing result.");
 			Map<Integer,Set<Station>> aStationAssignment = new HashMap<Integer,Set<Station>>();
@@ -149,9 +146,8 @@ public class GenericSATBasedSolver implements ISolver {
 			
 			
 			aComponentResults.add(new SolverResult(aComponentResult.getResult(),aComponentResult.getRuntime(),aStationAssignment));
-			aRemainingCutoff -= aComponentResult.getRuntime();
 			
-			if(aComponentResult.equals(SATResult.UNSAT) || aRemainingCutoff<=0)
+			if(aComponentResult.equals(SATResult.UNSAT) || aTerminationCriterion.hasToStop())
 			{
 				break;
 			}
@@ -198,7 +194,7 @@ public class GenericSATBasedSolver implements ISolver {
 		log.debug("...done.");
 		
 		log.debug("Result : {}",aResult);
-		log.debug("Total time taken "+aSolveWatch.stop()/1000.0+" seconds");
+		log.debug("Total walltime taken "+aSolveWatch.stop()/1000.0+" seconds");
 		
 		return aResult;
 	}

@@ -2,6 +2,8 @@ package ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver;
 
 import java.net.InetAddress;
 
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
+
 /**
  * Container class for a solving job.
  * @author afrechet
@@ -12,19 +14,19 @@ public class SolvingJob {
 	
 	private final String fDataFolderName;
 	private final String fInstanceString;
-	private final double fCutOff;
+	private final ITerminationCriterion fTerminationCriterion;
 	
 	private final long fSeed;
 	
 	private final InetAddress fSendAddress;
 	private final int fSendPort;
 	
-	public SolvingJob(String aID, String aDataFolderName, String aInstanceString, double aCutoff, long aSeed, InetAddress aSendAddress, int aSendPort)
+	public SolvingJob(String aID, String aDataFolderName, String aInstanceString, ITerminationCriterion aTerminationCriterion, long aSeed, InetAddress aSendAddress, int aSendPort)
 	{
 		fID = aID;
 		fDataFolderName = aDataFolderName;
 		fInstanceString = aInstanceString;
-		fCutOff = aCutoff;
+		fTerminationCriterion = aTerminationCriterion;
 		fSeed = aSeed;
 		fSendAddress = aSendAddress;
 		fSendPort = aSendPort;
@@ -42,8 +44,8 @@ public class SolvingJob {
 		return fInstanceString;
 	}
 
-	public double getCutOff() {
-		return fCutOff;
+	public ITerminationCriterion getTerminationCriterion() {
+		return fTerminationCriterion;
 	}
 
 	public long getSeed() {
@@ -57,14 +59,11 @@ public class SolvingJob {
 	public int getSendPort() {
 		return fSendPort;
 	}
-	
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		long temp;
-		temp = Double.doubleToLongBits(fCutOff);
-		result = prime * result + (int) (temp ^ (temp >>> 32));
 		result = prime * result
 				+ ((fDataFolderName == null) ? 0 : fDataFolderName.hashCode());
 		result = prime * result + ((fID == null) ? 0 : fID.hashCode());
@@ -74,6 +73,10 @@ public class SolvingJob {
 		result = prime * result
 				+ ((fSendAddress == null) ? 0 : fSendAddress.hashCode());
 		result = prime * result + fSendPort;
+		result = prime
+				* result
+				+ ((fTerminationCriterion == null) ? 0 : fTerminationCriterion
+						.hashCode());
 		return result;
 	}
 
@@ -86,9 +89,6 @@ public class SolvingJob {
 		if (getClass() != obj.getClass())
 			return false;
 		SolvingJob other = (SolvingJob) obj;
-		if (Double.doubleToLongBits(fCutOff) != Double
-				.doubleToLongBits(other.fCutOff))
-			return false;
 		if (fDataFolderName == null) {
 			if (other.fDataFolderName != null)
 				return false;
@@ -113,7 +113,14 @@ public class SolvingJob {
 			return false;
 		if (fSendPort != other.fSendPort)
 			return false;
+		if (fTerminationCriterion == null) {
+			if (other.fTerminationCriterion != null)
+				return false;
+		} else if (!fTerminationCriterion.equals(other.fTerminationCriterion))
+			return false;
 		return true;
 	}
+	
+	
 
 }
