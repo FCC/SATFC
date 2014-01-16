@@ -17,6 +17,7 @@ import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.ExecutableSolverParameters;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.CPUTimeTerminationCriterion;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;
@@ -53,7 +54,7 @@ public class SingleInstanceStatelessSolverExecutor {
 			
 			StationPackingInstance aInstance = aExecutableSolverParameter.getInstance();
 			
-			SolverResult aResult = aSolver.solve(aInstance, aExecutableSolverParameter.ProblemInstanceParameters.Cutoff, aExecutableSolverParameter.ProblemInstanceParameters.Seed);
+			SolverResult aResult = aSolver.solve(aInstance, new CPUTimeTerminationCriterion(aExecutableSolverParameter.ProblemInstanceParameters.Cutoff), aExecutableSolverParameter.ProblemInstanceParameters.Seed);
 	
 			System.out.println("Result for feasibility checker: "+aResult.toParsableString());
 			

@@ -1,14 +1,16 @@
 package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental;
 
 import java.util.Random;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ca.ubc.cs.beta.aclib.concurrent.threadfactory.SequentiallyNamedThreadFactory;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.jnalibraries.IncrementalClaspLibrary;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.ClaspResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.ClaspSATSolver;
@@ -39,11 +41,11 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 	
 	private Pointer fJNAFacade;
 	private Pointer fJNAResult;
-
+	
 	
 	//Current job objects.
 	private IncrementalClaspProblem fCurrentIncrementalProblem;
-	private Timer fCurrentProblemTimer;
+	ScheduledExecutorService fTimerServices;
 	
 	//Solving status flag.
 	private AtomicBoolean fInterrupted = new AtomicBoolean(false);
@@ -182,17 +184,19 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 			fSolveTimeStopWatch.start();
 			
 			// create the time thread to set cutoff
-			fCurrentProblemTimer = new Timer();
-			fCurrentProblemTimer.schedule(new TimerTask() {
+			double cutoff = fCurrentIncrementalProblem.getTerminationCriterion().getRemainingTime();
+			// Launches a timer that will set the interrupt flag of the result object to true after aCutOff seconds.
+			fTimerServices = Executors.newScheduledThreadPool(2,new SequentiallyNamedThreadFactory("Incremental Clasp SAT Solver Timers", true));
+			fTimerServices.schedule(new Runnable(){
 				@Override
 				public void run() {
 					log.debug("Solving timed out.");
 					interrupt();
 					fTimedOut.set(true);
-				}
-			}, (long)(fCurrentIncrementalProblem.getCutoffTime()*1000));
+				}}, (long) cutoff, TimeUnit.SECONDS);
+		
 			
-			log.info("Starting to solve.");
+			log.debug("Starting to solve.");
 			return fCurrentIncrementalProblem.getProblemPointer();
 		}
 	};
@@ -203,10 +207,10 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 	private void takeProblem()
 	{
 		IncrementalClaspProblem problem;
-		log.info("Incremental Clasp Consumer is taking a problem from queue.");
+		log.debug("Incremental Clasp Consumer is taking a problem from queue.");
 		try {
 			problem = fProblemQueue.take();
-			log.info("Got a problem from the queue.");
+			log.debug("Got a problem from the queue.");
 			
 			if(problem.getSeed()!=fSeed)
 			{
@@ -225,12 +229,21 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 	 */
 	private final IncrementalClaspLibrary.jnaIncContinue fProcessAnswerAndContinueCallback = new IncrementalClaspLibrary.jnaIncContinue() 
 	{
-
 		@Override
 		public boolean doContinue() {
 			// Retrieve answer and fill the answer queue.
 			fSolving.set(false);
-			fCurrentProblemTimer.cancel();
+			//Terminate timing tasks.
+			fTimerServices.shutdown();
+			try {
+				if(!fTimerServices.awaitTermination(3, TimeUnit.SECONDS))
+				{
+					throw new IllegalStateException("Could not terminate incremetal clasp timer tasks within 3 seconds.");
+				}
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+				throw new IllegalStateException("Interrupted while trying to terminate incremetal clasp timer tasks.");
+			}
 			
 			log.debug("Came back from solving - processing result.");
 	

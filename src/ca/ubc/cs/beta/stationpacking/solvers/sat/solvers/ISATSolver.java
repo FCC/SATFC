@@ -1,16 +1,17 @@
 package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers;
 
-import ca.ubc.cs.beta.stationpacking.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.base.SATSolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
 public interface ISATSolver {
 
 	/**
 	 * @param aCNF - a CNF to solve.
-	 * @param aCutoff - the cutoff for the execution.
+	 * @param aTerminationCriterion - the criterion dictating when to stop execution of solver.
 	 * @param aSeed - the seed for the execution.
 	 */
-	public SATSolverResult solve(CNF aCNF, double aCutoff, long aSeed);
+	public SATSolverResult solve(CNF aCNF, ITerminationCriterion aTerminationCriterion, long aSeed);
 	
 	/**
 	 * Tries to stop the solve call if implemented, if not throws an UnsupportedOperationException.

@@ -20,6 +20,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.SolverHelper;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.ConstraintGrouper;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
 /**
  * Pre-solve by applying a sequence of station subsets certifiers based on 
@@ -44,11 +45,12 @@ private static final int MAX_MISSING_STATIONS=1;
 	}
 	
 	@Override
-	public SolverResult solve(StationPackingInstance aInstance, double aCutoff,
+	public SolverResult solve(StationPackingInstance aInstance, ITerminationCriterion aTerminationCriterion,
 			long aSeed) {
 		
+		double runtime = 0.0;
+		
 		AutoStartStopWatch preWatch = new AutoStartStopWatch();
-		double aTimeSpent = 0;
 		
 		HashMap<Station,Integer> previousAssignment = aInstance.getPreviousAssignment();
 		
@@ -88,19 +90,17 @@ private static final int MAX_MISSING_STATIONS=1;
 			topackStations.addAll(aConstraintGraphNeighborIndex.neighborsOf(missingStation));
 		}
 		
-		aTimeSpent += preWatch.stop()/1000.0;
-		
-		double remainingCutoff = aCutoff-aTimeSpent;
+		runtime += preWatch.stop()/1000.0;
 		
 		List<SolverResult> results = new LinkedList<SolverResult>();
-		for(int i=0;i<fCertifiers.size() && remainingCutoff>0; i++)
+		for(int i=0;i<fCertifiers.size() && !aTerminationCriterion.hasToStop(); i++)
 		{
 			log.debug("Trying constraint graph neighborhood certifier {}.",i);
 			
 			IStationSubsetCertifier certifier = fCertifiers.get(i);
-			SolverResult result = certifier.certify(aInstance, topackStations, remainingCutoff, aSeed);
+			SolverResult result = certifier.certify(aInstance, topackStations, aTerminationCriterion, aSeed);
 			
-			remainingCutoff -= result.getRuntime();
+			runtime += result.getRuntime();
 			results.add(result);
 			
 			if(result.getResult().equals(SATResult.SAT) || result.getResult().equals(SATResult.UNSAT))
@@ -111,7 +111,7 @@ private static final int MAX_MISSING_STATIONS=1;
 		
 		SolverResult combinedResult = SolverHelper.combineResults(results);
 		
-		return SolverResult.addTime(combinedResult, aTimeSpent);
+		return SolverResult.addTime(combinedResult, runtime);
 		
 	}
 

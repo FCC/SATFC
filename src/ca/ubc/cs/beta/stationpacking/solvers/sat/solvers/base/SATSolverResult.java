@@ -1,7 +1,9 @@
-package ca.ubc.cs.beta.stationpacking.solvers.base;
+package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.base;
 
 import java.io.Serializable;
 import java.util.HashSet;
+
+import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
 
 public class SATSolverResult implements Serializable {

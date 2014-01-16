@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solvers;
+package ca.ubc.cs.beta.stationpacking.solvers.composites;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -8,8 +8,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
+import ca.ubc.cs.beta.stationpacking.solvers.SolverHelper;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
 public class SequentialSolversComposite implements ISolver{
 
@@ -23,20 +26,18 @@ public class SequentialSolversComposite implements ISolver{
 	}
 	
 	@Override
-	public SolverResult solve(StationPackingInstance aInstance, double aCutoff,
+	public SolverResult solve(StationPackingInstance aInstance, ITerminationCriterion aTerminationCriterion,
 			long aSeed) {
-		double aRemainingCutoff = aCutoff;
 		
 		Collection<SolverResult> results = new ArrayList<SolverResult>();
 		
-		for(int i=0;i<fSolvers.size() && aRemainingCutoff>0.1;i++)
+		for(int i=0;i<fSolvers.size() && !aTerminationCriterion.hasToStop();i++)
 		{
 			log.debug("Trying solver {}.",i);
 			
-			SolverResult result = fSolvers.get(i).solve(aInstance, aRemainingCutoff, aSeed);
+			SolverResult result = fSolvers.get(i).solve(aInstance, aTerminationCriterion, aSeed);
 			results.add(result);
 			
-			aRemainingCutoff -= result.getRuntime();
 			if(result.getResult().equals(SATResult.SAT) || result.getResult().equals(SATResult.UNSAT))
 			{
 				break;

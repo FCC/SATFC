@@ -14,11 +14,12 @@ import org.slf4j.LoggerFactory;
 import com.sun.jna.Pointer;
 
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
-import ca.ubc.cs.beta.stationpacking.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractSATSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.ClaspResult;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.utils.RunnableUtils;
 
 public class IncrementalClaspSATSolver extends AbstractSATSolver {
@@ -86,11 +87,11 @@ public class IncrementalClaspSATSolver extends AbstractSATSolver {
 	
 	
 	@Override
-	public SATSolverResult solve(CNF aCNF, double aCutoff, long aSeed) {
+	public SATSolverResult solve(CNF aCNF, ITerminationCriterion aTerminationCriterion, long aSeed) {
 		
 		//Encode the CNF into an IncrementalProblem.
 		Pointer problemPointer = fCompressor.compress(aCNF);
-		IncrementalClaspProblem problem = new IncrementalClaspProblem(problemPointer,aCutoff, aSeed);
+		IncrementalClaspProblem problem = new IncrementalClaspProblem(problemPointer,aTerminationCriterion, aSeed);
 		
 		//Give it to the consumer.
 		try {
