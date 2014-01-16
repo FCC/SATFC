@@ -1,4 +1,3 @@
-USAGE
-=====
-Here is a simple execution run: 
-java -jar FCCStationPacking.jar -STATIONS_FILE /Users/MightyByte/Documents/data/FCCStationPackingData/ProblemData/stations.csv -DOMAINS_FILE /Users/MightyByte/Documents/data/FCCStationPackingData/ProblemData/Domains.csv -CONSTRAINTS_FILE /Users/MightyByte/Documents/data/FCCStationPackingData/ProblemData/Interferences.csv -CNF_DIR /Users/MightyByte/Documents/data/FCCStationPackingData/CNFs -SOLVER picosat -EXPERIMENT_NAME TestExperiment -EXPERIMENT_DIR /Users/MightyByte/Documents/data/FCCStationPackingData/TestExperiment
+SATFC Readme
+
+https://docs.google.com/document/d/1TuuFr6lxOjv7QMPZztIFzS_34TaE6-qeNJjaHufOrAE/edit?usp=sharing
