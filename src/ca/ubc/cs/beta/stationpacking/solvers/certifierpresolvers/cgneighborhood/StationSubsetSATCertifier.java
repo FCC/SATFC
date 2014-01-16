@@ -1,5 +1,6 @@
 package ca.ubc.cs.beta.stationpacking.solvers.certifierpresolvers.cgneighborhood;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -7,32 +8,36 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.Sets;
-
 import ca.ubc.cs.beta.aclib.misc.watch.AutoStartStopWatch;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.DisjunctiveCompositeTerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
+
+import com.google.common.collect.Sets;
 
 public class StationSubsetSATCertifier implements IStationSubsetCertifier {
 
 	private static Logger log = LoggerFactory.getLogger(StationSubsetSATCertifier.class);
 	
 	private final ISolver fSolver;
-	private final double fMaxCutoff;
+	private final ITerminationCriterion fTerminationCriterion;
 	
-	public StationSubsetSATCertifier(ISolver aSolver, double aMaxCutoff)
+	public StationSubsetSATCertifier(ISolver aSolver, ITerminationCriterion aTerminationCriterion)
 	{
 		fSolver = aSolver;
-		fMaxCutoff = aMaxCutoff;
+		fTerminationCriterion = aTerminationCriterion;
 	}
 	
 	@Override
 	public SolverResult certify(StationPackingInstance aInstance,
 			Set<Station> aMissingStations,
-			double aCutoff, long aSeed) {
+			ITerminationCriterion aTerminationCriterion, long aSeed) {
+		
+		ITerminationCriterion terminationCriterion = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(fTerminationCriterion,aTerminationCriterion));
 		
 		AutoStartStopWatch interWatch = new AutoStartStopWatch();
 		
@@ -59,9 +64,9 @@ public class StationSubsetSATCertifier implements IStationSubsetCertifier {
 		StationPackingInstance SATboundInstance = new StationPackingInstance(reducedDomainStations, aInstance.getChannels(), previousAssignment);
 		
 		double aTimeSpent = interWatch.stop()/1000.0;
-		if(aCutoff-aTimeSpent>0)
+		if(!aTerminationCriterion.hasToStop())
 		{
-			SolverResult SATboundResult = fSolver.solve(SATboundInstance, Math.min(fMaxCutoff, aCutoff-aTimeSpent), aSeed);
+			SolverResult SATboundResult = fSolver.solve(SATboundInstance, terminationCriterion, aSeed);
 			
 			aTimeSpent += SATboundResult.getRuntime();
 			

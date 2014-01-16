@@ -1,8 +1,10 @@
 package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental;
 
-import ca.ubc.cs.beta.stationpacking.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractSATSolver;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.base.SATSolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.CPUTimeTerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
 public class CompleteProblemIncrementalClaspSATWrapper extends AbstractSATSolver{
 
@@ -13,14 +15,14 @@ public class CompleteProblemIncrementalClaspSATWrapper extends AbstractSATSolver
 	{
 		fIncrementalSATSolver = new IncrementalClaspSATSolver(libraryPath, parameters, seed);
 		//Set the incremental 
-		fIncrementalSATSolver.solve(aCompleteProblem, INITIAL_CUTOFF, seed);
+		fIncrementalSATSolver.solve(aCompleteProblem, new CPUTimeTerminationCriterion(INITIAL_CUTOFF), seed);
 	}
 
 	@Override
-	public SATSolverResult solve(CNF aCNF, double aCutoff, long aSeed) {
+	public SATSolverResult solve(CNF aCNF, ITerminationCriterion aTerminationCriterion, long aSeed) {
 		
 		
-		return fIncrementalSATSolver.solve(aCNF, aCutoff, aSeed);
+		return fIncrementalSATSolver.solve(aCNF, aTerminationCriterion, aSeed);
 	}
 
 	@Override

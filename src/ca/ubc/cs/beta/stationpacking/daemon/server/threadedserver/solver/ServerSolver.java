@@ -18,6 +18,7 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
 /**
  * Consumer runnable that is in charge of solving station packing problems from a given queue.
@@ -100,7 +101,7 @@ public class ServerSolver implements Runnable {
 		String aDataFolderName = aSolvingJob.getDataFolderName();
 		String aInstanceString = aSolvingJob.getInstanceString();
 		
-		double aCutoff = aSolvingJob.getCutOff();
+		ITerminationCriterion aTerminationCriterion = aSolvingJob.getTerminationCriterion();
 		long aSeed = aSolvingJob.getSeed();
 		
 		InetAddress aSendAddress = aSolvingJob.getSendAddress();
@@ -133,8 +134,7 @@ public class ServerSolver implements Runnable {
 		
 		double aOverhead = aOverheadWatch.stop()/1000.0;
 		log.debug("Overhead of initializing solve command {} s.",aOverhead);
-		double aRemainingTime = aCutoff - aOverhead;
-		if(aRemainingTime<=0)
+		if(aTerminationCriterion.hasToStop())
 		{
 			log.warn("Already have spent more than the required cutoff.");
 			ServerResponse infoResponse = new ServerResponse("INFO"+ServerListener.COMMANDSEP+"Already have spent more than the required cutoff.", aSendAddress, aSendPort);
@@ -143,7 +143,8 @@ public class ServerSolver implements Runnable {
 			throw new ProblemInitializingOverheadTimeoutException(infoResponse, answerResponse);
 		}
 		
-		log.debug("Beginning to solve, cutoff in "+aCutoff+"s...");
+		double cutoff = aTerminationCriterion.getRemainingTime();
+		log.debug("Beginning to solve, cutoff in "+cutoff+"s...");
 						
 		//Notify the start of the solving.
 		fSolverState.notifyStart(aID, aSolver);
@@ -153,7 +154,7 @@ public class ServerSolver implements Runnable {
 		{
 			try
 			{
-				aResult = aSolver.solve(aInstance, aCutoff, aSeed);
+				aResult = aSolver.solve(aInstance, aTerminationCriterion, aSeed);
 				log.debug("Problem solved.");
 			}
 			finally

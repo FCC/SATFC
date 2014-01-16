@@ -36,6 +36,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATDecoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
 
 /**
@@ -150,7 +151,7 @@ public class TAEBasedSolver implements ISolver{
 	 * 
 	 */
 	@Override
-	public SolverResult solve(StationPackingInstance aInstance, double aCutoff, long aSeed){
+	public SolverResult solve(StationPackingInstance aInstance, ITerminationCriterion aTerminationCriterion, long aSeed){
 		long aStartTime = System.nanoTime();
 		
 		log.info("Solving instance of {}",aInstance.getInfo());
@@ -212,7 +213,7 @@ public class TAEBasedSolver implements ISolver{
 				//Create the run config and add it to the to-do list.
 				ProblemInstance aProblemInstance = new ProblemInstance(aCNFFileName);
 				ProblemInstanceSeedPair aProblemInstanceSeedPair = new ProblemInstanceSeedPair(aProblemInstance,aSeed);
-				RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aCutoff, fParamConfig,fExecConfig);
+				RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aTerminationCriterion.getRemainingTime(), fParamConfig,fExecConfig);
 				
 				aToSolveInstances.put(aRunConfig,aComponentInstance);
 				aComponentDecoders.put(aRunConfig, aDecoder);
@@ -227,7 +228,10 @@ public class TAEBasedSolver implements ISolver{
 		
 		for(AlgorithmRun aRun : aRuns)
 		{
-			double aRuntime = aRun.getRuntime();				
+			double aRuntime = aRun.getRuntime();
+			
+			aTerminationCriterion.notifyEvent(aRuntime);
+			
 			SATResult aResult;
 			Map<Integer,Set<Station>> aAssignment = new HashMap<Integer,Set<Station>>();
 			switch (aRun.getRunResult()){
