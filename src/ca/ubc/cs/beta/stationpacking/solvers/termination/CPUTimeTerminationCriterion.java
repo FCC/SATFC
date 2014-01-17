@@ -19,9 +19,9 @@ public class CPUTimeTerminationCriterion implements ITerminationCriterion
 	 */
 	public CPUTimeTerminationCriterion(double aCPUTimeLimit)
 	{
-		fStartingCPUTime = getCPUTime();
+		fExternalEllapsedCPUTime = new AtomicDouble(0.0);
 		fCPUTimeLimit = aCPUTimeLimit;
-		fExternalEllapsedCPUTime.set(0.0);
+		fStartingCPUTime = getCPUTime();
 	}
 
 	private double getCPUTime()
@@ -37,7 +37,7 @@ public class CPUTimeTerminationCriterion implements ITerminationCriterion
 	@Override
 	public boolean hasToStop()
 	{
-		return (getEllapsedCPUTime() <= fCPUTimeLimit);
+		return (getEllapsedCPUTime() >= fCPUTimeLimit);
 	}
 
 	@Override

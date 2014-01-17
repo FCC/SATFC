@@ -234,7 +234,7 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 			// Retrieve answer and fill the answer queue.
 			fSolving.set(false);
 			//Terminate timing tasks.
-			fTimerServices.shutdown();
+			fTimerServices.shutdownNow();
 			try {
 				if(!fTimerServices.awaitTermination(3, TimeUnit.SECONDS))
 				{

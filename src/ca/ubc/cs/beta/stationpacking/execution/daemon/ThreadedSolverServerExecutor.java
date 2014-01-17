@@ -81,7 +81,7 @@ public class ThreadedSolverServerExecutor {
 		Logger log = LoggerFactory.getLogger(ThreadedSolverServerExecutor.class);
 		
 		//Setup the solver manager.
-		SolverManager aSolverManager = aParameters.getSolverManager();
+		SolverManager aSolverManager = aParameters.SolverManagerParameters.getSolverManager();
 		
 		//Setup server socket.
 		int aServerPort = aParameters.Port;
