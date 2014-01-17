@@ -47,7 +47,7 @@ public class InstanceParameters extends AbstractOptions {
 	}
 	
 	@Parameter(names = "-CUTOFF", description = "Time allowed to the feasibility checker (in seconds).")
-	public double Cutoff = 1800.0;
+	public double Cutoff = 60.0;
 	
 	@Parameter(names = "-SEED", description = "(Random) seed given to the feasibility checker.")
 	public long Seed = 1;

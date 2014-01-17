@@ -138,7 +138,7 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		fClaspLibrary.jnasolve(facade, problem, config, result);
 		
 		//Terminate timing tasks.
-		timerService.shutdown();
+		timerService.shutdownNow();
 		try {
 			if(!timerService.awaitTermination(3, TimeUnit.SECONDS))
 			{
