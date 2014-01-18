@@ -192,7 +192,11 @@ class JobCaster
       sleep 0.05 # 50ms ping time is perfectly reasonable, Redis is fast.
     end
     
-    stop_reason.must_be_in(STOP_WAITING_REASONS)
+    # Don't want to require must_be gem for try_job_client.
+    #stop_reason.must_be_in(STOP_WAITING_REASONS)
+    unless STOP_WAITING_REASONS.include?(stop_reason)
+      raise "Invalid stop_reason #{stop_reason}.  Must be one of #{STOP_WAITING_REASONS}"
+    end
     
     if current_answer_count == expected_size
       return [:ok, maximum_satfc_time, Time.now - start, current_answer_count, stop_reason]
