@@ -3,20 +3,27 @@
 ENV['JOB_CASTER_URL'] = "localhost:6379"
 
 USAGE = <<USAGE
-Usage: constraint_sets_directory=path/to/constraint_sets/ ruby try_job_client.rb <question.csv> [answer.csv]
+Usage: constraint_sets_directory=path/to/constraint_sets/ ./try_job_client <question.csv> [answer.csv]
 
 Sends feasibility question.csv to SATFCJobClient via Redis running on #{ENV['JOB_CASTER_URL']}.  Starts Redis and SATFCJobClient as needed using ENV['constraint_sets_directory'] to find constraints.
 
 Writes answer to answer.csv.  If answer.csv is not provided, defaults to question.csv with "question" replaced by "answer" unless "question" doesn't occur in question.csv in which case we use the extention "_answer.csv".  For example:
 
-  ruby try_job_client.rb the_question.csv
+  ./try_job_client the_question.csv
     writes to the_answer.csv
     
-  ruby try_job_client.rb question_the_question.csv
+  ./try_job_client question_the_question.csv
     writes to answer_the_answer.csv
     
-  ruby try_job_client.rb what_is_this.csv
+  ./try_job_client what_is_this.csv
     writes to what_is_this_answer.csv
+
+Dependencies:
+
+  [Ruby](https://www.ruby-lang.org/en/downloads/): Version Ruby 1.9.3-p484 is a safe bet.
+  [Redis](http://redis.io/download)
+  Redis RubyGem: Just run `gem install redis`.
+  [pgrep](http://en.wikipedia.org/wiki/Pgrep): Probably already installed.
 
 USAGE
 
