@@ -27,3 +27,18 @@ clean:
 	# It does confuse git because they are expected to be placed in jars.
 	# The easist solution is to just use Eclipse.
 	find ../../ -name *.class -exec rm -f '{}' \;
+
+
+try_job_client: job_caster.rb q_and_a_handling.rb redis_retry.rb tokens.rb 
+
+job_caster.rb: ../../../app/models/job_caster.rb
+	cp $< .
+
+q_and_a_handling.rb: ../../../app/models/q_and_a_handling.rb
+	cp $< .
+	
+redis_retry.rb: ../../../app/models/redis_retry.rb
+	cp $< .
+
+tokens.rb: ../../../tokens.rb
+	cp $< .
