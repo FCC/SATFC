@@ -13,8 +13,14 @@
 /Arguments
 /deliverable
 lib/redis-client/*.class
+lib/redis-client/example_answer.csv
 src/ca/ubc/cs/beta/stationpacking/base/StationPackingInstance.class
 src/ca/ubc/cs/beta/stationpacking/daemon/server/threadedserver/solver/ServerSolver$ProblemInitializingOverheadTimeoutException.class
 src/ca/ubc/cs/beta/stationpacking/daemon/server/threadedserver/solver/ServerSolver$SolverServerStateInterruptedException.class
 src/ca/ubc/cs/beta/stationpacking/daemon/server/threadedserver/solver/ServerSolver$SolvingInterrupedException.class
 src/ca/ubc/cs/beta/stationpacking/daemon/server/threadedserver/solver/ServerSolver.class
+dump.rdb
+src/ca/ubc/cs/beta/stationpacking/execution/parameters/solver/SolverManagerParameters$1.class
+src/ca/ubc/cs/beta/stationpacking/execution/parameters/solver/SolverManagerParameters.class
+src/ca/ubc/cs/beta/stationpacking/execution/parameters/solver/daemon/ThreadedSolverServerParameters.class
+src/ca/ubc/cs/beta/stationpacking/solvers/termination/CPUTimeTerminationCriterion.class
