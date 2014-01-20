@@ -68,8 +68,8 @@ public class SATFC {
 		IStationManager stationManager = bundle.getStationManager();
 
 		log.debug("Initializing instance...");
-		
 		StationPackingInstance instance = parameters.QuestionParameters.getInstance(stationManager);
+		log.info("Solving instance: \n {}",instance.toString());
 		
 		log.debug("Selecting solver...");
 		ISolver solver = bundle.getSolver(instance);
