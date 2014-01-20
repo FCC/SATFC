@@ -13,7 +13,7 @@ import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverManager;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBundle;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.SATFCParameters;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.SATFCExecutableParameters;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
@@ -37,7 +37,7 @@ public class SATFC {
 	public static void main(String[] args) {
 		
 		//Parse the command line arguments in a parameter object.
-		SATFCParameters parameters = new SATFCParameters();
+		SATFCExecutableParameters parameters = new SATFCExecutableParameters();
 		//Check for help
 		try
 		{
@@ -47,12 +47,12 @@ public class SATFC {
 		{
 			throw aParameterException;
 		}
-		parameters.LoggingOptions.initializeLogging();
+		parameters.SATFCParameters.LoggingOptions.initializeLogging();
 		Logger log = LoggerFactory.getLogger(SATFC.class);
 		
 		//Setup the solver manager.
 		log.debug("Setting up solver manager...");
-		SolverManager solverManager = parameters.SolverManagerParameters.getSolverManager();
+		SolverManager solverManager = parameters.SATFCParameters.SolverManagerParameters.getSolverManager();
 
 		log.debug("Initializing problem data...");
 		String data = parameters.WorkDirectory+File.separator+parameters.QuestionParameters.getData(); 
