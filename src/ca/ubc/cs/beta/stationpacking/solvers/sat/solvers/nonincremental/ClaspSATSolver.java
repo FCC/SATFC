@@ -91,7 +91,7 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 	 * @see ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ISATSolver#solve(ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF, double, long)
 	 */
 	@Override
-	public SATSolverResult solve(CNF aCNF, ITerminationCriterion aTerminationCriterion, long aSeed) 
+	public SATSolverResult solve(CNF aCNF, final ITerminationCriterion aTerminationCriterion, long aSeed) 
 	{	
 		// create the facade
 		final Pointer facade = fClaspLibrary.createFacade();
@@ -124,7 +124,7 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		timerService.scheduleWithFixedDelay(new Runnable(){
 			@Override
 			public void run() {
-				if (fInterrupt.get())
+				if (fInterrupt.get() || aTerminationCriterion.hasToStop())
 				{
 					fClaspLibrary.interrupt(facade);
 				}
