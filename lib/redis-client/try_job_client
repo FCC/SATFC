@@ -1,0 +1,179 @@
+#!/usr/bin/env ruby
+
+ENV['JOB_CASTER_URL'] = "localhost:6379"
+
+USAGE = <<USAGE
+Usage: constraint_sets_directory=path/to/constraint_sets/ ./try_job_client <question.csv> [answer.csv]
+
+Sends feasibility question.csv to SATFCJobClient via Redis running on #{ENV['JOB_CASTER_URL']}.  Starts Redis and SATFCJobClient as needed using ENV['constraint_sets_directory'] to find constraints.
+
+Writes answer to answer.csv.  If answer.csv is not provided, defaults to question.csv with "question" replaced by "answer" unless "question" doesn't occur in question.csv in which case we use the extention "_answer.csv".  For example:
+
+  ./try_job_client the_question.csv
+    writes to the_answer.csv
+    
+  ./try_job_client question_the_question.csv
+    writes to answer_the_answer.csv
+    
+  ./try_job_client what_is_this.csv
+    writes to what_is_this_answer.csv
+
+Dependencies:
+
+  [Ruby](https://www.ruby-lang.org/en/downloads/): Version Ruby 1.9.3-p484 is a safe bet.
+  [Redis](http://redis.io/download)
+  Redis RubyGem: Just run `gem install redis`.
+  [pgrep](http://en.wikipedia.org/wiki/Pgrep): Probably already installed.
+
+USAGE
+
+begin
+  require 'redis'
+rescue LoadError
+  $stderr.puts "You seem to be missing the redis gem.  Use `gem which redis` to double check.  Install with `gem install redis`."
+  exit 1
+end
+
+require 'uri'
+require 'json'
+require_relative 'q_and_a_handling'
+require_relative 'job_caster'
+
+class TryJobClient
+  include QAndAHandling
+  
+  def initialize
+    @job_caster = JobCaster.new(Tokens.job_caster_host, Tokens.job_caster_port,
+      callback: lambda do |redis_client|
+        raise "Unable to connect to Job Caster server at #{Tokens.job_caster_host}:#{Tokens.job_caster_port}."
+    end)
+  end
+  
+  def run(question_file, answer_file = nil)
+    answer_file ||= begin
+      basename = File.basename(question_file)
+      basename.gsub!(/question/, 'answer')
+      unless basename =~ /answer/
+        extname = File.extname(basename)
+        basename = File.basename(basename, extname)+"_answer"+extname
+      end
+      File.join(File.dirname(question_file), basename)
+    end
+    
+    puts "Loading question."
+    question = load_question(question_file)
+    puts "Sending question to Redis."
+    answer = answer(question)
+    
+    puts "Saving answer to #{answer_file}."
+    save_answer(answer_file, "Solved by SATFCJobClient.", answer)
+    puts "Saved."
+  end
+  
+  def answer(question)
+    problem_timeout_s = 5
+    problem_timeout_ms = 1000 * problem_timeout_s
+    problem_set_timeout_s = problem_timeout_s
+    fc_approach = "all"
+    expected_size = 1
+    
+    problem_set = {
+      data: [
+        question.band,
+        question.highest,
+        question.station_config,
+        [nil],
+        fc_approach,
+        problem_timeout_ms,
+        question.assignment,
+        nil
+      ]
+    }
+    problem_set_json = problem_set.to_json
+    
+    new_station_id = question.assignment.key(-1)
+    new_station_ids = [new_station_id]
+    uniq_id = "try_job_client"
+    problem_set_id = @job_caster.send_problem_set(problem_set_json,
+      new_station_ids, uniq_id)
+    
+    puts "Waiting for answer."
+    result, max_satfc_time, actual_time, answer_count =
+      @job_caster.wait_for_problem_set(problem_set_id, expected_size, problem_set_timeout_s, problem_timeout_ms)
+    
+    case result
+    when :timeout
+      $stderr.puts "Job client timed out after #{actual_time}s."
+      exit 1
+    when :ok
+    else
+      raise "Job client returned unexpected result: #{result.inspect}"
+    end
+    
+    puts "Received answer."
+    raw_answer = JSON.parse(@job_caster.get_answers_for(problem_set_id)[0])
+    answer = raw_answer[2]
+        
+    assignment = if answer == "yes"
+      JSON.parse(@job_caster.get_assignment_for(new_station_id, problem_set_id))
+    else
+      {}
+    end
+    
+    @job_caster.delete_answer_data_for(problem_set_id)
+    Answer.new(answer, assignment)
+  end
+  
+  def save_answer(question_file, fc_info, answer)
+    CSV.open(question_file, 'w') do |csv|
+      csv << [:ANSWER, answer.answer]
+      csv << [:FC_INFO, fc_info]
+      answer.assignment.each do |key_value|
+        csv << key_value
+      end
+    end
+  end
+end
+
+if $0 == __FILE__
+  if ARGV.size == 0
+    puts USAGE
+    exit
+  end
+  
+  def spawn_dependant(command)
+    parent_pid = Process.pid
+    child_pid = spawn(command)
+    fork do
+      
+    end
+  end
+  
+  begin
+    if `pgrep -fl redis-server"`.empty?
+      redis_pid = spawn %{redis-server --requirepass #{Tokens::TOKEN}}
+      sleep 1
+      puts "Started redis-server as process #{redis_pid}."
+    end
+    
+    if `pgrep -fl java | grep lib/redis-client`.empty?
+      unless ENV['constraint_sets_directory']
+        $stderr.puts "Set constraint_sets_directory environment variable to point to the directory containting constraint sets.  For instance, /this/that/constraint_sets containing la10_pc_as_cs, Constraints08232013, etc."
+        exit 1
+      end
+      job_client_pid =
+        spawn %{satfc_job_client -c #{ENV['constraint_sets_directory']}}
+      sleep 2
+      puts "Started satfc_job_client as process #{job_client_pid}."
+    end
+    
+    TryJobClient.new.run(*ARGV)
+  rescue Redis::CannotConnectError
+    $stderr.puts $!.message
+    exit 1
+  ensure
+    # Interrupt all descendant processes. 
+    trap('INT'){Process.waitall}
+    Process.kill('INT', -Process.pid)
+  end
+end
