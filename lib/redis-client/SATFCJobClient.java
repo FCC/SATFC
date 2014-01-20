@@ -29,7 +29,7 @@ import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverManager;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBundle;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.daemon.ThreadedSolverServerParameters;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.SATFCParameters;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
@@ -653,7 +653,7 @@ public class SATFCJobClient implements Runnable {
 		 * 
 		 * @wtaysom
 		 */
-		ThreadedSolverServerParameters aParameters = new ThreadedSolverServerParameters();
+		SATFCParameters parameters = new SATFCParameters();
 		try {
 			File current_working_directory = new File(".");
 			File fcc_station_packing_root = current_working_directory.getCanonicalFile();
@@ -664,7 +664,7 @@ public class SATFCJobClient implements Runnable {
 				throw new FileNotFoundException("Unable to find fcc-station-packing as a parent of "+current_working_directory.getCanonicalPath());
 			}
 			String file_name = Platform.isMac() ? "libjnaclasp.dylib" : "libjnaclasp.so";			
-			aParameters.SolverManagerParameters.SolverParameters.Library = new File(fcc_station_packing_root, "SATsolvers/clasp/jna/"+file_name).getCanonicalPath();
+			parameters.SolverManagerParameters.SolverParameters.Library = new File(fcc_station_packing_root, "SATsolvers/clasp/jna/"+file_name).getCanonicalPath();
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -673,10 +673,10 @@ public class SATFCJobClient implements Runnable {
 		 * Set logging options.
 		 * Note that conf/logback.xml needs to be packaged with executable for logging to work properly.
 		 */
-		aParameters.LoggingOptions.logLevel = LogLevel.INFO;
-		aParameters.LoggingOptions.initializeLogging();
+		parameters.LoggingOptions.logLevel = LogLevel.INFO;
+		parameters.LoggingOptions.initializeLogging();
 				
-		SolverManager aSolverManager = aParameters.SolverManagerParameters.getSolverManager();
+		SolverManager aSolverManager = parameters.SolverManagerParameters.getSolverManager();
 
 		SATFCJobClient aSATFCJobClient = new SATFCJobClient(options, aSolverManager);
 		
