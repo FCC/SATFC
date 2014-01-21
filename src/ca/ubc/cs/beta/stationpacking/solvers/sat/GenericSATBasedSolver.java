@@ -13,7 +13,6 @@ import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.ubc.cs.beta.aclib.misc.watch.AutoStartStopWatch;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
@@ -29,14 +28,16 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ISATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
 public class GenericSATBasedSolver implements ISolver {
 	
 	private static Logger log = LoggerFactory.getLogger(GenericSATBasedSolver.class);
 	
+	
 	private final static boolean SAVE_CNF = false;
 	private final static String CNF_DIR = "/ubc/cs/home/a/afrechet/arrow-space/OrcinusMountPoint/FCCFeasibilityCheckingInstances/UHF_21-08-13";
-	
+
 	
 	private final IConstraintManager fConstraintManager;
 	private final IComponentGrouper fComponentGrouper;
@@ -54,10 +55,11 @@ public class GenericSATBasedSolver implements ISolver {
 	@Override
 	public SolverResult solve(StationPackingInstance aInstance, ITerminationCriterion aTerminationCriterion,
 			long aSeed) {
-		AutoStartStopWatch aSolveWatch = new AutoStartStopWatch();
+		
+		Watch watch = Watch.constructAutoStartWatch();
 		
 		log.debug("Solving instance of {}...",aInstance.getInfo());
-
+		
 		Set<Integer> aChannelRange = aInstance.getChannels();
 		
 		HashSet<SolverResult> aComponentResults = new HashSet<SolverResult>();
@@ -98,7 +100,9 @@ public class GenericSATBasedSolver implements ISolver {
 			}
 			
 			log.debug("Solving the subproblem CNF with "+aTerminationCriterion.getRemainingTime()+" s remaining.");
+			watch.stop();
 			SATSolverResult aComponentResult = fSATSolver.solve(aCNF, aTerminationCriterion, aSeed);
+			watch.start();
 			
 			log.debug("Parsing result.");
 			Map<Integer,Set<Station>> aStationAssignment = new HashMap<Integer,Set<Station>>();
@@ -194,8 +198,12 @@ public class GenericSATBasedSolver implements ISolver {
 		}
 		log.debug("...done.");
 		
-		log.debug("Result : {}",aResult);
-		log.debug("Total walltime taken "+aSolveWatch.stop()/1000.0+" seconds");
+		watch.stop();
+		double extraTime = watch.getEllapsedTime();
+		aResult = SolverResult.addTime(aResult, extraTime);
+		
+		log.debug("Result:");
+		log.debug(aResult.toParsableString());
 		
 		return aResult;
 	}

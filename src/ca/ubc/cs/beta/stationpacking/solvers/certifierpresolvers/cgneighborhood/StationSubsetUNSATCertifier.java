@@ -13,6 +13,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.DisjunctiveCompositeTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
 /**
  * Checks if a given neighborhood of instances cannot be packed together.
@@ -37,21 +38,30 @@ public class StationSubsetUNSATCertifier implements IStationSubsetCertifier {
 			Set<Station> aMissingStations,
 			ITerminationCriterion aTerminationCriterion, long aSeed) {
 		
+		Watch watch = Watch.constructAutoStartWatch();
+		
 		ITerminationCriterion terminationCriterion = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(fTerminationCriterion,aTerminationCriterion));
 		
 		log.debug("Evaluating if stations not in previous assignment ({}) with their neighborhood are unpackable.",aMissingStations.size());
 		StationPackingInstance UNSATboundInstance = new StationPackingInstance(aMissingStations, aInstance.getChannels(), aInstance.getPreviousAssignment());
 		
+		watch.stop();
 		SolverResult UNSATboundResult = fSolver.solve(UNSATboundInstance, terminationCriterion, aSeed);
+		watch.start();
 		
 		if(UNSATboundResult.getResult().equals(SATResult.UNSAT))
-		{
+		{	
 			log.debug("Stations not in previous assignment cannot be packed with their neighborhood.");
-			return new SolverResult(SATResult.UNSAT,UNSATboundResult.getRuntime());
+			
+			watch.stop();
+			double extraTime = watch.getEllapsedTime();
+			return new SolverResult(SATResult.UNSAT,UNSATboundResult.getRuntime()+extraTime);
 		}
 		else
 		{
-			return new SolverResult(SATResult.TIMEOUT, UNSATboundResult.getRuntime());
+			watch.stop();
+			double extraTime = watch.getEllapsedTime();
+			return new SolverResult(SATResult.TIMEOUT, UNSATboundResult.getRuntime()+extraTime);
 		}
 	}
 

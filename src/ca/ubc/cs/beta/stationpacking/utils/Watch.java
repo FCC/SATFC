@@ -1,45 +1,103 @@
 package ca.ubc.cs.beta.stationpacking.utils;
 
+
 /**
- * A lovely watch by Guillaume and Alex <3
- * @author gsauln, alex
- *
+ * A pauseable walltime watch.
+ * @author afrechet
  */
 public class Watch 
-{
-	private long time;
+{	
+	private long fStartTime;
+	private double fDuration;
+	private boolean fStopped;
 	
+	/**
+	 * Create a watch, initially stopped.
+	 */
 	public Watch()
 	{
-		time = -1;
+		fStartTime = -1;
+		fDuration = 0.0;
+		fStopped = true;
 	}
 	
 	/**
-	 * (Re)starts the watch.
+	 * @return a watch that has been started.
 	 */
-	public void start()
+	public static Watch constructAutoStartWatch()
 	{
-		time = System.currentTimeMillis();
+		Watch watch = new Watch();
+		watch.start();
+		return watch;
 	}
 	
 	/**
-	 * @return the duration in milliseconds since the last call to start. 
-	 * The watch needs to be started before every call to stop.
-	 * @throws IllegalStateException - if the watch was not started.
+	 * Stopped the watch.
+	 * @return True if and only if the watch was running and then was stopped. False if the watch was already stopped.
 	 */
-	public long stop()
+	public boolean stop()
 	{
-		if(time>=0)
+		if(!fStopped)
 		{
-			long currentTime = time;
-			time = -1;
-			return System.currentTimeMillis()-currentTime;
+			fDuration += (System.currentTimeMillis()-fStartTime)/1000.0;
+			
+			fStartTime = -1;
+			fStopped = true;
+			return true;
 		}
 		else
 		{
-			throw new IllegalStateException("Watch was not started.");
+			return false;
 		}
 	}
+	
+	/**
+	 * Start the watch.
+	 * @return True if and only if the watch was stopped and then was started. False if the watch was already started.
+	 */
+	public boolean start()
+	{
+		if(fStopped)
+		{
+			fStartTime = System.currentTimeMillis();
+			fStopped = false;
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	
+	}
+	
+	/**
+	 * Reset the watch.
+	 */
+	public void reset()
+	{
+		fStartTime = -1;
+		fDuration = 0.0;
+		fStopped = true;
+	}
+	
+	/**
+	 * @return the ellapsed time (s) between since the initial start (or reset) of the watch, the last end time being now if the watch
+	 * is still running.
+	 */
+	public double getEllapsedTime()
+	{
+		if(fStopped)
+		{
+			return fDuration;
+		}
+		else
+		{
+			return fDuration + (System.currentTimeMillis()-fStartTime)/1000.0;
+		}
+		
+		
+	}
+	
 	
 	
 }
