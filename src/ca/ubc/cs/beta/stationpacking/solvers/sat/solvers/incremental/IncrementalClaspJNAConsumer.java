@@ -181,6 +181,7 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 			// Reset the state of the result object.
 			fLib.resetResult(fJNAResult);
 			
+			fSolveTimeStopWatch.reset();
 			fSolveTimeStopWatch.start();
 			
 			// create the time thread to set cutoff
@@ -247,9 +248,10 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 			
 			log.debug("Came back from solving - processing result.");
 	
-			long timeInMillis = fSolveTimeStopWatch.stop();
+			fSolveTimeStopWatch.stop();
+			double runtime = fSolveTimeStopWatch.getEllapsedTime();
 			
-			ClaspResult result = ClaspSATSolver.getSolverResult(fLib, fJNAResult, fTimedOut, fInterrupted, timeInMillis);
+			ClaspResult result = ClaspSATSolver.getSolverResult(fLib, fJNAResult, fTimedOut, fInterrupted, runtime);
 			try {
 				fAnswerQueue.put(result);
 			} catch (InterruptedException e) {

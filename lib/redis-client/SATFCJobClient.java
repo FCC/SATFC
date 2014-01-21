@@ -414,10 +414,9 @@ public class SATFCJobClient implements Runnable {
 		 */
 		
 		//Solve the instance
+		watch.stop();
 		SolverResult result = solver.solve(instance, terminationCriterion, seed);
-		
-		double time = watch.stop() / 1000.0;
-		
+		watch.start();
 		
 		/**
 		 * Convert result into a feasibility result.
@@ -453,6 +452,11 @@ public class SATFCJobClient implements Runnable {
 		}
 		
 		//Also piping in as message the full solver result to string (which might be pretty long), but may be useful for debugging purpose.
+		
+		watch.stop();
+		double extraTime = watch.getEllapsedTime();
+		double time = runtime + extraTime;
+		
 		FeasibilityResult feasibility_result = new FeasibilityResult(new_station, answer, result.toString(),runtime , time, witness);
 		
 		return feasibility_result;

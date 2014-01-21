@@ -10,10 +10,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.sun.jna.Native;
-import com.sun.jna.Pointer;
-import com.sun.jna.ptr.IntByReference;
-
 import ca.ubc.cs.beta.aclib.concurrent.threadfactory.SequentiallyNamedThreadFactory;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
@@ -23,6 +19,10 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.jnalibraries.ClaspLibrary;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
+
+import com.sun.jna.Native;
+import com.sun.jna.Pointer;
+import com.sun.jna.ptr.IntByReference;
 
 /**
  * Implements a SAT solver using the jnaclasplibrary.so.  It gracefully handles thread interruptions while solve() is executing
@@ -37,7 +37,6 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 	private ClaspLibrary fClaspLibrary;
 	private String fParameters;
 	private int fMaxArgs;
-	private Watch fSolveTimeStopWatch = new Watch();
 	private final AtomicBoolean fInterrupt = new AtomicBoolean(false);
 	
 	public ClaspSATSolver(String libraryPath, String parameters)
@@ -93,7 +92,8 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 	@Override
 	public SATSolverResult solve(CNF aCNF, final ITerminationCriterion aTerminationCriterion, long aSeed) 
 	{	
-		fSolveTimeStopWatch.start();
+		
+		Watch watch = Watch.constructAutoStartWatch();
 		
 		// create the facade
 		final Pointer facade = fClaspLibrary.createFacade();
@@ -111,6 +111,12 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		
 		double cutoff = aTerminationCriterion.getRemainingTime();
 		ScheduledExecutorService timerService = Executors.newScheduledThreadPool(2,new SequentiallyNamedThreadFactory("Clasp SAT Solver Timers", true));
+		
+		watch.stop();
+		double preTime = watch.getEllapsedTime();
+		
+		watch.reset();
+		watch.start();
 		
 		// Launches a timer that will set the interrupt flag of the result object to true after aCutOff seconds. 
 		timerService.schedule(new Runnable(){
@@ -136,6 +142,12 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		
 		fClaspLibrary.jnasolve(facade, problem, config, result);
 		
+		watch.stop();
+		double runtime = watch.getEllapsedTime();
+		
+		watch.reset();
+		watch.start();
+		
 		//Terminate timing tasks.
 		timerService.shutdownNow();
 		try {
@@ -148,9 +160,7 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 			throw new IllegalStateException("Interrupted while trying to terminate clasp timer tasks.");
 		}
 		
-		long timeInMillis = fSolveTimeStopWatch.stop();
-		
-		ClaspResult claspResult = getSolverResult(fClaspLibrary, result, timedOut, fInterrupt, timeInMillis);
+		ClaspResult claspResult = getSolverResult(fClaspLibrary, result, timedOut, fInterrupt, runtime);
 		aTerminationCriterion.notifyEvent(claspResult.getRuntime());
 		
 		HashSet<Literal> assignment = parseAssignment(claspResult.getAssignment());
@@ -161,7 +171,10 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		fClaspLibrary.destroyProblem(problem);
 		fClaspLibrary.destroyResult(result);
 		
-		return new SATSolverResult(claspResult.getSATResult(), claspResult.getRuntime(), assignment);
+		watch.stop();
+		double postTime = watch.getEllapsedTime();
+		
+		return new SATSolverResult(claspResult.getSATResult(), claspResult.getRuntime()+preTime+postTime, assignment);
 	}
 
 	private HashSet<Literal> parseAssignment(int[] assignment)
@@ -195,9 +208,8 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 												Pointer JNAResult, 
 												AtomicBoolean timedOut, 
 												AtomicBoolean interrupted, 
-												long timeInMillis)
+												double runtime)
 	{
-		double runtime = (double)timeInMillis/1000.0;
 		
 		SATResult satResult;
 		int[] assignment = {0};

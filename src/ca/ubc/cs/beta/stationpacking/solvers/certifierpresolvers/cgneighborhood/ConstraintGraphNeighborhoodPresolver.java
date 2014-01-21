@@ -11,7 +11,6 @@ import org.jgrapht.graph.DefaultEdge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.ubc.cs.beta.aclib.misc.watch.AutoStartStopWatch;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
@@ -21,6 +20,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.ConstraintGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
 /**
  * Pre-solve by applying a sequence of station subsets certifiers based on 
@@ -48,9 +48,7 @@ private static final int MAX_MISSING_STATIONS=1;
 	public SolverResult solve(StationPackingInstance aInstance, ITerminationCriterion aTerminationCriterion,
 			long aSeed) {
 		
-		double runtime = 0.0;
-		
-		AutoStartStopWatch preWatch = new AutoStartStopWatch();
+		Watch watch = Watch.constructAutoStartWatch();
 		
 		HashMap<Station,Integer> previousAssignment = aInstance.getPreviousAssignment();
 		
@@ -59,7 +57,8 @@ private static final int MAX_MISSING_STATIONS=1;
 		{
 			log.warn("No assignment to use for bounding pre-solving.");
 			
-			return new SolverResult(SATResult.TIMEOUT, preWatch.stop()/1000.0);
+			watch.stop();
+			return new SolverResult(SATResult.TIMEOUT, watch.getEllapsedTime());
 		}
 		
 		//Get the stations in the problem instance that are not in the previous assignment.
@@ -77,7 +76,8 @@ private static final int MAX_MISSING_STATIONS=1;
 		{
 			log.warn("Too many missing stations in previous assignment ({}).",missingStations.size());
 			
-			return new SolverResult(SATResult.TIMEOUT, preWatch.stop()/1000.0);
+			watch.stop();
+			return new SolverResult(SATResult.TIMEOUT,watch.getEllapsedTime());
 		}
 		
 		log.debug("Building constraint graph.");
@@ -90,17 +90,17 @@ private static final int MAX_MISSING_STATIONS=1;
 			topackStations.addAll(aConstraintGraphNeighborIndex.neighborsOf(missingStation));
 		}
 		
-		runtime += preWatch.stop()/1000.0;
-		
 		List<SolverResult> results = new LinkedList<SolverResult>();
 		for(int i=0;i<fCertifiers.size() && !aTerminationCriterion.hasToStop(); i++)
 		{
 			log.debug("Trying constraint graph neighborhood certifier {}.",i+1);
 			
 			IStationSubsetCertifier certifier = fCertifiers.get(i);
-			SolverResult result = certifier.certify(aInstance, topackStations, aTerminationCriterion, aSeed);
 			
-			runtime += result.getRuntime();
+			watch.stop();
+			SolverResult result = certifier.certify(aInstance, topackStations, aTerminationCriterion, aSeed);
+			watch.start();
+			
 			results.add(result);
 			
 			if(result.getResult().equals(SATResult.SAT) || result.getResult().equals(SATResult.UNSAT))
@@ -111,7 +111,15 @@ private static final int MAX_MISSING_STATIONS=1;
 		
 		SolverResult combinedResult = SolverHelper.combineResults(results);
 		
-		return SolverResult.addTime(combinedResult, runtime);
+		watch.stop();
+		double extraTime = watch.getEllapsedTime();
+
+		combinedResult = SolverResult.addTime(combinedResult, extraTime);
+		
+		log.debug("Result:");
+		log.debug(combinedResult.toParsableString());
+		
+		return combinedResult;
 		
 	}
 
