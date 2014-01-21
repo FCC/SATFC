@@ -33,7 +33,7 @@ public class SequentialSolversComposite implements ISolver{
 		
 		for(int i=0;i<fSolvers.size() && !aTerminationCriterion.hasToStop();i++)
 		{
-			log.debug("Trying solver {}.",i);
+			log.debug("Trying solver {}.",i+1);
 			
 			SolverResult result = fSolvers.get(i).solve(aInstance, aTerminationCriterion, aSeed);
 			results.add(result);

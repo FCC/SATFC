@@ -93,6 +93,8 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 	@Override
 	public SATSolverResult solve(CNF aCNF, final ITerminationCriterion aTerminationCriterion, long aSeed) 
 	{	
+		fSolveTimeStopWatch.start();
+		
 		// create the facade
 		final Pointer facade = fClaspLibrary.createFacade();
 		
@@ -106,8 +108,6 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		Pointer problem = fClaspLibrary.createProblem(aCNF.toDIMACS(null));
 		final Pointer result = fClaspLibrary.createResult();
 		final AtomicBoolean timedOut = new AtomicBoolean(false);
-		
-		
 		
 		double cutoff = aTerminationCriterion.getRemainingTime();
 		ScheduledExecutorService timerService = Executors.newScheduledThreadPool(2,new SequentiallyNamedThreadFactory("Clasp SAT Solver Timers", true));
@@ -134,7 +134,6 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		// Start solving
 		log.debug("Send problem to clasp cutting off after "+cutoff+"s");
 		
-		fSolveTimeStopWatch.start();
 		fClaspLibrary.jnasolve(facade, problem, config, result);
 		
 		//Terminate timing tasks.
