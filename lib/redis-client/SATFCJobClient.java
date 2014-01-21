@@ -317,11 +317,6 @@ public class SATFCJobClient implements Runnable {
 		 * TODO It is not necessary to pass by a string to create a StationPackingInstance, but it is the easiest for now.
 		 */
 		
-		double cutoff = problem_set.get_timeout_ms()/1000.0;
-		ITerminationCriterion cputimeTermination = new CPUTimeTerminationCriterion(cutoff);
-		ITerminationCriterion walltimeTermination = new WallclockTimeTerminationCriterion(cutoff*1.5);
-		ITerminationCriterion terminationCriterion = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(cputimeTermination,walltimeTermination));
-		
 		/*
 		 * Since constraint_set() is the name of the folder containing constraint interference
 		 * and domain constraints, we use the argument -c (--constraint_sets_directory) to provide the location of
@@ -408,6 +403,12 @@ public class SATFCJobClient implements Runnable {
 		
 		//Do per instance solver selection with the bundle.
 		ISolver solver = bundle.getSolver(instance);
+		
+		//Setup termination criteria (and start them).
+		double cutoff = problem_set.get_timeout_ms()/1000.0;
+		ITerminationCriterion cputimeTermination = new CPUTimeTerminationCriterion(cutoff);
+		ITerminationCriterion walltimeTermination = new WallclockTimeTerminationCriterion(cutoff*1.5);
+		ITerminationCriterion terminationCriterion = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(cputimeTermination,walltimeTermination));
 		
 		/**
 		 * Solve the instance.
