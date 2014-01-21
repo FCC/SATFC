@@ -93,6 +93,7 @@ public class GenericSATBasedSolver implements ISolver {
 			
 			if(aTerminationCriterion.hasToStop())
 			{
+				log.debug("All time spent.");
 				break;
 			}
 			

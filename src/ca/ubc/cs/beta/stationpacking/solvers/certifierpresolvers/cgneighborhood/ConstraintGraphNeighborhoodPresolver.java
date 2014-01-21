@@ -95,7 +95,7 @@ private static final int MAX_MISSING_STATIONS=1;
 		List<SolverResult> results = new LinkedList<SolverResult>();
 		for(int i=0;i<fCertifiers.size() && !aTerminationCriterion.hasToStop(); i++)
 		{
-			log.debug("Trying constraint graph neighborhood certifier {}.",i);
+			log.debug("Trying constraint graph neighborhood certifier {}.",i+1);
 			
 			IStationSubsetCertifier certifier = fCertifiers.get(i);
 			SolverResult result = certifier.certify(aInstance, topackStations, aTerminationCriterion, aSeed);
