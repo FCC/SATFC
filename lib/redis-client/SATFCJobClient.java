@@ -195,6 +195,8 @@ public class SATFCJobClient implements Runnable {
 			}
 			
 			_location += " v"+VERSION;
+			
+			report("location set to: "+_location);
 		}
 		return _location;
 	}
