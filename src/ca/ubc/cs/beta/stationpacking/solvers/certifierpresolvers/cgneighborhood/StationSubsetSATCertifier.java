@@ -8,7 +8,6 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.ubc.cs.beta.aclib.misc.watch.AutoStartStopWatch;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
@@ -16,6 +15,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.DisjunctiveCompositeTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
 import com.google.common.collect.Sets;
 
@@ -37,9 +37,9 @@ public class StationSubsetSATCertifier implements IStationSubsetCertifier {
 			Set<Station> aMissingStations,
 			ITerminationCriterion aTerminationCriterion, long aSeed) {
 		
-		ITerminationCriterion terminationCriterion = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(fTerminationCriterion,aTerminationCriterion));
+		Watch watch = Watch.constructAutoStartWatch();
 		
-		AutoStartStopWatch interWatch = new AutoStartStopWatch();
+		ITerminationCriterion terminationCriterion = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(fTerminationCriterion,aTerminationCriterion));
 		
 		HashMap<Station,Integer> previousAssignment = aInstance.getPreviousAssignment();
 		
@@ -63,26 +63,35 @@ public class StationSubsetSATCertifier implements IStationSubsetCertifier {
 		log.debug("Evaluating if stations not in previous assignment ({}) with their neighborhood are packable when all other stations are fixed to previous assignment.",reducedDomainStations.size());
 		StationPackingInstance SATboundInstance = new StationPackingInstance(reducedDomainStations, aInstance.getChannels(), previousAssignment);
 		
-		double aTimeSpent = interWatch.stop()/1000.0;
 		if(!aTerminationCriterion.hasToStop())
 		{
-			SolverResult SATboundResult = fSolver.solve(SATboundInstance, terminationCriterion, aSeed);
 			
-			aTimeSpent += SATboundResult.getRuntime();
+			watch.stop();
+			SolverResult SATboundResult = fSolver.solve(SATboundInstance, terminationCriterion, aSeed);
+			watch.start();
+			
 			
 			if(SATboundResult.getResult().equals(SATResult.SAT))
 			{
 				log.debug("Stations not in previous assignment can be packed with their neighborhood when all other stations are fixed to their previous assignment..");
-				return new SolverResult(SATResult.SAT,aTimeSpent,SATboundResult.getAssignment());
+				
+				watch.stop();
+				double extraTime = watch.getEllapsedTime();
+				
+				return SolverResult.addTime(SATboundResult, extraTime);
 			}
 			else
 			{
-				return new SolverResult(SATResult.TIMEOUT, aTimeSpent);
+				watch.stop();
+				double extraTime = watch.getEllapsedTime();
+				return new SolverResult(SATResult.TIMEOUT, SATboundResult.getRuntime()+extraTime);
 			}
 		}
 		else
 		{
-			return new SolverResult(SATResult.TIMEOUT, aTimeSpent);
+			watch.stop();
+			double extraTime = watch.getEllapsedTime();
+			return new SolverResult(SATResult.TIMEOUT, extraTime);
 		}
 	}
 
