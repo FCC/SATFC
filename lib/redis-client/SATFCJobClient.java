@@ -26,7 +26,6 @@ import redis.clients.jedis.Transaction;
 import redis.clients.jedis.exceptions.JedisConnectionException;
 import redis.clients.jedis.exceptions.JedisDataException;
 import ca.ubc.cs.beta.aclib.logging.LogLevel;
-import ca.ubc.cs.beta.aclib.misc.cputime.CPUTime;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverManager;
@@ -417,12 +416,8 @@ public class SATFCJobClient implements Runnable {
 		 */
 		
 		//Solve the instance
-		// Measure CPU time directly instead of relying on result.getRuntime().
-		double startCPUTime = CPUTime.getCPUTime();
 		SolverResult result = solver.solve(instance, terminationCriterion, seed);
-		double endCPUTime = CPUTime.getCPUTime();
 		
-		double runtime = endCPUTime - startCPUTime;
 		double time = watch.stop() / 1000.0;
 		
 		
@@ -431,6 +426,7 @@ public class SATFCJobClient implements Runnable {
 		 */
 		
 		Answer answer = Answer.UNKNOWN;
+		double runtime = result.getRuntime();
 		Map<Integer,Integer> witness = new HashMap<Integer,Integer>();
 	
 		switch(result.getResult())
@@ -459,7 +455,7 @@ public class SATFCJobClient implements Runnable {
 		}
 		
 		//Also piping in as message the full solver result to string (which might be pretty long), but may be useful for debugging purpose.
-		FeasibilityResult feasibility_result = new FeasibilityResult(new_station, answer, result.toString(), runtime, time, witness);
+		FeasibilityResult feasibility_result = new FeasibilityResult(new_station, answer, result.toString(),runtime , time, witness);
 		
 		return feasibility_result;
 
