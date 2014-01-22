@@ -1,6 +1,8 @@
-package ca.ubc.cs.beta.stationpacking.solvers.termination;
+package ca.ubc.cs.beta.stationpacking.solvers.termination.walltime;
 
-public class WallclockTimeTerminationCriterion implements ITerminationCriterion {
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
+
+public class WalltimeTerminationCriterion implements ITerminationCriterion {
 
 	private final long fEndTimeMilli;
 	
@@ -8,7 +10,7 @@ public class WallclockTimeTerminationCriterion implements ITerminationCriterion 
 	 * Create a wallclock time termination criterion starting immediately and running for the provided duration (s).
 	 * @param aWalltimeLimit - wallclock duration (s).
 	 */
-	public WallclockTimeTerminationCriterion(double aWalltimeLimit)
+	public WalltimeTerminationCriterion(double aWalltimeLimit)
 	{
 		this(System.currentTimeMillis(),aWalltimeLimit);
 	}
@@ -18,7 +20,7 @@ public class WallclockTimeTerminationCriterion implements ITerminationCriterion 
 	 * @param aApplicationStartTimeMilli - starting time (ms).
 	 * @param aWalltimeLimit - wallclock duration (s).
 	 */
-	private WallclockTimeTerminationCriterion(long aApplicationStartTimeMilli, double aWalltimeLimit)
+	private WalltimeTerminationCriterion(long aApplicationStartTimeMilli, double aWalltimeLimit)
 	{
 		this.fEndTimeMilli = aApplicationStartTimeMilli +  (long) (aWalltimeLimit *1000);
 		
