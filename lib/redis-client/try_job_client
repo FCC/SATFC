@@ -150,7 +150,7 @@ if $0 == __FILE__
   end
   
   begin
-    if `pgrep -fl redis-server"`.empty?
+    if `pgrep -fl redis-server`.empty?
       redis_pid = spawn %{redis-server --requirepass #{Tokens::TOKEN}}
       sleep 1
       puts "Started redis-server as process #{redis_pid}."
