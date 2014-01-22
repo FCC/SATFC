@@ -4,7 +4,7 @@ module QAndAHandling
   
   require 'csv'
   
-  Question = Struct.new(:station_config, :highest, :band, :assignment)
+  Question = Struct.new(:station_config, :highest, :band, :assignment, :timeout)
   Answer = Struct.new(:answer, :assignment)
   
   def load_file_with_assignment filename, sink, &block
@@ -38,6 +38,8 @@ module QAndAHandling
         q.band = {"LVHF" => 1, "UVHF" => 2, "HVHF" => 2, "UHF" => 3}[val.upcase]
       when /HIGHEST/i
         q.highest = val.to_i
+      when /FC_TIMEOUT/i
+        q.timeout = val.to_i
       else
         false
       end
