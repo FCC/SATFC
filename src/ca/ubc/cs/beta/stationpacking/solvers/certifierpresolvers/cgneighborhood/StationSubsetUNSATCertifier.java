@@ -11,8 +11,9 @@ import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
-import ca.ubc.cs.beta.stationpacking.solvers.termination.DisjunctiveCompositeTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterionFactory;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.composite.DisjunctiveCompositeTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
 /**
@@ -25,12 +26,12 @@ public class StationSubsetUNSATCertifier implements IStationSubsetCertifier {
 	private static Logger log = LoggerFactory.getLogger(StationSubsetUNSATCertifier.class);
 	
 	private final ISolver fSolver;
-	private final ITerminationCriterion fTerminationCriterion;
+	private final ITerminationCriterionFactory fTerminationCriterionFactory;
 	
-	public StationSubsetUNSATCertifier(ISolver aSolver, ITerminationCriterion aTerminationCriterion)
+	public StationSubsetUNSATCertifier(ISolver aSolver, ITerminationCriterionFactory aTerminationCriterionFactory)
 	{
 		fSolver = aSolver;
-		fTerminationCriterion = aTerminationCriterion;
+		fTerminationCriterionFactory = aTerminationCriterionFactory;
 	}
 	
 	@Override
@@ -40,7 +41,7 @@ public class StationSubsetUNSATCertifier implements IStationSubsetCertifier {
 		
 		Watch watch = Watch.constructAutoStartWatch();
 		
-		ITerminationCriterion terminationCriterion = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(fTerminationCriterion,aTerminationCriterion));
+		ITerminationCriterion terminationCriterion = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(fTerminationCriterionFactory.getTerminationCriterion(),aTerminationCriterion));
 		
 		log.debug("Evaluating if stations not in previous assignment ({}) with their neighborhood are unpackable.",aMissingStations.size());
 		StationPackingInstance UNSATboundInstance = new StationPackingInstance(aMissingStations, aInstance.getChannels(), aInstance.getPreviousAssignment());

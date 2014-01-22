@@ -17,10 +17,10 @@ import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.SATFCExecutable
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
-import ca.ubc.cs.beta.stationpacking.solvers.termination.CPUTimeTerminationCriterion;
-import ca.ubc.cs.beta.stationpacking.solvers.termination.DisjunctiveCompositeTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
-import ca.ubc.cs.beta.stationpacking.solvers.termination.WallclockTimeTerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.composite.DisjunctiveCompositeTerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.cputime.CPUTimeTerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.walltime.WalltimeTerminationCriterion;
 
 import com.beust.jcommander.ParameterException;
 /**
@@ -77,7 +77,7 @@ public class SATFC {
 		log.debug("Setting up termination criterion...");
 		double cutoff = parameters.QuestionParameters.getCutoff();
 		ITerminationCriterion cputimeCriterion = new CPUTimeTerminationCriterion(cutoff);
-		ITerminationCriterion walltimeCriterion = new WallclockTimeTerminationCriterion(cutoff*1.5);
+		ITerminationCriterion walltimeCriterion = new WalltimeTerminationCriterion(cutoff*1.5);
 		ITerminationCriterion terminationCriterion = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(cputimeCriterion,walltimeCriterion));
 		
 		log.debug("Solving instance...");

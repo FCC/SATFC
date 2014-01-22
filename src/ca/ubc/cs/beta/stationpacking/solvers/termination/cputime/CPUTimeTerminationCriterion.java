@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solvers.termination;
+package ca.ubc.cs.beta.stationpacking.solvers.termination.cputime;
 
 
 import org.apache.commons.math3.util.FastMath;
@@ -6,6 +6,7 @@ import org.apache.commons.math3.util.FastMath;
 import com.google.common.util.concurrent.AtomicDouble;
 
 import ca.ubc.cs.beta.aclib.misc.cputime.CPUTime;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
 public class CPUTimeTerminationCriterion implements ITerminationCriterion 
 {
