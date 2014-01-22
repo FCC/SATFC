@@ -83,3 +83,4 @@ src/ca/ubc/cs/beta/stationpacking/utils/RunnableUtils$1.class
 src/ca/ubc/cs/beta/stationpacking/utils/RunnableUtils.class
 src/ca/ubc/cs/beta/stationpacking/utils/StationPackingUtils.class
 src/ca/ubc/cs/beta/stationpacking/utils/Watch.class
+SATFCParameters.class
