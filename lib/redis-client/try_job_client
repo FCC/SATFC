@@ -71,9 +71,7 @@ class TryJobClient
   end
   
   def answer(question)
-    problem_timeout_s = 5
-    problem_timeout_ms = 1000 * problem_timeout_s
-    problem_set_timeout_s = problem_timeout_s
+    problem_set_timeout_s = 5
     fc_approach = "all"
     expected_size = 1
     
@@ -84,7 +82,7 @@ class TryJobClient
         question.station_config,
         [nil],
         fc_approach,
-        problem_timeout_ms,
+        question.timeout,
         question.assignment,
         nil
       ]
@@ -99,7 +97,7 @@ class TryJobClient
     
     puts "Waiting for answer."
     result, max_satfc_time, actual_time, answer_count =
-      @job_caster.wait_for_problem_set(problem_set_id, expected_size, problem_set_timeout_s, problem_timeout_ms)
+      @job_caster.wait_for_problem_set(problem_set_id, expected_size, problem_set_timeout_s, question.timeout)
     
     case result
     when :timeout
