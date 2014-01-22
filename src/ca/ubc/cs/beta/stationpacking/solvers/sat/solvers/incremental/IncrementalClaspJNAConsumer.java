@@ -194,7 +194,7 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 					log.debug("Solving timed out.");
 					interrupt();
 					fTimedOut.set(true);
-				}}, (long) cutoff, TimeUnit.SECONDS);
+				}}, (long) cutoff*1000, TimeUnit.MILLISECONDS);
 		
 			
 			log.debug("Starting to solve.");
