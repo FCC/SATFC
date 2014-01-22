@@ -59,7 +59,7 @@ import com.sun.jna.Platform;
 public class SATFCJobClient implements Runnable {
 	public static final String VERSION = "2014-01-21"; // Generally use the release date.
 	
-	private static Logger log = LoggerFactory.getLogger(SATFCJobClient.class);
+	private static Logger log;
 	
 	public enum Answer { YES, NO, UNKNOWN, ERROR }
 	
@@ -680,9 +680,11 @@ public class SATFCJobClient implements Runnable {
 		 * Set logging options.
 		 * Note that conf/logback.xml needs to be packaged with executable for logging to work properly.
 		 */
-		parameters.LoggingOptions.logLevel = LogLevel.INFO;
+		parameters.LoggingOptions.logLevel = LogLevel.TRACE;
 		parameters.LoggingOptions.initializeLogging();
-				
+		
+		log = LoggerFactory.getLogger(SATFCJobClient.class);
+		
 		SolverManager aSolverManager = parameters.SolverManagerParameters.getSolverManager();
 
 		SATFCJobClient aSATFCJobClient = new SATFCJobClient(options, aSolverManager);
