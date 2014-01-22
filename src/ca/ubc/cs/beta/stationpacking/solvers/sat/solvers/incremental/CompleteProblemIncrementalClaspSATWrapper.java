@@ -3,8 +3,8 @@ package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.incremental;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.base.SATSolverResult;
-import ca.ubc.cs.beta.stationpacking.solvers.termination.CPUTimeTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.cputime.CPUTimeTerminationCriterion;
 
 public class CompleteProblemIncrementalClaspSATWrapper extends AbstractSATSolver{
 

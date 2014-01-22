@@ -20,7 +20,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.CompressedSATBasedSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.ClaspSATSolver;
-import ca.ubc.cs.beta.stationpacking.solvers.termination.CPUTimeTerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.cputime.CPUTimeTerminationCriterionFactory;
 import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
 
 public class PreSolvingOnlySolverBundle extends ASolverBundle {
@@ -59,8 +59,8 @@ public class PreSolvingOnlySolverBundle extends ASolverBundle {
 				Arrays.asList(
 						(ISolver)new ConstraintGraphNeighborhoodPresolver(aConstraintManager, 
 								Arrays.asList(
-										new StationSubsetUNSATCertifier(UHFClaspBasedSolver,new CPUTimeTerminationCriterion(UNSATcertifiercutoff)),
-										new StationSubsetSATCertifier(UHFClaspBasedSolver,new CPUTimeTerminationCriterion(SATcertifiercutoff))
+										new StationSubsetUNSATCertifier(UHFClaspBasedSolver,new CPUTimeTerminationCriterionFactory(UNSATcertifiercutoff)),
+										new StationSubsetSATCertifier(UHFClaspBasedSolver,new CPUTimeTerminationCriterionFactory(SATcertifiercutoff))
 								))
 						)
 				);
@@ -69,8 +69,8 @@ public class PreSolvingOnlySolverBundle extends ASolverBundle {
 				Arrays.asList(
 						(ISolver)new ConstraintGraphNeighborhoodPresolver(aConstraintManager, 
 								Arrays.asList(
-										new StationSubsetUNSATCertifier(VHFClaspBasedSolver,new CPUTimeTerminationCriterion(UNSATcertifiercutoff)),
-										new StationSubsetSATCertifier(VHFClaspBasedSolver,new CPUTimeTerminationCriterion(SATcertifiercutoff))
+										new StationSubsetUNSATCertifier(VHFClaspBasedSolver,new CPUTimeTerminationCriterionFactory(UNSATcertifiercutoff)),
+										new StationSubsetSATCertifier(VHFClaspBasedSolver,new CPUTimeTerminationCriterionFactory(SATcertifiercutoff))
 								))
 						)
 				);

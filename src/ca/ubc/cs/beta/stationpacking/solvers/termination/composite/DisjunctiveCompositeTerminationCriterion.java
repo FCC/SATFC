@@ -1,8 +1,10 @@
-package ca.ubc.cs.beta.stationpacking.solvers.termination;
+package ca.ubc.cs.beta.stationpacking.solvers.termination.composite;
 
 import java.util.Collection;
 
 import org.apache.commons.math3.util.FastMath;
+
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
 /**
  * Composite termination criterion that acts as a disjunction of the provided criteria.
