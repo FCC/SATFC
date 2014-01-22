@@ -13,8 +13,9 @@ import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
-import ca.ubc.cs.beta.stationpacking.solvers.termination.DisjunctiveCompositeTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterionFactory;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.composite.DisjunctiveCompositeTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
 import com.google.common.collect.Sets;
@@ -24,12 +25,12 @@ public class StationSubsetSATCertifier implements IStationSubsetCertifier {
 	private static Logger log = LoggerFactory.getLogger(StationSubsetSATCertifier.class);
 	
 	private final ISolver fSolver;
-	private final ITerminationCriterion fTerminationCriterion;
+	private final ITerminationCriterionFactory fTerminationCriterionFactory;
 	
-	public StationSubsetSATCertifier(ISolver aSolver, ITerminationCriterion aTerminationCriterion)
+	public StationSubsetSATCertifier(ISolver aSolver, ITerminationCriterionFactory aTerminationCriterionFactory)
 	{
 		fSolver = aSolver;
-		fTerminationCriterion = aTerminationCriterion;
+		fTerminationCriterionFactory = aTerminationCriterionFactory;
 	}
 	
 	@Override
@@ -39,7 +40,7 @@ public class StationSubsetSATCertifier implements IStationSubsetCertifier {
 		
 		Watch watch = Watch.constructAutoStartWatch();
 		
-		ITerminationCriterion terminationCriterion = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(fTerminationCriterion,aTerminationCriterion));
+		ITerminationCriterion terminationCriterion = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(fTerminationCriterionFactory.getTerminationCriterion(),aTerminationCriterion));
 		
 		HashMap<Station,Integer> previousAssignment = aInstance.getPreviousAssignment();
 		
