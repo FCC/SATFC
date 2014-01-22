@@ -125,7 +125,7 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 				log.trace("Interrupting clasp as we are past cutoff of {} s.",cutoff);
 				fClaspLibrary.interrupt(facade);
 				timedOut.set(true);
-			}}, (long) cutoff, TimeUnit.SECONDS);
+			}}, (long) (cutoff*1000), TimeUnit.MILLISECONDS);
 		// listens for thread interruption every 1 seconds, if the thread is interrupted, interrupt the library and return gracefully
 		//while returning null (free library memory, etc.)
 		timerService.scheduleWithFixedDelay(new Runnable(){
