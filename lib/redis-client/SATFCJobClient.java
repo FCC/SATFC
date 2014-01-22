@@ -17,6 +17,8 @@ import org.apache.commons.io.IOUtils;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Response;
@@ -55,7 +57,9 @@ import com.sun.jna.Platform;
  * both it and SATFC Solver Server can be executed at the same time.
  */
 public class SATFCJobClient implements Runnable {
-	public static final String VERSION = "2014-01-14"; // Generally use the release date.
+	public static final String VERSION = "2014-01-21"; // Generally use the release date.
+	
+	private static Logger log = LoggerFactory.getLogger(SATFCJobClient.class);
 	
 	public enum Answer { YES, NO, UNKNOWN, ERROR }
 	
@@ -195,6 +199,8 @@ public class SATFCJobClient implements Runnable {
 			}
 			
 			_location += " v"+VERSION;
+			
+			report("location set to: "+_location);
 		}
 		return _location;
 	}
@@ -215,13 +221,9 @@ public class SATFCJobClient implements Runnable {
 		
 		return json;	
 	}
-	
-	String config_to_s() {
-		return "JavaJobClient";
-	}
-	
+		
 	void report(String msg) {
-		System.out.println(config_to_s() + ": " + msg);
+		log.info(msg);
 	}
 	
 	void report_status() {
