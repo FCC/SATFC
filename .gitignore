@@ -84,3 +84,8 @@ src/ca/ubc/cs/beta/stationpacking/utils/RunnableUtils.class
 src/ca/ubc/cs/beta/stationpacking/utils/StationPackingUtils.class
 src/ca/ubc/cs/beta/stationpacking/utils/Watch.class
 SATFCParameters.class
+src/ca/ubc/cs/beta/stationpacking/solvers/termination/ITerminationCriterionFactory.class
+src/ca/ubc/cs/beta/stationpacking/solvers/termination/composite/DisjunctiveCompositeTerminationCriterion.class
+src/ca/ubc/cs/beta/stationpacking/solvers/termination/cputime/CPUTimeTerminationCriterion.class
+src/ca/ubc/cs/beta/stationpacking/solvers/termination/cputime/CPUTimeTerminationCriterionFactory.class
+src/ca/ubc/cs/beta/stationpacking/solvers/termination/walltime/WalltimeTerminationCriterion.class
