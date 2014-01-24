@@ -57,7 +57,7 @@ import com.sun.jna.Platform;
  * both it and SATFC Solver Server can be executed at the same time.
  */
 public class SATFCJobClient implements Runnable {
-	public static final String VERSION = "2014-01-21"; // Generally use the release date.
+	public static final String VERSION = "2014-01-24"; // Generally use the release date.
 	
 	private static Logger log;
 	
