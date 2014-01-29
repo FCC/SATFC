@@ -29,7 +29,7 @@ clean:
 	find ../../ -name *.class -exec rm -f '{}' \;
 
 
-try_job_client: job_caster.rb q_and_a_handling.rb redis_retry.rb tokens.rb 
+try_job_client: job_caster.rb q_and_a_handling.rb redis_retry.rb tokens.rb json_parsing.rb
 
 job_caster.rb: ../../../app/models/job_caster.rb
 	cp $< .
@@ -41,4 +41,7 @@ redis_retry.rb: ../../../app/models/redis_retry.rb
 	cp $< .
 
 tokens.rb: ../../../tokens.rb
+	cp $< .
+
+json_parsing.rb: ../../../app/models/json_parsing.rb
 	cp $< .
