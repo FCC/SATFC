@@ -6,6 +6,7 @@
 #
 # The ladder/algo process sends problems to be solved, and workers pick up the problems
 
+require_relative 'json_parsing'
 require_relative 'redis_retry'
 begin
   require_relative '../../tokens'
@@ -14,6 +15,8 @@ rescue LoadError # has alternative location in fcc-station-packing/lib/redis-cli
 end
 
 class JobCaster  
+  include JsonParsing
+  
   class ProblemSet
     attr_reader :band, :highest, :constraint_set, :fc_config, :fc_approach, :timeout,  :tentative_assignment, :testing_flag
     
@@ -244,7 +247,7 @@ class JobCaster
     for id in client_ids
       statuses << redis.get(client_status_key_for(id))
     end
-    statuses.compact.map{|v| JSON.parse(v)}
+    statuses.compact.map{|v| json_parse(v)}.compact
   end
   
   def get_client_count
@@ -295,7 +298,7 @@ class JobCaster
   end
   
   def client_errors limit = 1000
-    redis.lrange(CLIENT_ERROR_KEY, 0, limit).map{|v| JSON.parse(v)}
+    redis.lrange(CLIENT_ERROR_KEY, 0, limit).map{|v| json_parse(v)}.compact
   end
   
   # List of problems in the queue.  Optionally filter by problem_set

@@ -5,7 +5,7 @@ module QAndAHandling
   require 'csv'
   
   Question = Struct.new(:station_config, :highest, :band, :assignment, :timeout)
-  Answer = Struct.new(:answer, :assignment)
+  Answer = Struct.new(:answer, :assignment, :runtime)
   
   def load_file_with_assignment filename, sink, &block
     File.open(filename) do |file|
