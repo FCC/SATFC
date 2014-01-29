@@ -111,6 +111,7 @@ class TryJobClient
     puts "Received answer."
     raw_answer = JSON.parse(@job_caster.get_answers_for(problem_set_id)[0])
     answer = raw_answer[2]
+    timing = raw_answer.last
         
     assignment = if answer == "yes"
       JSON.parse(@job_caster.get_assignment_for(new_station_id, problem_set_id))
@@ -119,13 +120,14 @@ class TryJobClient
     end
     
     @job_caster.delete_answer_data_for(problem_set_id)
-    Answer.new(answer, assignment)
+    Answer.new(answer, assignment, timing['satfc_wall_clock'])
   end
   
   def save_answer(question_file, fc_info, answer)
     CSV.open(question_file, 'w') do |csv|
       csv << [:ANSWER, answer.answer]
       csv << [:FC_INFO, fc_info]
+      csv << [:RUNTIME, answer.runtime]
       answer.assignment.each do |key_value|
         csv << key_value
       end
