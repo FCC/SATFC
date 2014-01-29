@@ -326,7 +326,7 @@ public class SATFCJobClient implements Runnable {
 		 */
 		String constraint_set = problem_set.get_constraint_set();
 		String datafoldername = new File(_constraint_sets_directory, constraint_set).getPath();
-		report("Using constraint set at "+datafoldername+".");
+		log.debug("Using constraint set at "+datafoldername+".");
 		
 		/*
 		 * Create an instance string as outlined in the SATFC [readme](
@@ -382,7 +382,7 @@ public class SATFCJobClient implements Runnable {
 		 }
 		
 		String instance_string = instance_string_builder.toString();
-		report("Solve instance "+instance_string);
+		log.debug("Solve instance "+instance_string);
 		
 		/**
 		 * Grab the solving components from solver manager.
@@ -408,6 +408,7 @@ public class SATFCJobClient implements Runnable {
 		
 		//Setup termination criteria (and start them).
 		double cutoff = problem_set.get_timeout_ms()/1000.0;
+		log.debug("Cutoff {} s",cutoff);
 		ITerminationCriterion cputimeTermination = new CPUTimeTerminationCriterion(cutoff);
 		ITerminationCriterion walltimeTermination = new WalltimeTerminationCriterion(cutoff*1.5);
 		ITerminationCriterion terminationCriterion = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(cputimeTermination,walltimeTermination));
