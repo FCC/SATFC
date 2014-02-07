@@ -70,7 +70,14 @@ private static final int MAX_MISSING_STATIONS=1;
 				missingStations.add(station);
 			}
 		}
-		log.debug("There are {} stations that are not part of previous assignment.",missingStations.size());
+		if(missingStations.size()<10)
+		{
+			log.debug("Stations {} are not part of previous assignment.",missingStations);
+		}
+		else
+		{
+			log.debug("There are {} stations that are not part of previous assignment.",missingStations.size());
+		}
 		//Check if there are too many stations to make this procedure worthwile.
 		if(missingStations.size()>MAX_MISSING_STATIONS)
 		{

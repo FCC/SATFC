@@ -165,7 +165,8 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		}
 		
 		ClaspResult claspResult = getSolverResult(fClaspLibrary, result, timedOut, fInterrupt, runtime);
-		aTerminationCriterion.notifyEvent(claspResult.getRuntime());
+		//TODO Why do we not need a notifyEvent here? Is the thread busy waiting while we getSolverResult? 
+		//aTerminationCriterion.notifyEvent(claspResult.getRuntime());
 		
 		HashSet<Literal> assignment = parseAssignment(claspResult.getAssignment());
 
