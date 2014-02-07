@@ -645,6 +645,7 @@ public class SATFCJobClient implements Runnable {
 		
 		Options options = Options.parse(args);
 		
+
 		/*
 		 * Initialize SATFC's ServerSolver.
 		 * This first requires option parameters to be set up, and the necessary options to be (manually)
@@ -662,6 +663,14 @@ public class SATFCJobClient implements Runnable {
 		 * @wtaysom
 		 */
 		SATFCParameters parameters = new SATFCParameters();
+		
+		/*
+		 * Set logging options.
+		 * Note that conf/logback.xml needs to be packaged with executable for logging to work properly.
+		 */
+		parameters.LoggingOptions.logLevel = LogLevel.TRACE;
+		parameters.LoggingOptions.initializeLogging();
+		
 		try {
 			File current_working_directory = new File(".");
 			File fcc_station_packing_root = current_working_directory.getCanonicalFile();
@@ -676,13 +685,6 @@ public class SATFCJobClient implements Runnable {
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
-		
-		/*
-		 * Set logging options.
-		 * Note that conf/logback.xml needs to be packaged with executable for logging to work properly.
-		 */
-		parameters.LoggingOptions.logLevel = LogLevel.TRACE;
-		parameters.LoggingOptions.initializeLogging();
 		
 		log = LoggerFactory.getLogger(SATFCJobClient.class);
 		

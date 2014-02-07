@@ -3,6 +3,8 @@ package ca.ubc.cs.beta.stationpacking.solvers.termination.composite;
 import java.util.Collection;
 
 import org.apache.commons.math3.util.FastMath;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
@@ -12,6 +14,8 @@ import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
  *
  */
 public class DisjunctiveCompositeTerminationCriterion implements ITerminationCriterion{
+	
+	private static Logger log = LoggerFactory.getLogger(DisjunctiveCompositeTerminationCriterion.class);
 	
 	private final Collection<ITerminationCriterion> fTerminationCriteria;
 	
@@ -27,7 +31,9 @@ public class DisjunctiveCompositeTerminationCriterion implements ITerminationCri
 		
 		for(ITerminationCriterion criterion : fTerminationCriteria)
 		{
-			minTime = FastMath.min(minTime, criterion.getRemainingTime());
+			double criterionTime = criterion.getRemainingTime();
+			log.trace("Criterion {} says there is {} s left.",criterion,criterionTime);
+			minTime = FastMath.min(minTime, criterionTime);
 		}
 		
 		return minTime;

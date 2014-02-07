@@ -90,8 +90,6 @@ public class TAESATSolver extends AbstractCompressedSATSolver{
 		AlgorithmRun aRun = aRuns.iterator().next();
 		double aRuntime = aRun.getRuntime();
 		
-		aTerminationCriterion.notifyEvent(aRuntime);
-		
 		SATResult aResult;
 		HashSet<Literal> aAssignment = new HashSet<Literal>();
 		
