@@ -61,7 +61,13 @@ public class StationSubsetSATCertifier implements IStationSubsetCertifier {
 				reducedDomainStations.add(station);
 			}
 		}
-		log.debug("Evaluating if stations not in previous assignment ({}) with their neighborhood are packable when all other stations are fixed to previous assignment.",reducedDomainStations.size());
+		log.debug("Evaluating if stations not in previous assignment with their neighborhood are packable when all other stations are fixed to previous assignment.");
+		
+		if(aMissingStations.size()<20)
+		{
+			log.debug("Missing station and neighborhood: {} .",aMissingStations);
+		}
+		
 		StationPackingInstance SATboundInstance = new StationPackingInstance(reducedDomainStations, aInstance.getChannels(), previousAssignment);
 		
 		if(!aTerminationCriterion.hasToStop())
