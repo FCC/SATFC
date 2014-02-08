@@ -1,11 +1,17 @@
 #!/usr/bin/env ruby
 
+require 'fiber'
+
 ENV['JOB_CASTER_URL'] = "localhost:6379"
 
 USAGE = <<USAGE
-Usage: constraint_sets_directory=path/to/constraint_sets/ ./try_job_client <question.csv> [answer.csv]
+Usage:
+  constraint_sets_directory=path/to/constraint_sets/ ./try_job_client <question.csv> [answer.csv]
+  constraint_sets_directory=path/to/constraint_sets/ ./try_job_client <file_containing_list_of_questions>
 
 Sends feasibility question.csv to SATFCJobClient via Redis running on #{ENV['JOB_CASTER_URL']}.  Starts Redis and SATFCJobClient as needed using ENV['constraint_sets_directory'] to find constraints.
+
+When called with file_containing_list_of_questions (a file *not* ending in .csv), runs each of the questions in the file in parallel.
 
 Writes answer to answer.csv.  If answer.csv is not provided, defaults to question.csv with "question" replaced by "answer" unless "question" doesn't occur in question.csv in which case we use the extention "_answer.csv".  For example:
 
@@ -49,7 +55,29 @@ class TryJobClient
     end)
   end
   
+  def run_files(file_containing_list_of_files)
+    fibers = []
+    @while_waiting_for_problem_set = Fiber.method(:yield)
+    
+    File.foreach(file_containing_list_of_files) do |line|
+      line.chomp!
+      fibers << Fiber.new do
+        run(line)
+      end
+    end
+    
+    until fibers.empty?
+      fibers.each(&:resume)
+      fibers.select!(&:alive?)
+      sleep 0.05
+    end
+  end
+  
   def run(question_file, answer_file = nil)
+    unless File.extname(question_file) == ".csv"
+      return run_files(question_file)
+    end
+    
     answer_file ||= begin
       basename = File.basename(question_file)
       basename.gsub!(/question/, 'answer')
@@ -96,7 +124,7 @@ class TryJobClient
     
     puts "Waiting for answer."
     result, max_satfc_time, actual_time, answer_count =
-      @job_caster.wait_for_problem_set(problem_set_id, expected_size, question.timeout / 1000.0, question.timeout)
+      @job_caster.wait_for_problem_set(problem_set_id, expected_size, question.timeout / 1000.0, question.timeout, &@while_waiting_for_problem_set)
     
     case result
     when :timeout
