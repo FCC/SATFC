@@ -618,6 +618,10 @@ public class SATFCJobClient implements Runnable {
 		@Option(name="-n", aliases={"--name"}, metaVar="name",
 			usage="Name for this SATFCJobClient instance.")
 		String name;
+		
+		@Option(name="-l", aliases={"--clasp-lib"}, metaVar="libjnaclasp",
+			usage="Path to Clasp library, libjnaclasp.dylib on OS X and libjnaclasp.so on Linux.  Defaults to searching fcc-station-packing/SATsolvers/clasp/jna/.")
+		String claspLib;
     	
     	@Option(name="-h", aliases={"--help"},
     		usage="Show this message")
@@ -662,21 +666,29 @@ public class SATFCJobClient implements Runnable {
 		 * @wtaysom
 		 */
 		SATFCParameters parameters = new SATFCParameters();
-		try {
-			File current_working_directory = new File(".");
-			File fcc_station_packing_root = current_working_directory.getCanonicalFile();
-			while (fcc_station_packing_root != null && !fcc_station_packing_root.getName().equals("fcc-station-packing")) {
-				fcc_station_packing_root = fcc_station_packing_root.getParentFile(); 
+		if (options.claspLib == null) {
+			try {
+				File current_working_directory = new File(".");
+				File fcc_station_packing_root = current_working_directory.getCanonicalFile();
+				while (fcc_station_packing_root != null && !fcc_station_packing_root.getName().equals("fcc-station-packing")) {
+					fcc_station_packing_root = fcc_station_packing_root.getParentFile(); 
+				}
+				if (fcc_station_packing_root == null) {
+					throw new FileNotFoundException("Unable to find fcc-station-packing as a parent of "+current_working_directory.getCanonicalPath());
+				}
+				String file_name = Platform.isMac() ? "libjnaclasp.dylib" : "libjnaclasp.so";			
+				parameters.SolverManagerParameters.SolverParameters.Library = new File(fcc_station_packing_root, "SATsolvers/clasp/jna/"+file_name).getCanonicalPath();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
 			}
-			if (fcc_station_packing_root == null) {
-				throw new FileNotFoundException("Unable to find fcc-station-packing as a parent of "+current_working_directory.getCanonicalPath());
+		} else {
+			try {
+				parameters.SolverManagerParameters.SolverParameters.Library = new File(options.claspLib).getCanonicalPath();
+			} catch (IOException e) {
+				throw new RuntimeException(e);
 			}
-			String file_name = Platform.isMac() ? "libjnaclasp.dylib" : "libjnaclasp.so";			
-			parameters.SolverManagerParameters.SolverParameters.Library = new File(fcc_station_packing_root, "SATsolvers/clasp/jna/"+file_name).getCanonicalPath();
-		} catch (IOException e) {
-			throw new RuntimeException(e);
 		}
-		
+			
 		/*
 		 * Set logging options.
 		 * Note that conf/logback.xml needs to be packaged with executable for logging to work properly.
