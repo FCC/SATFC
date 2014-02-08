@@ -192,7 +192,11 @@ class JobCaster
         end
       end
       
-      sleep 0.05 # 50ms ping time is perfectly reasonable, Redis is fast.
+      if block_given?
+        yield
+      else
+        sleep 0.05 # 50ms ping time is perfectly reasonable, Redis is fast.
+      end
     end
     
     # Don't want to require must_be gem for try_job_client.
