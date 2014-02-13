@@ -1,9 +1,9 @@
 CLASSPATH = `ruby collect_classpath.rb`
-JFLAGS = -classpath $(CLASSPATH)
+JFLAGS = -Xmx1024m -classpath $(CLASSPATH)
 JC = javac
 JAVA = java
 JDB = jdb
-JCFLAGS = -g -Xlint:unchecked
+JCFLAGS = -J-Xmx1024m -g -Xlint:unchecked
 
 .SUFFIXES: .java .class
 .java.class:
