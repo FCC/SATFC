@@ -45,6 +45,7 @@ import ca.ubc.cs.beta.stationpacking.utils.Watch;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
@@ -726,6 +727,8 @@ public class SATFCJobClient implements Runnable {
 // Thin wrapper to unpack the json version and provide accessors
 // Wow.  I do not miss Java at times like this. :(
 class ProblemSet {
+	private static final int NO_HIGHEST_CHANNEL = Integer.MAX_VALUE;
+	
 	int _band;
 	int _highest;
 	String _constraint_set;
@@ -746,7 +749,8 @@ class ProblemSet {
 		// See JobCaster::ProblemSet for format.
 		// We should perhaps simplify the encoding now that we have to unpack it by hand.
 		_band = data.get(0).getAsInt();
-		_highest = data.get(1).getAsInt();
+		JsonElement highest_element = data.get(1);
+		_highest = highest_element.isJsonNull() ? NO_HIGHEST_CHANNEL : highest_element.getAsInt();
 		_constraint_set = data.get(2).getAsString();
 
 		_fc_config = null;
