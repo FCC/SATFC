@@ -3,11 +3,11 @@ JFLAGS = -Xmx1024m -classpath $(CLASSPATH)
 JC = javac
 JAVA = java
 JDB = jdb
-JCFLAGS = -J-Xmx1024m -g -Xlint:unchecked
+JCFLAGS = -J-Xmx1024m -g -Xlint:unchecked -classpath $(CLASSPATH)
 
 .SUFFIXES: .java .class
 .java.class:
-	$(JC) $(JFLAGS) $(JCFLAGS) $*.java
+	$(JC) $(JCFLAGS) $*.java
 
 CLASSES = SATFCJobClient.java
 
