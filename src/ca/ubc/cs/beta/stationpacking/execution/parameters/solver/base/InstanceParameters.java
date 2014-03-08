@@ -15,7 +15,7 @@ import com.beust.jcommander.Parameter;
 @UsageTextField(title="FCC Station Packing Packing Problem Instance Options",description="Parameters defining a single station packing problem.")
 public class InstanceParameters extends AbstractOptions {
 	
-	@Parameter(names = "-PACKING_CHANNELS", description = "List of channels to pack into.", required = true)
+	@Parameter(names = "-PACKING_CHANNELS", description = "List of channels to pack into.")
 	private List<String> fPackingChannels = Arrays.asList("14" ,"15" ,"16" ,"17" ,"18" ,"19" ,"20" ,"21" ,"22" ,"23" ,"24" ,"25" ,"26" ,"27" ,"28" ,"29" ,"30");
 	public HashSet<Integer> getPackingChannels()
 	{
