@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solvers.reporters;
+package ca.ubc.cs.beta.stationpacking.solvers.tae.reporters;
 
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;

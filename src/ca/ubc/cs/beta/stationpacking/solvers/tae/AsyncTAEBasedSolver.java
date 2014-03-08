@@ -28,13 +28,13 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager
 import ca.ubc.cs.beta.stationpacking.solvers.SolverHelper;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
-import ca.ubc.cs.beta.stationpacking.solvers.cnflookup.AsyncCachedCNFLookup;
-import ca.ubc.cs.beta.stationpacking.solvers.cnflookup.ICNFResultLookup;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
-import ca.ubc.cs.beta.stationpacking.solvers.reporters.IExperimentReporter;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATDecoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
+import ca.ubc.cs.beta.stationpacking.solvers.tae.cnflookup.AsyncCachedCNFLookup;
+import ca.ubc.cs.beta.stationpacking.solvers.tae.cnflookup.ICNFResultLookup;
+import ca.ubc.cs.beta.stationpacking.solvers.tae.reporters.IExperimentReporter;
 
 /**
  * SAT solver wrapper that uses Steve Ramage's AClib Target Algorithm Evaluators for execution in an asynchronous way, particularly useful for parallel solving of many instances..
