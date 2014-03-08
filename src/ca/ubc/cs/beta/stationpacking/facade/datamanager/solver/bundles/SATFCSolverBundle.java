@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles;
+package ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles;
 
 import java.util.Arrays;
 
@@ -23,19 +23,19 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.ClaspSAT
 import ca.ubc.cs.beta.stationpacking.solvers.termination.cputime.CPUTimeTerminationCriterionFactory;
 import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
 
-public class PreSolvingOnlySolverBundle extends ASolverBundle {
+public class SATFCSolverBundle extends ASolverBundle{
 
-	private static Logger log = LoggerFactory.getLogger(PreSolvingOnlySolverBundle.class);
+	private static Logger log = LoggerFactory.getLogger(SATFCSolverBundle.class);
 	
 	private final ISolver fUHFSolver;
 	private final ISolver fVHFSolver;
 	
-	public PreSolvingOnlySolverBundle(String aClaspLibraryPath,
-			IStationManager aStationManager,
+	public SATFCSolverBundle(String aClaspLibraryPath, IStationManager aStationManager,
 			IConstraintManager aConstraintManager) {
+		
 		super(aStationManager, aConstraintManager);
 		
-		log.info("Solver selector: PRE-SOLVING ONLY.");
+		log.info("Solver selector: PRE-SOLVING WITH CLASP AS MAIN SOLVER.");
 		
 		//Initialize clasp.
 		log.warn("Initializing clasps with internal configurations.");
@@ -51,46 +51,47 @@ public class PreSolvingOnlySolverBundle extends ASolverBundle {
 		AbstractCompressedSATSolver aHVHFClaspSATsolver = new ClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.HVHF_CONFIG_09_13);
 		ISolver VHFClaspBasedSolver = new CompressedSATBasedSolver(aHVHFClaspSATsolver, aCompressor,  this.getConstraintManager(), aGrouper);
 		
-		final double UNSATcertifiercutoff = 30;
-		final double SATcertifiercutoff = 30;
-		
 		//Chain pre-solving and main solver.
+		final double UNSATcertifiercutoff = 10;
+		final double SATcertifiercutoff = 10;
+		
 		fUHFSolver = new SequentialSolversComposite(
 				Arrays.asList(
-						(ISolver)new ConstraintGraphNeighborhoodPresolver(aConstraintManager, 
+						new ConstraintGraphNeighborhoodPresolver(aConstraintManager, 
 								Arrays.asList(
-										new StationSubsetUNSATCertifier(UHFClaspBasedSolver,new CPUTimeTerminationCriterionFactory(UNSATcertifiercutoff)),
-										new StationSubsetSATCertifier(UHFClaspBasedSolver,new CPUTimeTerminationCriterionFactory(SATcertifiercutoff))
-								))
+										new StationSubsetSATCertifier(UHFClaspBasedSolver,new CPUTimeTerminationCriterionFactory(SATcertifiercutoff)),
+										new StationSubsetUNSATCertifier(UHFClaspBasedSolver,new CPUTimeTerminationCriterionFactory(UNSATcertifiercutoff))
+								)),
+								UHFClaspBasedSolver
 						)
 				);
 		
 		fVHFSolver = new SequentialSolversComposite(
 				Arrays.asList(
-						(ISolver)new ConstraintGraphNeighborhoodPresolver(aConstraintManager, 
+						new ConstraintGraphNeighborhoodPresolver(aConstraintManager, 
 								Arrays.asList(
-										new StationSubsetUNSATCertifier(VHFClaspBasedSolver,new CPUTimeTerminationCriterionFactory(UNSATcertifiercutoff)),
-										new StationSubsetSATCertifier(VHFClaspBasedSolver,new CPUTimeTerminationCriterionFactory(SATcertifiercutoff))
-								))
+										new StationSubsetSATCertifier(VHFClaspBasedSolver,new CPUTimeTerminationCriterionFactory(SATcertifiercutoff)),
+										new StationSubsetUNSATCertifier(VHFClaspBasedSolver,new CPUTimeTerminationCriterionFactory(UNSATcertifiercutoff))
+								)),
+								VHFClaspBasedSolver
 						)
 				);
 		
-		
 	}
-	
+
 	@Override
 	public ISolver getSolver(StationPackingInstance aInstance) {
 		
 		//Return the right solver based on the channels in the instance.
-		log.debug("Returning Ilya's station subset pre-solving only.");
 		
 		if(StationPackingUtils.HVHF_CHANNELS.containsAll(aInstance.getChannels()) || StationPackingUtils.LVHF_CHANNELS.containsAll(aInstance.getChannels()))
 		{
-			
+			log.debug("Returning clasp configured for VHF (September 2013) with Ilya's station subset pre-solving.");
 			return fVHFSolver;
 		}
 		else
 		{
+			log.debug("Returning clasp configured for UHF (November 2013) with Ilya's station subset pre-solving.");
 			return fUHFSolver;
 		}
 	}
@@ -100,6 +101,7 @@ public class PreSolvingOnlySolverBundle extends ASolverBundle {
 		fUHFSolver.notifyShutdown();
 		fVHFSolver.notifyShutdown();
 	}
+
 
 
 

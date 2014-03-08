@@ -3,6 +3,7 @@ package ca.ubc.cs.beta.stationpacking.datamanagers.stations;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -69,6 +70,16 @@ public class DomainStationManager implements IStationManager{
 		}
 		
 		return fStations.get(aID);
+	}
+
+	@Override
+	public HashSet<Station> getStationsfromID(Collection<Integer> aIDs) {
+		HashSet<Station> stations = new HashSet<Station>();
+		for(Integer aID : aIDs)
+		{
+			stations.add(getStationfromID(aID));
+		}
+		return stations;
 	}
 
 }

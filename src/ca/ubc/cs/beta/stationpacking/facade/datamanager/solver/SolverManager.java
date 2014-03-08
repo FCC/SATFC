@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver;
+package ca.ubc.cs.beta.stationpacking.facade.datamanager.solver;
 
 import java.io.FileNotFoundException;
 import java.util.HashMap;
@@ -6,10 +6,10 @@ import java.util.HashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.data.DataManager;
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.data.ManagerBundle;
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBundle;
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBundleFactory;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.data.DataManager;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.data.ManagerBundle;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBundle;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBundleFactory;
 
 /**
  * Manages the solvers & data corresponding to different directories to make sure it is only read once.

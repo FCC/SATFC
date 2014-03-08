@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.daemon.datamanager.data;
+package ca.ubc.cs.beta.stationpacking.facade.datamanager.data;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -10,7 +10,7 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.stations.DomainStationManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 
 /**
- * Manages the data contained in different directories to make sure it is only read once.
+ * Manages the data contained in different station config directories to make sure it is only read once.
  */
 public class DataManager {
 

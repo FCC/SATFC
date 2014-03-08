@@ -17,7 +17,6 @@ import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aclib.misc.jcommander.JCommanderHelper;
 import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.SolverManager;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.listener.ServerListener;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.responder.ServerResponder;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.responder.ServerResponse;
@@ -25,6 +24,7 @@ import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerS
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.ServerSolverInterrupter;
 import ca.ubc.cs.beta.stationpacking.daemon.server.threadedserver.solver.SolvingJob;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.daemon.ThreadedSolverServerParameters;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.SolverManager;
 import ca.ubc.cs.beta.stationpacking.utils.RunnableUtils;
 
 import com.beust.jcommander.ParameterException;
