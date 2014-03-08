@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solvers.reporters;
+package ca.ubc.cs.beta.stationpacking.solvers.tae.reporters;
 
 import java.io.File;
 import java.io.IOException;
