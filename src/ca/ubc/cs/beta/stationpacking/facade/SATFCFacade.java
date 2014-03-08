@@ -48,6 +48,11 @@ public class SATFCFacade {
 	{
 		
 		//Check provided library.
+		if(aClaspLibrary == null)
+		{
+			throw new IllegalArgumentException("Cannot provide null library.");
+		}
+		
 		File libraryFile = new File(aClaspLibrary);
 		if(!libraryFile.exists())
 		{
@@ -104,6 +109,11 @@ public class SATFCFacade {
 			)
 	{
 		//Check input.
+		if(aStations == null || aChannels == null || aPreviousAssignment == null || aStationConfigFolder == null)
+		{
+			throw new IllegalArgumentException("Cannot provide null arguments.");
+		}
+		
 		if(aStations.isEmpty())
 		{
 			log.warn("Provided an empty collection of stations.");
