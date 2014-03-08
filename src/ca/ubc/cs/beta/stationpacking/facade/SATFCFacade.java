@@ -1,5 +1,6 @@
 package ca.ubc.cs.beta.stationpacking.facade;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Arrays;
 import java.util.Collection;
@@ -16,12 +17,15 @@ import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat.ClaspLibSATSolverParameters;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.SolverManager;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBundle;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBundleFactory;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.SATFCSolverBundle;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.ClaspSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.composite.DisjunctiveCompositeTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.cputime.CPUTimeTerminationCriterion;
@@ -42,6 +46,28 @@ public class SATFCFacade {
 	 */
 	public SATFCFacade(final String aClaspLibrary)
 	{
+		
+		//Check provided library.
+		File libraryFile = new File(aClaspLibrary);
+		if(!libraryFile.exists())
+		{
+			throw new IllegalArgumentException("Provided clasp library does not exist.");
+		}
+		if (libraryFile.isDirectory())
+		{
+			throw new IllegalArgumentException("Provided clasp library is a directory.");
+		}
+		try
+		{
+			new ClaspSATSolver(aClaspLibrary, ClaspLibSATSolverParameters.ALL_CONFIG_11_13);
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+			throw new IllegalArgumentException("Could not initialize a basic clasp solver with provided library.");
+		}
+		
+		
 		fSolverManager = new SolverManager(
 				new ISolverBundleFactory() {
 			
@@ -75,6 +101,21 @@ public class SATFCFacade {
 			String aStationConfigFolder
 			)
 	{
+		//Check input.
+		if(aStations.isEmpty())
+		{
+			log.warn("Provided an empty collection of stations.");
+			return new SATFCResult(SATResult.SAT, 0.0, new HashMap<Integer,Integer>());
+		}
+		if(aChannels.isEmpty())
+		{
+			log.warn("Provided an empty collection of channels.");
+			return new SATFCResult(SATResult.UNSAT, 0.0, new HashMap<Integer,Integer>());
+		}
+		if(aCutoff <=0)
+		{
+			throw new IllegalArgumentException("Cutoff must be strictly positive.");
+		}
 		
 		//Get the data managers and solvers corresponding to the provided station config data.
 		ISolverBundle bundle;
