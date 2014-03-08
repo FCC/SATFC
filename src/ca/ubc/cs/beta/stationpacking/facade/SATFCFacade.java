@@ -57,6 +57,7 @@ public class SATFCFacade {
 		{
 			throw new IllegalArgumentException("Provided clasp library is a directory.");
 		}
+		
 		try
 		{
 			new ClaspSATSolver(aClaspLibrary, ClaspLibSATSolverParameters.ALL_CONFIG_11_13);
@@ -64,8 +65,9 @@ public class SATFCFacade {
 		catch(Exception e)
 		{
 			e.printStackTrace();
-			throw new IllegalArgumentException("Could not initialize a basic clasp solver with provided library.");
+			throw new IllegalArgumentException("");
 		}
+		
 		
 		
 		fSolverManager = new SolverManager(

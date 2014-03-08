@@ -27,7 +27,7 @@ public class SolverManagerParameters extends AbstractOptions {
 	@ParametersDelegate
 	public ClaspLibSATSolverParameters SolverParameters = new ClaspLibSATSolverParameters();
 	
-	@Parameter(names = "-DATA-FOLDERNAME",description = "a list of data foldernames that the daemon should know about.", required=true)
+	@Parameter(names = "-DATA-FOLDERNAME",description = "a list of data foldernames that SATFC should know about.", required=true)
 	public List<String> DataFoldernames = new ArrayList<String>();
 	
 	public SolverManager getSolverManager()
