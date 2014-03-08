@@ -1,13 +1,13 @@
-package ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.simplebounderpresolver;
+package ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.simplebounderpresolver;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ASolverBundle;
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBundle;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ASolverBundle;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBundle;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.certifierpresolvers.SimpleBounderPresolver;
 import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;

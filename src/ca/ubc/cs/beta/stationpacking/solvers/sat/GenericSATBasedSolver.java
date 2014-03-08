@@ -1,14 +1,10 @@
 package ca.ubc.cs.beta.stationpacking.solvers.sat;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,11 +29,6 @@ import ca.ubc.cs.beta.stationpacking.utils.Watch;
 public class GenericSATBasedSolver implements ISolver {
 	
 	private static Logger log = LoggerFactory.getLogger(GenericSATBasedSolver.class);
-	
-	
-	private final static boolean SAVE_CNF = false;
-	private final static String CNF_DIR = "/ubc/cs/home/a/afrechet/arrow-space/OrcinusMountPoint/FCCFeasibilityCheckingInstances/UHF_21-08-13";
-
 	
 	private final IConstraintManager fConstraintManager;
 	private final IComponentGrouper fComponentGrouper;
@@ -76,22 +67,6 @@ public class GenericSATBasedSolver implements ISolver {
 			CNF aCNF = aEncoding.getKey();
 			ISATDecoder aDecoder = aEncoding.getValue();
 			log.debug("CNF has {} clauses.",aCNF.size());
-			
-			//Check if CNF should be saved.
-			if(SAVE_CNF)
-			{
-				log.debug("Trying to save CNF.");
-				File aCNFFile = new File(CNF_DIR+File.separator+RandomStringUtils.randomAlphanumeric(25)+".cnf");
-				while(aCNFFile.exists())
-				{
-					new File(CNF_DIR+File.separator+RandomStringUtils.randomAlphanumeric(25));
-				}
-				try {
-					FileUtils.writeStringToFile(aCNFFile, aCNF.toDIMACS(null));
-				} catch (IOException e) {
-					log.error("Could not write CNF to file ({}).",e.getMessage());
-				}
-			}
 			
 			if(aTerminationCriterion.hasToStop())
 			{
