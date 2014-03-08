@@ -30,7 +30,7 @@ import ca.ubc.cs.beta.stationpacking.utils.Watch;
  */
 public class ConstraintGraphNeighborhoodPresolver implements ISolver {
 
-private static final int MAX_MISSING_STATIONS=1;
+	private static final int MAX_MISSING_STATIONS=1;
 	
 	private static Logger log = LoggerFactory.getLogger(ConstraintGraphNeighborhoodPresolver.class);
 	
@@ -78,7 +78,8 @@ private static final int MAX_MISSING_STATIONS=1;
 		{
 			log.debug("There are {} stations that are not part of previous assignment.",missingStations.size());
 		}
-		//Check if there are too many stations to make this procedure worthwile.
+		
+		//Check if there are too many stations to make this procedure worthwhile.
 		if(missingStations.size()>MAX_MISSING_STATIONS)
 		{
 			log.warn("Too many missing stations in previous assignment ({}).",missingStations.size());

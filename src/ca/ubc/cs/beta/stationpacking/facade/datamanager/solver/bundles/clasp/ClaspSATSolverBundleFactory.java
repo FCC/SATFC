@@ -1,9 +1,9 @@
-package ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.clasp;
+package ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.clasp;
 
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBundle;
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBundleFactory;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBundle;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBundleFactory;
 
 public class ClaspSATSolverBundleFactory implements ISolverBundleFactory {
 

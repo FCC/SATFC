@@ -1,12 +1,12 @@
-package ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.sequential;
+package ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.sequential;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBundle;
-import ca.ubc.cs.beta.stationpacking.daemon.datamanager.solver.bundles.ISolverBundleFactory;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBundle;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBundleFactory;
 
 public class SequentialSolverBundleFactory implements ISolverBundleFactory{
 
