@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.solvers.cnflookup;
+package ca.ubc.cs.beta.stationpacking.solvers.tae.cnflookup;
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
