@@ -181,6 +181,10 @@ public class ChannelSpecificConstraintManager implements IConstraintManager{
 					{
 						for(int i=4;i<line.length;i++)
 						{
+							if(line[i].trim().isEmpty())
+							{
+								break;
+							}
 							int targetStationID = Integer.valueOf(line[i].trim());
 							Station targetStation = aStationManager.getStationfromID(targetStationID);
 							
