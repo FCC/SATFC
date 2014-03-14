@@ -53,7 +53,6 @@ public class StationPackingInstance {
 		fPreviousAssignment = new HashMap<Station,Integer>(aPreviousAssignment);
 	}
 	
-	//AF - Added a different way to print set of channels so that an Instance.toString() is easier to read in CSV.
 	/**
 	 * Returns a unique, non-optimized string representing the given channel set.
 	 * Specifically, returns the "-"-separated list of sorted channels.

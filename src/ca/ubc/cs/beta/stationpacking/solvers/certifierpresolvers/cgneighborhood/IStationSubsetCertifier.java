@@ -16,7 +16,7 @@ public interface IStationSubsetCertifier {
 
 	public SolverResult certify(
 			StationPackingInstance aInstance,
-			Set<Station> aMissingStations,
+			Set<Station> aToPackStations,
 			ITerminationCriterion aTerminationCriterion,
 			long aSeed);
 	

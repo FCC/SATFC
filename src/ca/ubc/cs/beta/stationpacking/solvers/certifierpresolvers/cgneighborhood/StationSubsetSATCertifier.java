@@ -35,7 +35,7 @@ public class StationSubsetSATCertifier implements IStationSubsetCertifier {
 	
 	@Override
 	public SolverResult certify(StationPackingInstance aInstance,
-			Set<Station> aMissingStations,
+			Set<Station> aToPackStations,
 			ITerminationCriterion aTerminationCriterion, long aSeed) {
 		
 		Watch watch = Watch.constructAutoStartWatch();
@@ -52,9 +52,18 @@ public class StationSubsetSATCertifier implements IStationSubsetCertifier {
 		Set<Station> reducedDomainStations = new HashSet<Station>();
 		for(Station station : aInstance.getStations())
 		{
-			if(!aMissingStations.contains(station))
+			if(!aToPackStations.contains(station))
 			{
-				reducedDomainStations.add(new Station(station.getID(),Sets.newHashSet(previousAssignment.get(station))));
+				Integer previousChannel = previousAssignment.get(station);
+				if(!station.getDomain().contains(previousChannel))
+				{
+					//One empty domain station, cannot affirm anything.
+					log.warn("Station {} in previous assignment is assigned to channel {} not in current domain {} - SAT certifier is indecisive.",station,previousChannel,station.getDomain());
+					watch.stop();
+					double extraTime = watch.getEllapsedTime();
+					return new SolverResult(SATResult.TIMEOUT, extraTime);
+				}
+				reducedDomainStations.add(new Station(station.getID(),Sets.newHashSet(previousChannel)));
 			}
 			else
 			{
@@ -63,9 +72,9 @@ public class StationSubsetSATCertifier implements IStationSubsetCertifier {
 		}
 		log.debug("Evaluating if stations not in previous assignment with their neighborhood are packable when all other stations are fixed to previous assignment.");
 		
-		if(aMissingStations.size()<20)
+		if(aToPackStations.size()<20)
 		{
-			log.debug("Missing station and neighborhood: {} .",aMissingStations);
+			log.debug("Missing station and neighborhood: {} .",aToPackStations);
 		}
 		
 		StationPackingInstance SATboundInstance = new StationPackingInstance(reducedDomainStations, aInstance.getChannels(), previousAssignment);

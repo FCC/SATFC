@@ -36,15 +36,15 @@ public class StationSubsetUNSATCertifier implements IStationSubsetCertifier {
 	
 	@Override
 	public SolverResult certify(StationPackingInstance aInstance,
-			Set<Station> aMissingStations,
+			Set<Station> aToPackStations,
 			ITerminationCriterion aTerminationCriterion, long aSeed) {
 		
 		Watch watch = Watch.constructAutoStartWatch();
 		
 		ITerminationCriterion terminationCriterion = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(fTerminationCriterionFactory.getTerminationCriterion(),aTerminationCriterion));
 		
-		log.debug("Evaluating if stations not in previous assignment ({}) with their neighborhood are unpackable.",aMissingStations.size());
-		StationPackingInstance UNSATboundInstance = new StationPackingInstance(aMissingStations, aInstance.getChannels(), aInstance.getPreviousAssignment());
+		log.debug("Evaluating if stations not in previous assignment ({}) with their neighborhood are unpackable.",aToPackStations.size());
+		StationPackingInstance UNSATboundInstance = new StationPackingInstance(aToPackStations, aInstance.getChannels(), aInstance.getPreviousAssignment());
 		
 		watch.stop();
 		SolverResult UNSATboundResult = fSolver.solve(UNSATboundInstance, terminationCriterion, aSeed);

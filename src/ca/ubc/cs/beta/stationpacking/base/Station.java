@@ -21,7 +21,7 @@ public class Station implements Comparable<Station>, Serializable{
 	 */
 	private static final long serialVersionUID = 1L;
 	private final int fID;
-	private Set<Integer> fDomain;
+	private final Set<Integer> fDomain;
 	
 	/**
 	 * Construct a station.
@@ -43,7 +43,7 @@ public class Station implements Comparable<Station>, Serializable{
 	
 	@Override
 	public String toString(){
-		return "Station "+fID;
+		return "s"+fID;
 	}
 	
 	/**
@@ -55,41 +55,46 @@ public class Station implements Comparable<Station>, Serializable{
 	}
 	
 	/**
-	 * Reduce the domain of a station.
-	 * @param aReducedDomain - a set of integer channel 
+	 * @param aReducedDomain - a set of integer channel
+	 * @return a station with the reduced domain. 
 	 */
-	public void reduceDomain(Set<Integer> aReducedDomain)
+	public Station getReducedDomainStation(Set<Integer> aReducedDomain)
 	{
 		if(!fDomain.containsAll(aReducedDomain))
 		{
 			throw new IllegalArgumentException("Cannot reduce domain of station "+this.toString()+" to "+aReducedDomain+" since original domain is "+fDomain);
 		}
-		fDomain = aReducedDomain;
+		return new Station(fID,aReducedDomain);
 	}
-	
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#hashCode()
+	 */
 	@Override
-	public boolean equals(Object o)
-	{
-		if(o == this)
-		{
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + fID;
+		return result;
+	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#equals(java.lang.Object)
+	 */
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
 			return true;
-		}
-		else if (!(o instanceof Station))
-		{
+		if (obj == null)
 			return false;
-		}
-		else
-		{
-			Station aStation = (Station) o;
-			return fID == aStation.fID;
-		}
+		if (getClass() != obj.getClass())
+			return false;
+		Station other = (Station) obj;
+		if (fID != other.fID)
+			return false;
+		return true;
 	}
-	
-	@Override
-	public int hashCode(){
-		return fID;
-	}
-	
+
 	/**
 	 * Returns a unique, non-optimized string representing the given station set.
 	 * Specifically, returns the "-"-separated list of sorted station IDs. 
@@ -99,19 +104,19 @@ public class Station implements Comparable<Station>, Serializable{
 	public static String hashStationSet(Collection<Station> aStations)
 	{
 		LinkedList<Station> aStationsList = new LinkedList<Station>(aStations);
-		Collections.sort(aStationsList, new StationComparator());
+		Collections.sort(aStationsList);
 		
-		String aResult = "";
+		StringBuilder builder = new StringBuilder();
 		Iterator<Station> aStationIterator = aStationsList.iterator();
 		while(aStationIterator.hasNext()){
 			Station aStation = aStationIterator.next();
-			aResult += aStation.getID();
+			builder.append(aStation.toString());
 			if(aStationIterator.hasNext())
 			{
-				aResult+="-";
+				builder.append("-");
 			}
 		}
-		return aResult;	
+		return builder.toString();	
 	}
 
 	@Override
