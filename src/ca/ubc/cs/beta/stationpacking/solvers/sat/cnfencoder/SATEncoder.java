@@ -63,9 +63,9 @@ public class SATEncoder implements ISATEncoder {
 		//Create the decoder
 		
 		ISATDecoder aDecoder = new ISATDecoder() {
-			
 			@Override
 			public Pair<Station, Integer> decode(long aVariable) {
+				
 				Pair<Integer,Integer> aStationChannelPair = SATEncoderUtils.SzudzikElegantInversePairing(fBijection.inversemap(aVariable));
 				
 				Station aStation = fStationManager.getStationfromID(aStationChannelPair.getKey());
