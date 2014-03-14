@@ -186,6 +186,7 @@ public class ChannelSpecificConstraintManager implements IConstraintManager{
 								break;
 							}
 							int targetStationID = Integer.valueOf(line[i].trim());
+							
 							Station targetStation = aStationManager.getStationfromID(targetStationID);
 							
 							addConstraint(subjectStation, targetStation, subjectChannel, constraintKey);
@@ -253,8 +254,9 @@ public class ChannelSpecificConstraintManager implements IConstraintManager{
 	}
 
 	@Override
-	public Set<Station> getCOInterferingStations(Station aStation, int aChannel) {
-		
+	public Set<Station> getCOInterferingStations(
+			Station aStation, int aChannel) 
+	{
 		Map<Integer,Set<Station>> subjectStationConstraints = fCOConstraints.get(aStation);
 		//No constraint for this station.
 		if(subjectStationConstraints == null)
@@ -272,8 +274,10 @@ public class ChannelSpecificConstraintManager implements IConstraintManager{
 	}
 
 	@Override
-	public Set<Station> getADJplusInterferingStations(Station aStation,
-			int aChannel) {
+	public Set<Station> getADJplusInterferingStations(
+			Station aStation,
+			int aChannel) 
+	{
 		Map<Integer,Set<Station>> subjectStationConstraints = fADJp1Constraints.get(aStation);
 		//No constraint for this station.
 		if(subjectStationConstraints == null)
