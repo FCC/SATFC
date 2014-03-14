@@ -1,6 +1,7 @@
 package ca.ubc.cs.beta.stationpacking.execution;
 
 import java.util.HashMap;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +43,7 @@ public class SATFCFacadeExecutor {
 		SATFCResult result = satfc.solve(
 				parameters.fInstanceParameters.getPackingStationIDs(),
 				parameters.fInstanceParameters.getPackingChannels(),
+				new HashMap<Integer,Set<Integer>>(),
 				new HashMap<Integer,Integer>(),
 				parameters.fInstanceParameters.Cutoff,
 				parameters.fInstanceParameters.Seed,
