@@ -3,7 +3,6 @@ package ca.ubc.cs.beta.stationpacking.facade;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -35,7 +34,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.termination.walltime.WalltimeTermin
  * A facade for solving station packing problems with SATFC.
  * @author afrechet
  */
-public class SATFCFacade {
+public class SATFCFacade implements AutoCloseable{
 	
 	private static Logger log = LoggerFactory.getLogger(SATFCFacade.class);
 	private final SolverManager fSolverManager;
@@ -100,11 +99,11 @@ public class SATFCFacade {
 	 * @param aPreviousAssignment - a valid (proved to not create any interference) partial (can concern only some of the provided station) station to channel assignment.
 	 * @param aCutoff - a cutoff in seconds for SATFC's execution.
 	 * @param aSeed - a long seed for randomization in SATFC.
-	 * @param aStationConfigFolder - a folder in which to find station config data (e.g. interferences and domains files).
+	 * @param aStationConfigFolder - a folder in which to find station config data (<i>i.e.</i> interferences and domains files).
 	 * @return a result about the packability of the provided problem, with the time it took to solve, and corresponding valid witness assignment of station IDs to channels. 
 	 */
-	public SATFCResult solve(Collection<Integer> aStations,
-			Collection<Integer> aChannels,
+	public SATFCResult solve(Set<Integer> aStations,
+			Set<Integer> aChannels,
 			Map<Integer,Set<Integer>> aDomains,
 			Map<Integer,Integer> aPreviousAssignment,
 			double aCutoff,
@@ -112,6 +111,7 @@ public class SATFCFacade {
 			String aStationConfigFolder
 			)
 	{
+		log.info("Checking input...");
 		//Check input.
 		if(aStations == null || aChannels == null || aPreviousAssignment == null || aStationConfigFolder == null || aDomains == null)
 		{
@@ -133,6 +133,7 @@ public class SATFCFacade {
 			throw new IllegalArgumentException("Cutoff must be strictly positive.");
 		}
 		
+		log.info("Getting data managers...");
 		//Get the data managers and solvers corresponding to the provided station config data.
 		ISolverBundle bundle;
 		try {
@@ -145,35 +146,56 @@ public class SATFCFacade {
 		
 		IStationManager stationManager = bundle.getStationManager();
 		
+		log.info("Translating arguments to SATFC objects...");
 		//Translate arguments.
-		Set<Station> stations = stationManager.getStationsfromID(aStations);
+		Set<Station> originalStations = stationManager.getStationsfromID(aStations);
 		Set<Integer> channels = new HashSet<Integer>(aChannels);
-		Map<Station,Integer> previousAssignment = new HashMap<Station,Integer>();
-		for(Entry<Integer, Integer> stationchannel : aPreviousAssignment.entrySet())
-		{
-			previousAssignment.put(stationManager.getStationfromID(stationchannel.getKey()), stationchannel.getValue());
-		}
 		
+		log.info("Constraining station domains...");
 		//Constrain domains.
-		for(Station station : stations)
+		Set<Station> constrainedStations = new HashSet<Station>();
+		for(Station station : originalStations)
 		{
-			station.reduceDomain(aDomains.get(station.getID()));
+			Set<Integer> reducedDomain = aDomains.get(station.getID());
+			if(reducedDomain != null)
+			{
+				constrainedStations.add(station.getReducedDomainStation(reducedDomain));
+			}
+			else
+			{
+				constrainedStations.add(station);
+			}
 		}
 		
-		//Construct the instance.
-		StationPackingInstance instance = new StationPackingInstance(stations, channels, previousAssignment);
+		Map<Station,Integer> previousAssignment = new HashMap<Station,Integer>();
+		for(Station station : constrainedStations)
+		{
+			Integer previousChannel = aPreviousAssignment.get(station.getID());
+			if(previousChannel != null)
+			{
+				previousAssignment.put(station, previousChannel);
+			}
+		}
 		
+		log.info("Constructing station packing instance...");
+		//Construct the instance.
+		StationPackingInstance instance = new StationPackingInstance(constrainedStations, channels, previousAssignment);
+		
+		log.info("Getting solver...");
 		//Get solver
 		ISolver solver = bundle.getSolver(instance);
 		
+		log.info("Setting termination criterion...");
 		//Set termination criterion.
 		ITerminationCriterion CPUtermination = new CPUTimeTerminationCriterion(aCutoff);
 		ITerminationCriterion WALLtermination = new WalltimeTerminationCriterion(aCutoff);
 		ITerminationCriterion termination = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(CPUtermination,WALLtermination)); 
 		
+		log.info("Solving instance...");
 		//Solve instance.
 		SolverResult result = solver.solve(instance, termination, aSeed);
 		
+		log.info("Transforming result into SATFC output...");
 		//Transform back solver result to output result.
 		Map<Integer,Integer> witness = new HashMap<Integer,Integer>();
 		for(Entry<Integer,Set<Station>> entry : result.getAssignment().entrySet())
@@ -190,10 +212,12 @@ public class SATFCFacade {
 		return outputResult;
 		
 	}
-	
-	public void notifyShutdown()
-	{
+
+	@Override
+	public void close(){
+		log.info("Shutting down...");
 		fSolverManager.notifyShutdown();
+		log.info("Goodbye!");
 	}
 	
 	

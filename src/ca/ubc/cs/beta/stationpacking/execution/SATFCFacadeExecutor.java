@@ -1,8 +1,5 @@
 package ca.ubc.cs.beta.stationpacking.execution;
 
-import java.util.HashMap;
-import java.util.Set;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,23 +34,25 @@ public class SATFCFacadeExecutor {
 		
 		
 		log.info("Initializing facade.");
-		SATFCFacade satfc = new SATFCFacade(parameters.fClaspLibrary);
-		
-		log.info("Solving instance...");
-		SATFCResult result = satfc.solve(
-				parameters.fInstanceParameters.getPackingStationIDs(),
-				parameters.fInstanceParameters.getPackingChannels(),
-				new HashMap<Integer,Set<Integer>>(),
-				new HashMap<Integer,Integer>(),
-				parameters.fInstanceParameters.Cutoff,
-				parameters.fInstanceParameters.Seed,
-				parameters.fDataFoldername);
-		
-		log.info("..done!");
-		
-		System.out.println(result.getResult());
-		System.out.println(result.getRuntime());
-		System.out.println(result.getWitnessAssignment());
+		try(SATFCFacade satfc = new SATFCFacade(parameters.fClaspLibrary);)
+		{
+			log.info("Solving instance...");
+			SATFCResult result = satfc.solve(
+					parameters.fInstanceParameters.getPackingStationIDs(),
+					parameters.fInstanceParameters.getPackingChannels(),
+					parameters.fInstanceParameters.getDomains(),
+					parameters.fInstanceParameters.getPreviousAssignment(),
+					parameters.fInstanceParameters.Cutoff,
+					parameters.fInstanceParameters.Seed,
+					parameters.fDataFoldername);
+			
+			log.info("..done!");
+			
+			System.out.println(result.getResult());
+			System.out.println(result.getRuntime());
+			System.out.println(result.getWitnessAssignment());
+
+		}
 
 	}
 
