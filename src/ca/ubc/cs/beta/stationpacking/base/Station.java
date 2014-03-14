@@ -21,7 +21,7 @@ public class Station implements Comparable<Station>, Serializable{
 	 */
 	private static final long serialVersionUID = 1L;
 	private final int fID;
-	private final Set<Integer> fDomain;
+	private Set<Integer> fDomain;
 	
 	/**
 	 * Construct a station.
@@ -30,7 +30,7 @@ public class Station implements Comparable<Station>, Serializable{
 	 */
 	public Station(Integer aID, Set<Integer> aDomain){
 		fID = aID;
-		fDomain = Collections.unmodifiableSet(new HashSet<Integer>(aDomain));
+		fDomain = new HashSet<Integer>(aDomain);
 	}
 
 	/**
@@ -51,7 +51,20 @@ public class Station implements Comparable<Station>, Serializable{
 	 * @return - get the station's domain.
 	 */
 	public Set<Integer> getDomain(){
-		return fDomain;
+		return Collections.unmodifiableSet(fDomain);
+	}
+	
+	/**
+	 * Reduce the domain of a station.
+	 * @param aReducedDomain - a set of integer channel 
+	 */
+	public void reduceDomain(Set<Integer> aReducedDomain)
+	{
+		if(!fDomain.containsAll(aReducedDomain))
+		{
+			throw new IllegalArgumentException("Cannot reduce domain of station "+this.toString()+" to "+aReducedDomain+" since original domain is "+fDomain);
+		}
+		fDomain = aReducedDomain;
 	}
 	
 	@Override
