@@ -94,6 +94,9 @@ public class SATFCFacade {
 	 * Solve a station packing problem.
 	 * @param aStations - a collection of integer station IDs.
 	 * @param aChannels - a collection of integer channels.
+	 * @param aDomains - a map taking integer station IDs to set of integer channels domains. The domain of every station in aStations will be <i>reduced</i> to the set
+	 * of channels assigned to the station's ID in this map. All stations start with default domains specified by their domains file in the station config folder. If a station
+	 * does not appear in this map, its domain will not be reduced. 
 	 * @param aPreviousAssignment - a valid (proved to not create any interference) partial (can concern only some of the provided station) station to channel assignment.
 	 * @param aCutoff - a cutoff in seconds for SATFC's execution.
 	 * @param aSeed - a long seed for randomization in SATFC.
@@ -102,6 +105,7 @@ public class SATFCFacade {
 	 */
 	public SATFCResult solve(Collection<Integer> aStations,
 			Collection<Integer> aChannels,
+			Map<Integer,Set<Integer>> aDomains,
 			Map<Integer,Integer> aPreviousAssignment,
 			double aCutoff,
 			long aSeed,
@@ -109,7 +113,7 @@ public class SATFCFacade {
 			)
 	{
 		//Check input.
-		if(aStations == null || aChannels == null || aPreviousAssignment == null || aStationConfigFolder == null)
+		if(aStations == null || aChannels == null || aPreviousAssignment == null || aStationConfigFolder == null || aDomains == null)
 		{
 			throw new IllegalArgumentException("Cannot provide null arguments.");
 		}
@@ -148,6 +152,12 @@ public class SATFCFacade {
 		for(Entry<Integer, Integer> stationchannel : aPreviousAssignment.entrySet())
 		{
 			previousAssignment.put(stationManager.getStationfromID(stationchannel.getKey()), stationchannel.getValue());
+		}
+		
+		//Constrain domains.
+		for(Station station : stations)
+		{
+			station.reduceDomain(aDomains.get(station.getID()));
 		}
 		
 		//Construct the instance.
