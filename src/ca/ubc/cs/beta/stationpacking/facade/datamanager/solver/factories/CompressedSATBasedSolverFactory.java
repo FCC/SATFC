@@ -31,7 +31,7 @@ public class CompressedSATBasedSolverFactory implements ISolverFactory {
 	
 	@Override
 	public ISolver create(IStationManager stationManager, IConstraintManager constraintManager) {
-		SATCompressor encoder = new SATCompressor(stationManager, constraintManager);
+		SATCompressor encoder = new SATCompressor(constraintManager);
 		ISolver solver = new CompressedSATBasedSolver(fSATSolver, encoder, constraintManager, fGrouper);
 		return solver;
 	}

@@ -60,7 +60,7 @@ public class TAESolverParameters extends AbstractOptions implements ISolverParam
 		TargetAlgorithmEvaluator aTAE = TargetAlgorithmEvaluatorBuilder.getTargetAlgorithmEvaluator(AlgorithmExecutionOptions.taeOpts, false, AvailableTAEOptions);
 		
 		log.info("Creating CNF encoder...");
-		ISATEncoder aCNFEncoder = new SATEncoder(aStationManager, aConstraintManager);
+		ISATEncoder aCNFEncoder = new SATEncoder(aConstraintManager);
 		
 		log.info("Creating CNF lookup...");
 		ICNFResultLookup aCNFLookup = new HybridCNFResultLookup(CNFDirectory, CNFOutputName);

@@ -43,7 +43,7 @@ public class Station implements Comparable<Station>, Serializable{
 	
 	@Override
 	public String toString(){
-		return "s"+fID;
+		return Integer.toString(fID);
 	}
 	
 	/**
@@ -67,6 +67,34 @@ public class Station implements Comparable<Station>, Serializable{
 		return new Station(fID,aReducedDomain);
 	}
 
+//	/* (non-Javadoc)
+//	 * @see java.lang.Object#hashCode()
+//	 */
+//	@Override
+//	public int hashCode() {
+//		final int prime = 31;
+//		int result = 1;
+//		result = prime * result + fID;
+//		return result;
+//	}
+//
+//	/* (non-Javadoc)
+//	 * @see java.lang.Object#equals(java.lang.Object)
+//	 */
+//	@Override
+//	public boolean equals(Object obj) {
+//		if (this == obj)
+//			return true;
+//		if (obj == null)
+//			return false;
+//		if (getClass() != obj.getClass())
+//			return false;
+//		Station other = (Station) obj;
+//		if (fID != other.fID)
+//			return false;
+//		return true;
+//	}
+
 	/* (non-Javadoc)
 	 * @see java.lang.Object#hashCode()
 	 */
@@ -74,6 +102,7 @@ public class Station implements Comparable<Station>, Serializable{
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
+		result = prime * result + ((fDomain == null) ? 0 : fDomain.hashCode());
 		result = prime * result + fID;
 		return result;
 	}
@@ -90,11 +119,16 @@ public class Station implements Comparable<Station>, Serializable{
 		if (getClass() != obj.getClass())
 			return false;
 		Station other = (Station) obj;
+		if (fDomain == null) {
+			if (other.fDomain != null)
+				return false;
+		} else if (!fDomain.equals(other.fDomain))
+			return false;
 		if (fID != other.fID)
 			return false;
 		return true;
 	}
-
+	
 	/**
 	 * Returns a unique, non-optimized string representing the given station set.
 	 * Specifically, returns the "-"-separated list of sorted station IDs. 
