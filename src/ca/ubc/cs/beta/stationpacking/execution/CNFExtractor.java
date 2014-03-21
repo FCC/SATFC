@@ -206,7 +206,7 @@ public class CNFExtractor {
 			String aInstanceString = StringUtils.join(aPackingChannels,"-")+"_"+StringUtils.join(aPackingStations,"-");
 			StationPackingInstance aInstance = StationPackingInstance.valueOf(aInstanceString, aStationManager);
 			
-			ISATEncoder aSATEncoder = new SATCompressor(aStationManager, aConstraintManager);
+			ISATEncoder aSATEncoder = new SATCompressor(aConstraintManager);
 
 			log.info("Encoding into SAT...");
 			Pair<CNF,ISATDecoder> aEncoding = aSATEncoder.encode(aInstance);

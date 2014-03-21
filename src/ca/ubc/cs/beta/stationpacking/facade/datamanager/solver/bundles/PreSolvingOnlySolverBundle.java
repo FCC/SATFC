@@ -40,7 +40,7 @@ public class PreSolvingOnlySolverBundle extends ASolverBundle {
 		//Initialize clasp.
 		log.warn("Initializing clasps with internal configurations.");
 		
-		SATCompressor aCompressor = new SATCompressor(this.getStationManager(), this.getConstraintManager());
+		SATCompressor aCompressor = new SATCompressor(this.getConstraintManager());
 		IComponentGrouper aGrouper = new NoGrouper();
 		
 		log.debug("Initializing clasp solvers.");
