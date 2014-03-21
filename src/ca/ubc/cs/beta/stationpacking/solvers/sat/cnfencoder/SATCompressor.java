@@ -4,7 +4,6 @@ import org.apache.commons.math3.util.Pair;
 
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
-import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.base.CompressionBijection;
 
@@ -19,19 +18,17 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.base.CompressionBije
  */
 public class SATCompressor implements ISATEncoder {
 	
-	private final IStationManager fStationManager;
 	private final IConstraintManager fConstraintManager;
 	
-	public SATCompressor(IStationManager aStationManager, IConstraintManager aConstraintManager)
+	public SATCompressor(IConstraintManager aConstraintManager)
 	{
-		fStationManager = aStationManager;
 		fConstraintManager = aConstraintManager;
 	}
 
 	@Override
 	public Pair<CNF, ISATDecoder> encode(StationPackingInstance aInstance) {
 		
-		SATEncoder aSATEncoder = new SATEncoder(fStationManager,fConstraintManager,new CompressionBijection<Long>());
+		SATEncoder aSATEncoder = new SATEncoder(fConstraintManager,new CompressionBijection<Long>());
 		
 		Pair<CNF,ISATDecoder> aEncoding = aSATEncoder.encode(aInstance);
 		

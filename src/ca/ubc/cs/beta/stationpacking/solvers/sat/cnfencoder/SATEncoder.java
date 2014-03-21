@@ -1,21 +1,22 @@
 package ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.math3.util.Pair;
 
-import com.google.common.collect.Sets;
-
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
-import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Clause;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.base.IBijection;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.base.IdentityBijection;
+
+import com.google.common.collect.Sets;
 
 /**
  * Encodes a problem instance as a propositional satisfiability problem. 
@@ -27,19 +28,16 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.base.IdentityBijecti
  */
 public class SATEncoder implements ISATEncoder {
 	
-	private final IStationManager fStationManager;
 	private final IConstraintManager fConstraintManager;
-	
 	private final IBijection<Long,Long> fBijection;
 	
-	public SATEncoder(IStationManager aStationManager, IConstraintManager aConstraintManager)
+	public SATEncoder(IConstraintManager aConstraintManager)
 	{
-		this(aStationManager,aConstraintManager, new IdentityBijection<Long>());
+		this(aConstraintManager, new IdentityBijection<Long>());
 	}
 	
-	public SATEncoder(IStationManager aStationManager, IConstraintManager aConstraintManager, IBijection<Long, Long> aBijection)
+	public SATEncoder(IConstraintManager aConstraintManager, IBijection<Long, Long> aBijection)
 	{
-		fStationManager = aStationManager;
 		fConstraintManager = aConstraintManager;
 		
 		fBijection = aBijection;
@@ -60,16 +58,26 @@ public class SATEncoder implements ISATEncoder {
 		//Encode adjacent-channel constraints
 		aCNF.addAll(encodeAdjConstraints(aInstance));
 		
-		//Create the decoder
+		//Save station map.
+		final Map<Integer,Station> stationMap = new HashMap<Integer,Station>();
+		for(Station station : aInstance.getStations())
+		{
+			stationMap.put(station.getID(), station);
+		}
 		
+		//Create the decoder
 		ISATDecoder aDecoder = new ISATDecoder() {
 			@Override
 			public Pair<Station, Integer> decode(long aVariable) {
 				
+				//Decode the long variable to station channel pair.
 				Pair<Integer,Integer> aStationChannelPair = SATEncoderUtils.SzudzikElegantInversePairing(fBijection.inversemap(aVariable));
 				
-				Station aStation = fStationManager.getStationfromID(aStationChannelPair.getKey());
+				//Get station.
+				Integer stationID = aStationChannelPair.getKey();
+				Station aStation = stationMap.get(stationID);
 				
+				//Get channel
 				Integer aChannel = aStationChannelPair.getValue();
 				
 				return new Pair<Station,Integer>(aStation,aChannel);

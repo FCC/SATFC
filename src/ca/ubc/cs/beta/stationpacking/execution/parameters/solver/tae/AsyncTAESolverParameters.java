@@ -48,7 +48,7 @@ public class AsyncTAESolverParameters extends AbstractOptions{
 		AlgorithmExecutionOptions.paramFileDelegate.paramFile = AlgorithmExecutionOptions.algoExecDir+File.separatorChar+"sw_parameterspaces"+File.separatorChar+"sw_"+Solver+".txt";
 		
 		log.info("Creating CNF encoder...");
-		ISATEncoder aCNFEncoder = new SATEncoder(aStationManager,aConstraintManager);
+		ISATEncoder aCNFEncoder = new SATEncoder(aConstraintManager);
 		
 		log.info("Creating CNF lookup...");
 		ICNFResultLookup aCNFLookup = new AsyncCachedCNFLookup(CNFDirectory);
