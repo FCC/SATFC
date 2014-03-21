@@ -31,7 +31,7 @@ public class ClaspSATSolverBundle extends ASolverBundle{
 		
 		log.debug("Initializing clasp selector bundle.");
 		
-		SATCompressor aCompressor = new SATCompressor(this.getStationManager(), this.getConstraintManager());
+		SATCompressor aCompressor = new SATCompressor(this.getConstraintManager());
 		IComponentGrouper aGrouper = new NoGrouper();
 		
 //		log.info("Creating incremental library clasp.");
