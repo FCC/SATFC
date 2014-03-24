@@ -12,6 +12,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ca.ubc.cs.beta.aclib.logging.LogLevel;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
@@ -36,7 +37,9 @@ import ca.ubc.cs.beta.stationpacking.solvers.termination.walltime.WalltimeTermin
  */
 public class SATFCFacade implements AutoCloseable{
 	
-	private static Logger log = LoggerFactory.getLogger(SATFCFacade.class);
+	private final Logger log;
+	
+	private volatile static boolean logInitialized = false;
 	private final SolverManager fSolverManager;
 	
 	/**
@@ -45,6 +48,18 @@ public class SATFCFacade implements AutoCloseable{
 	 */
 	public SATFCFacade(final String aClaspLibrary)
 	{
+		//Initialize logging.
+		if(!logInitialized)
+		{
+			initializeLogging(LogLevel.INFO);
+			log = LoggerFactory.getLogger(getClass());
+			log.warn("Logging initialized by default to INFO.");
+			
+		} else
+		{
+			log = LoggerFactory.getLogger(getClass());
+		}
+
 		
 		//Check provided library.
 		if(aClaspLibrary == null)
@@ -220,6 +235,42 @@ public class SATFCFacade implements AutoCloseable{
 		log.info("Goodbye!");
 	}
 	
+	
+	
+	private static final String LOGBACK_CONFIGURATION_FILE_PROPERTY ="logback.configurationFile";
+	/**
+	 * Initialize logging.
+	 * @param logLevel - logging level to use.
+	 */
+	public static synchronized void initializeLogging(LogLevel logLevel)
+	{
+		
+		if (logInitialized) return;
+		
+		System.setProperty("LOGLEVEL", logLevel.name());
+		if(System.getProperty(LOGBACK_CONFIGURATION_FILE_PROPERTY)!= null)
+		{
+			Logger log = LoggerFactory.getLogger(SATFCFacade.class);
+			log.debug("System property for logback.configurationFile has been found already set as {} , logging will follow this file", System.getProperty(LOGBACK_CONFIGURATION_FILE_PROPERTY));
+		} else
+		{
+			
+			String newXML = SATFCFacade.class.getPackage().getName().replace(".", File.separator) + File.separator+  "logback.xml";
+			
+			System.setProperty(LOGBACK_CONFIGURATION_FILE_PROPERTY, newXML);
+			
+			Logger log = LoggerFactory.getLogger(SATFCFacade.class);
+			if(log.isDebugEnabled())
+			{
+				log.debug("Logging initialized to use file:" + newXML);
+			} else
+			{
+				log.info("Logging initialized");
+			}
+			
+		}
+		logInitialized = true;
+	}
 	
 	
 	
