@@ -33,6 +33,8 @@ import ca.ubc.cs.beta.stationpacking.solvers.termination.walltime.WalltimeTermin
 
 /**
  * A facade for solving station packing problems with SATFC.
+ * Each instance of the facade corresponds to an independent copy
+ * of SATFC (with different state).
  * @author afrechet
  */
 public class SATFCFacade implements AutoCloseable{
