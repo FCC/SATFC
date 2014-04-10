@@ -35,6 +35,11 @@
 	<classpathentry kind="lib" path="lib/redis-client/jedis-2.1.0.jar"/>
 	<classpathentry kind="lib" path="lib/redis-client/gson-2.2.4.jar"/>
 	<classpathentry kind="lib" path="lib/redis-client/args4j-2.0.21.jar"/>
+	<classpathentry kind="lib" path="lib/libtw/libtw.jar" sourcepath="lib/libtw/libtw-src.zip">
+		<attributes>
+			<attribute name="javadoc_location" value="jar:platform:/resource/FCCStationPacking/lib/libtw/libtw-src.zip!/"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

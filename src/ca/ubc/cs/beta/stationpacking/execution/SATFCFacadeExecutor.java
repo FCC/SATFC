@@ -30,7 +30,7 @@ public class SATFCFacadeExecutor {
 			throw aParameterException;
 		}
 		parameters.fLoggingOptions.initializeLogging();
-		Logger log = LoggerFactory.getLogger(SATFCExecutor.class);
+		Logger log = LoggerFactory.getLogger(SATFCFacadeExecutor.class);
 		
 		
 		log.info("Initializing facade.");
