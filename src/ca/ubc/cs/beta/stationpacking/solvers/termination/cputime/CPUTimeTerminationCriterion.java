@@ -13,13 +13,17 @@ public class CPUTimeTerminationCriterion implements ITerminationCriterion
 	private final double fStartingCPUTime;
 	private AtomicDouble fExternalEllapsedCPUTime;
 	private final double fCPUTimeLimit;
-
+	
+	private final CPUTime fTimer;
+	
 	/**
 	 * Create a CPU time termination criterion starting immediately and running for the provided duration (s).
 	 * @param aCPUTimeLimit - CPU time duration (s).
 	 */
 	public CPUTimeTerminationCriterion(double aCPUTimeLimit)
 	{
+		fTimer = new CPUTime();
+		
 		fExternalEllapsedCPUTime = new AtomicDouble(0.0);
 		fCPUTimeLimit = aCPUTimeLimit;
 		fStartingCPUTime = getCPUTime();
@@ -27,7 +31,7 @@ public class CPUTimeTerminationCriterion implements ITerminationCriterion
 
 	private double getCPUTime()
 	{
-		return CPUTime.getCPUTime()+fExternalEllapsedCPUTime.get();
+		return fTimer.getCPUTime()+fExternalEllapsedCPUTime.get();
 	}
 	
 	private double getEllapsedCPUTime()
