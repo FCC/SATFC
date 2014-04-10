@@ -126,7 +126,7 @@ public class SATFCFacade implements AutoCloseable{
 			String aStationConfigFolder
 			)
 	{
-		log.info("Checking input...");
+		log.debug("Checking input...");
 		//Check input.
 		if(aStations == null || aChannels == null || aPreviousAssignment == null || aStationConfigFolder == null || aDomains == null)
 		{
@@ -148,7 +148,7 @@ public class SATFCFacade implements AutoCloseable{
 			throw new IllegalArgumentException("Cutoff must be strictly positive.");
 		}
 		
-		log.info("Getting data managers...");
+		log.debug("Getting data managers...");
 		//Get the data managers and solvers corresponding to the provided station config data.
 		ISolverBundle bundle;
 		try {
@@ -161,12 +161,12 @@ public class SATFCFacade implements AutoCloseable{
 		
 		IStationManager stationManager = bundle.getStationManager();
 		
-		log.info("Translating arguments to SATFC objects...");
+		log.debug("Translating arguments to SATFC objects...");
 		//Translate arguments.
 		Set<Station> originalStations = stationManager.getStationsfromID(aStations);
 		Set<Integer> channels = new HashSet<Integer>(aChannels);
 		
-		log.info("Constraining station domains...");
+		log.debug("Constraining station domains...");
 		//Constrain domains.
 		Set<Station> constrainedStations = new HashSet<Station>();
 		for(Station station : originalStations)
@@ -192,25 +192,25 @@ public class SATFCFacade implements AutoCloseable{
 			}
 		}
 		
-		log.info("Constructing station packing instance...");
+		log.debug("Constructing station packing instance...");
 		//Construct the instance.
 		StationPackingInstance instance = new StationPackingInstance(constrainedStations, channels, previousAssignment);
 		
-		log.info("Getting solver...");
+		log.debug("Getting solver...");
 		//Get solver
 		ISolver solver = bundle.getSolver(instance);
 		
-		log.info("Setting termination criterion...");
+		log.debug("Setting termination criterion...");
 		//Set termination criterion.
 		ITerminationCriterion CPUtermination = new CPUTimeTerminationCriterion(aCutoff);
 		ITerminationCriterion WALLtermination = new WalltimeTerminationCriterion(aCutoff);
 		ITerminationCriterion termination = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(CPUtermination,WALLtermination)); 
 		
-		log.info("Solving instance...");
+		log.debug("Solving instance...");
 		//Solve instance.
 		SolverResult result = solver.solve(instance, termination, aSeed);
 		
-		log.info("Transforming result into SATFC output...");
+		log.debug("Transforming result into SATFC output...");
 		//Transform back solver result to output result.
 		Map<Integer,Integer> witness = new HashMap<Integer,Integer>();
 		for(Entry<Integer,Set<Station>> entry : result.getAssignment().entrySet())
@@ -244,14 +244,13 @@ public class SATFCFacade implements AutoCloseable{
 	 */
 	public static synchronized void initializeLogging(LogLevel logLevel)
 	{
-		
 		if (logInitialized) return;
 		
 		System.setProperty("LOGLEVEL", logLevel.name());
 		if(System.getProperty(LOGBACK_CONFIGURATION_FILE_PROPERTY)!= null)
 		{
 			Logger log = LoggerFactory.getLogger(SATFCFacade.class);
-			log.debug("System property for logback.configurationFile has been found already set as {} , logging will follow this file", System.getProperty(LOGBACK_CONFIGURATION_FILE_PROPERTY));
+			log.debug("System property for logback.configurationFile has been found already set as {} , logging will follow this file.", System.getProperty(LOGBACK_CONFIGURATION_FILE_PROPERTY));
 		} else
 		{
 			
@@ -265,7 +264,7 @@ public class SATFCFacade implements AutoCloseable{
 				log.debug("Logging initialized to use file:" + newXML);
 			} else
 			{
-				log.info("Logging initialized");
+				log.debug("Logging initialized");
 			}
 			
 		}

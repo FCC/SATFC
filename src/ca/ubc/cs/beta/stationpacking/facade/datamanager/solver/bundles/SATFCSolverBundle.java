@@ -35,10 +35,10 @@ public class SATFCSolverBundle extends ASolverBundle{
 		
 		super(aStationManager, aConstraintManager);
 		
-		log.info("Solver selector: PRE-SOLVING WITH CLASP AS MAIN SOLVER.");
+		log.debug("Solver selector: PRE-SOLVING WITH CLASP AS MAIN SOLVER.");
 		
 		//Initialize clasp.
-		log.warn("Initializing clasps with internal configurations.");
+		//log.warn("Initializing clasps with internal configurations.");
 		
 		SATCompressor aCompressor = new SATCompressor(this.getConstraintManager());
 		IComponentGrouper aGrouper = new NoGrouper();
