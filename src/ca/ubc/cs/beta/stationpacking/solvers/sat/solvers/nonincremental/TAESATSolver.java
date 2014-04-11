@@ -8,13 +8,13 @@ import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 
-import ca.ubc.cs.beta.aclib.algorithmrun.AlgorithmRun;
-import ca.ubc.cs.beta.aclib.configspace.ParamConfiguration;
-import ca.ubc.cs.beta.aclib.execconfig.AlgorithmExecutionConfig;
-import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstance;
-import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstanceSeedPair;
-import ca.ubc.cs.beta.aclib.runconfig.RunConfig;
-import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluator;
+import ca.ubc.cs.beta.aeatk.algorithmexecutionconfiguration.AlgorithmExecutionConfiguration;
+import ca.ubc.cs.beta.aeatk.algorithmrunconfiguration.AlgorithmRunConfiguration;
+import ca.ubc.cs.beta.aeatk.algorithmrunresult.AlgorithmRunResult;
+import ca.ubc.cs.beta.aeatk.parameterconfigurationspace.ParameterConfiguration;
+import ca.ubc.cs.beta.aeatk.probleminstance.ProblemInstance;
+import ca.ubc.cs.beta.aeatk.probleminstance.ProblemInstanceSeedPair;
+import ca.ubc.cs.beta.aeatk.targetalgorithmevaluator.TargetAlgorithmEvaluator;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
@@ -29,8 +29,8 @@ import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 public class TAESATSolver extends AbstractCompressedSATSolver{
 	
 	private final TargetAlgorithmEvaluator fTAE;
-	private final AlgorithmExecutionConfig fExecConfig;
-	private final ParamConfiguration fParamConfiguration;
+	private final AlgorithmExecutionConfiguration fExecConfig;
+	private final ParameterConfiguration fParamConfiguration;
 	private final String fCNFDir;
 	
 	/**
@@ -41,8 +41,8 @@ public class TAESATSolver extends AbstractCompressedSATSolver{
 	 * @param aCNFDir - a CNF directory in which to execute. 
 	 */
 	public TAESATSolver(TargetAlgorithmEvaluator aTargetAlgorithmEvaluator,
-			ParamConfiguration aParamConfig,
-			AlgorithmExecutionConfig aExecConfig,
+			ParameterConfiguration aParamConfig,
+			AlgorithmExecutionConfiguration aExecConfig,
 			String aCNFDir)
 	{
 		fTAE = aTargetAlgorithmEvaluator;
@@ -79,22 +79,22 @@ public class TAESATSolver extends AbstractCompressedSATSolver{
 		//Create the run config.
 		ProblemInstance aProblemInstance = new ProblemInstance(aCNFFilename);
 		ProblemInstanceSeedPair aProblemInstanceSeedPair = new ProblemInstanceSeedPair(aProblemInstance,aSeed);
-		RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aTerminationCriterion.getRemainingTime(), fParamConfiguration,fExecConfig);
+		AlgorithmRunConfiguration aRunConfig = new AlgorithmRunConfiguration(aProblemInstanceSeedPair, aTerminationCriterion.getRemainingTime(), fParamConfiguration,fExecConfig);
 		
 		//Execute it.
-		List<AlgorithmRun> aRuns = fTAE.evaluateRun(aRunConfig);
+		List<AlgorithmRunResult> aRuns = fTAE.evaluateRun(aRunConfig);
 		if(aRuns.size()!=1)
 		{
 			throw new IllegalStateException("Got multiple runs back from the TAE when solving a single CNF.");
 		}
-		AlgorithmRun aRun = aRuns.iterator().next();
+		AlgorithmRunResult aRun = aRuns.iterator().next();
 		double aRuntime = aRun.getRuntime();
 		
 		SATResult aResult;
 		HashSet<Literal> aAssignment = new HashSet<Literal>();
 		
 		//Post process the result from the TAE.
-		switch (aRun.getRunResult()){
+		switch (aRun.getRunStatus()){
 			case KILLED:
 				aResult = SATResult.KILLED;
 				break;
