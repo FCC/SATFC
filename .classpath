@@ -10,8 +10,6 @@
 	<classpathentry kind="lib" path="lib/jgrapht-0.8.3/jgrapht-jdk1.6.jar"/>
 	<classpathentry kind="lib" path="lib/jna-4.0.0.jar"/>
 	<classpathentry kind="lib" path="lib/guava-14.0.1.jar"/>
-	<classpathentry kind="lib" path="lib/aclib-experimental/aclib-src.jar"/>
-	<classpathentry kind="lib" path="lib/aclib-experimental/aclib.jar"/>
 	<classpathentry kind="lib" path="lib/aclib-experimental/commons-collections-3.2.1.jar"/>
 	<classpathentry kind="lib" path="lib/aclib-experimental/commons-io-2.1.jar"/>
 	<classpathentry kind="lib" path="lib/aclib-experimental/commons-math-2.2.jar"/>
@@ -41,5 +39,6 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/AutomaticConfiguratorLibrary"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

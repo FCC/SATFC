@@ -14,16 +14,16 @@ import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.ubc.cs.beta.aclib.algorithmrun.AlgorithmRun;
-import ca.ubc.cs.beta.aclib.algorithmrun.RunResult;
-import ca.ubc.cs.beta.aclib.algorithmrun.kill.KillableAlgorithmRun;
-import ca.ubc.cs.beta.aclib.configspace.ParamConfiguration;
-import ca.ubc.cs.beta.aclib.execconfig.AlgorithmExecutionConfig;
-import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstance;
-import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstanceSeedPair;
-import ca.ubc.cs.beta.aclib.runconfig.RunConfig;
-import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluator;
-import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluatorRunObserver;
+import ca.ubc.cs.beta.aeatk.algorithmrunresult.AlgorithmRunResult;
+import ca.ubc.cs.beta.aeatk.algorithmrunresult.RunStatus;
+import ca.ubc.cs.beta.aeatk.algorithmrunresult.AlgorithmRunResult;
+import ca.ubc.cs.beta.aeatk.parameterconfigurationspace.ParameterConfiguration;
+import ca.ubc.cs.beta.aeatk.algorithmexecutionconfiguration.AlgorithmExecutionConfiguration;
+import ca.ubc.cs.beta.aeatk.probleminstance.ProblemInstance;
+import ca.ubc.cs.beta.aeatk.probleminstance.ProblemInstanceSeedPair;
+import ca.ubc.cs.beta.aeatk.algorithmrunconfiguration.AlgorithmRunConfiguration;
+import ca.ubc.cs.beta.aeatk.targetalgorithmevaluator.TargetAlgorithmEvaluator;
+import ca.ubc.cs.beta.aeatk.targetalgorithmevaluator.TargetAlgorithmEvaluatorRunObserver;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
@@ -40,7 +40,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
 
 /**
- * SAT solver wrapper that uses Steve Ramage's AClib Target Algorithm Evaluators for execution.
+ * SAT solver wrapper that uses Steve Ramage's AEATK Target Algorithm Evaluators for execution.
  * @author afrechet, narnosti
  *
  */
@@ -49,8 +49,8 @@ public class TAEBasedSolver implements ISolver{
 	private static Logger log = LoggerFactory.getLogger(TAEBasedSolver.class);
 	
 	private TargetAlgorithmEvaluator fTAE;
-	private AlgorithmExecutionConfig fExecConfig;
-	private ParamConfiguration fParamConfig;
+	private AlgorithmExecutionConfiguration fExecConfig;
+	private ParameterConfiguration fParamConfig;
 	
 	private IConstraintManager fManager;
 	private ICNFResultLookup fLookup;
@@ -75,8 +75,8 @@ public class TAEBasedSolver implements ISolver{
 			ICNFResultLookup aLookup,
 			IComponentGrouper aGrouper,
 			TargetAlgorithmEvaluator aTargetAlgorithmEvaluator,
-			AlgorithmExecutionConfig aExecutionConfig,
-			ParamConfiguration aParamConfig,
+			AlgorithmExecutionConfiguration aExecutionConfig,
+			ParameterConfiguration aParamConfig,
 			boolean aKeepCNFs) {
 		
 		fEncoder = aSATEncoder;
@@ -100,13 +100,13 @@ public class TAEBasedSolver implements ISolver{
 	{
 		return new TargetAlgorithmEvaluatorRunObserver(){		
 			@Override
-			public void currentStatus(List<? extends KillableAlgorithmRun> runs) {
+			public void currentStatus(List<? extends AlgorithmRunResult> runs) {
 				boolean aKill = false;
 				
 				//Check if one run has terminated without a SAT result.
-				for(KillableAlgorithmRun aRun : runs)
+				for(AlgorithmRunResult aRun : runs)
 				{
-					if(!aRun.getRunResult().equals(RunResult.SAT) && !aRun.getRunResult().equals(RunResult.RUNNING))
+					if(!aRun.getRunStatus().equals(RunStatus.SAT) && !aRun.getRunStatus().equals(RunStatus.RUNNING))
 					{
 						aKill = true;
 						break;
@@ -118,9 +118,9 @@ public class TAEBasedSolver implements ISolver{
 				{
 					double aCutoff = 0.0;
 					double aSumRuntimes = 0.0;
-					for(KillableAlgorithmRun aRun : runs)
+					for(AlgorithmRunResult aRun : runs)
 					{
-						aCutoff = aRun.getRunConfig().getCutoffTime();
+						aCutoff = aRun.getAlgorithmRunConfiguration().getCutoffTime();
 						aSumRuntimes += aRun.getRuntime();
 					}
 					if(aSumRuntimes>1.01*aCutoff+1)
@@ -131,7 +131,7 @@ public class TAEBasedSolver implements ISolver{
 					
 				if(aKill)
 				{
-					for(KillableAlgorithmRun aRun : runs)
+					for(AlgorithmRunResult aRun : runs)
 					{
 						aRun.kill();
 					}
@@ -162,8 +162,8 @@ public class TAEBasedSolver implements ISolver{
 		Set<Set<Station>> aInstanceGroups = fGrouper.group(aInstance,fManager);
 		
 		ArrayList<SolverResult> aComponentResults = new ArrayList<SolverResult>();
-		HashMap<RunConfig,StationPackingInstance> aToSolveInstances = new HashMap<RunConfig,StationPackingInstance>();
-		HashMap<RunConfig,ISATDecoder> aComponentDecoders = new HashMap<RunConfig,ISATDecoder>();
+		HashMap<AlgorithmRunConfiguration,StationPackingInstance> aToSolveInstances = new HashMap<AlgorithmRunConfiguration,StationPackingInstance>();
+		HashMap<AlgorithmRunConfiguration,ISATDecoder> aComponentDecoders = new HashMap<AlgorithmRunConfiguration,ISATDecoder>();
 		
 		HashSet<String> aCNFs = new HashSet<String>();
 		//Create the runs to execute.
@@ -213,7 +213,7 @@ public class TAEBasedSolver implements ISolver{
 				//Create the run config and add it to the to-do list.
 				ProblemInstance aProblemInstance = new ProblemInstance(aCNFFileName);
 				ProblemInstanceSeedPair aProblemInstanceSeedPair = new ProblemInstanceSeedPair(aProblemInstance,aSeed);
-				RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aTerminationCriterion.getRemainingTime(), fParamConfig,fExecConfig);
+				AlgorithmRunConfiguration aRunConfig = new AlgorithmRunConfiguration(aProblemInstanceSeedPair, aTerminationCriterion.getRemainingTime(), fParamConfig,fExecConfig);
 				
 				aToSolveInstances.put(aRunConfig,aComponentInstance);
 				aComponentDecoders.put(aRunConfig, aDecoder);
@@ -222,11 +222,11 @@ public class TAEBasedSolver implements ISolver{
 		}
 		
 		//Execute the runs
-		List<RunConfig> aRunConfigs = new ArrayList<RunConfig>(aToSolveInstances.keySet());
-		List<AlgorithmRun> aRuns = fTAE.evaluateRun(aRunConfigs,getPreemptingObserver());
+		List<AlgorithmRunConfiguration> aRunConfigs = new ArrayList<AlgorithmRunConfiguration>(aToSolveInstances.keySet());
+		List<AlgorithmRunResult> aRuns = fTAE.evaluateRun(aRunConfigs,getPreemptingObserver());
 		
 		
-		for(AlgorithmRun aRun : aRuns)
+		for(AlgorithmRunResult aRun : aRuns)
 		{
 			double aRuntime = aRun.getRuntime();
 			
@@ -234,7 +234,7 @@ public class TAEBasedSolver implements ISolver{
 			
 			SATResult aResult;
 			Map<Integer,Set<Station>> aAssignment = new HashMap<Integer,Set<Station>>();
-			switch (aRun.getRunResult()){
+			switch (aRun.getRunStatus()){
 				case KILLED:
 					aResult = SATResult.KILLED;
 					break;
@@ -243,8 +243,8 @@ public class TAEBasedSolver implements ISolver{
 					
 					//Grab assignment
 					String aAdditionalRunData = aRun.getAdditionalRunData();
-					StationPackingInstance aComponentInstance = aToSolveInstances.get(aRun.getRunConfig());
-					ISATDecoder aDecoder = aComponentDecoders.get(aRun.getRunConfig());
+					StationPackingInstance aComponentInstance = aToSolveInstances.get(aRun.getAlgorithmRunConfiguration());
+					ISATDecoder aDecoder = aComponentDecoders.get(aRun.getAlgorithmRunConfiguration());
 					
 					//The TAE wrapper is assumed to return a ';'-separated string of litterals, one litteral for each variable of the SAT problem.
 					HashMap<Long,Boolean> aLitteralChecker = new HashMap<Long,Boolean>();
@@ -303,7 +303,7 @@ public class TAEBasedSolver implements ISolver{
 			//Save result if successfully computed
 			if(!(aResult.equals(SATResult.CRASHED) || aResult.equals(SATResult.KILLED)))
 			{
-				fLookup.putSolverResult(aToSolveInstances.get(aRun.getRunConfig()),aSolverResult);
+				fLookup.putSolverResult(aToSolveInstances.get(aRun.getAlgorithmRunConfiguration()),aSolverResult);
 			}
 			
 			//Add result to component results
