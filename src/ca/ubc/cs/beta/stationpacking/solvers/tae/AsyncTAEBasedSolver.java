@@ -14,14 +14,15 @@ import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ca.ubc.cs.beta.aclib.algorithmrun.AlgorithmRun;
-import ca.ubc.cs.beta.aclib.configspace.ParamConfiguration;
-import ca.ubc.cs.beta.aclib.execconfig.AlgorithmExecutionConfig;
-import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstance;
-import ca.ubc.cs.beta.aclib.probleminstance.ProblemInstanceSeedPair;
-import ca.ubc.cs.beta.aclib.runconfig.RunConfig;
-import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluator;
-import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluatorCallback;
+import ca.ubc.cs.beta.aeatk.algorithmexecutionconfiguration.AlgorithmExecutionConfiguration;
+
+import ca.ubc.cs.beta.aeatk.algorithmrunresult.AlgorithmRunResult;
+import ca.ubc.cs.beta.aeatk.parameterconfigurationspace.ParameterConfiguration;
+import ca.ubc.cs.beta.aeatk.probleminstance.ProblemInstance;
+import ca.ubc.cs.beta.aeatk.probleminstance.ProblemInstanceSeedPair;
+import ca.ubc.cs.beta.aeatk.algorithmrunconfiguration.AlgorithmRunConfiguration;
+import ca.ubc.cs.beta.aeatk.targetalgorithmevaluator.TargetAlgorithmEvaluator;
+import ca.ubc.cs.beta.aeatk.targetalgorithmevaluator.TargetAlgorithmEvaluatorCallback;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
@@ -47,8 +48,8 @@ public class AsyncTAEBasedSolver {
 	private static Logger log = LoggerFactory.getLogger(TAEBasedSolver.class);
 	
 	private TargetAlgorithmEvaluator fTAE;
-	private AlgorithmExecutionConfig fExecConfig;
-	private ParamConfiguration fParamConfig;
+	private AlgorithmExecutionConfiguration fExecConfig;
+	private ParameterConfiguration fParamConfig;
 	
 	private IComponentGrouper fGrouper;
 	private IConstraintManager fManager;
@@ -71,8 +72,8 @@ public class AsyncTAEBasedSolver {
 			ICNFResultLookup aLookup,
 			IComponentGrouper aGrouper,
 			TargetAlgorithmEvaluator aTargetAlgorithmEvaluator,
-			AlgorithmExecutionConfig aExecutionConfig,
-			ParamConfiguration aParamConfig) {
+			AlgorithmExecutionConfiguration aExecutionConfig,
+			ParameterConfiguration aParamConfig) {
 		
 		fEncoder = aCNFEncoder;
 		fManager = aConstraintManager;
@@ -93,19 +94,19 @@ public class AsyncTAEBasedSolver {
 	}
 
 
-	private TargetAlgorithmEvaluatorCallback getCompilingCallback(final StationPackingInstance aInstance,final IExperimentReporter aAsynchronousReporter,final HashMap<RunConfig,StationPackingInstance> aToSolveInstances, final HashMap<RunConfig,ISATDecoder> aComponentDecoders)
+	private TargetAlgorithmEvaluatorCallback getCompilingCallback(final StationPackingInstance aInstance,final IExperimentReporter aAsynchronousReporter,final HashMap<AlgorithmRunConfiguration,StationPackingInstance> aToSolveInstances, final HashMap<AlgorithmRunConfiguration,ISATDecoder> aComponentDecoders)
 	{
 		return new TargetAlgorithmEvaluatorCallback()
 		{
 			@Override
-			public void onSuccess(List<AlgorithmRun> runs){
+			public void onSuccess(List<AlgorithmRunResult> runs){
 				HashSet<SolverResult> aComponentResults = new HashSet<SolverResult>();
-				for(AlgorithmRun aRun : runs)
+				for(AlgorithmRunResult aRun : runs)
 				{
 					double aRuntime = aRun.getRuntime();				
 					SATResult aResult;
 					Map<Integer,Set<Station>> aAssignment = new HashMap<Integer,Set<Station>>();
-					switch (aRun.getRunResult()){
+					switch (aRun.getRunStatus()){
 						case KILLED:
 							aResult = SATResult.KILLED;
 							break;
@@ -114,8 +115,8 @@ public class AsyncTAEBasedSolver {
 							
 							//Grab assignment
 							String aAdditionalRunData = aRun.getAdditionalRunData();
-							StationPackingInstance aComponentInstance = aToSolveInstances.get(aRun.getRunConfig());
-							ISATDecoder aSATDecoder = aComponentDecoders.get(aRun.getRunConfig());
+							StationPackingInstance aComponentInstance = aToSolveInstances.get(aRun.getAlgorithmRunConfiguration());
+							ISATDecoder aSATDecoder = aComponentDecoders.get(aRun.getAlgorithmRunConfiguration());
 							
 							//The TAE wrapper is assumed to return a ';'-separated string of litterals, one litteral for each variable of the SAT problem.
 							HashMap<Long,Boolean> aLitteralChecker = new HashMap<Long,Boolean>();
@@ -250,8 +251,8 @@ public class AsyncTAEBasedSolver {
 		//Group stations
 		Set<Set<Station>> aInstanceGroups = fGrouper.group(aInstance,fManager);
 		
-		HashMap<RunConfig,StationPackingInstance> aToSolveInstances = new HashMap<RunConfig,StationPackingInstance>();
-		HashMap<RunConfig,ISATDecoder> aComponentDecoders = new HashMap<RunConfig,ISATDecoder>();	
+		HashMap<AlgorithmRunConfiguration,StationPackingInstance> aToSolveInstances = new HashMap<AlgorithmRunConfiguration,StationPackingInstance>();
+		HashMap<AlgorithmRunConfiguration,ISATDecoder> aComponentDecoders = new HashMap<AlgorithmRunConfiguration,ISATDecoder>();	
 		
 		//Create the runs to execute.
 		for(Set<Station> aStationComponent : aInstanceGroups){
@@ -286,18 +287,18 @@ public class AsyncTAEBasedSolver {
 			//Create the run config and add it to the to-do list.
 			ProblemInstance aProblemInstance = new ProblemInstance(aCNFFileName);
 			ProblemInstanceSeedPair aProblemInstanceSeedPair = new ProblemInstanceSeedPair(aProblemInstance,aSeed);
-			RunConfig aRunConfig = new RunConfig(aProblemInstanceSeedPair, aCutoff, fParamConfig,fExecConfig);
+			AlgorithmRunConfiguration aAlgorithmRunConfiguration = new AlgorithmRunConfiguration(aProblemInstanceSeedPair, aCutoff, fParamConfig,fExecConfig);
 			
-			aToSolveInstances.put(aRunConfig,aComponentInstance);
-			aComponentDecoders.put(aRunConfig, aDecoder);
+			aToSolveInstances.put(aAlgorithmRunConfiguration,aComponentInstance);
+			aComponentDecoders.put(aAlgorithmRunConfiguration, aDecoder);
 		
 		}
 		
 		//Execute the runs
-		List<RunConfig> aRunConfigs = new ArrayList<RunConfig>(aToSolveInstances.keySet());
+		List<AlgorithmRunConfiguration> aAlgorithmRunConfigurations = new ArrayList<AlgorithmRunConfiguration>(aToSolveInstances.keySet());
 		
 		//We are not providing any preempting observer when doing async runs as we do not want to kill (possibly) shared instances.
-		fTAE.evaluateRunsAsync(aRunConfigs,getCompilingCallback(aInstance,aAsynchronousReporter,aToSolveInstances,aComponentDecoders));
+		fTAE.evaluateRunsAsync(aAlgorithmRunConfigurations,getCompilingCallback(aInstance,aAsynchronousReporter,aToSolveInstances,aComponentDecoders));
 		
 	}
 	

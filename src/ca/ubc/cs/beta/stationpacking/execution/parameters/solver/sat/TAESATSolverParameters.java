@@ -3,13 +3,12 @@ package ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat;
 import java.io.File;
 import java.util.Map;
 
-
-import ca.ubc.cs.beta.aclib.execconfig.AlgorithmExecutionOptions;
-import ca.ubc.cs.beta.aclib.misc.options.UsageTextField;
-import ca.ubc.cs.beta.aclib.options.AbstractOptions;
-import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.TargetAlgorithmEvaluator;
-import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorBuilder;
-import ca.ubc.cs.beta.aclib.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
+import ca.ubc.cs.beta.aeatk.algorithmexecutionconfiguration.AlgorithmExecutionOptions;
+import ca.ubc.cs.beta.aeatk.misc.options.UsageTextField;
+import ca.ubc.cs.beta.aeatk.options.AbstractOptions;
+import ca.ubc.cs.beta.aeatk.targetalgorithmevaluator.TargetAlgorithmEvaluator;
+import ca.ubc.cs.beta.aeatk.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorBuilder;
+import ca.ubc.cs.beta.aeatk.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.validator.ImplementedSolverParameterValidator;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.TAESATSolver;
@@ -44,7 +43,7 @@ public class TAESATSolverParameters extends AbstractOptions implements ISATSolve
 		
 		return new TAESATSolver(aTAE
 				,
-				AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null).getParamFile().getDefaultConfiguration(),
+				AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null).getParameterConfigurationSpace().getDefaultConfiguration(),
 				AlgorithmExecutionOptions.getAlgorithmExecutionConfig(null),
 				CNFDirectory);
 	}
