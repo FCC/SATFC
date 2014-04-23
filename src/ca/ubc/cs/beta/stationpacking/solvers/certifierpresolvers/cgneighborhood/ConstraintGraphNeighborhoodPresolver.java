@@ -1,10 +1,10 @@
 package ca.ubc.cs.beta.stationpacking.solvers.certifierpresolvers.cgneighborhood;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import org.jgrapht.alg.NeighborIndex;
 import org.jgrapht.graph.DefaultEdge;
@@ -50,7 +50,7 @@ public class ConstraintGraphNeighborhoodPresolver implements ISolver {
 		
 		Watch watch = Watch.constructAutoStartWatch();
 		
-		HashMap<Station,Integer> previousAssignment = aInstance.getPreviousAssignment();
+		Map<Station,Integer> previousAssignment = aInstance.getPreviousAssignment();
 		
 		//Check if there is any previous assignment to work with.
 		if(previousAssignment.isEmpty())

@@ -34,7 +34,7 @@ public class InstanceParameters extends AbstractOptions {
 		return aPackingChannels;
 	}
 	
-	@Parameter(names = "-PACKING-STATIONS", description = "List of stations to pack.", required = true)
+	@Parameter(names = "-PACKING-STATIONS", description = "List of stations to pack.")
 	private List<String> fPackingStations;
 	public HashSet<Integer> getPackingStationIDs()
 	{
@@ -50,7 +50,7 @@ public class InstanceParameters extends AbstractOptions {
 		return aPackingStations;
 	}
 	
-	@Parameter(names = "-DOMAINS", description = "Map taking station IDs to reduced domain set (e.g. 1:14,15,16;2:14,15)", converter=StationDomainsConverter.class)
+	@Parameter(names = "-DOMAINS", description = "Map taking station IDs to reduced domain set (e.g. 1:14,15,16;2:14,15)", converter=StationDomainsConverter.class, required=true)
 	private HashMap<Integer,Set<Integer>> fDomains;
 	public HashMap<Integer,Set<Integer>> getDomains()
 	{

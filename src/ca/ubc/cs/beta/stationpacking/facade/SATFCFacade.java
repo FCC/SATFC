@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -30,6 +29,8 @@ import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.composite.DisjunctiveCompositeTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.cputime.CPUTimeTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.walltime.WalltimeTerminationCriterion;
+
+import com.google.common.collect.Sets;
 
 /**
  * A facade for solving station packing problems with SATFC.
@@ -108,20 +109,14 @@ public class SATFCFacade implements AutoCloseable{
 	
 	/**
 	 * Solve a station packing problem.
-	 * @param aStations - a collection of integer station IDs.
-	 * @param aChannels - a collection of integer channels.
-	 * @param aDomains - a map taking integer station IDs to set of integer channels domains. The domain of every station in aStations will be <i>reduced</i> to the set
-	 * of channels assigned to the station's ID in this map. All stations start with default domains specified by their domains file in the station config folder. If a station
-	 * does not appear in this map, its domain will not be reduced. 
+	 * @param aDomains - a map taking integer station IDs to set of integer channels domains. 
 	 * @param aPreviousAssignment - a valid (proved to not create any interference) partial (can concern only some of the provided station) station to channel assignment.
 	 * @param aCutoff - a cutoff in seconds for SATFC's execution.
 	 * @param aSeed - a long seed for randomization in SATFC.
 	 * @param aStationConfigFolder - a folder in which to find station config data (<i>i.e.</i> interferences and domains files).
 	 * @return a result about the packability of the provided problem, with the time it took to solve, and corresponding valid witness assignment of station IDs to channels. 
 	 */
-	public SATFCResult solve(Set<Integer> aStations,
-			Set<Integer> aChannels,
-			Map<Integer,Set<Integer>> aDomains,
+	public SATFCResult solve(Map<Integer,Set<Integer>> aDomains,
 			Map<Integer,Integer> aPreviousAssignment,
 			double aCutoff,
 			long aSeed,
@@ -130,20 +125,15 @@ public class SATFCFacade implements AutoCloseable{
 	{
 		log.debug("Checking input...");
 		//Check input.
-		if(aStations == null || aChannels == null || aPreviousAssignment == null || aStationConfigFolder == null || aDomains == null)
+		if(aDomains == null ||  aPreviousAssignment == null || aStationConfigFolder == null || aDomains == null)
 		{
 			throw new IllegalArgumentException("Cannot provide null arguments.");
 		}
 		
-		if(aStations.isEmpty())
+		if(aDomains.isEmpty())
 		{
-			log.warn("Provided an empty collection of stations.");
+			log.warn("Provided an empty set of domains.");
 			return new SATFCResult(SATResult.SAT, 0.0, new HashMap<Integer,Integer>());
-		}
-		if(aChannels.isEmpty())
-		{
-			log.warn("Provided an empty collection of channels.");
-			return new SATFCResult(SATResult.UNSAT, 0.0, new HashMap<Integer,Integer>());
 		}
 		if(aCutoff <=0)
 		{
@@ -165,27 +155,19 @@ public class SATFCFacade implements AutoCloseable{
 		
 		log.debug("Translating arguments to SATFC objects...");
 		//Translate arguments.
-		Set<Station> originalStations = stationManager.getStationsfromID(aStations);
-		Set<Integer> channels = new HashSet<Integer>(aChannels);
-		
-		log.debug("Constraining station domains...");
-		//Constrain domains.
-		Set<Station> constrainedStations = new HashSet<Station>();
-		for(Station station : originalStations)
+		Map<Station,Set<Integer>> domains = new HashMap<Station,Set<Integer>>();
+		for(Integer stationID : aDomains.keySet())
 		{
-			Set<Integer> reducedDomain = aDomains.get(station.getID());
-			if(reducedDomain != null)
-			{
-				constrainedStations.add(station.getReducedDomainStation(reducedDomain));
-			}
-			else
-			{
-				constrainedStations.add(station);
-			}
+			Station station = stationManager.getStationfromID(stationID);
+			
+			Set<Integer> domain = aDomains.get(stationID);
+			Set<Integer> stationDomain = stationManager.getDomain(station);
+			
+			domains.put(station, Sets.intersection(domain, stationDomain));
 		}
 		
 		Map<Station,Integer> previousAssignment = new HashMap<Station,Integer>();
-		for(Station station : constrainedStations)
+		for(Station station : domains.keySet())
 		{
 			Integer previousChannel = aPreviousAssignment.get(station.getID());
 			if(previousChannel != null)
@@ -196,7 +178,7 @@ public class SATFCFacade implements AutoCloseable{
 		
 		log.debug("Constructing station packing instance...");
 		//Construct the instance.
-		StationPackingInstance instance = new StationPackingInstance(constrainedStations, channels, previousAssignment);
+		StationPackingInstance instance = new StationPackingInstance(domains, previousAssignment);
 		
 		log.debug("Getting solver...");
 		//Get solver
@@ -208,7 +190,7 @@ public class SATFCFacade implements AutoCloseable{
 		ITerminationCriterion WALLtermination = new WalltimeTerminationCriterion(aCutoff);
 		ITerminationCriterion termination = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(CPUtermination,WALLtermination)); 
 		
-		log.debug("Solving instance...");
+		log.debug("Solving instance {} ...",instance);
 		//Solve instance.
 		SolverResult result = solver.solve(instance, termination, aSeed);
 		

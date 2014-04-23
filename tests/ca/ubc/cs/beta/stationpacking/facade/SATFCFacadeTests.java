@@ -5,12 +5,13 @@ import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.Test;
 
 import ca.ubc.cs.beta.stationpacking.execution.parameters.converters.PreviousAssignmentConverter;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.converters.StationDomainsConverter;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 
 import com.beust.jcommander.IStringConverter;
@@ -27,21 +28,23 @@ public class SATFCFacadeTests {
 	@Test
 	public void testPreviousAssignment() {
 		
-		IStringConverter<HashMap<Integer,Integer>> converter = new PreviousAssignmentConverter();
+		IStringConverter<HashMap<Integer,Integer>> prevAssignmentConverter = new PreviousAssignmentConverter();
+		IStringConverter<HashMap<Integer,Set<Integer>>> domainsConverter = new StationDomainsConverter();
 		
 		try(SATFCFacade satfc = new SATFCFacade(LIBRARY))
 		{
 			Collection<HashMap<Integer,Integer>> previousAssignments = Arrays.asList(
 					new HashMap<Integer,Integer>(),
-					converter.convert("2149:7;1184:15;82:20;232:9;1506:14;783:16;196:15;1276:12;1437:18;896:13")
+					prevAssignmentConverter.convert("2149:7;1184:15;82:20;232:9;1506:14;783:16;196:15;1276:12;1437:18;896:13")
 					);
 			
 			
+			Map<Integer,Set<Integer>> domains = domainsConverter.convert("2149:7,8,9,10,11,12,13,14,15,16,17,18,19,20;783:7,8,9,10,11,12,13,14,15,16,17,18,19,20;232:7,8,9,10,11,12,13,14,15,16,17,18,19,20;196:7,8,9,10,11,12,13,14,15,16,17,18,19,20;82:7,8,9,10,11,12,13,14,15,16,17,18,19,20;1437:7,8,9,10,11,12,13,14,15,16,17,18,19,20;1276:7,8,9,10,11,12,13,14,15,16,17,18,19,20;1184:7,8,9,10,11,12,13,14,15,16,17,18,19,20;1506:7,8,9,10,11,12,13,14,15,16,17,18,19,20;896:7,8,9,10,11,12,13,14,15,16,17,18,19,20");
+			
 			for(HashMap<Integer,Integer> previousAssignment : previousAssignments)
 			{
-				SATFCResult result = satfc.solve(new HashSet<Integer>(Arrays.asList(2149,783,232,196,82,1437,1276,1184,1506,896)),
-						new HashSet<Integer>(Arrays.asList(7,8,9,10,11,12,13,14,15,16,17,18,19,20)),
-						new HashMap<Integer,Set<Integer>>(),
+				SATFCResult result = satfc.solve(
+						domains,
 						previousAssignment,
 						60.0,
 						SEED,

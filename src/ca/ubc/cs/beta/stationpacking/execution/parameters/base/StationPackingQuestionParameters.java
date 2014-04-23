@@ -76,7 +76,10 @@ public class StationPackingQuestionParameters extends AbstractOptions {
 						int station = Integer.valueOf(key);
 						int prevchannel = Integer.valueOf(value);
 						stationIDs.add(station);
-						previousAssignment.put(station, prevchannel);
+						if(prevchannel >= 0)
+						{
+							previousAssignment.put(station, prevchannel);
+						}
 					}
 					else
 					{
@@ -187,7 +190,7 @@ public class StationPackingQuestionParameters extends AbstractOptions {
 			}
 		}
 		
-		StationPackingInstance instance = new StationPackingInstance(stations, fQuestion.fChannels, prevAssignment);
+		StationPackingInstance instance = StationPackingInstance.constructUniformDomainInstance(stations, fQuestion.fChannels, prevAssignment);
 		
 		return instance;
 	}

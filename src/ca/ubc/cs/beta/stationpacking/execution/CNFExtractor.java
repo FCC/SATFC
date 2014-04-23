@@ -7,6 +7,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -17,6 +18,7 @@ import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
@@ -203,8 +205,9 @@ public class CNFExtractor {
 			IStationManager aStationManager = aManagerBundle.getStationManager();
 			IConstraintManager aConstraintManager = aManagerBundle.getConstraintManager();
 			
-			String aInstanceString = StringUtils.join(aPackingChannels,"-")+"_"+StringUtils.join(aPackingStations,"-");
-			StationPackingInstance aInstance = StationPackingInstance.valueOf(aInstanceString, aStationManager);
+			Set<Station> aStations = aStationManager.getStationsfromID(aPackingStations);
+			StationPackingInstance aInstance = StationPackingInstance.constructUniformDomainInstance(aStations, aPackingChannels, new HashMap<Station,Integer>());
+			
 			
 			ISATEncoder aSATEncoder = new SATCompressor(aConstraintManager);
 
