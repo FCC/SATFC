@@ -16,8 +16,6 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.base.IBijection;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.base.IdentityBijection;
 
-import com.google.common.collect.Sets;
-
 /**
  * Encodes a problem instance as a propositional satisfiability problem. 
  * A variable of the SAT encoding is a station channel pair, each constraint is trivially
@@ -100,13 +98,13 @@ public class SATEncoder implements ISATEncoder {
 	{
 		CNF aCNF = new CNF();
 		
-		Set<Integer> aInstanceChannels = aInstance.getChannels();
 		Set<Station> aInstanceStations = aInstance.getStations();
+		Map<Station,Set<Integer>> aInstanceDomains = aInstance.getDomains();
 		
 		//Each station has its own base clauses.
 		for(Station aStation: aInstanceStations)
 		{
-			ArrayList<Integer> aStationInstanceDomain = new ArrayList<Integer>(Sets.intersection(aInstanceChannels, aStation.getDomain()));
+			ArrayList<Integer> aStationInstanceDomain = new ArrayList<Integer>(aInstanceDomains.get(aStation));
 			
 			//A station must be on at least one channel,
 			Clause aStationValidAssignmentBaseClause = new Clause();
@@ -142,30 +140,25 @@ public class SATEncoder implements ISATEncoder {
 	{
 		CNF aCNF = new CNF();
 		
-		Set<Integer> aInstanceChannels = aInstance.getChannels();
 		Set<Station> aInstanceStations = aInstance.getStations();
+		Map<Station,Set<Integer>> aInstanceDomains = aInstance.getDomains();
 		
 		//For every station,
 		for(Station aStation : aInstanceStations)
 		{		
 			//For every channel,
-			for(Integer aChannel : aInstanceChannels)
+			for(Integer aChannel : aInstanceDomains.get(aStation))
 			{
 				//Get stations that can interfere on the same channel,
 				for(Station aInterferingStation : fConstraintManager.getCOInterferingStations(aStation, aChannel))
 				{
-					//If interfering station is in this problem,
-					if(aInstanceStations.contains(aInterferingStation))
+					//If interfering station is in this problem, and the channel is in interfering station's domain
+					if(aInstanceStations.contains(aInterferingStation) && aInstanceDomains.get(aInterferingStation).contains(aChannel))
 					{
-						//Make sure channel considered is in the domain of each station.
-						//aStation.getID()<aInterferingStation.getID() && 
-						if(aStation.getDomain().contains(aChannel) && aInterferingStation.getDomain().contains(aChannel))
-						{
-							Clause aCoChannelClause = new Clause();
-							aCoChannelClause.add(new Literal(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aChannel)),false));
-							aCoChannelClause.add(new Literal(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aInterferingStation.getID(),aChannel)),false));
-							aCNF.add(aCoChannelClause);
-						}
+						Clause aCoChannelClause = new Clause();
+						aCoChannelClause.add(new Literal(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aChannel)),false));
+						aCoChannelClause.add(new Literal(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aInterferingStation.getID(),aChannel)),false));
+						aCNF.add(aCoChannelClause);
 					}
 				}
 			}
@@ -178,36 +171,28 @@ public class SATEncoder implements ISATEncoder {
 	{
 		CNF aCNF = new CNF();
 		
-		Set<Integer> aInstanceChannels = aInstance.getChannels();
 		Set<Station> aInstanceStations = aInstance.getStations();
+		Map<Station,Set<Integer>> aInstanceDomains = aInstance.getDomains();
 		
 		//For every station,
 		for(Station aStation : aInstanceStations)
 		{		
 			//For every channel,
-			for(Integer aChannel : aInstanceChannels)
+			for(Integer aChannel : aInstanceDomains.get(aStation))
 			{
 				//Get interfering channel that is +1 given channel,
 				Integer aInterferingChannel = aChannel+1;
 				
-				//Make sure interfering channel is in the instance's domain.
-				if(aInstanceChannels.contains(aInterferingChannel))
+				//For every interfering station
+				for(Station aInterferingStation : fConstraintManager.getADJplusInterferingStations(aStation, aChannel))
 				{
-					//For every interfering station
-					for(Station aInterferingStation : fConstraintManager.getADJplusInterferingStations(aStation, aChannel))
+					//Make sure instance contains interfering station, and interfering channel is in interfering station's domain.
+					if(aInstanceStations.contains(aInterferingStation) && aInstanceDomains.get(aInterferingStation).contains(aInterferingChannel))
 					{
-						//Make sure instance contains interfering station.
-						if(aInstanceStations.contains(aInterferingStation))
-						{
-							//Make sure channels considered are in the domain of their respective station.
-							if(aStation.getDomain().contains(aChannel) && aInterferingStation.getDomain().contains(aInterferingChannel) && aInstanceChannels.contains(aInterferingChannel))
-							{
-								Clause aAdjChannelClause = new Clause();
-								aAdjChannelClause.add(new Literal(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aChannel)),false));
-								aAdjChannelClause.add(new Literal(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aInterferingStation.getID(),aInterferingChannel)),false));
-								aCNF.add(aAdjChannelClause);
-							}
-						}
+						Clause aAdjChannelClause = new Clause();
+						aAdjChannelClause.add(new Literal(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aStation.getID(),aChannel)),false));
+						aAdjChannelClause.add(new Literal(fBijection.map(SATEncoderUtils.SzudzikElegantPairing(aInterferingStation.getID(),aInterferingChannel)),false));
+						aCNF.add(aAdjChannelClause);
 					}
 				}
 			}

@@ -84,7 +84,7 @@ public class PreSolvingOnlySolverBundle extends ASolverBundle {
 		//Return the right solver based on the channels in the instance.
 		log.debug("Returning Ilya's station subset pre-solving only.");
 		
-		if(StationPackingUtils.HVHF_CHANNELS.containsAll(aInstance.getChannels()) || StationPackingUtils.LVHF_CHANNELS.containsAll(aInstance.getChannels()))
+		if(StationPackingUtils.HVHF_CHANNELS.containsAll(aInstance.getAllChannels()) || StationPackingUtils.LVHF_CHANNELS.containsAll(aInstance.getAllChannels()))
 		{
 			
 			return fVHFSolver;

@@ -2,7 +2,7 @@ package ca.ubc.cs.beta.stationpacking.solvers.certifierpresolvers.cgneighborhood
 
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -42,32 +42,37 @@ public class StationSubsetSATCertifier implements IStationSubsetCertifier {
 		
 		ITerminationCriterion terminationCriterion = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(fTerminationCriterionFactory.getTerminationCriterion(),aTerminationCriterion));
 		
-		HashMap<Station,Integer> previousAssignment = aInstance.getPreviousAssignment();
+		Map<Station,Integer> previousAssignment = aInstance.getPreviousAssignment();
 		
 		/*
 		 * Try the SAT bound, namely to see if the missing stations plus their neighborhood are packable when all other stations are fixed
 		 * to their previous assignment values.
 		 */
 		//Change station packing instance so that the 'not to pack' stations have reduced domain.
-		Set<Station> reducedDomainStations = new HashSet<Station>();
+		Map<Station,Set<Integer>> domains = aInstance.getDomains();
+		Map<Station,Set<Integer>> reducedDomains = new HashMap<Station,Set<Integer>>();
+		
+		
 		for(Station station : aInstance.getStations())
 		{
+			Set<Integer> domain = domains.get(station);
+			
 			if(!aToPackStations.contains(station))
 			{
 				Integer previousChannel = previousAssignment.get(station);
-				if(!station.getDomain().contains(previousChannel))
+				if(!domain.contains(previousChannel))
 				{
 					//One empty domain station, cannot affirm anything.
-					log.warn("Station {} in previous assignment is assigned to channel {} not in current domain {} - SAT certifier is indecisive.",station,previousChannel,station.getDomain());
+					log.warn("Station {} in previous assignment is assigned to channel {} not in current domain {} - SAT certifier is indecisive.",station,previousChannel,domain);
 					watch.stop();
 					double extraTime = watch.getEllapsedTime();
 					return new SolverResult(SATResult.TIMEOUT, extraTime);
 				}
-				reducedDomainStations.add(new Station(station.getID(),Sets.newHashSet(previousChannel)));
+				reducedDomains.put(station,Sets.newHashSet(previousChannel));
 			}
 			else
 			{
-				reducedDomainStations.add(station);
+				reducedDomains.put(station,domain);
 			}
 		}
 		log.debug("Evaluating if stations not in previous assignment with their neighborhood are packable when all other stations are fixed to previous assignment.");
@@ -77,7 +82,7 @@ public class StationSubsetSATCertifier implements IStationSubsetCertifier {
 			log.debug("Missing station and neighborhood: {} .",aToPackStations);
 		}
 		
-		StationPackingInstance SATboundInstance = new StationPackingInstance(reducedDomainStations, aInstance.getChannels(), previousAssignment);
+		StationPackingInstance SATboundInstance = new StationPackingInstance(reducedDomains, previousAssignment);
 		
 		if(!aTerminationCriterion.hasToStop())
 		{

@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import au.com.bytecode.opencsv.CSVReader;
@@ -17,7 +18,8 @@ import ca.ubc.cs.beta.stationpacking.base.Station;
  */
 public class DomainStationManager implements IStationManager{
 
-	private HashMap<Integer,Station> fStations = new HashMap<Integer,Station>();
+	private final Map<Integer,Station> fStations = new HashMap<Integer,Station>();
+	private final Map<Station,Set<Integer>> fDomains = new HashMap<Station,Set<Integer>>();
 	
 	public DomainStationManager(String aStationDomainsFilename) throws FileNotFoundException{
 	
@@ -46,7 +48,9 @@ public class DomainStationManager implements IStationManager{
 						e.printStackTrace();
 					}
 				}
-				fStations.put(aID, new Station(aID,aChannelDomain));
+				Station station = new Station(aID);
+				fStations.put(aID, station);
+				fDomains.put(station,aChannelDomain);
 			}
 			aReader.close();	
 		}
@@ -80,6 +84,16 @@ public class DomainStationManager implements IStationManager{
 			stations.add(getStationfromID(aID));
 		}
 		return stations;
+	}
+
+	@Override
+	public Set<Integer> getDomain(Station aStation) {
+		Set<Integer> domain = fDomains.get(aStation);
+		if(domain == null)
+		{
+			throw new IllegalArgumentException("No domain contained for station "+aStation);
+		}
+		return domain;
 	}
 
 }

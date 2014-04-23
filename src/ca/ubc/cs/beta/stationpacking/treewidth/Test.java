@@ -94,7 +94,7 @@ public class Test {
 		
 		System.out.println("Creating instance...");
 		
-		StationPackingInstance instance = new StationPackingInstance(stations, channels);
+		StationPackingInstance instance = StationPackingInstance.constructUniformDomainInstance(stations, channels,new HashMap<Station,Integer>());
 		
 		System.out.println("Getting constraint graph...");
 		

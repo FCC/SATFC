@@ -23,6 +23,12 @@ public interface IStationManager {
 	public Station getStationfromID(Integer aID) throws IllegalArgumentException;
 	
 	/**
+	 * @param aStation - a station.
+	 * @return the channels on which this station can be packed.
+	 */
+	public Set<Integer> getDomain(Station aStation);
+	
+	/**
 	 * 
 	 * @param aIDs - a collection of station IDs.
 	 * @return the set of stations with provided IDs.
