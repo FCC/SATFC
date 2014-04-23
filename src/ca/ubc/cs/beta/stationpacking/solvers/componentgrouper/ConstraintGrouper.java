@@ -1,6 +1,7 @@
 package ca.ubc.cs.beta.stationpacking.solvers.componentgrouper;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import org.jgrapht.alg.ConnectivityInspector;
@@ -39,34 +40,29 @@ public class ConstraintGrouper implements IComponentGrouper{
 	public static SimpleGraph<Station,DefaultEdge> getConstraintGraph(StationPackingInstance aInstance, IConstraintManager aConstraintManager)
 	{
 		Set<Station> aStations = aInstance.getStations();
-		Set<Integer> aInstanceDomain = aInstance.getChannels();
+		Map<Station,Set<Integer>> aDomains = aInstance.getDomains();
+		
 		SimpleGraph<Station,DefaultEdge> aConstraintGraph = new SimpleGraph<Station,DefaultEdge>(DefaultEdge.class);
 		for(Station aStation : aStations){
 			aConstraintGraph.addVertex(aStation);
 		}
 		
 		for(Station aStation1 : aStations){
-			for(Integer channel : aInstanceDomain)
+			for(Integer channel : aDomains.get(aStation1))
 			{
 				for(Station aStation2 : aConstraintManager.getCOInterferingStations(aStation1, channel)){
-					if(aStation1.getDomain().contains(channel))
+					if(aStations.contains(aStation2) && aDomains.get(aStation2).contains(channel))
 					{
-						if(aConstraintGraph.containsVertex(aStation2)){
-							aConstraintGraph.addEdge(aStation1, aStation2);
-						}
+						aConstraintGraph.addEdge(aStation1, aStation2);
 					}
 				}
 				
 				int channelp1 = channel+1;
-				if(aInstanceDomain.contains(channelp1))
-				{
-					for(Station aStation2 : aConstraintManager.getADJplusInterferingStations(aStation1,channel)){
-						if(aStation2.getDomain().contains(channelp1))
-						{
-							if(aConstraintGraph.containsVertex(aStation2)){
-								aConstraintGraph.addEdge(aStation1, aStation2);
-							}
-						}
+			
+				for(Station aStation2 : aConstraintManager.getADJplusInterferingStations(aStation1,channel)){
+					if(aStations.contains(aStation2) && aDomains.get(aStation2).contains(channelp1))
+					{
+						aConstraintGraph.addEdge(aStation1, aStation2);
 					}
 				}
 			}

@@ -1,6 +1,8 @@
 package ca.ubc.cs.beta.stationpacking.solvers.certifierpresolvers.cgneighborhood;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -44,7 +46,15 @@ public class StationSubsetUNSATCertifier implements IStationSubsetCertifier {
 		ITerminationCriterion terminationCriterion = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(fTerminationCriterionFactory.getTerminationCriterion(),aTerminationCriterion));
 		
 		log.debug("Evaluating if stations not in previous assignment ({}) with their neighborhood are unpackable.",aToPackStations.size());
-		StationPackingInstance UNSATboundInstance = new StationPackingInstance(aToPackStations, aInstance.getChannels(), aInstance.getPreviousAssignment());
+		
+		Map<Station,Set<Integer>> domains = aInstance.getDomains();
+		Map<Station,Set<Integer>> toPackDomains = new HashMap<Station,Set<Integer>>();
+		for(Station station : aToPackStations)
+		{
+			toPackDomains.put(station, domains.get(station));
+		}
+		
+		StationPackingInstance UNSATboundInstance = new StationPackingInstance(toPackDomains, aInstance.getPreviousAssignment());
 		
 		watch.stop();
 		SolverResult UNSATboundResult = fSolver.solve(UNSATboundInstance, terminationCriterion, aSeed);
