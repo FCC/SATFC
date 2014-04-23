@@ -84,7 +84,7 @@ public class SATFCSolverBundle extends ASolverBundle{
 		
 		//Return the right solver based on the channels in the instance.
 		
-		if(StationPackingUtils.HVHF_CHANNELS.containsAll(aInstance.getChannels()) || StationPackingUtils.LVHF_CHANNELS.containsAll(aInstance.getChannels()))
+		if(StationPackingUtils.HVHF_CHANNELS.containsAll(aInstance.getAllChannels()) || StationPackingUtils.LVHF_CHANNELS.containsAll(aInstance.getAllChannels()))
 		{
 			log.debug("Returning clasp configured for VHF (September 2013) with Ilya's station subset pre-solving.");
 			return fVHFSolver;

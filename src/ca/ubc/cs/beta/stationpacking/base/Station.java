@@ -3,10 +3,8 @@ package ca.ubc.cs.beta.stationpacking.base;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.Set;
 
 /**
  * Immutable container class for the station object.
@@ -21,16 +19,13 @@ public class Station implements Comparable<Station>, Serializable{
 	 */
 	private static final long serialVersionUID = 1L;
 	private final int fID;
-	private final Set<Integer> fDomain;
 	
 	/**
 	 * Construct a station.
 	 * @param aID - the station ID.
-	 * @param aDomain - the station's domain (channels it can be assigned to).
 	 */
-	public Station(Integer aID, Set<Integer> aDomain){
+	public Station(Integer aID){
 		fID = aID;
-		fDomain = new HashSet<Integer>(aDomain);
 	}
 
 	/**
@@ -47,54 +42,9 @@ public class Station implements Comparable<Station>, Serializable{
 	}
 	
 	/**
-	 * A station's domain is an unmodifiable set backed up by a hash set.
-	 * @return - get the station's domain.
+	 * ID hashing.
 	 */
-	public Set<Integer> getDomain(){
-		return Collections.unmodifiableSet(fDomain);
-	}
 	
-	/**
-	 * @param aReducedDomain - a set of integer channel
-	 * @return a station with the reduced domain. 
-	 */
-	public Station getReducedDomainStation(Set<Integer> aReducedDomain)
-	{
-		if(!fDomain.containsAll(aReducedDomain))
-		{
-			throw new IllegalArgumentException("Cannot reduce domain of station "+this.toString()+" to "+aReducedDomain+" since original domain is "+fDomain);
-		}
-		return new Station(fID,aReducedDomain);
-	}
-
-//	/* (non-Javadoc)
-//	 * @see java.lang.Object#hashCode()
-//	 */
-//	@Override
-//	public int hashCode() {
-//		final int prime = 31;
-//		int result = 1;
-//		result = prime * result + fID;
-//		return result;
-//	}
-//
-//	/* (non-Javadoc)
-//	 * @see java.lang.Object#equals(java.lang.Object)
-//	 */
-//	@Override
-//	public boolean equals(Object obj) {
-//		if (this == obj)
-//			return true;
-//		if (obj == null)
-//			return false;
-//		if (getClass() != obj.getClass())
-//			return false;
-//		Station other = (Station) obj;
-//		if (fID != other.fID)
-//			return false;
-//		return true;
-//	}
-
 	/* (non-Javadoc)
 	 * @see java.lang.Object#hashCode()
 	 */
@@ -102,7 +52,6 @@ public class Station implements Comparable<Station>, Serializable{
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((fDomain == null) ? 0 : fDomain.hashCode());
 		result = prime * result + fID;
 		return result;
 	}
@@ -119,15 +68,14 @@ public class Station implements Comparable<Station>, Serializable{
 		if (getClass() != obj.getClass())
 			return false;
 		Station other = (Station) obj;
-		if (fDomain == null) {
-			if (other.fDomain != null)
-				return false;
-		} else if (!fDomain.equals(other.fDomain))
-			return false;
 		if (fID != other.fID)
 			return false;
 		return true;
 	}
+
+	/**
+	 * ID & domain hashing
+	 */
 	
 	/**
 	 * Returns a unique, non-optimized string representing the given station set.

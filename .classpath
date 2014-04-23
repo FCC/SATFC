@@ -38,7 +38,7 @@
 			<attribute name="javadoc_location" value="jar:platform:/resource/FCCStationPacking/lib/libtw/libtw-src.zip!/"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="lib" path="lib/aeatk-experimental/aeatk.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/AutomaticConfiguratorLibrary"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -54,12 +54,12 @@ public class ClaspSATSolverBundle extends ASolverBundle{
 	public ISolver getSolver(StationPackingInstance aInstance) {
 		
 		//Return the right solver based on the channels in the instance.
-		if(StationPackingUtils.HVHF_CHANNELS.containsAll(aInstance.getChannels()) || StationPackingUtils.LVHF_CHANNELS.containsAll(aInstance.getChannels()))
+		if(StationPackingUtils.HVHF_CHANNELS.containsAll(aInstance.getAllChannels()) || StationPackingUtils.LVHF_CHANNELS.containsAll(aInstance.getAllChannels()))
 		{
 			log.debug("Returning clasp configured for VHF (September 2013).");
 			return fClaspHVHF;
 		}
-		else if(StationPackingUtils.UHF_CHANNELS.containsAll(aInstance.getChannels()))
+		else if(StationPackingUtils.UHF_CHANNELS.containsAll(aInstance.getAllChannels()))
 		{
 			log.debug("Returning clasp configured for UHF (November 2013).");
 			return fClaspUHF;

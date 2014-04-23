@@ -9,6 +9,9 @@ import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Predicate;
+import com.google.common.collect.Maps;
+
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
@@ -51,16 +54,24 @@ public class GenericSATBasedSolver implements ISolver {
 		
 		log.debug("Solving instance of {}...",aInstance.getInfo());
 		
-		Set<Integer> aChannelRange = aInstance.getChannels();
+		Map<Station,Set<Integer>> aDomains = aInstance.getDomains();
+		Map<Station,Integer> aPreviousAssignment = aInstance.getPreviousAssignment();
 		
 		HashSet<SolverResult> aComponentResults = new HashSet<SolverResult>();
 		
 		Set<Set<Station>> aStationComponents = fComponentGrouper.group(aInstance,fConstraintManager);
 		log.debug("Problem separated in {} groups.",aStationComponents.size());
 		
-		for(Set<Station> aStationComponent : aStationComponents)
-		{
-			StationPackingInstance aComponentInstance = new StationPackingInstance(aStationComponent,aChannelRange);
+		for(final Set<Station> aStationComponent : aStationComponents)
+		{	
+			
+			Map<Station,Set<Integer>> subDomains = Maps.filterKeys(aDomains, new Predicate<Station>(){
+				@Override
+				public boolean apply(Station arg0) {
+					return aStationComponent.contains(arg0);
+				}});
+			
+			StationPackingInstance aComponentInstance = new StationPackingInstance(subDomains,aPreviousAssignment);
 			
 			log.debug("Encoding subproblem in CNF.");
 			Pair<CNF,ISATDecoder> aEncoding = fSATEncoder.encode(aInstance);
@@ -110,7 +121,7 @@ public class GenericSATBasedSolver implements ISolver {
 						Station aStation = aStationChannelPair.getKey();
 						Integer aChannel = aStationChannelPair.getValue();
 						
-						if(!aComponentInstance.getStations().contains(aStation) || !aComponentInstance.getChannels().contains(aChannel))
+						if(!aComponentInstance.getStations().contains(aStation) || !aComponentInstance.getDomains().get(aStation).contains(aChannel))
 						{
 							throw new IllegalStateException("A decoded station and channel from a component SAT assignment is not in that component's problem instance. ("+aStation+", channel:"+aChannel+")");
 						}

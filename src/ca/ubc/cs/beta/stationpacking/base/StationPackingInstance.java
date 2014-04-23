@@ -6,15 +6,13 @@ import java.security.MessageDigest;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
-
-import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * Immutable container class representing a station packing instance.
@@ -22,153 +20,97 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
  */
 public class StationPackingInstance {
 	
-	private final Set<Station> fStations;
-	private final Set<Integer> fChannels;
-	
+	private final Map<Station,Set<Integer>> fDomains;
 	private final HashMap<Station,Integer> fPreviousAssignment;
 	
 	/**
 	 * Create a station packing instance.
-	 * @param aStations - set of stations to pack.
-	 * @param aChannels - set of channels to pack in.
+	 * @params aDomains - a map taking each station to its domain of packable channels.
 	 */
-	public StationPackingInstance(Set<Station> aStations, Set<Integer> aChannels){
-		
-		fChannels = Collections.unmodifiableSet(new HashSet<Integer>(aChannels));
-		fStations = Collections.unmodifiableSet(new HashSet<Station>(aStations));
-		fPreviousAssignment = new HashMap<Station,Integer>();
+	public StationPackingInstance(Map<Station,Set<Integer>> aDomains){
+		this(aDomains,new HashMap<Station,Integer>());
 	}
 	
 	/**
 	 * Create a station packing instance.
-	 * @param aStations - set of stations to pack.
-	 * @param aChannels - set of channels to pack in.
+	 * @params aDomains - a map taking each station to its domain of packable channels.
 	 * @param aPreviousAssignment - a map taking stations to the channels they were assigned to previously.
 	 */
-	public StationPackingInstance(Set<Station> aStations, Set<Integer> aChannels, Map<Station,Integer> aPreviousAssignment){
+	public StationPackingInstance(Map<Station,Set<Integer>> aDomains, Map<Station,Integer> aPreviousAssignment){
 		
-		fChannels = Collections.unmodifiableSet(new HashSet<Integer>(aChannels));
-		fStations = Collections.unmodifiableSet(new HashSet<Station>(aStations));
+		//Validate assignment domain.
+		for(Station station : aDomains.keySet())
+		{
+			Integer previousChannel = aPreviousAssignment.get(station);
+			if(previousChannel != null && !aDomains.get(station).contains(previousChannel))
+			{
+				throw new IllegalArgumentException("Provided previous assignment assigned channel "+previousChannel+" to station "+station+" which is not in its domain "+aDomains.get(station)+".");
+			}
+			
+			if(aDomains.get(station).isEmpty())
+			{
+				throw new IllegalArgumentException("Domain for station "+station+" is empty.");
+			}
+		}
 		
+		fDomains = Collections.unmodifiableMap(new HashMap<Station,Set<Integer>>(aDomains));
 		fPreviousAssignment = new HashMap<Station,Integer>(aPreviousAssignment);
 	}
 	
-	/**
-	 * Returns a unique, non-optimized string representing the given channel set.
-	 * Specifically, returns the "-"-separated list of sorted channels.
-	 * @param aChannels - a channel set to hash.
-	 * @return - a string hash for the station set.
-	 */
-	public static String hashChannelSet(Set<Integer> aChannels)
+	public static StationPackingInstance constructUniformDomainInstance(Set<Station> aStations, Set<Integer> aChannels, Map<Station,Integer> aPreviousAssignment)
 	{
-		LinkedList<Integer> aChannelList = new LinkedList<Integer>(aChannels);
-		Collections.sort(aChannelList);
-		
-		String aResult = "";
-		Iterator<Integer> aChannelIterator = aChannelList.iterator();
-		while(aChannelIterator.hasNext()){
-			Integer aChannel = aChannelIterator.next();
-			aResult += aChannel.toString();
-			if(aChannelIterator.hasNext())
-			{
-				aResult+="-";
-			}
+		Map<Station,Set<Integer>> domains = new HashMap<Station,Set<Integer>>();
+		for(Station station : aStations)
+		{
+			domains.put(station, aChannels);
 		}
-		return aResult;	
+		return new StationPackingInstance(domains,aPreviousAssignment);
+	}
+	
+	/**
+	 * @return - all the channels present in the domains.
+	 */
+	public Set<Integer> getAllChannels()
+	{
+		Set<Integer> allChannels = new HashSet<Integer>();
+		for(Set<Integer> channels : fDomains.values())
+		{
+			allChannels.addAll(channels);
+		}
+		return allChannels;
 	}
 	
 	@Override
 	public String toString() {
-		return hashChannelSet(fChannels)+"_"+Station.hashStationSet(fStations);
+		StringBuilder sb = new StringBuilder();
+		
+		LinkedList<Station> stations = new LinkedList<Station>(fDomains.keySet());
+		Collections.sort(stations);
+		int s=1;
+		for(Station station : stations)
+		{
+			LinkedList<Integer> channels = new LinkedList<Integer>(fDomains.get(station));
+			Collections.sort(channels);
+			
+			sb.append(station+":"+StringUtils.join(channels,","));
+			
+			if(s+1<=stations.size())
+			{
+				sb.append("\n");
+			}
+			
+			s++;
+			
+		}
+		return sb.toString();
 	}
 	
-	/**
-	 * Parses a string representation of an instance into an instance. 
-	 * <p>
-	 * If there are no previous assignment,
-	 * then the string representation is the result of calling the toString() method on the instance:
-	 * <br>
-	 * channel1-channel2-...-channelM_station1-station2-...-stationN
-	 * </p>
-	 * <p>
-	 * If there is a previous assignment, then the assignment is appended to the string representation as follows:
-	 * <br>
-	 * channel1-channel2-...-channelM_station1-station2-...-stationN_somestation1,somechannel1-somestation2,somechannel2-...-somestationk,somechannelk
-	 * </p>
-	 * 
-	 * @param aInstanceString - a string representation of the instance.
-	 * @param aStationManager - the station manager to pull stations from.
-	 * @return the instance represented by the string. 
-	 */
-	public static StationPackingInstance valueOf(String aInstanceString, IStationManager aStationManager)
-	{
-		
-		String[] aInstanceParts = aInstanceString.split("_");
-		
-		if(aInstanceParts.length!=2 && aInstanceParts.length!=3)
-		{
-			throw new IllegalArgumentException("Could not parse instance from "+aInstanceString);
-		}
-		
-		String aChannelString = aInstanceParts[0];
-		//Parse channels.
-		HashSet<Integer> aInstanceChannels = new HashSet<Integer>();
-		for(String aChannel : aChannelString.split("-"))
-		{
-			aInstanceChannels.add(Integer.valueOf(aChannel));
-		}
-		
-		String aStationString = aInstanceParts[1];
-		//Parse stations.
-		HashSet<Station> aInstanceStations = new HashSet<Station>();
-		String[] aInstanceStationIDs = aStationString.split("-");
-		for(String aStationID : aInstanceStationIDs)
-		{
-			if (!aInstanceStations.add(aStationManager.getStationfromID(Integer.valueOf(aStationID)))) {
-				throw new IllegalStateException("Duplicate of station "+aStationID+" found in instance string.");
-			};
-		}
-		
-		if(aInstanceStations.size()!= aInstanceStationIDs.length)
-		{
-			throw new IllegalStateException("Couldn't identify all stations from the instance's string representation");
-		}
-		
-		//Parse assignment, if any.
-		if(aInstanceParts.length==3)
-		{
-			String aAssignmentString = aInstanceParts[2];
-			String[] aAssignmentParts = aAssignmentString.split("-");
-			
-			HashMap<Station,Integer> aInstancePreviousAssignment = new HashMap<Station,Integer>();
-			for(String aAssignmentPart : aAssignmentParts)
-			{
-				String aAssignmentStationString = aAssignmentPart.split(",")[0];
-				String aAssignmentChannelString = aAssignmentPart.split(",")[1];
-				
-				if(aInstancePreviousAssignment.put(aStationManager.getStationfromID(Integer.valueOf(aAssignmentStationString)), Integer.valueOf(aAssignmentChannelString))!=null)
-				{
-					throw new IllegalArgumentException("Station "+aAssignmentStationString+" is assigned a channel multiple times in provided instance string.");
-				}
-				
-			}
-			return new StationPackingInstance(aInstanceStations, aInstanceChannels, aInstancePreviousAssignment);
-		}
-		else
-		{
-			return new StationPackingInstance(aInstanceStations, aInstanceChannels);
-		}
-		
-	}
-
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result
-				+ ((fChannels == null) ? 0 : fChannels.hashCode());
-		result = prime * result
-				+ ((fStations == null) ? 0 : fStations.hashCode());
+				+ ((fDomains == null) ? 0 : fDomains.hashCode());
 		return result;
 	}
 
@@ -181,41 +123,36 @@ public class StationPackingInstance {
 		if (getClass() != obj.getClass())
 			return false;
 		StationPackingInstance other = (StationPackingInstance) obj;
-		if (fChannels == null) {
-			if (other.fChannels != null)
+		if (fDomains == null) {
+			if (other.fDomains != null)
 				return false;
-		} else if (!fChannels.equals(other.fChannels))
-			return false;
-		if (fStations == null) {
-			if (other.fStations != null)
-				return false;
-		} else if (!fStations.equals(other.fStations))
+		} else if (!fDomains.equals(other.fDomains))
 			return false;
 		return true;
 	}
-	
+
 	/**
 	 * An instance's stations is an unmodifiable set backed up by a hash set.
 	 * @return - get the problem instance's stations.
 	 */
 	public Set<Station> getStations(){
-		return fStations;
+		return Collections.unmodifiableSet(fDomains.keySet());
 	}
 	
 	/**
 	 * An instance's channels is an unmodifiable set backed up by a hash set.
 	 * @return - get the problem instance's channels.
 	 */
-	public Set<Integer> getChannels(){
-		return fChannels;
+	public Map<Station,Set<Integer>> getDomains(){
+		return Collections.unmodifiableMap(fDomains);
 	}
 	
 	/**
 	 * @return a map taking stations to the (valid) channels they were assigned to previously (if any).
 	 */
-	public HashMap<Station,Integer> getPreviousAssignment()
+	public Map<Station,Integer> getPreviousAssignment()
 	{
-		return fPreviousAssignment;
+		return Collections.unmodifiableMap(fPreviousAssignment);
 	}
 	
 	/**
@@ -223,7 +160,7 @@ public class StationPackingInstance {
 	 */
 	public String getInfo()
 	{
-		return fStations.size()+" stations to pack into "+fChannels.size()+" channels";
+		return fDomains.keySet().size()+" stations to pack in their respective domains.";
 	}
 	
 	/**
