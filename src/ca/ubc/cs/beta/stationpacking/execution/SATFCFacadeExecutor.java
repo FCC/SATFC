@@ -39,6 +39,8 @@ public class SATFCFacadeExecutor {
 		{
 			log.info("Solving ...");
 			SATFCResult result = satfc.solve(
+					parameters.fInstanceParameters.getPackingStationIDs(),
+					parameters.fInstanceParameters.getPackingChannels(),
 					parameters.fInstanceParameters.getDomains(),
 					parameters.fInstanceParameters.getPreviousAssignment(),
 					parameters.fInstanceParameters.Cutoff,
