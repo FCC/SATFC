@@ -96,7 +96,7 @@ public class StationPackingInstance {
 			
 			if(s+1<=stations.size())
 			{
-				sb.append("\n");
+				sb.append(";");
 			}
 			
 			s++;
