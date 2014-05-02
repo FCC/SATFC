@@ -3,7 +3,10 @@ package ca.ubc.cs.beta.stationpacking.facade;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -137,7 +140,7 @@ public class SATFCFacade implements AutoCloseable{
 		
 		if(aStations.isEmpty())
 		{
-			log.warn("Provided an empty set of domains.");
+			log.warn("Provided an empty set of stations.");
 			return new SATFCResult(SATResult.SAT, 0.0, new HashMap<Integer,Integer>());
 		}
 		if(aCutoff <=0)
@@ -216,8 +219,16 @@ public class SATFCFacade implements AutoCloseable{
 		ITerminationCriterion termination = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(CPUtermination,WALLtermination)); 
 		
 		log.debug("Solving instance {} ...",instance);
+		log.debug("Instance stats:");
+		log.debug("{} stations.",instance.getStations().size());
+		log.debug("stations: {}.",instance.getStations());
+		log.debug("{} all channels.",instance.getAllChannels().size());
+		log.debug("all channels: {}.",instance.getAllChannels());
+		
+		
 		//Solve instance.
 		SolverResult result = solver.solve(instance, termination, aSeed);
+		
 		
 		log.debug("Transforming result into SATFC output...");
 		//Transform back solver result to output result.
