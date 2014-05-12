@@ -14,8 +14,8 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
  */
 public class DataManager {
 
-	private static String DOMAIN_FILE = File.separator+"domains.csv";
-	private static String INTERFERENCES_FILE = File.separator+"interferences.csv";
+	public static String DOMAIN_FILE = File.separator+"domains.csv";
+	public static String INTERFERENCES_FILE = File.separator+"interferences.csv";
 	
 	private HashMap<String, ManagerBundle> fData;
 	

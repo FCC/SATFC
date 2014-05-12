@@ -3,10 +3,7 @@ package ca.ubc.cs.beta.stationpacking.facade;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -54,8 +51,18 @@ public class SATFCFacade implements AutoCloseable{
 	 */
 	public SATFCFacade(final String aClaspLibrary)
 	{
+		this(aClaspLibrary,true);
+	}
+	
+	/**
+	 * Construct a SATFC solver facade, with the option of initializing logging if its not already done.
+	 * @param aClaspLibrary - the location of the compiled jna clasp library to use.
+	 * @param aInitializeLogging - whether to initialize logging or not.
+	 */
+	public SATFCFacade(final String aClaspLibrary, boolean aInitializeLogging)
+	{
 		//Initialize logging.
-		if(!logInitialized)
+		if(!logInitialized && aInitializeLogging)
 		{
 			initializeLogging(LogLevel.INFO);
 			log = LoggerFactory.getLogger(getClass());
@@ -224,7 +231,7 @@ public class SATFCFacade implements AutoCloseable{
 		log.debug("stations: {}.",instance.getStations());
 		log.debug("{} all channels.",instance.getAllChannels().size());
 		log.debug("all channels: {}.",instance.getAllChannels());
-		
+		log.debug("Previous assignment: {}",instance.getPreviousAssignment());
 		
 		//Solve instance.
 		SolverResult result = solver.solve(instance, termination, aSeed);
