@@ -18,7 +18,7 @@
 			<attribute name="javadoc_location" value="jar:platform:/resource/FCCStationPacking/lib/libtw/libtw-src.zip!/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="lib/aeatk-experimental/aeatk.jar"/>
+	<classpathentry kind="lib" path="lib/aeatk-experimental/aeatk.jar" sourcepath="lib/aeatk-experimental/aeatk-src.jar"/>
 	<classpathentry kind="lib" path="lib/aeatk-experimental/commons-collections-3.2.1.jar"/>
 	<classpathentry kind="lib" path="lib/aeatk-experimental/commons-io-2.1.jar"/>
 	<classpathentry kind="lib" path="lib/aeatk-experimental/commons-math-2.2.jar"/>
@@ -41,5 +41,10 @@
 	<classpathentry kind="lib" path="lib/aeatk-experimental/slf4j-api-1.7.5.jar"/>
 	<classpathentry kind="lib" path="lib/aeatk-experimental/spi-0.2.4.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
+	<classpathentry kind="src" path=".apt_generated">
+		<attributes>
+			<attribute name="optional" value="true"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

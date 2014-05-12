@@ -30,7 +30,8 @@ import ca.ubc.cs.beta.stationpacking.utils.Watch;
  */
 public class ConstraintGraphNeighborhoodPresolver implements ISolver {
 
-	private static final int MAX_MISSING_STATIONS=1;
+	private static final int MAX_MISSING_STATIONS=20;
+	private static final int MAX_TO_PACK=100;
 	
 	private static Logger log = LoggerFactory.getLogger(ConstraintGraphNeighborhoodPresolver.class);
 	
@@ -96,6 +97,15 @@ public class ConstraintGraphNeighborhoodPresolver implements ISolver {
 		{
 			topackStations.add(missingStation);
 			topackStations.addAll(aConstraintGraphNeighborIndex.neighborsOf(missingStation));
+		}
+		
+		//Check if there are too many stations to make this procedure worthwhile.
+		if(topackStations.size()>MAX_TO_PACK)
+		{
+			log.warn("Neighborhood to pack is too large ({}).",topackStations.size());
+			
+			watch.stop();
+			return new SolverResult(SATResult.TIMEOUT,watch.getEllapsedTime());
 		}
 		
 		List<SolverResult> results = new LinkedList<SolverResult>();
