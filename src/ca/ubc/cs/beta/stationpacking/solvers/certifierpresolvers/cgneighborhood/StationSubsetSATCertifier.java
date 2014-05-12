@@ -77,7 +77,7 @@ public class StationSubsetSATCertifier implements IStationSubsetCertifier {
 		}
 		log.debug("Evaluating if stations not in previous assignment with their neighborhood are packable when all other stations are fixed to previous assignment.");
 		
-		if(aToPackStations.size()<20)
+		if(aToPackStations.size()<10)
 		{
 			log.debug("Missing station and neighborhood: {} .",aToPackStations);
 		}
