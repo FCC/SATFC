@@ -2,6 +2,7 @@
 /FCCStationPacking/.classpath
 /FCCStationPacking/Input
 /FCCStationPacking/Output
+*.ods
 *.o
 *.pyc
 *~

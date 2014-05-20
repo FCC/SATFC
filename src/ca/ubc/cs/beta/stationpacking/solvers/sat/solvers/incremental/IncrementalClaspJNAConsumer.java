@@ -249,7 +249,7 @@ public class IncrementalClaspJNAConsumer implements Runnable{
 			log.debug("Came back from solving - processing result.");
 	
 			fSolveTimeStopWatch.stop();
-			double runtime = fSolveTimeStopWatch.getEllapsedTime();
+			double runtime = fSolveTimeStopWatch.getElapsedTime();
 			
 			ClaspResult result = ClaspSATSolver.getSolverResult(fLib, fJNAResult, fTimedOut, fInterrupted, runtime);
 			try {

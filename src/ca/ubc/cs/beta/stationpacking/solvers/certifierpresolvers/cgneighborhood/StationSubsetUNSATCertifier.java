@@ -65,13 +65,13 @@ public class StationSubsetUNSATCertifier implements IStationSubsetCertifier {
 			log.debug("Stations not in previous assignment cannot be packed with their neighborhood.");
 			
 			watch.stop();
-			double extraTime = watch.getEllapsedTime();
+			double extraTime = watch.getElapsedTime();
 			return new SolverResult(SATResult.UNSAT,UNSATboundResult.getRuntime()+extraTime);
 		}
 		else
 		{
 			watch.stop();
-			double extraTime = watch.getEllapsedTime();
+			double extraTime = watch.getElapsedTime();
 			return new SolverResult(SATResult.TIMEOUT, UNSATboundResult.getRuntime()+extraTime);
 		}
 	}
