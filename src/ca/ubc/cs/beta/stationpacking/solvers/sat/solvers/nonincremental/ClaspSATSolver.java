@@ -34,6 +34,9 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 	
 	private static Logger log = LoggerFactory.getLogger(ClaspSATSolver.class);
 	
+	private static final int TIMER_TERMINATION_RETRY_COUNTS = 10;
+	private static final int TIMER_TERMINATION_WAIT_TIME = 5;
+	
 	private ClaspLibrary fClaspLibrary;
 	private String fParameters;
 	private int fMaxArgs;
@@ -113,7 +116,7 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		ScheduledExecutorService timerService = Executors.newScheduledThreadPool(2,new SequentiallyNamedThreadFactory("Clasp SAT Solver Timers", true));
 		
 		watch.stop();
-		double preTime = watch.getEllapsedTime();
+		double preTime = watch.getElapsedTime();
 		
 		watch.reset();
 		watch.start();
@@ -147,7 +150,7 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		log.trace("Came back from clasp.");
 		
 		watch.stop();
-		double runtime = watch.getEllapsedTime();
+		double runtime = watch.getElapsedTime();
 		
 		watch.reset();
 		watch.start();
@@ -155,12 +158,27 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		//Terminate timing tasks.
 		timerService.shutdownNow();
 		try {
-			if(!timerService.awaitTermination(3, TimeUnit.SECONDS))
+			for(int i=1;;i++)
 			{
-				throw new IllegalStateException("Could not terminate clasp timer tasks within 3 seconds.");
+				if(!timerService.awaitTermination(TIMER_TERMINATION_WAIT_TIME, TimeUnit.SECONDS))
+				{
+					if(i>TIMER_TERMINATION_RETRY_COUNTS)
+					{
+						throw new IllegalStateException("Could not terminate clasp timer tasks within "+TIMER_TERMINATION_WAIT_TIME+" seconds.");
+					}
+					else
+					{
+						log.error("Could not terminate clasp timer tasks within {} seconds on {}-th attempt, will try one more time.",TIMER_TERMINATION_WAIT_TIME,i);
+					}
+				}
+				else
+				{
+					break;
+				}
 			}
 		} catch (InterruptedException e) {
 			e.printStackTrace();
+			Thread.currentThread().interrupt();
 			throw new IllegalStateException("Interrupted while trying to terminate clasp timer tasks.");
 		}
 		
@@ -177,7 +195,7 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		fClaspLibrary.destroyResult(result);
 		
 		watch.stop();
-		double postTime = watch.getEllapsedTime();
+		double postTime = watch.getElapsedTime();
 		
 		return new SATSolverResult(claspResult.getSATResult(), claspResult.getRuntime()+preTime+postTime, assignment);
 	}
