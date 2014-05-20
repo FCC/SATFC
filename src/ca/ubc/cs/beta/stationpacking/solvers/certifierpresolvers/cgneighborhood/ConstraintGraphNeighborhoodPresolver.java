@@ -59,7 +59,7 @@ public class ConstraintGraphNeighborhoodPresolver implements ISolver {
 			log.warn("No assignment to use for bounding pre-solving.");
 			
 			watch.stop();
-			return new SolverResult(SATResult.TIMEOUT, watch.getEllapsedTime());
+			return new SolverResult(SATResult.TIMEOUT, watch.getElapsedTime());
 		}
 		
 		//Get the stations in the problem instance that are not in the previous assignment.
@@ -86,7 +86,7 @@ public class ConstraintGraphNeighborhoodPresolver implements ISolver {
 			log.warn("Too many missing stations in previous assignment ({}).",missingStations.size());
 			
 			watch.stop();
-			return new SolverResult(SATResult.TIMEOUT,watch.getEllapsedTime());
+			return new SolverResult(SATResult.TIMEOUT,watch.getElapsedTime());
 		}
 		
 		log.debug("Building constraint graph.");
@@ -105,7 +105,7 @@ public class ConstraintGraphNeighborhoodPresolver implements ISolver {
 			log.warn("Neighborhood to pack is too large ({}).",topackStations.size());
 			
 			watch.stop();
-			return new SolverResult(SATResult.TIMEOUT,watch.getEllapsedTime());
+			return new SolverResult(SATResult.TIMEOUT,watch.getElapsedTime());
 		}
 		
 		List<SolverResult> results = new LinkedList<SolverResult>();
@@ -130,7 +130,7 @@ public class ConstraintGraphNeighborhoodPresolver implements ISolver {
 		SolverResult combinedResult = SolverHelper.combineResults(results);
 		
 		watch.stop();
-		double extraTime = watch.getEllapsedTime();
+		double extraTime = watch.getElapsedTime();
 
 		combinedResult = SolverResult.addTime(combinedResult, extraTime);
 		

@@ -65,7 +65,7 @@ public class StationSubsetSATCertifier implements IStationSubsetCertifier {
 					//One empty domain station, cannot affirm anything.
 					log.warn("Station {} in previous assignment is assigned to channel {} not in current domain {} - SAT certifier is indecisive.",station,previousChannel,domain);
 					watch.stop();
-					double extraTime = watch.getEllapsedTime();
+					double extraTime = watch.getElapsedTime();
 					return new SolverResult(SATResult.TIMEOUT, extraTime);
 				}
 				reducedDomains.put(station,Sets.newHashSet(previousChannel));
@@ -97,21 +97,21 @@ public class StationSubsetSATCertifier implements IStationSubsetCertifier {
 				log.debug("Stations not in previous assignment can be packed with their neighborhood when all other stations are fixed to their previous assignment..");
 				
 				watch.stop();
-				double extraTime = watch.getEllapsedTime();
+				double extraTime = watch.getElapsedTime();
 				
 				return SolverResult.addTime(SATboundResult, extraTime);
 			}
 			else
 			{
 				watch.stop();
-				double extraTime = watch.getEllapsedTime();
+				double extraTime = watch.getElapsedTime();
 				return new SolverResult(SATResult.TIMEOUT, SATboundResult.getRuntime()+extraTime);
 			}
 		}
 		else
 		{
 			watch.stop();
-			double extraTime = watch.getEllapsedTime();
+			double extraTime = watch.getElapsedTime();
 			return new SolverResult(SATResult.TIMEOUT, extraTime);
 		}
 	}

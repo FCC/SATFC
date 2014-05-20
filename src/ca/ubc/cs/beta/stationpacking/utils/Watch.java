@@ -84,7 +84,7 @@ public class Watch
 	 * @return the ellapsed time (s) between since the initial start (or reset) of the watch, the last end time being now if the watch
 	 * is still running.
 	 */
-	public double getEllapsedTime()
+	public double getElapsedTime()
 	{
 		if(fStopped)
 		{

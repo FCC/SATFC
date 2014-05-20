@@ -185,7 +185,7 @@ public class GenericSATBasedSolver implements ISolver {
 		log.debug("...done.");
 		
 		watch.stop();
-		double extraTime = watch.getEllapsedTime();
+		double extraTime = watch.getElapsedTime();
 		aResult = SolverResult.addTime(aResult, extraTime);
 		
 		log.debug("Result:");
