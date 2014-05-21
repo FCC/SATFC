@@ -157,29 +157,37 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		
 		//Terminate timing tasks.
 		timerService.shutdownNow();
+		boolean interrupted = false;
+		boolean terminated = false;
 		try {
-			for(int i=1;;i++)
+			for(int i=1;i<=TIMER_TERMINATION_RETRY_COUNTS;i++)
 			{
-				if(!timerService.awaitTermination(TIMER_TERMINATION_WAIT_TIME, TimeUnit.SECONDS))
-				{
-					if(i>TIMER_TERMINATION_RETRY_COUNTS)
+					try
 					{
-						throw new IllegalStateException("Could not terminate clasp timer tasks within "+TIMER_TERMINATION_WAIT_TIME+" seconds.");
+						terminated = !timerService.awaitTermination(TIMER_TERMINATION_WAIT_TIME, TimeUnit.SECONDS);
+						if(!terminated)
+						{
+							log.error("Could not terminate clasp timer tasks within {} seconds on {}-th attempt, will try one more time.",TIMER_TERMINATION_WAIT_TIME,i);
+						}
 					}
-					else
+					catch(InterruptedException e)
 					{
-						log.error("Could not terminate clasp timer tasks within {} seconds on {}-th attempt, will try one more time.",TIMER_TERMINATION_WAIT_TIME,i);
+						interrupted = true;
+						break;
 					}
-				}
-				else
-				{
-					break;
-				}
 			}
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-			Thread.currentThread().interrupt();
-			throw new IllegalStateException("Interrupted while trying to terminate clasp timer tasks.");
+		}
+		finally
+		{
+			if(interrupted)
+			{
+				Thread.currentThread().interrupt();
+				throw new IllegalStateException("Clasp was interrupted while it was terminating its timer tasks.");
+			}
+			if(!terminated)
+			{
+				throw new IllegalStateException("Could no terminate clasp timer tasks in "+TIMER_TERMINATION_RETRY_COUNTS+" attempts of "+TIMER_TERMINATION_WAIT_TIME+" seconds.");
+			}
 		}
 		
 		ClaspResult claspResult = getSolverResult(fClaspLibrary, result, timedOut, fInterrupt, runtime);
