@@ -309,10 +309,9 @@ public class SATFCTargetAlgorithmEvaluator extends
 						lines = FileUtils.readLines(new File(instanceFilename));
 					}
 				} catch (InterruptedException e) {
-					throw new IllegalArgumentException(
-							"Not enough lines in the SATFC problem file "
-									+ instanceFilename
-									+ " to create a SATFC problem.");
+					Thread.currentThread().interrupt();
+					throw new IllegalStateException(
+							"Thread interupted. Don't know how to handle");
 				}
 			}
 
@@ -320,7 +319,8 @@ public class SATFCTargetAlgorithmEvaluator extends
 				throw new IllegalArgumentException(
 						"Not enough lines in the SATFC problem file "
 								+ instanceFilename
-								+ " to create a SATFC problem.");
+								+ " to create a SATFC problem. Only "
+								+ lines.size() + " lines found.");
 			}
 
 			Iterator<String> linesIterator = lines.iterator();
