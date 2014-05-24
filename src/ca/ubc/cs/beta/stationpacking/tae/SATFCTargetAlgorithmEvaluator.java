@@ -264,11 +264,11 @@ public class SATFCTargetAlgorithmEvaluator extends
 	 * @author afrechet
 	 */
 	private class SATFCProblem {
-		private final Map<Integer, Set<Integer>> fDomains;
-		private final Map<Integer, Integer> fPreviousAssignment;
-		private final double fCutoff;
-		private final long fSeed;
-		private final String fStationConfigFolder;
+		private Map<Integer, Set<Integer>> fDomains;
+		private Map<Integer, Integer> fPreviousAssignment;
+		private double fCutoff;
+		private long fSeed;
+		private String fStationConfigFolder;
 
 		public SATFCProblem(AlgorithmRunConfiguration aConfig,
 				String aInstanceDirectory) throws IOException,
@@ -298,23 +298,102 @@ public class SATFCTargetAlgorithmEvaluator extends
 			// if the instance file has not been read properly, try again using
 			// a geometric backoff
 			// TODO: figure out how to do this properly
-			// will wait 2**c, and then try reading the file again. Max wait is
-			// 16 seconds (maybe should be more?)
 			if (lines.size() <= 1) {
-				try {
-					Integer numberOfReadAttemps = 1;
-					while (lines.size() <= 1 && numberOfReadAttemps < 5) {
-						Thread.sleep((int) (Math.pow(2, numberOfReadAttemps) * 1000));
-						numberOfReadAttemps++;
-						lines = FileUtils.readLines(new File(instanceFilename));
-					}
-				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					throw new IllegalStateException(
-							"Thread interupted. Don't know how to handle");
-				}
+				reAttemptSATFCProblem(aConfig, aInstanceDirectory, 0);
+				return;
 			}
 
+			Iterator<String> linesIterator = lines.iterator();
+
+			// Station config information is the first line of the file.
+			fStationConfigFolder = linesIterator.next();
+
+			fDomains = new HashMap<Integer, Set<Integer>>();
+			fPreviousAssignment = new HashMap<Integer, Integer>();
+
+			while (linesIterator.hasNext()) {
+				String line = linesIterator.next();
+
+				String[] lineParts = StringUtils.split(line, ";");
+
+				// if the instance file has not been read properly, try again
+				// using
+				// a geometric backoff (recursive)
+				// TODO: figure how to do this properly
+				if (lineParts.length != 3) {
+					reAttemptSATFCProblem(aConfig, aInstanceDirectory, 0);
+					return;
+				}
+
+				int stationID = Integer.valueOf(lineParts[0]);
+
+				int previousChannel = Integer.valueOf(lineParts[1]);
+				if (previousChannel > 0) {
+					fPreviousAssignment.put(stationID, previousChannel);
+				}
+
+				Set<Integer> domain = new HashSet<Integer>();
+				String[] domainParts = StringUtils.split(lineParts[2], ",");
+				for (int i = 0; i < domainParts.length; i++) {
+					domain.add(Integer.valueOf(domainParts[i]));
+				}
+
+				fDomains.put(stationID, domain);
+			}
+		}
+
+		/**
+		 * will wait 2**c, and then try reading the file again. Max wait is 32
+		 * seconds (maybe should be more?). Will wait 2**c, and then try reading
+		 * the file again.
+		 * 
+		 * @param aConfig
+		 * @param aInstanceDirectory
+		 * @param numberOfReadAttemps
+		 * @throws IOException
+		 */
+		private void reAttemptSATFCProblem(AlgorithmRunConfiguration aConfig,
+				String aInstanceDirectory, int numberOfReadAttemps)
+				throws IOException {
+
+			numberOfReadAttemps++;
+			try {
+				Thread.sleep((int) (Math.pow(2, numberOfReadAttemps) * 1000));
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				throw new IllegalStateException(
+						"Thread interupted. Don't know how to handle");
+			}
+
+			// Make sure the algorithm execution config is for a SATFC problem.
+			if (!aConfig.getAlgorithmExecutionConfiguration()
+					.getTargetAlgorithmExecutionContext()
+					.containsKey(SATFCONTEXTKEY)) {
+				throw new TargetAlgorithmAbortException(
+						"Provided algorithm execution config is not meant for a SATFC TAE.");
+			}
+
+			fCutoff = aConfig.getCutoffTime();
+
+			ProblemInstanceSeedPair pisp = aConfig.getProblemInstanceSeedPair();
+
+			fSeed = pisp.getSeed();
+
+			ProblemInstance instance = pisp.getProblemInstance();
+			String instanceFilename = aInstanceDirectory + File.separator
+					+ instance.getInstanceName();
+
+			List<String> lines = FileUtils
+					.readLines(new File(instanceFilename));
+
+			// if the instance file has not been read properly, try again using
+			// a geometric backoff (recursive)
+			if (lines.size() <= 1 && numberOfReadAttemps < 6) {
+				reAttemptSATFCProblem(aConfig, aInstanceDirectory,
+						numberOfReadAttemps);
+				return;
+			}
+			// after max attempts
 			if (lines.size() <= 1) {
 				throw new IllegalArgumentException(
 						"Not enough lines in the SATFC problem file "
@@ -336,6 +415,14 @@ public class SATFCTargetAlgorithmEvaluator extends
 
 				String[] lineParts = StringUtils.split(line, ";");
 
+				// if the instance file has not been read properly, try again
+				// using a geometric backoff (recursive)
+				if (lineParts.length != 3 && numberOfReadAttemps < 6) {
+					reAttemptSATFCProblem(aConfig, aInstanceDirectory,
+							numberOfReadAttemps);
+					return;
+				}
+				// after max attempts
 				if (lineParts.length != 3) {
 					throw new IllegalArgumentException("Ill-formatted line "
 							+ line + " in SATFC problem file "
