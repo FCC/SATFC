@@ -173,16 +173,7 @@ public class SATFCTargetAlgorithmEvaluator extends
 				}
 
 				// Transform algorithm run configuration to SATFC problem.
-				SATFCProblem problem;
-				try {
-					problem = new SATFCProblem(config, fInstanceDirectory);
-				} catch (IllegalArgumentException
-						| TargetAlgorithmAbortException | IOException e) {
-					e.printStackTrace();
-					throw new TargetAlgorithmAbortException(
-							"Exception encountered while creating a SATFC problem from an algorithm run configuration.",
-							e);
-				}
+				SATFCProblem problem = new SATFCProblem(config, fInstanceDirectory);
 
 				// Solve the problem.
 				SATFCResult result = fSATFCFacade.solve(
@@ -201,12 +192,10 @@ public class SATFCTargetAlgorithmEvaluator extends
 				switch (result.getResult()) {
 				case SAT:
 					status = RunStatus.SAT;
-
-					Map<Integer, Integer> witness = result
-							.getWitnessAssignment();
+					//Send back the witness assignment.
+					Map<Integer, Integer> witness = result.getWitnessAssignment();
 					StringBuilder sb = new StringBuilder();
-					Iterator<Entry<Integer, Integer>> entryIterator = witness
-							.entrySet().iterator();
+					Iterator<Entry<Integer, Integer>> entryIterator = witness.entrySet().iterator();
 					while (entryIterator.hasNext()) {
 						Entry<Integer, Integer> entry = entryIterator.next();
 						int stationID = entry.getKey();
@@ -237,11 +226,14 @@ public class SATFCTargetAlgorithmEvaluator extends
 				ExistingAlgorithmRunResult runResult;
 				synchronized (configWatch) {
 					configWatch.stop();
-					runResult = new ExistingAlgorithmRunResult(config, status,
-							result.getRuntime(), result.getRuntime(),
+					runResult = new ExistingAlgorithmRunResult(
+							config, 
+							status,
+							result.getRuntime(), 
 							result.getRuntime(),
-
-							problem.getSeed(), additionalRunData,
+							result.getRuntime(),
+							problem.getSeed(),
+							additionalRunData,
 							configWatch.time());
 				}
 
@@ -265,6 +257,7 @@ public class SATFCTargetAlgorithmEvaluator extends
 	 * @author afrechet
 	 */
 	private class SATFCProblem {
+		
 		private final Map<Integer, Set<Integer>> fDomains;
 		private final Map<Integer, Integer> fPreviousAssignment;
 		private final double fCutoff;
@@ -272,18 +265,77 @@ public class SATFCTargetAlgorithmEvaluator extends
 		private final String fStationConfigFolder;
 
 		public SATFCProblem(AlgorithmRunConfiguration aConfig,
-				String aInstanceDirectory) throws IOException,
-				FileNotFoundException, IllegalArgumentException,
-				TargetAlgorithmAbortException {
+				String aInstanceDirectory){
 
-			SATFCProblemReader reader = new SATFCProblemReader(aConfig,
-					aInstanceDirectory);
+			// Make sure the algorithm execution config is for a SATFC
+			// problem.
+			if (!aConfig.getAlgorithmExecutionConfiguration()
+					.getTargetAlgorithmExecutionContext()
+					.containsKey(SATFCONTEXTKEY)) {
+				throw new TargetAlgorithmAbortException(
+						"Provided algorithm execution config is not meant for a SATFC TAE.");
+			}
+			
+			//Read the straightforward parameters from the problem instance.
+			
+			fCutoff = aConfig.getCutoffTime();
 
-			fCutoff = reader.getCutoff();
-			fSeed = reader.getSeed();
-			fStationConfigFolder = reader.getStationConfigFolder();
-			fDomains = reader.getDomains();
-			fPreviousAssignment = reader.getPreviousAssignment();
+			ProblemInstanceSeedPair pisp = aConfig
+					.getProblemInstanceSeedPair();
+
+			fSeed = pisp.getSeed();
+
+			//Read the feasibility checking instance from the additional run info.
+			
+			ProblemInstance instance = pisp.getProblemInstance();
+			
+			//String instanceName = instance.getInstanceName();
+			
+			String instanceString = instance.getInstanceSpecificInformation();
+			String[] instanceParts = instanceString.split("_");
+			
+			if(instanceParts.length <=1)
+			{
+				throw new IllegalArgumentException("Instance string is not a valid SATFC TAE instance:\n "+instanceString);
+			}
+			
+			fStationConfigFolder = instanceParts[0];
+			
+			fDomains = new HashMap<Integer,Set<Integer>>();
+			fPreviousAssignment = new HashMap<Integer,Integer>();
+			
+			for(int i=1;i<instanceParts.length;i++)
+			{
+				String stationString = instanceParts[i];
+				String[] stationParts = stationString.split(";");
+				
+				if(stationParts.length!=3)
+				{
+					throw new IllegalArgumentException("String representing station info is not formatted correctly:\n \""+stationString+"\"");
+				}
+				
+				
+				int stationID = Integer.valueOf(stationParts[0]);
+				int previousChannel = Integer.valueOf(stationParts[1]);
+				
+				if(previousChannel>0)
+				{
+					fPreviousAssignment.put(stationID, previousChannel);
+				}
+				
+				String channelsString = stationParts[2];
+				String[] channelsParts = channelsString.split(",");
+				
+				Set<Integer> domain = new HashSet<Integer>();
+				
+				for(int j=0;j<channelsParts.length;j++)
+				{
+					int channel = Integer.valueOf(channelsParts[j]);
+					domain.add(channel);
+				}
+				
+				fDomains.put(stationID, domain);
+			}
 		}
 
 		public Set<Integer> getStations() {
@@ -318,164 +370,5 @@ public class SATFCTargetAlgorithmEvaluator extends
 			return fStationConfigFolder;
 		}
 
-		private class SATFCProblemReader {
-
-			private final Random fRANDOM = new Random(42);
-			private final Integer MAX_ATTEMPTS = 7;
-
-			private Map<Integer, Set<Integer>> fDomains;
-			private Map<Integer, Integer> fPreviousAssignment;
-			private double fCutoff;
-			private long fSeed;
-			private String fStationConfigFolder;
-
-			public SATFCProblemReader(AlgorithmRunConfiguration aConfig,
-					String aInstanceDirectory) throws IOException {
-				attemptSATFCProblem(aConfig, aInstanceDirectory, 0);
-			}
-
-			private void attemptSATFCProblem(AlgorithmRunConfiguration aConfig,
-					String aInstanceDirectory, int numberOfReadAttemps)
-					throws IOException {
-
-				if (numberOfReadAttemps > MAX_ATTEMPTS) {
-					throw new RuntimeException(
-							"unable to read TAE instance file. Max attempts reached");
-				}
-
-				try {
-					// sleep for a bit then try again
-					if (numberOfReadAttemps >= 1) {
-						try {
-							int max = (int) (Math.pow(2, numberOfReadAttemps) * 1000);
-							int sleepTime = fRANDOM.nextInt(max);
-							Thread.sleep(sleepTime);
-						} catch (InterruptedException e) {
-							Thread.currentThread().interrupt();
-							throw new IllegalStateException(
-									"Thread interupted. Don't know how to handle");
-						}
-					}
-
-					// Make sure the algorithm execution config is for a SATFC
-					// problem.
-					if (!aConfig.getAlgorithmExecutionConfiguration()
-							.getTargetAlgorithmExecutionContext()
-							.containsKey(SATFCONTEXTKEY)) {
-						throw new TargetAlgorithmAbortException(
-								"Provided algorithm execution config is not meant for a SATFC TAE.");
-					}
-
-					fCutoff = aConfig.getCutoffTime();
-
-					ProblemInstanceSeedPair pisp = aConfig
-							.getProblemInstanceSeedPair();
-
-					fSeed = pisp.getSeed();
-
-					ProblemInstance instance = pisp.getProblemInstance();
-					String instanceFilename = aInstanceDirectory
-							+ File.separator + instance.getInstanceName();
-
-					List<String> lines = FileUtils.readLines(new File(
-							instanceFilename));
-
-					// if the instance file has not been read properly, try
-					// again using a geometric backoff (recursive)
-					if (lines.size() <= 1 && numberOfReadAttemps < MAX_ATTEMPTS) {
-						numberOfReadAttemps++;
-						attemptSATFCProblem(aConfig, aInstanceDirectory,
-								numberOfReadAttemps);
-						return;
-					}
-
-					// after max attempts
-					if (lines.size() <= 1) {
-						throw new IllegalArgumentException(
-								"Not enough lines in the SATFC problem file "
-										+ instanceFilename
-										+ " to create a SATFC problem. Only "
-										+ lines.size() + " lines found.");
-					}
-
-					Iterator<String> linesIterator = lines.iterator();
-
-					// Station config information is the first line of the file.
-					fStationConfigFolder = linesIterator.next();
-
-					fDomains = new HashMap<Integer, Set<Integer>>();
-					fPreviousAssignment = new HashMap<Integer, Integer>();
-
-					while (linesIterator.hasNext()) {
-						String line = linesIterator.next();
-
-						String[] lineParts = StringUtils.split(line, ";");
-
-						// if the instance file has not been read properly, try
-						// again
-						// using a geometric backoff (recursive)
-						if (lineParts.length != 3
-								&& numberOfReadAttemps < MAX_ATTEMPTS) {
-							numberOfReadAttemps++;
-							attemptSATFCProblem(aConfig, aInstanceDirectory,
-									numberOfReadAttemps);
-							return;
-						}
-						// after max attempts
-						if (lineParts.length != 3) {
-							throw new IllegalArgumentException(
-									"Ill-formatted line " + line
-											+ " in SATFC problem file "
-											+ instanceFilename + ".");
-						}
-
-						int stationID = Integer.valueOf(lineParts[0]);
-
-						int previousChannel = Integer.valueOf(lineParts[1]);
-						if (previousChannel > 0) {
-							fPreviousAssignment.put(stationID, previousChannel);
-						}
-
-						Set<Integer> domain = new HashSet<Integer>();
-						String[] domainParts = StringUtils.split(lineParts[2],
-								",");
-						for (int i = 0; i < domainParts.length; i++) {
-							domain.add(Integer.valueOf(domainParts[i]));
-						}
-
-						fDomains.put(stationID, domain);
-					}
-				} catch (Exception e) {
-					if (numberOfReadAttemps >= 7) {
-						throw e;
-					}
-					numberOfReadAttemps++;
-					attemptSATFCProblem(aConfig, aInstanceDirectory,
-							numberOfReadAttemps);
-				}
-			}
-
-			public Map<Integer, Integer> getPreviousAssignment() {
-				return fPreviousAssignment;
-			}
-
-			public Map<Integer, Set<Integer>> getDomains() {
-				return fDomains;
-			}
-
-			public String getStationConfigFolder() {
-				return fStationConfigFolder;
-			}
-
-			public long getSeed() {
-				return fSeed;
-			}
-
-			public double getCutoff() {
-				return fCutoff;
-			}
-
-		}
 	}
-
 }
