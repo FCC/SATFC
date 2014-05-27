@@ -164,7 +164,7 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 			{
 					try
 					{
-						terminated = !timerService.awaitTermination(TIMER_TERMINATION_WAIT_TIME, TimeUnit.SECONDS);
+						terminated = timerService.awaitTermination(TIMER_TERMINATION_WAIT_TIME, TimeUnit.SECONDS);
 						if(!terminated)
 						{
 							log.error("Could not terminate clasp timer tasks within {} seconds on {}-th attempt, will try one more time.",TIMER_TERMINATION_WAIT_TIME,i);
