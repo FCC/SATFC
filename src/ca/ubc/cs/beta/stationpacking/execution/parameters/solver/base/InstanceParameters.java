@@ -43,10 +43,19 @@ public class InstanceParameters extends AbstractOptions {
 		log.debug("Getting packing stations...");
 		
 		HashSet<Integer> aPackingStations = new HashSet<Integer>();
-		for(String aStationID : fPackingStations)
+		
+		if(fPackingStations != null)
 		{
-			aPackingStations.add(Integer.valueOf(aStationID));
+			for(String aStationID : fPackingStations)
+			{
+				aPackingStations.add(Integer.valueOf(aStationID));
+			}
 		}
+		else
+		{
+			aPackingStations.addAll(fDomains.keySet());
+		}
+		
 		return aPackingStations;
 	}
 	

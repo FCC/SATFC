@@ -7,6 +7,7 @@ import ca.ubc.cs.beta.aeatk.misc.jcommander.JCommanderHelper;
 import ca.ubc.cs.beta.aeatk.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.SATFCFacadeParameters;
 import ca.ubc.cs.beta.stationpacking.facade.SATFCFacade;
+import ca.ubc.cs.beta.stationpacking.facade.SATFCFacadeBuilder;
 import ca.ubc.cs.beta.stationpacking.facade.SATFCResult;
 
 import com.beust.jcommander.ParameterException;
@@ -32,10 +33,18 @@ public class SATFCFacadeExecutor {
 		SATFCFacade.initializeLogging(parameters.fLoggingOptions.logLevel);
 		Logger log = LoggerFactory.getLogger(SATFCFacadeExecutor.class);
 		
-		
-		System.out.println(System.getProperties());
 		log.info("Initializing facade.");
-		try(SATFCFacade satfc = new SATFCFacade(parameters.fClaspLibrary);)
+		
+		SATFCFacadeBuilder satfcBuilder = new SATFCFacadeBuilder();
+		
+		String library = parameters.fClaspLibrary;
+		if(library != null)
+		{
+			satfcBuilder.setLibrary(parameters.fClaspLibrary);
+		}
+		satfcBuilder.setInitializeLogging(true);
+		
+		try(SATFCFacade satfc = satfcBuilder.build())
 		{
 			log.info("Solving ...");
 			SATFCResult result = satfc.solve(
@@ -52,7 +61,6 @@ public class SATFCFacadeExecutor {
 			System.out.println(result.getResult());
 			System.out.println(result.getRuntime());
 			System.out.println(result.getWitnessAssignment());
-
 		}
 
 	}
