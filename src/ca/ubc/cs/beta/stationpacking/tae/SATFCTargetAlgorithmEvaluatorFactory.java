@@ -35,7 +35,7 @@ public class SATFCTargetAlgorithmEvaluatorFactory extends AbstractTargetAlgorith
 		}
 		SATFCFacade facade = new SATFCFacade(SATFCoptions.fLibrary,false);
 		
-		return new SATFCTargetAlgorithmEvaluator(facade, SATFCoptions.fInstancesFolder, SATFCoptions.fStationConfigFolder);
+		return new SATFCTargetAlgorithmEvaluator(facade, SATFCoptions.fStationConfigFolder);
 	}
 
 	@Override
