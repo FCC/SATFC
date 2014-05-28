@@ -8,7 +8,6 @@ import java.util.Map;
 import ca.ubc.cs.beta.aeatk.algorithmexecutionconfiguration.AlgorithmExecutionConfiguration;
 import ca.ubc.cs.beta.aeatk.algorithmrunconfiguration.AlgorithmRunConfiguration;
 import ca.ubc.cs.beta.aeatk.algorithmrunresult.AlgorithmRunResult;
-import ca.ubc.cs.beta.aeatk.logging.LogLevel;
 import ca.ubc.cs.beta.aeatk.parameterconfigurationspace.ParameterConfigurationSpace;
 import ca.ubc.cs.beta.aeatk.probleminstance.ProblemInstance;
 import ca.ubc.cs.beta.aeatk.probleminstance.ProblemInstanceSeedPair;
@@ -27,7 +26,6 @@ public class SATFCTAEExecutor {
 		SATFCTargetAlgorithmEvaluatorOptions options = factory.getOptionObject();
 		
 		//Populate options.
-		options.fInstancesFolder = "/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingDeliverable/SampleQuestions/";
 		options.fLibrary = "/ubc/cs/home/a/afrechet/arrow-space/git/fcc-station-packing/SATsolvers/clasp/jna/libjnaclasp.so";
 		options.fStationConfigFolder = "/ubc/cs/home/a/afrechet/arrow-space/workspace/FCCStationPackingDeliverable/";
 		
