@@ -1,8 +1,6 @@
 package ca.ubc.cs.beta.stationpacking.tae;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -12,7 +10,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -20,8 +17,8 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aeatk.algorithmrunconfiguration.AlgorithmRunConfiguration;
 import ca.ubc.cs.beta.aeatk.algorithmrunresult.AlgorithmRunResult;
@@ -45,26 +42,20 @@ import ca.ubc.cs.beta.stationpacking.facade.SATFCResult;
  */
 public class SATFCTargetAlgorithmEvaluator extends
 		AbstractSyncTargetAlgorithmEvaluator {
-
+	
+	private static final Logger log = LoggerFactory.getLogger(SATFCTargetAlgorithmEvaluator.class);
+	
 	public final static String SATFCONTEXTKEY = "SATFC_CONTEXT";
 
 	private final SATFCFacade fSATFCFacade;
 
-	private final String fInstanceDirectory;
 	private final String fStationConfigFolder;
 
 	private final ScheduledExecutorService fObserverThreadPool;
 
 	private static final Semaphore fUniqueSATFCTAESemaphore = new Semaphore(1);
 
-	public SATFCTargetAlgorithmEvaluator(SATFCFacade aSATFCFacade,
-			String aInstanceDirectory, String aStationConfigFolder) {
-		if (!new File(aInstanceDirectory).exists()) {
-			throw new IllegalArgumentException("Provided instance directory "
-					+ aInstanceDirectory + " does not exist.");
-		}
-
-		fInstanceDirectory = aInstanceDirectory;
+	public SATFCTargetAlgorithmEvaluator(SATFCFacade aSATFCFacade, String aStationConfigFolder) {
 
 		if (!new File(aStationConfigFolder).exists()) {
 			throw new IllegalArgumentException(
@@ -171,10 +162,13 @@ public class SATFCTargetAlgorithmEvaluator extends
 				synchronized (configWatch) {
 					configWatch.start();
 				}
-
+				log.debug("Solving instance corresponding to algo run config \"{}\"",config);
+				
+				log.debug("Transforming config into SATFC problem...");
 				// Transform algorithm run configuration to SATFC problem.
-				SATFCProblem problem = new SATFCProblem(config, fInstanceDirectory);
+				SATFCProblem problem = new SATFCProblem(config);
 
+				log.debug("Giving problem to SATFC facade...");
 				// Solve the problem.
 				SATFCResult result = fSATFCFacade.solve(
 						problem.getStations(),
@@ -186,6 +180,7 @@ public class SATFCTargetAlgorithmEvaluator extends
 						fStationConfigFolder + File.separator
 								+ problem.getStationConfigFolder());
 
+				log.debug("Transforming SATFC facade result to TAE result...");
 				// Transform result to algorithm run result.
 				RunStatus status;
 				String additionalRunData;
@@ -264,8 +259,7 @@ public class SATFCTargetAlgorithmEvaluator extends
 		private final long fSeed;
 		private final String fStationConfigFolder;
 
-		public SATFCProblem(AlgorithmRunConfiguration aConfig,
-				String aInstanceDirectory){
+		public SATFCProblem(AlgorithmRunConfiguration aConfig){
 
 			// Make sure the algorithm execution config is for a SATFC
 			// problem.
