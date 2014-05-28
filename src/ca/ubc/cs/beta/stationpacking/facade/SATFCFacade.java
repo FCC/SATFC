@@ -45,21 +45,22 @@ public class SATFCFacade implements AutoCloseable{
 	private volatile static boolean logInitialized = false;
 	private final SolverManager fSolverManager;
 	
-	/**
-	 * Construct a SATFC solver facade.
-	 * @param aClaspLibrary - the location of the compiled jna clasp library to use.
-	 */
-	public SATFCFacade(final String aClaspLibrary)
-	{
-		this(aClaspLibrary,true);
-	}
+//	/**
+//	 * Construct a SATFC solver facade.
+//	 * @param aClaspLibrary - the location of the compiled jna clasp library to use.
+//	 */
+//	public SATFCFacade(final String aClaspLibrary)
+//	{
+//		this(aClaspLibrary,true);
+//	}
+	
 	
 	/**
 	 * Construct a SATFC solver facade, with the option of initializing logging if its not already done.
 	 * @param aClaspLibrary - the location of the compiled jna clasp library to use.
 	 * @param aInitializeLogging - whether to initialize logging or not.
 	 */
-	public SATFCFacade(final String aClaspLibrary, boolean aInitializeLogging)
+	SATFCFacade(final String aClaspLibrary, boolean aInitializeLogging)
 	{
 		//Initialize logging.
 		if(!logInitialized && aInitializeLogging)
@@ -94,13 +95,16 @@ public class SATFCFacade implements AutoCloseable{
 		{
 			new ClaspSATSolver(aClaspLibrary, ClaspLibSATSolverParameters.ALL_CONFIG_11_13);
 		}
-		catch(Exception e)
+		catch(UnsatisfiedLinkError e)
 		{
 			e.printStackTrace();
-			throw new IllegalArgumentException("");
+			log.error("1) Ensure that you pass the correct path to the library on your command line.\n"+
+					"2) Ensure that you rebuild the library for your architecture (so that you aren't running x86-64 on a x86 machine).\n"+
+					"3) If you are using MacOSX you should pass the .dylib file, on linux you should use the .so file.)");
+			throw new IllegalArgumentException("Could not load JNA library.");
 		}
 		
-		
+		log.debug("Using library {}.",aClaspLibrary);
 		
 		fSolverManager = new SolverManager(
 				new ISolverBundleFactory() {
@@ -172,11 +176,12 @@ public class SATFCFacade implements AutoCloseable{
 		//TODO Change facade to only be given a simple domains map.
 		//Construct the domains map.
 		Map<Integer,Set<Integer>> aDomains = new HashMap<Integer,Set<Integer>>();
+		
 		for(Integer station : aStations)
 		{
 			Set<Integer> originalDomain = stationManager.getDomain(stationManager.getStationfromID(station));
 			Set<Integer> reducedDomain = aReducedDomains.get(station);
-					
+			
 			Set<Integer> domain;
 			domain = Sets.intersection(originalDomain, aChannels);
 			if(reducedDomain != null && !reducedDomain.isEmpty())
@@ -191,6 +196,7 @@ public class SATFCFacade implements AutoCloseable{
 		log.debug("Translating arguments to SATFC objects...");
 		//Translate arguments.
 		Map<Station,Set<Integer>> domains = new HashMap<Station,Set<Integer>>();
+		
 		for(Integer stationID : aDomains.keySet())
 		{
 			Station station = stationManager.getStationfromID(stationID);
