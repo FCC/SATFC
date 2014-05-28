@@ -17,7 +17,7 @@ public class SATFCFacadeParameters extends AbstractOptions {
 	@Parameter(names = "-DATA-FOLDERNAME",description = "station config data folder name", required=true)
 	public String fDataFoldername;
 	
-	@Parameter(names = "-CLASP-LIBRARY",description = "clasp library file", required=true)
+	@Parameter(names = "-CLASP-LIBRARY",description = "clasp library file")
 	public String fClaspLibrary;
 	
 	@ParametersDelegate

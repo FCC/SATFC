@@ -32,7 +32,11 @@ public class SATFCFacadeTests {
 		IStringConverter<HashMap<Integer,Integer>> prevAssignmentConverter = new PreviousAssignmentConverter();
 		IStringConverter<HashMap<Integer,Set<Integer>>> domainsConverter = new StationDomainsConverter();
 		
-		try(SATFCFacade satfc = new SATFCFacade(LIBRARY))
+		SATFCFacadeBuilder satfcBuilder = new SATFCFacadeBuilder();
+		satfcBuilder.setLibrary(LIBRARY);
+		satfcBuilder.setInitializeLogging(true);
+		
+		try(SATFCFacade satfc = satfcBuilder.build())
 		{
 			Collection<HashMap<Integer,Integer>> previousAssignments = Arrays.asList(
 					new HashMap<Integer,Integer>(),
