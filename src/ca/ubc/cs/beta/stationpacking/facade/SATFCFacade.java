@@ -122,36 +122,28 @@ public class SATFCFacade implements AutoCloseable{
 	}
 	
 	/**
-	 * Solve a station packing problem. The channel domain of a station will be the intersection of the station's original domain (given in data files) with the packing channels,
-	 * and additionally intersected with its reduced domain if available and if non-empty. 
-	 * @param aStations - a collection of integer station IDs.
-	 * @param aChannels - a collection of integer channels.
-	 * @param aReducedDomains - a map taking integer station IDs to set of integer channels domains.
+	 * Solve a station packing problem. 
+	 * @param aDomains - a map taking integer station IDs to set of integer channels domains.
 	 * @param aPreviousAssignment - a valid (proved to not create any interference) partial (can concern only some of the provided station) station to channel assignment.
 	 * @param aCutoff - a cutoff in seconds for SATFC's execution.
 	 * @param aSeed - a long seed for randomization in SATFC.
 	 * @param aStationConfigFolder - a folder in which to find station config data (<i>i.e.</i> interferences and domains files).
 	 * @return a result about the packability of the provided problem, with the time it took to solve, and corresponding valid witness assignment of station IDs to channels. 
 	 */
-	public SATFCResult solve(Set<Integer> aStations,
-			Set<Integer> aChannels,
-			Map<Integer,Set<Integer>> aReducedDomains,
+	public SATFCResult solve(
+			Map<Integer,Set<Integer>> aDomains,
 			Map<Integer,Integer> aPreviousAssignment,
-			double aCutoff,
-			long aSeed,
-			String aStationConfigFolder
-			)
+			double aCutoff, 
+			long aSeed, String aStationConfigFolder)
 	{
-		log.debug("Checking input...");
-		//Check input.
-		if(aStations == null || aChannels == null ||  aPreviousAssignment == null || aStationConfigFolder == null || aReducedDomains == null)
+		if(aDomains == null || aPreviousAssignment == null || aStationConfigFolder == null)
 		{
 			throw new IllegalArgumentException("Cannot provide null arguments.");
 		}
 		
-		if(aStations.isEmpty())
+		if(aDomains.isEmpty())
 		{
-			log.warn("Provided an empty set of stations.");
+			log.warn("Provided an empty domains map.");
 			return new SATFCResult(SATResult.SAT, 0.0, new HashMap<Integer,Integer>());
 		}
 		if(aCutoff <=0)
@@ -159,7 +151,6 @@ public class SATFCFacade implements AutoCloseable{
 			throw new IllegalArgumentException("Cutoff must be strictly positive.");
 		}
 		
-				
 		log.debug("Getting data managers...");
 		//Get the data managers and solvers corresponding to the provided station config data.
 		ISolverBundle bundle;
@@ -173,26 +164,6 @@ public class SATFCFacade implements AutoCloseable{
 		
 		IStationManager stationManager = bundle.getStationManager();
 		
-		//TODO Change facade to only be given a simple domains map.
-		//Construct the domains map.
-		Map<Integer,Set<Integer>> aDomains = new HashMap<Integer,Set<Integer>>();
-		
-		for(Integer station : aStations)
-		{
-			Set<Integer> originalDomain = stationManager.getDomain(stationManager.getStationfromID(station));
-			Set<Integer> reducedDomain = aReducedDomains.get(station);
-			
-			Set<Integer> domain;
-			domain = Sets.intersection(originalDomain, aChannels);
-			if(reducedDomain != null && !reducedDomain.isEmpty())
-			{
-				domain = Sets.intersection(domain, reducedDomain);
-			}
-			
-			aDomains.put(station, domain);
-		}
-				
-		
 		log.debug("Translating arguments to SATFC objects...");
 		//Translate arguments.
 		Map<Station,Set<Integer>> domains = new HashMap<Station,Set<Integer>>();
@@ -204,14 +175,22 @@ public class SATFCFacade implements AutoCloseable{
 			Set<Integer> domain = aDomains.get(stationID);
 			Set<Integer> stationDomain = stationManager.getDomain(station);
 			
-			domains.put(station, Sets.intersection(domain, stationDomain));
+			Set<Integer> truedomain = Sets.intersection(domain, stationDomain);
+			
+			if(truedomain.isEmpty())
+			{
+				log.warn("Station {} has an empty domain, cannot pack.");
+				return new SATFCResult(SATResult.UNSAT, 0.0, new HashMap<Integer,Integer>());
+			}
+			
+			domains.put(station, truedomain);
 		}
 		
 		Map<Station,Integer> previousAssignment = new HashMap<Station,Integer>();
 		for(Station station : domains.keySet())
 		{
 			Integer previousChannel = aPreviousAssignment.get(station.getID());
-			if(previousChannel != null)
+			if(previousChannel != null && previousChannel > 0)
 			{
 				previousAssignment.put(station, previousChannel);
 			}
@@ -258,6 +237,79 @@ public class SATFCFacade implements AutoCloseable{
 		SATFCResult outputResult = new SATFCResult(result.getResult(), result.getRuntime(), witness);
 		
 		return outputResult;
+	}
+	
+	/**
+	 * Solve a station packing problem. The channel domain of a station will be the intersection of the station's original domain (given in data files) with the packing channels,
+	 * and additionally intersected with its reduced domain if available and if non-empty. 
+	 * @param aStations - a collection of integer station IDs.
+	 * @param aChannels - a collection of integer channels.
+	 * @param aReducedDomains - a map taking integer station IDs to set of integer channels domains.
+	 * @param aPreviousAssignment - a valid (proved to not create any interference) partial (can concern only some of the provided station) station to channel assignment.
+	 * @param aCutoff - a cutoff in seconds for SATFC's execution.
+	 * @param aSeed - a long seed for randomization in SATFC.
+	 * @param aStationConfigFolder - a folder in which to find station config data (<i>i.e.</i> interferences and domains files).
+	 * @return a result about the packability of the provided problem, with the time it took to solve, and corresponding valid witness assignment of station IDs to channels. 
+	 */
+	public SATFCResult solve(Set<Integer> aStations,
+			Set<Integer> aChannels,
+			Map<Integer,Set<Integer>> aReducedDomains,
+			Map<Integer,Integer> aPreviousAssignment,
+			double aCutoff,
+			long aSeed,
+			String aStationConfigFolder
+			)
+	{
+		//Check input.
+		if(aStations == null || aChannels == null ||  aPreviousAssignment == null || aStationConfigFolder == null || aReducedDomains == null)
+		{
+			throw new IllegalArgumentException("Cannot provide null arguments.");
+		}
+		
+		if(aStations.isEmpty())
+		{
+			log.warn("Provided an empty set of stations.");
+			return new SATFCResult(SATResult.SAT, 0.0, new HashMap<Integer,Integer>());
+		}
+		if(aCutoff <=0)
+		{
+			throw new IllegalArgumentException("Cutoff must be strictly positive.");
+		}
+		
+				
+		log.debug("Transforming instance to a domains only instance.");
+		//Get the data managers and solvers corresponding to the provided station config data.
+		ISolverBundle bundle;
+		try {
+			bundle = fSolverManager.getData(aStationConfigFolder);
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+			log.error("Did not find the necessary data files in provided station config data folder {}.",aStationConfigFolder);
+			throw new IllegalArgumentException("Station config files not found.");
+		}
+		
+		IStationManager stationManager = bundle.getStationManager();
+		
+		//TODO Change facade to only be given a simple domains map.
+		//Construct the domains map.
+		Map<Integer,Set<Integer>> aDomains = new HashMap<Integer,Set<Integer>>();
+		
+		for(Integer station : aStations)
+		{
+			Set<Integer> originalDomain = stationManager.getDomain(stationManager.getStationfromID(station));
+			Set<Integer> reducedDomain = aReducedDomains.get(station);
+			
+			Set<Integer> domain;
+			domain = Sets.intersection(originalDomain, aChannels);
+			if(reducedDomain != null && !reducedDomain.isEmpty())
+			{
+				domain = Sets.intersection(domain, reducedDomain);
+			}
+			
+			aDomains.put(station, domain);
+		}
+		
+		return solve(aDomains,aPreviousAssignment,aCutoff,aSeed,aStationConfigFolder);
 		
 	}
 
