@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.Iterator;
 
 import au.com.bytecode.opencsv.CSVReader;
 import ca.ubc.cs.beta.stationpacking.base.Station;
@@ -94,6 +95,22 @@ public class DomainStationManager implements IStationManager{
 			throw new IllegalArgumentException("No domain contained for station "+aStation);
 		}
 		return domain;
+	}
+	
+	/*
+	 * Return a mapping between stationIDs and domains
+	 * @param all stationIDs
+	 */
+	public Map<Integer, Set<Integer>> getDomainsFromIDs(Set<Integer> stationIDs) {
+		Map<Integer, Set<Integer>> domainsFromID = new HashMap<Integer, Set<Integer>>();
+		Iterator<Integer> stationIterator = stationIDs.iterator();
+		while(stationIterator.hasNext())
+		{
+			int stationID = stationIterator.next();
+			Set<Integer> domain = this.getDomain(getStationfromID(stationID));
+			domainsFromID.put(stationID, domain);
+		}
+		return domainsFromID;
 	}
 
 }
