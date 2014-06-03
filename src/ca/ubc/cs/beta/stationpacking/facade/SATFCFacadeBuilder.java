@@ -1,6 +1,8 @@
 package ca.ubc.cs.beta.stationpacking.facade;
 
 import java.io.File;
+import java.net.URISyntaxException;
+import java.net.URL;
 
 /**
  * Builder in charge of creating a SATFC facade, feeding it the necessary options.
@@ -15,24 +17,39 @@ public class SATFCFacadeBuilder {
 	{
 		fInitializeLogging = false;
 		fLibrary = findSATFCLibrary();
+		if(fLibrary != null)
+		{
+			System.out.println("Found default library "+fLibrary);
+		}
 	}
 	
 	private String findSATFCLibrary()
 	{
-		String relativeLibPath;
+		
+		String relativeLibPath = "clasp"+File.separator+"jna"+File.separator+"libjnaclasp";
+		
 		String osName = System.getProperty("os.name").toLowerCase();
 		boolean isMacOs = osName.startsWith("mac os x");
 		if(isMacOs)
 		{
-			relativeLibPath = "SATsolvers"+File.separator+"clasp"+File.separator+"jna"+File.separator+"libjnaclasp.dylib";
+			relativeLibPath+=".dylib";
 		}
 		else
 		{
-			relativeLibPath = "SATsolvers"+File.separator+"clasp"+File.separator+"jna"+File.separator+"libjnaclasp.so";
+			relativeLibPath+=".so";
 		}
 		
-		String currentLocation = SATFCFacadeBuilder.class.getProtectionDomain().getCodeSource().getLocation().getPath();
-		currentLocation.replaceFirst(File.separator+"bin"+File.separator, "");
+		//SATFCFacadeBuilder.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+		
+		URL url = SATFCFacadeBuilder.class.getProtectionDomain().getCodeSource().getLocation();
+		File f;
+		try {
+		  f = new File(url.toURI());
+		} catch(URISyntaxException e) {
+		  f = new File(url.getPath());
+		}
+		
+		String currentLocation = f.isDirectory() ? f.getAbsolutePath() : f.getAbsoluteFile().getParentFile().getAbsolutePath(); 
 		
 		File file = new File(currentLocation + File.separator + relativeLibPath);
 		if(file.exists())
@@ -41,7 +58,7 @@ public class SATFCFacadeBuilder {
 		}
 		else
 		{
-			System.out.println("Did not find SATFC library at "+file.getAbsolutePath());
+			System.err.println("Did not find SATFC library at "+file.getAbsolutePath());
 		}
 		
 		

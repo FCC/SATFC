@@ -1,7 +1,7 @@
-/FCCStationPacking/bin
-/FCCStationPacking/.classpath
-/FCCStationPacking/Input
-/FCCStationPacking/Output
+bin
+build
+build-resources/private
+dist
 *.ods
 *.o
 *.pyc
