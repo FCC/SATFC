@@ -210,6 +210,9 @@ public class SATFCFacade implements AutoCloseable{
 		ITerminationCriterion WALLtermination = new WalltimeTerminationCriterion(aCutoff);
 		ITerminationCriterion termination = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(CPUtermination,WALLtermination)); 
 		
+		/*
+		 * Logging problem info
+		 */
 		log.debug("Solving instance {} ...",instance);
 		log.debug("Instance stats:");
 		log.debug("{} stations.",instance.getStations().size());
@@ -218,9 +221,9 @@ public class SATFCFacade implements AutoCloseable{
 		log.debug("all channels: {}.",instance.getAllChannels());
 		log.debug("Previous assignment: {}",instance.getPreviousAssignment());
 		
+		
 		//Solve instance.
 		SolverResult result = solver.solve(instance, termination, aSeed);
-		
 		
 		log.debug("Transforming result into SATFC output...");
 		//Transform back solver result to output result.
