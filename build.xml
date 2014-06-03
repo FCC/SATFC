@@ -1,0 +1,202 @@
+<?xml version="1.0"?>
+<project name="satfc" default="deploy-release">
+
+	<property name="private.buildfile" value="build-resources/private/user-antbuild.properties"/>
+	<property file="${private.buildfile}"/>
+	<property file="build-resources/antbuild.properties"/>
+	
+	
+	<touch file="${private.buildfile}" mkdirs="true"/>
+	<fail message="${line.separator}================[ ERROR ] ==============${line.separator}
+	You must specify the software.dir property in the file ${private.buildfile}${line.separator}
+	If you are running eclipse you should right click on this project and hit refresh,
+	so that the file appears.${line.separator}
+	${line.separator}
+	You should then put the following two lines in the file:${line.separator}
+	software.dir=[path to place completed packages]${line.separator}
+	buildnumberpath=[path to store build numbers]${line.separator}
+	#Windows users should use \\ or / as path seperators.
+				
+				">
+		<condition>
+			<not>
+					<isset property="software.dir"/>
+			</not>
+		</condition>
+	</fail>
+		
+	<mkdir dir="${software.dir}"/>
+	<mkdir dir="${buildnumberpath}"/>
+
+	<property name="version.file" value="${ant.project.name}-version.txt"/>
+	<property name="version.file.dev" value="version/${version.file}"/>
+
+	<!-- If you don't specify a buildnumber file we will use this -->
+	<property name="buildnumberpath" value="build/classes/"/>
+	
+	<property name="buildnumberfile" value="${buildnumberpath}/buildnumber-${ant.project.name}"/>
+
+	<target name="git-status-init" description="Initialize Git variables">
+		<echo>If this next call fails, it means you haven't installed git and/or it's not in your PATH</echo>
+		<exec executable="git" outputproperty="git.branch">
+			<arg value="rev-parse"/>
+			<arg value="--abbrev-ref"/>
+			<arg value="HEAD"/>
+		</exec>
+		
+		<exec executable="git" outputproperty="git.commit">
+			<arg value="rev-parse"/>
+			<arg value="HEAD"/>
+		</exec>
+	
+		<exec executable="git" outputproperty="git.shortcommit">
+			<arg value="rev-parse"/>
+			<arg value="--short=12"/>
+			<arg value="HEAD"/>
+		</exec>
+	
+		<exec executable="git" resultproperty="git.dirty" outputproperty="git.dirty.output">
+			<arg value="diff"/>
+			<arg value="--exit-code"/>
+		</exec>
+		
+		<echo>Git properties loaded, branch: ${git.branch}
+commit: ${git.commit}
+shortcommit: ${git.shortcommit}
+dirty: ${git.dirty}</echo>
+	</target>
+			
+		
+	<target name="init" description="Initialize the project directories" depends="git-status-init"> 
+		<mkdir dir="build/classes/"/>
+		<mkdir dir="dist"/>
+		
+		<property file="${software.dir}${file.separator}aeatk-${git.branch}.latest"/>
+		<fail unless="aeatk.location" message="${line.separator}================[ ERROR ] ==============${line.separator}You must check out and build the aeatk project on this branch (${git.branch}) first${line.separator}Expected to find file:${software.dir}${file.separator}aeatk-${git.branch}.latest${line.separator}This file should contain the location of aeatk"/> 
+
+		<path id="compile.classpath">
+			<fileset dir="lib" id="lib">
+				<include name="*.jar"/>
+			</fileset>
+		
+			<fileset dir="${aeatk.location}/" id="aeatk">
+				<include name="**/*"/>
+			</fileset>
+		</path>	
+	</target>
+	
+	
+	<target name="clean" description="Deletes all previously build artificacts and start fresh.">
+		<delete dir="build"/>
+		<delete dir="dist"/>
+	</target>
+	
+	<target name="make-clasp" description="Moves necessary clasp components to dist.">
+		<mkdir dir="dist/clasp/"/>
+		<copy todir="dist/clasp/">
+			<fileset dir="SATsolvers/clasp/">
+				<include name="compile.sh"/>
+				<include name="libjnaclasp-2.1.3.tar.gz"/>
+				<include name="jna/libjnaclasp.*"/>
+			</fileset>
+		</copy>
+		
+		
+	</target>
+	
+	
+	<target name="compile" depends="init">
+		<javac srcdir="src" destdir="build/classes" debug="true" target="1.7">
+			<classpath refid="compile.classpath"/>
+		</javac>
+		
+		<!--
+		<copy todir="build/classes">
+			<fileset dir="src/">
+				<include name="tables.sql"/>
+			</fileset>
+		</copy>
+		-->
+		
+		<path id="build.classpath">
+			<path refid="compile.classpath"/>
+			<path location="build/classes"/>
+		</path>
+	</target>
+	
+	
+	<target name="make-package" description="Creates a local copy of the (eventual) software distribution." depends="compile,make-clasp">
+	
+		<buildnumber file="${buildnumberpath}/buildnumber-${ant.project.name}"/>
+		<property name="version.string" value="v${version.major}.${version.minor}.${version.revision}${version.beta}-${git.branch}-${build.number}"/>
+		<property name="version.devstring" value="v${version.major}.${version.minor}.${version.revision}dev-${git.branch}-${build.number}"/>
+		
+		<echo file="${version.file.dev}">${version.devstring} (${git.shortcommit})</echo>
+		<echo file="build/classes/${version.file}">${version.string} (${git.shortcommit})</echo>
+			
+		<property name="outputfilename" value="${ant.project.name}-${version.string}"/>
+		<jar destfile="dist/${ant.project.name}.jar" basedir="build/classes"/>
+				
+		<jar destfile="dist/${ant.project.name}-src.jar">
+			<fileset dir="src/">
+				 <include name="**/*.java"/>
+			</fileset>
+		</jar>
+		<copy todir="dist/">
+			<fileset dir="">
+				<include name="conf/**"/>
+			</fileset>
+			<fileset refid="lib"/>
+			<fileset refid="aeatk"/>
+		</copy>
+		
+		<java classname="ca.ubc.cs.beta.aeatk.ant.execscript.ExecScriptCreator" failonerror="true" classpathref="build.classpath" fork="true">
+					<arg value="--class"/>
+					<arg value="ca.ubc.cs.beta.stationpacking.execution.SATFCFacadeExecutor"/>
+					<arg value="--name"/>
+					<arg value="satfc"/>
+					<arg value="--file-to-write"/>
+					<arg value="dist/"/>	
+		</java>
+	
+	</target>
+	
+	
+	<target name="zip" depends="make-package" description="Makes tarball for this release.">
+		
+		<fail message="Cannot deploy a build for the git master branch if it is dirty, please commit all changes">
+			<condition>
+				<and>
+				<equals arg1="${git.branch}" arg2="master" casesensitive="false" trim="true"/>
+				<equals arg1="${git.dirty}" arg2="1" casesensitive="false" trim="true"/>
+				</and>
+			</condition>
+		</fail>
+		
+		<tar destFile="${software.dir}/${outputfilename}.tar.gz" longfile="gnu" compression="gzip">
+			<tarfileset dir="dist/" filemode="755" dirmode="755" prefix="${outputfilename}/">
+				<include name="**/*"/>
+				<exclude name="${lastdeployfile}"/> 
+				<exclude name="git-hashes.tex"/>
+				<exclude name="git-hashes.txt"/>
+			</tarfileset>
+		</tar>
+		
+	</target>
+	
+	
+	<target name="deploy-release" depends="zip" description="untars tarball in software.dir and creates symlink">
+		
+		<untar src="${software.dir}${file.separator}${outputfilename}.tar.gz" dest="${software.dir}" compression="gzip"/>
+		
+		<propertyfile file="${software.dir}${file.separator}${ant.project.name}-${git.branch}.latest" comment="Contains location of most recent ${ant.project.name}">
+			<entry key="${ant.project.name}.location" value="${software.dir}${file.separator}${outputfilename}"/>
+		</propertyfile>
+		
+		<echo>Untar Successful to ${software.dir}${file.separator}${outputfilename}</echo>
+		
+	</target>
+			
+	<target name="deploy" depends="zip, deploy-release"/>
+			
+</project>

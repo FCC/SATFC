@@ -97,10 +97,18 @@ public class SATFCFacade implements AutoCloseable{
 		}
 		catch(UnsatisfiedLinkError e)
 		{
-			e.printStackTrace();
-			log.error("1) Ensure that you pass the correct path to the library on your command line.\n"+
-					"2) Ensure that you rebuild the library for your architecture (so that you aren't running x86-64 on a x86 machine).\n"+
-					"3) If you are using MacOSX you should pass the .dylib file, on linux you should use the .so file.)");
+			
+			log.error("\n--------------------------------------------------------\n"+
+					"Could not load clasp from library : {} \n"+
+					"Possible Solutions:\n"+
+					"1) Try rebuilding the library, on Linux this can be done by going to the clasp folder and running \"bash compile.sh\"\n"+
+					"2) Check that all library dependancies are met, e.g., run \"ldd {}\".\n"+
+					"3) Manually set the library to use with the \"-CLASP-LIBRARY\" options. On MacOS it should be a .dylib file, on linux a .so file.\n"+
+					"--------------------------------------------------------", aClaspLibrary, aClaspLibrary
+					);
+			
+			log.debug("Exception occured while loading library:\n",e);
+			
 			throw new IllegalArgumentException("Could not load JNA library.");
 		}
 		
