@@ -157,6 +157,8 @@ dirty: ${git.dirty}</echo>
 					<arg value="satfc"/>
 					<arg value="--file-to-write"/>
 					<arg value="dist/"/>	
+					<arg value="--default-mem"/>
+					<arg value="2048"/>
 		</java>
 	
 	</target>
