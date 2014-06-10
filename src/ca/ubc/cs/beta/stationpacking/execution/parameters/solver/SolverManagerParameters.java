@@ -30,6 +30,12 @@ public class SolverManagerParameters extends AbstractOptions {
 	@Parameter(names = "-DATA-FOLDERNAME",description = "a list of data foldernames that SATFC should know about.", required=true)
 	public List<String> DataFoldernames = new ArrayList<String>();
 	
+	@Parameter(names = "-CNF-DIRECTORY",description = "a directory in which to put CNF problems encountered by SATFC.")
+	public String CNFDirectory = null;
+	
+	@Parameter(names = "-RESULT-FILE", description = "a file in which to save the results of problems encountered.")
+	public String ResultFile = null;
+	
 	public SolverManager getSolverManager()
 	{
 		Logger log = LoggerFactory.getLogger(SolverManagerParameters.class);
@@ -46,7 +52,7 @@ public class SolverManagerParameters extends AbstractOptions {
 						/*
 						 * Set what solver selector will be used here.
 						 */
-						return new SATFCSolverBundle(clasplibrary, aStationManager, aConstraintManager);
+						return new SATFCSolverBundle(clasplibrary, aStationManager, aConstraintManager,CNFDirectory,ResultFile);
 						
 					}
 				}

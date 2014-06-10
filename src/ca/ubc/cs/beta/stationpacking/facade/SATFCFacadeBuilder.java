@@ -12,6 +12,8 @@ public class SATFCFacadeBuilder {
 	
 	private boolean fInitializeLogging;
 	private String fLibrary;
+	private String fCNFDirectory;
+	private String fResultFile;
 	
 	public SATFCFacadeBuilder()
 	{
@@ -21,6 +23,8 @@ public class SATFCFacadeBuilder {
 		{
 			System.out.println("Found default library "+fLibrary);
 		}
+		fCNFDirectory = null;
+		fResultFile = null;
 	}
 	
 	private String findSATFCLibrary()
@@ -77,14 +81,22 @@ public class SATFCFacadeBuilder {
 			throw new IllegalArgumentException("Facade builder did not auto-detect default library, and no other library was provided.");
 		}
 		
-		return new SATFCFacade(fLibrary, fInitializeLogging);
+		return new SATFCFacade(fLibrary, fInitializeLogging,fCNFDirectory,fResultFile);
 	}
 	
+	/**
+	 * Set whether SATFC should initialize the logging on construction.
+	 * @param aInitializeLogging
+	 */
 	public void setInitializeLogging(boolean aInitializeLogging)
 	{
 		fInitializeLogging = aInitializeLogging;
 	}
 	
+	/**
+	 * Set the (clasp) library SATFC should use.
+	 * @param aLibrary
+	 */
 	public void setLibrary(String aLibrary)
 	{
 		if(aLibrary == null)
@@ -93,6 +105,24 @@ public class SATFCFacadeBuilder {
 		}
 		
 		fLibrary = aLibrary;
+	}
+	
+	/**
+	 * Set the directory where SATFC should save encountered CNFs. Setting this to non-null will incur a performance penalty.
+	 * @param aCNFDirectory
+	 */
+	public void setCNFDirectory(String aCNFDirectory)
+	{
+		fCNFDirectory = aCNFDirectory;
+	}
+	
+	/**
+	 * Set the file in which SATFC writes encountered problem/results pairs.
+	 * @param aResultFile
+	 */
+	public void setResultFile(String aResultFile)
+	{
+		fResultFile = aResultFile;
 	}
 	
 	
