@@ -160,7 +160,7 @@ public class StationPackingInstance {
 	 */
 	public String getInfo()
 	{
-		return fDomains.keySet().size()+" stations to pack in their respective domains.";
+		return fDomains.keySet().size()+" stations, "+getAllChannels().size()+" all channels.";
 	}
 	
 	/**

@@ -16,6 +16,8 @@ import ca.ubc.cs.beta.stationpacking.solvers.certifierpresolvers.cgneighborhood.
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.NoGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.composites.SequentialSolversComposite;
+import ca.ubc.cs.beta.stationpacking.solvers.decorators.CNFSaverSolverDecorator;
+import ca.ubc.cs.beta.stationpacking.solvers.decorators.ResultSaverSolverDecorator;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.CompressedSATBasedSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
@@ -30,8 +32,13 @@ public class SATFCSolverBundle extends ASolverBundle{
 	private final ISolver fUHFSolver;
 	private final ISolver fVHFSolver;
 	
-	public SATFCSolverBundle(String aClaspLibraryPath, IStationManager aStationManager,
-			IConstraintManager aConstraintManager) {
+	public SATFCSolverBundle(
+			String aClaspLibraryPath,
+			IStationManager aStationManager,
+			IConstraintManager aConstraintManager,
+			String aCNFDirectory,
+			String aResultFile
+			) {
 		
 		super(aStationManager, aConstraintManager);
 		
@@ -55,7 +62,10 @@ public class SATFCSolverBundle extends ASolverBundle{
 		final double UNSATcertifiercutoff = 10;
 		final double SATcertifiercutoff = 10;
 		
-		fUHFSolver = new SequentialSolversComposite(
+		ISolver UHFsolver;
+		ISolver VHFsolver;
+		
+		UHFsolver = new SequentialSolversComposite(
 				Arrays.asList(
 						new ConstraintGraphNeighborhoodPresolver(aConstraintManager, 
 								Arrays.asList(
@@ -66,7 +76,7 @@ public class SATFCSolverBundle extends ASolverBundle{
 						)
 				);
 		
-		fVHFSolver = new SequentialSolversComposite(
+		VHFsolver = new SequentialSolversComposite(
 				Arrays.asList(
 						new ConstraintGraphNeighborhoodPresolver(aConstraintManager, 
 								Arrays.asList(
@@ -76,6 +86,23 @@ public class SATFCSolverBundle extends ASolverBundle{
 								VHFClaspBasedSolver
 						)
 				);
+		
+		//Decorate solvers to save CNFs.
+		if(aCNFDirectory != null)
+		{
+			UHFsolver = new CNFSaverSolverDecorator(UHFsolver, getConstraintManager(), aCNFDirectory);
+			VHFsolver = new CNFSaverSolverDecorator(VHFsolver, getConstraintManager(), aCNFDirectory);
+		}
+		
+		//Decorate solvers to save results.
+		if(aResultFile != null)
+		{
+			UHFsolver = new ResultSaverSolverDecorator(UHFsolver, aResultFile);
+			VHFsolver = new ResultSaverSolverDecorator(VHFsolver, aResultFile);
+		}
+		
+		fUHFSolver = UHFsolver;
+		fVHFSolver = VHFsolver;
 		
 	}
 
