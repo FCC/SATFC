@@ -59,8 +59,10 @@ public class SATFCFacade implements AutoCloseable{
 	 * Construct a SATFC solver facade, with the option of initializing logging if its not already done.
 	 * @param aClaspLibrary - the location of the compiled jna clasp library to use.
 	 * @param aInitializeLogging - whether to initialize logging or not.
+	 * @param aCNFDirectory - where to save CNFs encountered by SATFC (will incur a performance penalty, only good for experiment purposes).
+	 * @param aResultFile - a file in which to write problem/results pairs encountered.
 	 */
-	SATFCFacade(final String aClaspLibrary, boolean aInitializeLogging)
+	SATFCFacade(final String aClaspLibrary, final boolean aInitializeLogging, final String aCNFDirectory, final String aResultFile)
 	{
 		//Initialize logging.
 		if(!logInitialized && aInitializeLogging)
@@ -73,7 +75,6 @@ public class SATFCFacade implements AutoCloseable{
 		{
 			log = LoggerFactory.getLogger(getClass());
 		}
-
 		
 		//Check provided library.
 		if(aClaspLibrary == null)
@@ -122,7 +123,7 @@ public class SATFCFacade implements AutoCloseable{
 							IConstraintManager aConstraintManager) {
 						
 						//Set what bundle we're using here.
-						return new SATFCSolverBundle(aClaspLibrary, aStationManager, aConstraintManager);
+						return new SATFCSolverBundle(aClaspLibrary, aStationManager, aConstraintManager,aCNFDirectory,aResultFile);
 					}
 				}
 				
