@@ -11,7 +11,7 @@ public class SATFCTargetAlgorithmEvaluatorOptions extends AbstractOptions {
 	@Parameter(names = "--satfctae-config-folder",description = "where to find station config data folders")
 	public String fStationConfigFolder;
 	
-	@Parameter(names = {"--satfctae-library","-CLASP-LIBRARY"},description = "the location of the necessary (clasp) SAT solver library")
+	@Parameter(names = {"--satfctae-library"},description = "the location of the necessary (clasp) SAT solver library")
 	public String fLibrary;
 	
 }

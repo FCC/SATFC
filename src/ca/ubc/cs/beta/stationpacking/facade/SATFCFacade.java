@@ -100,7 +100,7 @@ public class SATFCFacade implements AutoCloseable{
 		{
 			
 			log.error("\n--------------------------------------------------------\n"+
-					"Could not load clasp from library : {} \n"+
+					"Could not load clasp from library : {}. \n"+
 					"Possible Solutions:\n"+
 					"1) Try rebuilding the library, on Linux this can be done by going to the clasp folder and running \"bash compile.sh\"\n"+
 					"2) Check that all library dependancies are met, e.g., run \"ldd {}\".\n"+
