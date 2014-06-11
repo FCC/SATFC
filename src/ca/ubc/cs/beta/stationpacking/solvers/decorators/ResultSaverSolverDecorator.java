@@ -30,7 +30,7 @@ public class ResultSaverSolverDecorator extends ASolverDecorator {
 		
 		if(resultFile.exists())
 		{
-			throw new IllegalArgumentException("Result file already exists.");
+			throw new IllegalArgumentException("Result file "+aResultFile+" already exists.");
 		}
 		
 		fResultFile = resultFile;
