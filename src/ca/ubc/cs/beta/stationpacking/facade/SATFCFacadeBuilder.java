@@ -19,10 +19,6 @@ public class SATFCFacadeBuilder {
 	{
 		fInitializeLogging = false;
 		fLibrary = findSATFCLibrary();
-		if(fLibrary != null)
-		{
-			System.out.println("Found default library "+fLibrary);
-		}
 		fCNFDirectory = null;
 		fResultFile = null;
 	}
@@ -58,13 +54,13 @@ public class SATFCFacadeBuilder {
 		File file = new File(currentLocation + File.separator + relativeLibPath);
 		if(file.exists())
 		{
+			System.out.println("Found default library "+file.getAbsolutePath()+".");
 			return file.getAbsolutePath();
 		}
 		else
 		{
 			System.err.println("Did not find SATFC library at "+file.getAbsolutePath());
 		}
-		
 		
 		return null;
 	}
