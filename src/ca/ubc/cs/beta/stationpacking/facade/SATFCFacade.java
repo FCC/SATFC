@@ -188,7 +188,7 @@ public class SATFCFacade implements AutoCloseable{
 			
 			if(truedomain.isEmpty())
 			{
-				log.warn("Station {} has an empty domain, cannot pack.");
+				log.warn("Station {} has an empty domain, cannot pack.",station);
 				return new SATFCResult(SATResult.UNSAT, 0.0, new HashMap<Integer,Integer>());
 			}
 			
