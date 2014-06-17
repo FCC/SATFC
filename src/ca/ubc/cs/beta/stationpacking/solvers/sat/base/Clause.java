@@ -90,6 +90,10 @@ public class Clause implements Collection<Literal>{
 
 	@Override
 	public boolean add(Literal e) {
+		if(e==null)
+		{
+			throw new IllegalArgumentException("Cannot add a null literal to a clause.");
+		}
 		return fLitterals.add(e);
 	}
 
@@ -105,6 +109,12 @@ public class Clause implements Collection<Literal>{
 
 	@Override
 	public boolean addAll(Collection<? extends Literal> c) {
+		
+		if(c.contains(null))
+		{
+			throw new IllegalArgumentException("Cannot add a null literal to a clause.");
+		}
+		
 		return fLitterals.addAll(c);
 	}
 
