@@ -15,7 +15,7 @@ public class Literal implements Serializable{
 	 * @param aVariable - the litteral's (positive) variable.
 	 * @param aSign - the litteral's sign/negation (true=not negated, false=negated).
 	 */
-	public Literal(long aVariable,boolean aSign)
+	public Literal(long aVariable, boolean aSign)
 	{
 		/*
 		 * TODO Litterals should not be allowed to be < 0 , but to support the current incremental code, we let it be.
