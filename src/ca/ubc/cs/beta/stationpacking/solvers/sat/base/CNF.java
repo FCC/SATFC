@@ -9,7 +9,7 @@ import java.util.Iterator;
 import org.apache.commons.lang3.StringUtils;
 
 /**
- * A SAT formula in Conjunctive Normal Form (a conjunction of clauses - AND's of OR's of litterals). Implementation wise just a clause set wrapper. 
+ * A SAT formula in Conjunctive Normal Form (a conjunction of clauses - AND's of OR's of literals). Implementation wise just a clause set wrapper. 
  * @author afrechet
  */
 public class CNF implements Collection<Clause>{
@@ -128,6 +128,12 @@ public class CNF implements Collection<Clause>{
 
 	@Override
 	public boolean add(Clause e) {
+		
+		if(e==null)
+		{
+			throw new IllegalArgumentException("Cannot add a null clause to a CNF.");
+		}
+		
 		return fClauses.add(e);
 	}
 
@@ -143,6 +149,12 @@ public class CNF implements Collection<Clause>{
 
 	@Override
 	public boolean addAll(Collection<? extends Clause> c) {
+		
+		if(c.contains(null))
+		{
+			throw new IllegalArgumentException("Cannot add a null clause to a CNF.");
+		}
+		
 		return fClauses.addAll(c);
 	}
 
