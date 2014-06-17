@@ -138,7 +138,7 @@ public class GenericSATBasedSolver implements ISolver {
 			
 			aComponentResults.add(new SolverResult(aComponentResult.getResult(),aComponentResult.getRuntime(),aStationAssignment));
 			
-			if(aComponentResult.equals(SATResult.UNSAT) || aTerminationCriterion.hasToStop())
+			if(aComponentResult.getResult().equals(SATResult.UNSAT) || aTerminationCriterion.hasToStop())
 			{
 				break;
 			}
