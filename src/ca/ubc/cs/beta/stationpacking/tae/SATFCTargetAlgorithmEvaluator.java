@@ -142,7 +142,7 @@ public class SATFCTargetAlgorithmEvaluator extends
 												0.0,
 												config.getProblemInstanceSeedPair()
 														.getSeed(), configWatch
-														.time()));
+														.time()/1000.0));
 							}
 						}
 					}
@@ -228,7 +228,7 @@ public class SATFCTargetAlgorithmEvaluator extends
 							result.getRuntime(),
 							problem.getSeed(),
 							additionalRunData,
-							configWatch.time());
+							configWatch.time()/1000.0);
 				}
 
 				resultMap.put(config, runResult);
