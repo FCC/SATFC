@@ -1,10 +1,12 @@
 package ca.ubc.cs.beta.stationpacking.solvers.sat.base;
 
+import java.io.Serializable;
+
 /**
  * The construction blocks of SAT clauses, consists of an integral variable (long) and its sign/negation (true=not negated, false=negated). 
  * @author afrechet
  */
-public class Literal {
+public class Literal implements Serializable{
 
 	private final long fVariable;
 	private final boolean fSign;
