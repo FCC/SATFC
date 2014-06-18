@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -261,16 +262,16 @@ public class ChannelSpecificConstraintManager implements IConstraintManager{
 		//No constraint for this station.
 		if(subjectStationConstraints == null)
 		{
-			return new HashSet<Station>();
+			return Collections.emptySet();
 		}
 		
 		Set<Station> interferingStations = subjectStationConstraints.get(aChannel);
 		//No constraint for this station on this channel.
 		if(interferingStations == null)
 		{
-			return new HashSet<Station>();
+			return Collections.emptySet();
 		}
-		return interferingStations;
+		return Collections.unmodifiableSet(interferingStations);
 	}
 
 	@Override
@@ -282,16 +283,16 @@ public class ChannelSpecificConstraintManager implements IConstraintManager{
 		//No constraint for this station.
 		if(subjectStationConstraints == null)
 		{
-			return new HashSet<Station>();
+			return Collections.emptySet();
 		}
 		
 		Set<Station> interferingStations = subjectStationConstraints.get(aChannel);
 		//No constraint for this station on this channel.
 		if(interferingStations == null)
 		{
-			return new HashSet<Station>();
+			return Collections.emptySet();
 		}
-		return interferingStations;
+		return Collections.unmodifiableSet(interferingStations);
 	}
 
 	

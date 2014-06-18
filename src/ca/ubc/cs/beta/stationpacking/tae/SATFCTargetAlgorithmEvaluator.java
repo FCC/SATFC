@@ -99,8 +99,7 @@ public class SATFCTargetAlgorithmEvaluator extends
 
 		try {
 			if (!fUniqueSATFCTAESemaphore.tryAcquire()) {
-				System.out
-						.println("[WARNING] Multiple SATFC TAEs probably exist, and this implementation does not support concurrent executions.");
+				System.out.println("[WARNING] Multiple SATFC TAEs probably exist, and this implementation does not support concurrent executions.");
 				fUniqueSATFCTAESemaphore.acquireUninterruptibly();
 			}
 
@@ -251,7 +250,7 @@ public class SATFCTargetAlgorithmEvaluator extends
 	 * 
 	 * @author afrechet
 	 */
-	private class SATFCProblem {
+	private static class SATFCProblem {
 		
 		private final Map<Integer, Set<Integer>> fDomains;
 		private final Map<Integer, Integer> fPreviousAssignment;
