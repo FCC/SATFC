@@ -140,9 +140,8 @@ public class SATFCTargetAlgorithmEvaluator extends
 												0.0,
 												0.0,
 												0.0,
-												config.getProblemInstanceSeedPair()
-														.getSeed(), configWatch
-														.time()/1000.0));
+												config.getProblemInstanceSeedPair().getSeed(),
+												configWatch.time()/1000.0));
 							}
 						}
 					}
@@ -151,9 +150,7 @@ public class SATFCTargetAlgorithmEvaluator extends
 				}
 			};
 
-			ScheduledFuture<?> observerFuture = fObserverThreadPool
-					.scheduleAtFixedRate(observerThread, 0, 15,
-							TimeUnit.SECONDS);
+			ScheduledFuture<?> observerFuture = fObserverThreadPool.scheduleAtFixedRate(observerThread, 0, 15,	TimeUnit.SECONDS);
 
 			for (AlgorithmRunConfiguration config : arg0) {
 
@@ -306,7 +303,6 @@ public class SATFCTargetAlgorithmEvaluator extends
 				{
 					throw new IllegalArgumentException("String representing station info is not formatted correctly:\n \""+stationString+"\"");
 				}
-				
 				
 				int stationID = Integer.valueOf(stationParts[0]);
 				int previousChannel = Integer.valueOf(stationParts[1]);
