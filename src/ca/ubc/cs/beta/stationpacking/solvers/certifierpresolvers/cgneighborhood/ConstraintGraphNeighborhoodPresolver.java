@@ -56,7 +56,7 @@ public class ConstraintGraphNeighborhoodPresolver implements ISolver {
 		//Check if there is any previous assignment to work with.
 		if(previousAssignment.isEmpty())
 		{
-			log.warn("No assignment to use for bounding pre-solving.");
+			log.debug("No assignment to use for bounding pre-solving.");
 			
 			watch.stop();
 			return new SolverResult(SATResult.TIMEOUT, watch.getElapsedTime());
@@ -83,7 +83,7 @@ public class ConstraintGraphNeighborhoodPresolver implements ISolver {
 		//Check if there are too many stations to make this procedure worthwhile.
 		if(missingStations.size()>MAX_MISSING_STATIONS)
 		{
-			log.warn("Too many missing stations in previous assignment ({}).",missingStations.size());
+			log.debug("Too many missing stations in previous assignment ({}).",missingStations.size());
 			
 			watch.stop();
 			return new SolverResult(SATResult.TIMEOUT,watch.getElapsedTime());
@@ -102,7 +102,7 @@ public class ConstraintGraphNeighborhoodPresolver implements ISolver {
 		//Check if there are too many stations to make this procedure worthwhile.
 		if(topackStations.size()>MAX_TO_PACK)
 		{
-			log.warn("Neighborhood to pack is too large ({}).",topackStations.size());
+			log.debug("Neighborhood to pack is too large ({}).",topackStations.size());
 			
 			watch.stop();
 			return new SolverResult(SATResult.TIMEOUT,watch.getElapsedTime());
