@@ -33,4 +33,10 @@ public class SATFCResult
 	{
 		return Collections.unmodifiableMap(fWitnessAssignment);
 	}
+	
+	@Override
+	public String toString()
+	{
+		return fRuntime+","+fResult+","+fWitnessAssignment.toString();
+	}
 }

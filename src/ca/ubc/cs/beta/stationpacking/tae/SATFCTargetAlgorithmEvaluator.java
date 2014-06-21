@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -24,6 +25,8 @@ import ca.ubc.cs.beta.aeatk.algorithmrunconfiguration.AlgorithmRunConfiguration;
 import ca.ubc.cs.beta.aeatk.algorithmrunresult.AlgorithmRunResult;
 import ca.ubc.cs.beta.aeatk.algorithmrunresult.ExistingAlgorithmRunResult;
 import ca.ubc.cs.beta.aeatk.algorithmrunresult.RunStatus;
+import ca.ubc.cs.beta.aeatk.algorithmrunresult.RunningAlgorithmRunResult;
+import ca.ubc.cs.beta.aeatk.algorithmrunresult.kill.StatusVariableKillHandler;
 import ca.ubc.cs.beta.aeatk.concurrent.threadfactory.SequentiallyNamedThreadFactory;
 import ca.ubc.cs.beta.aeatk.misc.watch.StopWatch;
 import ca.ubc.cs.beta.aeatk.probleminstance.ProblemInstance;
@@ -38,7 +41,7 @@ import ca.ubc.cs.beta.stationpacking.facade.SATFCResult;
  * Target algorithm evaluator that wraps around the SATFC facade and only
  * solves, synchronously, station packing feasibility problems.
  * 
- * @author afrechet
+ * @author afrechet, seramage
  */
 public class SATFCTargetAlgorithmEvaluator extends
 		AbstractSyncTargetAlgorithmEvaluator {
@@ -56,7 +59,18 @@ public class SATFCTargetAlgorithmEvaluator extends
 	private static final Semaphore fUniqueSATFCTAESemaphore = new Semaphore(1);
 
 	public SATFCTargetAlgorithmEvaluator(SATFCFacade aSATFCFacade, String aStationConfigFolder) {
-
+		
+		if(aSATFCFacade == null)
+		{
+			throw new IllegalArgumentException("Cannot provide a null SATFC facade.");
+		}
+		
+		if(aStationConfigFolder == null)
+		{
+			throw new IllegalArgumentException("Cannot provide a null station config folder.");
+		}
+		
+		
 		if (!new File(aStationConfigFolder).exists()) {
 			throw new IllegalArgumentException(
 					"Provided station config folder " + aStationConfigFolder
@@ -94,8 +108,8 @@ public class SATFCTargetAlgorithmEvaluator extends
 
 	@Override
 	public synchronized List<AlgorithmRunResult> evaluateRun(
-			List<AlgorithmRunConfiguration> arg0,
-			final TargetAlgorithmEvaluatorRunObserver arg1) {
+			List<AlgorithmRunConfiguration> aRuns,
+			final TargetAlgorithmEvaluatorRunObserver aObserver) {
 
 		try {
 			if (!fUniqueSATFCTAESemaphore.tryAcquire()) {
@@ -104,7 +118,7 @@ public class SATFCTargetAlgorithmEvaluator extends
 			}
 
 			List<AlgorithmRunResult> results = new ArrayList<AlgorithmRunResult>(
-					arg0.size());
+					aRuns.size());
 
 			// Initialize observation structures.
 			final Map<AlgorithmRunConfiguration, AlgorithmRunResult> resultMap = Collections
@@ -112,121 +126,158 @@ public class SATFCTargetAlgorithmEvaluator extends
 			final Map<AlgorithmRunConfiguration, StopWatch> watchMap = Collections
 					.synchronizedMap(new LinkedHashMap<AlgorithmRunConfiguration, StopWatch>());
 
-			for (AlgorithmRunConfiguration config : arg0) {
-				resultMap.put(config, new ExistingAlgorithmRunResult(config,
-						RunStatus.RUNNING, 0.0, 0.0, 0.0, config
-								.getProblemInstanceSeedPair().getSeed(), 0.0));
+			final Map<AlgorithmRunConfiguration, StatusVariableKillHandler> rcToKillMap = new ConcurrentHashMap<>();
+			
+			for (AlgorithmRunConfiguration config : aRuns) {
+				StatusVariableKillHandler kh = new StatusVariableKillHandler();
+				resultMap.put(config, new RunningAlgorithmRunResult(config,0.0, 0.0, 0.0, config.getProblemInstanceSeedPair().getSeed(), 0.0, kh));
+				rcToKillMap.put(config, kh);
 				watchMap.put(config, new StopWatch());
 			}
 
+			
+			
+			
+			
 			// Start observer thread.
 			Runnable observerThread = new Runnable() {
 				@Override
-				public void run() {
+				public synchronized void run() {
 
 					List<AlgorithmRunResult> currentResults = new ArrayList<AlgorithmRunResult>(
 							resultMap.size());
 
-					for (AlgorithmRunConfiguration config : resultMap.keySet()) {
+					for (AlgorithmRunConfiguration config : resultMap.keySet())
+					{
 						AlgorithmRunResult result = resultMap.get(config);
-						if (result.getRunStatus().equals(RunStatus.RUNNING)) {
+						if (result.getRunStatus().equals(RunStatus.RUNNING))
+						{
 							StopWatch configWatch = watchMap.get(config);
 
-							synchronized (configWatch) {
-								currentResults
-										.add(new ExistingAlgorithmRunResult(
+							synchronized (configWatch)
+							{
+								currentResults.add(new RunningAlgorithmRunResult(
 												config,
-												RunStatus.RUNNING,
 												0.0,
 												0.0,
 												0.0,
 												config.getProblemInstanceSeedPair().getSeed(),
-												configWatch.time()/1000.0));
+												configWatch.time()/1000.0, rcToKillMap.get(config)));
 							}
+						} else
+						{
+							currentResults.add(result);
 						}
 					}
 
-					arg1.currentStatus(currentResults);
+					aObserver.currentStatus(currentResults);
 				}
 			};
 
+			
+			
+			observerThread.run();
 			ScheduledFuture<?> observerFuture = fObserverThreadPool.scheduleAtFixedRate(observerThread, 0, 15,	TimeUnit.SECONDS);
 
-			for (AlgorithmRunConfiguration config : arg0) {
-
-				StopWatch configWatch = watchMap.get(config);
-				synchronized (configWatch) {
-					configWatch.start();
-				}
-				log.debug("Solving instance corresponding to algo run config \"{}\"",config);
+			for (AlgorithmRunConfiguration config : aRuns) {
 				
-				log.debug("Transforming config into SATFC problem...");
-				// Transform algorithm run configuration to SATFC problem.
-				SATFCProblem problem = new SATFCProblem(config);
-
-				log.debug("Giving problem to SATFC facade...");
-				// Solve the problem.
-				SATFCResult result = fSATFCFacade.solve(
-						problem.getStations(),
-						problem.getChannels(),
-						problem.getReducedDomains(),
-						problem.getPreviousAssignment(),
-						problem.getCutoff(),
-						problem.getSeed(),
-						fStationConfigFolder + File.separator
-								+ problem.getStationConfigFolder());
-
-				log.debug("Transforming SATFC facade result to TAE result...");
-				// Transform result to algorithm run result.
-				RunStatus status;
-				String additionalRunData;
-				switch (result.getResult()) {
-				case SAT:
-					status = RunStatus.SAT;
-					//Send back the witness assignment.
-					Map<Integer, Integer> witness = result.getWitnessAssignment();
-					StringBuilder sb = new StringBuilder();
-					Iterator<Entry<Integer, Integer>> entryIterator = witness.entrySet().iterator();
-					while (entryIterator.hasNext()) {
-						Entry<Integer, Integer> entry = entryIterator.next();
-						int stationID = entry.getKey();
-						int channel = entry.getValue();
-
-						sb.append(stationID + "=" + channel);
-
-						if (entryIterator.hasNext()) {
-							sb.append(",");
-						}
-					}
-					additionalRunData = sb.toString();
-					break;
-				case UNSAT:
-					status = RunStatus.UNSAT;
-					additionalRunData = "";
-					break;
-				case TIMEOUT:
-					status = RunStatus.TIMEOUT;
-					additionalRunData = "";
-					break;
-				default:
-					status = RunStatus.CRASHED;
-					additionalRunData = "";
-					break;
-				}
-
+				
 				ExistingAlgorithmRunResult runResult;
-				synchronized (configWatch) {
-					configWatch.stop();
+				
+				
+				if (!rcToKillMap.get(config).isKilled())
+				{	
+					StopWatch configWatch = watchMap.get(config);
+					synchronized (configWatch) {
+						configWatch.start();
+					}
+					
+					log.debug("Solving instance corresponding to algo run config \"{}\"",config);
+					
+					log.debug("Transforming config into SATFC problem...");
+					// Transform algorithm run configuration to SATFC problem.
+					
+					SATFCProblem problem = new SATFCProblem(config);
+	
+					log.debug("Giving problem to SATFC facade...");
+					// Solve the problem.
+					SATFCResult result = fSATFCFacade.solve(
+							problem.getStations(),
+							problem.getChannels(),
+							problem.getReducedDomains(),
+							problem.getPreviousAssignment(),
+							problem.getCutoff(),
+							problem.getSeed(),
+							fStationConfigFolder + File.separator
+									+ problem.getStationConfigFolder());
+	
+					log.debug("Transforming SATFC facade result to TAE result...");
+					// Transform result to algorithm run result.
+					RunStatus status;
+					String additionalRunData;
+					switch (result.getResult()) {
+					case SAT:
+						status = RunStatus.SAT;
+						//Send back the witness assignment.
+						Map<Integer, Integer> witness = result.getWitnessAssignment();
+						StringBuilder sb = new StringBuilder();
+						Iterator<Entry<Integer, Integer>> entryIterator = witness.entrySet().iterator();
+						while (entryIterator.hasNext()) {
+							Entry<Integer, Integer> entry = entryIterator.next();
+							int stationID = entry.getKey();
+							int channel = entry.getValue();
+	
+							sb.append(stationID + "=" + channel);
+	
+							if (entryIterator.hasNext()) {
+								sb.append(",");
+							}
+						}
+						additionalRunData = sb.toString();
+						break;
+					case UNSAT:
+						status = RunStatus.UNSAT;
+						additionalRunData = "";
+						break;
+					case TIMEOUT:
+						status = RunStatus.TIMEOUT;
+						additionalRunData = "";
+						break;
+					default:
+						status = RunStatus.CRASHED;
+						additionalRunData = "";
+						break;
+					}
+	
+	
+					synchronized (configWatch) {
+						configWatch.stop();
+						runResult = new ExistingAlgorithmRunResult(
+								config, 
+								status,
+								result.getRuntime(), 
+								result.getRuntime(),
+								result.getRuntime(),
+								problem.getSeed(),
+								additionalRunData,
+								configWatch.time()/1000.0);
+					}
+				} else
+				{
+					log.debug("Run has been preemptively killed in SATFC TAE");
+					
 					runResult = new ExistingAlgorithmRunResult(
 							config, 
-							status,
-							result.getRuntime(), 
-							result.getRuntime(),
-							result.getRuntime(),
-							problem.getSeed(),
-							additionalRunData,
-							configWatch.time()/1000.0);
+							RunStatus.KILLED,
+							0, 
+							0,
+							0,
+							config.getProblemInstanceSeedPair().getSeed(),
+							"Killed Preemptively before starting in SATFC TAE by Steve Ramage, Handsome Developer",
+							0);
+				
 				}
+				
 
 				resultMap.put(config, runResult);
 
