@@ -48,7 +48,7 @@ public class SATFCTargetAlgorithmEvaluator extends
 	
 	private static final Logger log = LoggerFactory.getLogger(SATFCTargetAlgorithmEvaluator.class);
 	
-	public final static String SATFCONTEXTKEY = "SATFC_CONTEXT";
+	public final static String SATFC_CONTEXT_KEY = "SATFC_CONTEXT";
 
 	private final SATFCFacade fSATFCFacade;
 
@@ -134,9 +134,6 @@ public class SATFCTargetAlgorithmEvaluator extends
 				rcToKillMap.put(config, kh);
 				watchMap.put(config, new StopWatch());
 			}
-
-			
-			
 			
 			
 			// Start observer thread.
@@ -223,7 +220,9 @@ public class SATFCTargetAlgorithmEvaluator extends
 						StringBuilder sb = new StringBuilder();
 						Iterator<Entry<Integer, Integer>> entryIterator = witness.entrySet().iterator();
 						while (entryIterator.hasNext()) {
+							
 							Entry<Integer, Integer> entry = entryIterator.next();
+							
 							int stationID = entry.getKey();
 							int channel = entry.getValue();
 	
@@ -275,9 +274,7 @@ public class SATFCTargetAlgorithmEvaluator extends
 							config.getProblemInstanceSeedPair().getSeed(),
 							"Killed Preemptively before starting in SATFC TAE by Steve Ramage, Handsome Developer",
 							0);
-				
 				}
-				
 
 				resultMap.put(config, runResult);
 
@@ -312,7 +309,7 @@ public class SATFCTargetAlgorithmEvaluator extends
 			// problem.
 			if (!aConfig.getAlgorithmExecutionConfiguration()
 					.getTargetAlgorithmExecutionContext()
-					.containsKey(SATFCONTEXTKEY)) {
+					.containsKey(SATFC_CONTEXT_KEY)) {
 				throw new TargetAlgorithmAbortException(
 						"Provided algorithm execution config is not meant for a SATFC TAE.");
 			}
