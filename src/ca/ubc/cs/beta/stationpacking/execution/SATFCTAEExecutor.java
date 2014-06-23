@@ -34,7 +34,7 @@ public class SATFCTAEExecutor {
 		String instance = "SATFC-TAE_TestInstance.csv";
 		
 		Map<String,String> context =  new HashMap<String,String>();
-		context.put(SATFCTargetAlgorithmEvaluator.SATFCONTEXTKEY, SATFCTargetAlgorithmEvaluator.SATFCONTEXTKEY);
+		context.put(SATFCTargetAlgorithmEvaluator.SATFC_CONTEXT_KEY, SATFCTargetAlgorithmEvaluator.SATFC_CONTEXT_KEY);
 		
 		AlgorithmRunConfiguration config = new AlgorithmRunConfiguration(
 				new ProblemInstanceSeedPair(new ProblemInstance(instance), 0),
