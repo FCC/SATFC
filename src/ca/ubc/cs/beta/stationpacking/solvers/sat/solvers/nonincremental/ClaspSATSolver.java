@@ -2,8 +2,11 @@ package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental;
 
 import java.util.HashSet;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -41,6 +44,8 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 	private String fParameters;
 	private int fMaxArgs;
 	private final AtomicBoolean fInterrupt = new AtomicBoolean(false);
+	
+	private final ExecutorService fTimerService = Executors.newCachedThreadPool(new SequentiallyNamedThreadFactory("Clasp SAT Solver Timers", true));
 	
 	public ClaspSATSolver(String libraryPath, String parameters)
 	{
@@ -113,7 +118,6 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		final AtomicBoolean timedOut = new AtomicBoolean(false);
 		
 		final double cutoff = aTerminationCriterion.getRemainingTime();
-		ScheduledExecutorService timerService = Executors.newScheduledThreadPool(2,new SequentiallyNamedThreadFactory("Clasp SAT Solver Timers", true));
 		
 		watch.stop();
 		double preTime = watch.getElapsedTime();
@@ -121,26 +125,67 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		watch.reset();
 		watch.start();
 		
+		final CountDownLatch timerCountdownLatch = new CountDownLatch(2);
+		
 		// Launches a timer that will set the interrupt flag of the result object to true after aCutOff seconds. 
-		timerService.schedule(new Runnable(){
-			@Override
-			public void run() {
-				log.trace("Interrupting clasp as we are past cutoff of {} s.",cutoff);
-				fClaspLibrary.interrupt(facade);
-				timedOut.set(true);
-			}}, (long) (cutoff*1000), TimeUnit.MILLISECONDS);
+		Future<?> timeoutFuture = fTimerService.submit(
+		        new Runnable(){
+            			@Override
+            			public void run() {
+            			    try
+            			    {
+                                try {
+                                    Thread.sleep((long) cutoff*1000);
+                                } catch (InterruptedException e) {
+                                    //Interrupt current thread and avoid any solver interruption.
+                                    Thread.currentThread().interrupt();
+                                    return;
+                                }
+                                
+                				log.trace("Interrupting clasp as we are past cutoff of {} s.",cutoff);
+                				fClaspLibrary.interrupt(facade);
+                				timedOut.set(true);
+            			    }
+            			    finally
+            			    {
+            			        timerCountdownLatch.countDown();
+            			    }
+            			}
+        		    });
+		
 		// listens for thread interruption every 1 seconds, if the thread is interrupted, interrupt the library and return gracefully
 		//while returning null (free library memory, etc.)
-		timerService.scheduleWithFixedDelay(new Runnable(){
-			@Override
-			public void run() {
-				if (fInterrupt.get() || aTerminationCriterion.hasToStop())
-				{
-					log.trace("Clasp interruption was triggered.");
-					fClaspLibrary.interrupt(facade);
-				}
-				
-			}}, 1, 1, TimeUnit.SECONDS);
+		Future<?> interruptFuture = fTimerService.submit(
+		        new Runnable(){
+        			@Override
+        			public void run() {
+        			    
+        			    try
+        			    {
+            			    while(true)
+            			    {
+                				if (fInterrupt.get() || aTerminationCriterion.hasToStop())
+                				{
+                					log.trace("Clasp interruption was triggered.");
+                					fClaspLibrary.interrupt(facade);
+                				}
+                				
+                				try {
+                                    Thread.sleep(1*1000);
+                                } catch (InterruptedException e) {
+                                    //Interrupt current thread and avoid any solver interruption.
+                                    Thread.currentThread().interrupt();
+                                    return;
+                                }
+                				
+            			    }
+        			    }
+        			    finally
+        			    {
+        			        timerCountdownLatch.countDown();
+        			    }
+        			}
+        		});
 
 		// Start solving
 		log.debug("Send problem to clasp cutting off after "+cutoff+"s");
@@ -156,43 +201,53 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		watch.start();
 		
 		//Terminate timing tasks.
-		timerService.shutdownNow();
-		boolean interrupted = false;
-		boolean terminated = false;
+		
+		timeoutFuture.cancel(true);
+		interruptFuture.cancel(true);
 		try {
-			for(int i=1;i<=TIMER_TERMINATION_RETRY_COUNTS;i++)
-			{
-					try
-					{
-						terminated = timerService.awaitTermination(TIMER_TERMINATION_WAIT_TIME, TimeUnit.SECONDS);
-						if(!terminated)
-						{
-							log.error("Could not terminate clasp timer tasks within {} seconds on {}-th attempt, will try one more time.",TIMER_TERMINATION_WAIT_TIME,i);
-						}
-					}
-					catch(InterruptedException e)
-					{
-						interrupted = true;
-						break;
-					}
-			}
-		}
-		finally
-		{
-			if(interrupted)
-			{
-				Thread.currentThread().interrupt();
-				throw new IllegalStateException("Clasp was interrupted while it was terminating its timer tasks.");
-			}
-			if(!terminated)
-			{
-				throw new IllegalStateException("Could no terminate clasp timer tasks in "+TIMER_TERMINATION_RETRY_COUNTS+" attempts of "+TIMER_TERMINATION_WAIT_TIME+" seconds.");
-			}
-		}
+            timerCountdownLatch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            e.printStackTrace();
+            log.error("Unexpected thread interruption.",e);
+        }
+		
+		
+//		timerService.shutdownNow();
+//		boolean interrupted = false;
+//		boolean terminated = false;
+//		try {
+//			for(int i=1;i<=TIMER_TERMINATION_RETRY_COUNTS;i++)
+//			{
+//				try
+//				{
+//					terminated = timerService.awaitTermination(TIMER_TERMINATION_WAIT_TIME, TimeUnit.SECONDS);
+//					if(!terminated)
+//					{
+//						log.error("Could not terminate clasp timer tasks within {} seconds on {}-th attempt, will try one more time.",TIMER_TERMINATION_WAIT_TIME,i);
+//					}
+//				}
+//				catch(InterruptedException e)
+//				{
+//					interrupted = true;
+//					break;
+//				}
+//			}
+//		}
+//		finally
+//		{
+//			if(interrupted)
+//			{
+//				Thread.currentThread().interrupt();
+//				throw new IllegalStateException("Clasp was interrupted while it was terminating its timer tasks.");
+//			}
+//			if(!terminated)
+//			{
+//				throw new IllegalStateException("Could no terminate clasp timer tasks in "+TIMER_TERMINATION_RETRY_COUNTS+" attempts of "+TIMER_TERMINATION_WAIT_TIME+" seconds.");
+//			}
+//		}
 		
 		ClaspResult claspResult = getSolverResult(fClaspLibrary, result, timedOut, fInterrupt, runtime);
-		//TODO Why do we not need a notifyEvent here? Is the thread busy waiting while we getSolverResult? 
-		//aTerminationCriterion.notifyEvent(claspResult.getRuntime());
 		
 		HashSet<Literal> assignment = parseAssignment(claspResult.getAssignment());
 
@@ -223,7 +278,10 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 	}
 	
 	@Override
-	public void notifyShutdown() {}
+	public void notifyShutdown() 
+	{
+	    //No shutdown necessary.
+	}
 
 	@Override
 	public void interrupt() throws UnsupportedOperationException 
