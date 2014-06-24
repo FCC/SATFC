@@ -17,6 +17,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +61,13 @@ public class SATFCTargetAlgorithmEvaluator extends
 
 	public SATFCTargetAlgorithmEvaluator(SATFCFacade aSATFCFacade, String aStationConfigFolder) {
 		
+	    /*
+	     * Since asynchronous evaluations are guaranteed by the {@link AbstractSyncTargetAlgorithmEvaluator}, but the SATFCTAE is inherently synchronous,
+	     * we constrained the AbstractSyncTargetAlgorithmEvaluator supertype to only use 2 threads.
+	     */
+	    
+	    super(2);
+	    
 		if(aSATFCFacade == null)
 		{
 			throw new IllegalArgumentException("Cannot provide a null SATFC facade.");
@@ -105,7 +113,7 @@ public class SATFCTargetAlgorithmEvaluator extends
 	protected void subtypeShutdown() {
 		fSATFCFacade.close();
 	}
-
+	
 	@Override
 	public synchronized List<AlgorithmRunResult> evaluateRun(
 			List<AlgorithmRunConfiguration> aRuns,
@@ -121,28 +129,29 @@ public class SATFCTargetAlgorithmEvaluator extends
 					aRuns.size());
 
 			// Initialize observation structures.
-			final Map<AlgorithmRunConfiguration, AlgorithmRunResult> resultMap = Collections
-					.synchronizedMap(new LinkedHashMap<AlgorithmRunConfiguration, AlgorithmRunResult>());
-			final Map<AlgorithmRunConfiguration, StopWatch> watchMap = Collections
-					.synchronizedMap(new LinkedHashMap<AlgorithmRunConfiguration, StopWatch>());
+			final Map<AlgorithmRunConfiguration, AlgorithmRunResult> resultMap = Collections.synchronizedMap(new LinkedHashMap<AlgorithmRunConfiguration, AlgorithmRunResult>());
+			final Map<AlgorithmRunConfiguration, StopWatch> watchMap = Collections.synchronizedMap(new LinkedHashMap<AlgorithmRunConfiguration, StopWatch>());
 
-			final Map<AlgorithmRunConfiguration, StatusVariableKillHandler> rcToKillMap = new ConcurrentHashMap<>();
+			final Map<AlgorithmRunConfiguration, StatusVariableKillHandler> runconfigToKillMap = new ConcurrentHashMap<>();
+			
+			AtomicReference<AlgorithmRunConfiguration> currentRun = new AtomicReference<AlgorithmRunConfiguration>();
 			
 			for (AlgorithmRunConfiguration config : aRuns) {
-				StatusVariableKillHandler kh = new StatusVariableKillHandler();
-				resultMap.put(config, new RunningAlgorithmRunResult(config,0.0, 0.0, 0.0, config.getProblemInstanceSeedPair().getSeed(), 0.0, kh));
-				rcToKillMap.put(config, kh);
+				StatusVariableKillHandler killHandler = new StatusVariableKillHandler();
+				resultMap.put(config, new RunningAlgorithmRunResult(config,0.0, 0.0, 0.0, config.getProblemInstanceSeedPair().getSeed(), 0.0, killHandler));
+				runconfigToKillMap.put(config, killHandler);
 				watchMap.put(config, new StopWatch());
 			}
 			
 			
-			// Start observer thread.
+			
+			//Observer thread.
 			Runnable observerThread = new Runnable() {
 				@Override
 				public synchronized void run() {
-
-					List<AlgorithmRunResult> currentResults = new ArrayList<AlgorithmRunResult>(
-							resultMap.size());
+				    
+				    //Update current status for wallclock time.
+					List<AlgorithmRunResult> currentResults = new ArrayList<AlgorithmRunResult>(resultMap.size());
 
 					for (AlgorithmRunConfiguration config : resultMap.keySet())
 					{
@@ -159,30 +168,30 @@ public class SATFCTargetAlgorithmEvaluator extends
 												0.0,
 												0.0,
 												config.getProblemInstanceSeedPair().getSeed(),
-												configWatch.time()/1000.0, rcToKillMap.get(config)));
+												configWatch.time()/1000.0,
+												runconfigToKillMap.get(config)));
 							}
-						} else
+						} 
+						else
 						{
 							currentResults.add(result);
 						}
 					}
-
+					
 					aObserver.currentStatus(currentResults);
 				}
 			};
 
 			
-			
+			//Start observer thread.
 			observerThread.run();
 			ScheduledFuture<?> observerFuture = fObserverThreadPool.scheduleAtFixedRate(observerThread, 0, 15,	TimeUnit.SECONDS);
 
 			for (AlgorithmRunConfiguration config : aRuns) {
 				
-				
 				ExistingAlgorithmRunResult runResult;
 				
-				
-				if (!rcToKillMap.get(config).isKilled())
+				if (!runconfigToKillMap.get(config).isKilled())
 				{	
 					StopWatch configWatch = watchMap.get(config);
 					synchronized (configWatch) {
