@@ -2,6 +2,7 @@ bin
 build
 build-resources/private
 dist
+version
 *.ods
 *.o
 *.pyc
@@ -91,4 +92,4 @@ src/ca/ubc/cs/beta/stationpacking/solvers/termination/cputime/CPUTimeTermination
 src/ca/ubc/cs/beta/stationpacking/solvers/termination/cputime/CPUTimeTerminationCriterionFactory.class
 src/ca/ubc/cs/beta/stationpacking/solvers/termination/walltime/WalltimeTerminationCriterion.class
 /.apt_generated
-version/*
+
