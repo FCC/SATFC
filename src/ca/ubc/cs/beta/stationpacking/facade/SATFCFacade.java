@@ -129,6 +129,7 @@ public class SATFCFacade implements AutoCloseable{
 				
 				);
 	}
+		
 	
 	/**
 	 * Solve a station packing problem. 
@@ -230,10 +231,10 @@ public class SATFCFacade implements AutoCloseable{
 		log.debug("all channels: {}.",instance.getAllChannels());
 		log.debug("Previous assignment: {}",instance.getPreviousAssignment());
 		
-		
+    	SolverResult result; 
 		//Solve instance.
-		SolverResult result = solver.solve(instance, termination, aSeed);
-		
+		result = solver.solve(instance, termination, aSeed);
+    		
 		log.debug("Transforming result into SATFC output...");
 		//Transform back solver result to output result.
 		Map<Integer,Integer> witness = new HashMap<Integer,Integer>();
@@ -251,6 +252,7 @@ public class SATFCFacade implements AutoCloseable{
 		log.debug("Result: {}.",outputResult);
 		
 		return outputResult;
+	
 	}
 	
 	/**
