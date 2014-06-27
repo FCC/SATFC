@@ -121,6 +121,7 @@ public class SATFCTargetAlgorithmEvaluator extends
 		try {
 			if (!fUniqueSATFCTAESemaphore.tryAcquire()) {
 				System.out.println("[WARNING] Multiple SATFC TAEs probably exist, and this implementation does not support concurrent executions.");
+				log.warn("Multiple SATFC TAEs probably exist, and this implementation does not support concurrent executions.");
 				fUniqueSATFCTAESemaphore.acquireUninterruptibly();
 			}
 
