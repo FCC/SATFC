@@ -11,7 +11,7 @@ import ca.ubc.cs.beta.aeatk.algorithmrunresult.RunStatus;
 public enum SATResult implements Serializable{
 	SAT,UNSAT,TIMEOUT,CRASHED,KILLED,INTERRUPTED;
 	
-	public SATResult fromRunResult(RunStatus aRunResult)
+	public static SATResult fromRunResult(RunStatus aRunResult)
 	{	
 		return SATResult.valueOf(aRunResult.toString());
 	}
