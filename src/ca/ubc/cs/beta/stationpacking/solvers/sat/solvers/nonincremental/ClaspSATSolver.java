@@ -6,9 +6,12 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +48,14 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 	private int fMaxArgs;
 	private final AtomicBoolean fInterrupt = new AtomicBoolean(false);
 	
-	private final ExecutorService fTimerService = Executors.newCachedThreadPool(new SequentiallyNamedThreadFactory("Clasp SAT Solver Timers", true));
+	private final ScheduledExecutorService fTimerService = Executors.newScheduledThreadPool(4,new SequentiallyNamedThreadFactory("Clasp SAT Solver Timers", true));
+	
+	
+	/**
+	 * Integer flag that we use to keep track of our current request, cutoff and timer threads will only execute if
+	 * this matches the id when they started.
+	 */
+	private final AtomicLong currentRequestID = new AtomicLong(10_10_1998);
 	
 	public ClaspSATSolver(String libraryPath, String parameters)
 	{
@@ -103,6 +113,7 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		
 		Watch watch = Watch.constructAutoStartWatch();
 		
+		final long MY_REQUEST_ID = currentRequestID.incrementAndGet();
 		// create the facade
 		final Pointer facade = fClaspLibrary.createFacade();
 		
@@ -125,75 +136,62 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		watch.reset();
 		watch.start();
 		
-		final CountDownLatch timerCountdownLatch = new CountDownLatch(2);
 		
 		// Launches a timer that will set the interrupt flag of the result object to true after aCutOff seconds. 
-		Future<?> timeoutFuture = fTimerService.submit(
+		Future<?> timeoutFuture = fTimerService.schedule(
 		        new Runnable(){
             			@Override
             			public void run() {
-            			    try
-            			    {
-                                try {
-                                    Thread.sleep((long) cutoff*1000);
-                                } catch (InterruptedException e) {
-                                    //Interrupt current thread and avoid any solver interruption.
-                                    Thread.currentThread().interrupt();
-                                    return;
-                                }
-                                
+            			    
+                            if(MY_REQUEST_ID == currentRequestID.get())
+                            {
                 				log.trace("Interrupting clasp as we are past cutoff of {} s.",cutoff);
                 				fClaspLibrary.interrupt(facade);
                 				timedOut.set(true);
-            			    }
-            			    finally
-            			    {
-            			        timerCountdownLatch.countDown();
-            			    }
+                            } 
+            			    
             			}
-        		    });
+        		    },(long) cutoff, TimeUnit.SECONDS);
 		
 		// listens for thread interruption every 1 seconds, if the thread is interrupted, interrupt the library and return gracefully
 		//while returning null (free library memory, etc.)
-		Future<?> interruptFuture = fTimerService.submit(
+		
+		final int SCHEDULING_FREQUENCY_IN_SECONDS = 1;
+		Future<?> interruptFuture = fTimerService.schedule(
 		        new Runnable(){
         			@Override
-        			public void run() {
-        			    
-        			    try
-        			    {
-            			    while(true)
+        			public void run() 
+        			{       			    
+            			    if(MY_REQUEST_ID == currentRequestID.get())
             			    {
                 				if (fInterrupt.get() || aTerminationCriterion.hasToStop())
                 				{
                 					log.trace("Clasp interruption was triggered.");
                 					fClaspLibrary.interrupt(facade);
                 					return;
+                				} else
+                				{
+                					fTimerService.schedule(this, SCHEDULING_FREQUENCY_IN_SECONDS, TimeUnit.SECONDS);
                 				}
-                				
-                				try {
-                                    Thread.sleep(1*1000);
-                                } catch (InterruptedException e) {
-                                    //Interrupt current thread and avoid any solver interruption.
-                                    Thread.currentThread().interrupt();
-                                    return;
-                                }
-                				
             			    }
-        			    }
-        			    finally
-        			    {
-        			        timerCountdownLatch.countDown();
-        			    }
         			}
-        		});
+        		},SCHEDULING_FREQUENCY_IN_SECONDS,TimeUnit.SECONDS);
+		
 
 		// Start solving
 		log.debug("Send problem to clasp cutting off after "+cutoff+"s");
 		
 		fClaspLibrary.jnasolve(facade, problem, config, result);
 		
+		//We will increment this immediately,
+		//This will have the effect of causing the runnables above to stop running sooner.
+		currentRequestID.incrementAndGet();
+		
+		
 		log.trace("Came back from clasp.");
+		
+		timeoutFuture.cancel(true);
+		interruptFuture.cancel(true);
 		
 		watch.stop();
 		double runtime = watch.getElapsedTime();
@@ -202,18 +200,7 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		watch.start();
 		
 		//Terminate timing tasks.
-		
-		timeoutFuture.cancel(true);
-		interruptFuture.cancel(true);
-		try {
-            timerCountdownLatch.await();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            e.printStackTrace();
-            log.error("Unexpected thread interruption.",e);
-        }
-		
-		
+				
 //		timerService.shutdownNow();
 //		boolean interrupted = false;
 //		boolean terminated = false;
