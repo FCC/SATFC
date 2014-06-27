@@ -33,7 +33,7 @@ import com.sun.jna.ptr.IntByReference;
 /**
  * Implements a SAT solver using the jnaclasplibrary.so.  It gracefully handles thread interruptions while solve() is executing
  * and returns a null answer in that case.
- * @author gsauln, afrechet
+ * @author gsauln, afrechet, seramage
  */
 public class ClaspSATSolver extends AbstractCompressedSATSolver
 {
@@ -55,7 +55,7 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 	 * Integer flag that we use to keep track of our current request, cutoff and timer threads will only execute if
 	 * this matches the id when they started.
 	 */
-	private final AtomicLong currentRequestID = new AtomicLong(10_10_1998);
+	private final AtomicLong currentRequestID = new AtomicLong(1);
 	
 	public ClaspSATSolver(String libraryPath, String parameters)
 	{
