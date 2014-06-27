@@ -168,6 +168,7 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
                 				{
                 					log.trace("Clasp interruption was triggered.");
                 					fClaspLibrary.interrupt(facade);
+                					return;
                 				}
                 				
                 				try {

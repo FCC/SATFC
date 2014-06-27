@@ -17,7 +17,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -133,8 +132,6 @@ public class SATFCTargetAlgorithmEvaluator extends
 			final Map<AlgorithmRunConfiguration, StopWatch> watchMap = Collections.synchronizedMap(new LinkedHashMap<AlgorithmRunConfiguration, StopWatch>());
 
 			final Map<AlgorithmRunConfiguration, StatusVariableKillHandler> runconfigToKillMap = new ConcurrentHashMap<>();
-			
-			AtomicReference<AlgorithmRunConfiguration> currentRun = new AtomicReference<AlgorithmRunConfiguration>();
 			
 			for (AlgorithmRunConfiguration config : aRuns) {
 				StatusVariableKillHandler killHandler = new StatusVariableKillHandler();

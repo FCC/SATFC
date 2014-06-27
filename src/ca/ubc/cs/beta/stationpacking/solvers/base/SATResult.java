@@ -4,8 +4,6 @@ import java.io.Serializable;
 
 import ca.ubc.cs.beta.aeatk.algorithmrunresult.RunStatus;
 
-
-
 /**
  * Enum for the result type of a SAT solver on a SAT instance.
  * @author afrechet
