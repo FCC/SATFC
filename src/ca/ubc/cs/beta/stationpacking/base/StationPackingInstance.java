@@ -44,7 +44,7 @@ public class StationPackingInstance {
 			Integer previousChannel = aPreviousAssignment.get(station);
 			if(previousChannel != null && !aDomains.get(station).contains(previousChannel))
 			{
-				throw new IllegalArgumentException("Provided previous assignment assigned channel "+previousChannel+" to station "+station+" which is not in its domain "+aDomains.get(station)+".");
+				throw new IllegalArgumentException("Provided previous assignment assigned channel "+previousChannel+" to station "+station+" which is not in its problem domain "+aDomains.get(station)+".");
 			}
 			
 			if(aDomains.get(station).isEmpty())

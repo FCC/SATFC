@@ -33,9 +33,9 @@ import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Collections2;
 
-public class CNFExtractor {
+public class QuestionToCNFConverter {
 	
-	private static Logger log = LoggerFactory.getLogger(CNFExtractor.class);
+	private static Logger log = LoggerFactory.getLogger(QuestionToCNFConverter.class);
 	
 	private final static String USAGE = "Usage:\n\n" +
 										"java -jar CNFExtractor.jar <output directory> <question filename 1> ... <question filename k>\n\n"+

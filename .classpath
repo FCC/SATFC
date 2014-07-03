@@ -41,11 +41,11 @@
 	<classpathentry kind="lib" path="/AEATK/lib/jcip-annotations-src.jar"/>
 	<classpathentry kind="lib" path="/AEATK/lib/jcip-annotations.jar" sourcepath="/AEATK/lib/jcip-annotations-src.jar"/>
 	<classpathentry kind="lib" path="/AEATK/lib/jcommander.jar"/>
-	<classpathentry kind="lib" path="/AEATK/lib/logback-access-1.0.13.jar"/>
-	<classpathentry kind="lib" path="/AEATK/lib/logback-classic-1.0.13.jar"/>
-	<classpathentry kind="lib" path="/AEATK/lib/logback-core-1.0.13.jar"/>
 	<classpathentry kind="lib" path="/AEATK/lib/numerics4j-1.3.jar"/>
 	<classpathentry kind="lib" path="/AEATK/lib/opencsv-2.3.jar"/>
 	<classpathentry kind="lib" path="/AEATK/lib/spi-0.2.4.jar" sourcepath="/AEATK/lib/spi-0.2.4-src.jar"/>
+	<classpathentry kind="lib" path="/AEATK/lib/logback-access-1.1.2.jar"/>
+	<classpathentry kind="lib" path="/AEATK/lib/logback-classic-1.1.2.jar" sourcepath="/AEATK/libsrc/logback-classic-1.1.2-sources.jar"/>
+	<classpathentry kind="lib" path="/AEATK/lib/logback-core-1.1.2.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
