@@ -48,6 +48,7 @@ public class SATFCTargetAlgorithmEvaluator extends
 	
 	private static final Logger log = LoggerFactory.getLogger(SATFCTargetAlgorithmEvaluator.class);
 	
+	//Context key for a SATFC specific TAE run config.
 	public final static String SATFC_CONTEXT_KEY = "SATFC_CONTEXT";
 
 	private final SATFCFacade fSATFCFacade;
