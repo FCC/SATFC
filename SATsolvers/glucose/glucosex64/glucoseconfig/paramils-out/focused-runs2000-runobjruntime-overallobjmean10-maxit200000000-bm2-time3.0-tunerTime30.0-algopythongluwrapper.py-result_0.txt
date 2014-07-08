@@ -1,6 +1,0 @@
-Final best parameter configuration: -no-preprocess=1, glu-K=0.9, glu-R=4, glu-ccmin-mode=1, glu-cla-decay=0.999, glu-firstReduceDB=2000, glu-gc-frac=0.15, glu-incReduceDB=4000, glu-minLBDFrozenClause=0, glu-minLBDMinimizingClause=7, glu-minSizeMinimizingClause=4, glu-phase-saving=2, glu-rnd-freq=0.2, glu-rnd-init=1, glu-specialIncReduceDB=500, glu-szLBDQueue=10, glu-szTrailQueue=10, glu-var-decay=0.7, pre-all=1, pre-as=0, pre-cs1=1, pre-csk=1, pre-de=1, pre-det=1, pre-h1=1, pre-pl=1, pre-pre=1, pre-r=0, pre-s0=0, pre-s1=0, pre-s2=0, pre-ud=1, pre-ve=1
-==================================================================
-Active parameters: -no-preprocess=1, glu-K=0.9, glu-R=4, glu-ccmin-mode=1, glu-cla-decay=0.999, glu-firstReduceDB=2000, glu-gc-frac=0.15, glu-incReduceDB=4000, glu-minLBDFrozenClause=0, glu-minLBDMinimizingClause=7, glu-minSizeMinimizingClause=4, glu-phase-saving=2, glu-rnd-freq=0.2, glu-rnd-init=1, glu-specialIncReduceDB=500, glu-szLBDQueue=10, glu-szTrailQueue=10, glu-var-decay=0.7, pre-cs1=1
-==================================================================
-Training quality of this final best found parameter configuration: 0.0123234179712079, based on 62 runs with cutoff 3.0
-Test quality of this final best found parameter configuration: 0.0133460323810573, based on 1000 independent runs with cutoff 3.0
