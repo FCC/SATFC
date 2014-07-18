@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.tae.cli;
+package ca.ubc.cs.beta.stationpacking.tae.switchfc;
 
 import java.util.Map;
 
@@ -15,11 +15,11 @@ import ca.ubc.cs.beta.stationpacking.tae.SATFCTargetAlgorithmEvaluatorFactory;
 import ca.ubc.cs.beta.stationpacking.tae.SATFCTargetAlgorithmEvaluatorOptions;
 
 @ProviderFor(TargetAlgorithmEvaluatorFactory.class)
-public class SatfcCliTargetAlgorithmEvaluatorFactory extends AbstractTargetAlgorithmEvaluatorFactory {
+public class SwitchFCTargetAlgorithmEvaluatorFactory extends AbstractTargetAlgorithmEvaluatorFactory {
 
     @Override
     public String getName() {
-        return "SATFCSWITCH";
+        return "SWITCHFC";
     }
 
     @Override
@@ -38,14 +38,14 @@ public class SatfcCliTargetAlgorithmEvaluatorFactory extends AbstractTargetAlgor
         
         String configFolder = ((SATFCTargetAlgorithmEvaluatorOptions) optionsMap.get(satfcTaeFactory.getName())).fStationConfigFolder;
         
-        SatfcCliTargetAlgorithmEvaluatorOptions thisOptions = (SatfcCliTargetAlgorithmEvaluatorOptions) optionsMap.get(this.getName());
+        SwitchFCTargetAlgorithmEvaluatorOptions thisOptions = (SwitchFCTargetAlgorithmEvaluatorOptions) optionsMap.get(this.getName());
         
-        return new SatfcCliTargetAlgorithmEvaluator(satfcTae, cliTae, configFolder, thisOptions.fTmpDir);
+        return new SwitchFCTargetAlgorithmEvaluator(satfcTae, cliTae, configFolder, thisOptions.fTmpDir);
     }
 
     @Override
     public AbstractOptions getOptionObject() {
-        return new SatfcCliTargetAlgorithmEvaluatorOptions();
+        return new SwitchFCTargetAlgorithmEvaluatorOptions();
     }
 
 }
