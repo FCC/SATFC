@@ -1,4 +1,4 @@
-package ca.ubc.cs.beta.stationpacking.tae.cli;
+package ca.ubc.cs.beta.stationpacking.tae.switchfc;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -44,9 +44,9 @@ import ca.ubc.cs.beta.stationpacking.tae.SATFCTargetAlgorithmEvaluator;
 
 import com.beust.jcommander.internal.Lists;
 
-public class SatfcCliTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorithmEvaluator {
+public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorithmEvaluator {
 
-    private static final Logger log = LoggerFactory.getLogger(SatfcCliTargetAlgorithmEvaluator.class);
+    private static final Logger log = LoggerFactory.getLogger(SwitchFCTargetAlgorithmEvaluator.class);
 
     private final SATFCTargetAlgorithmEvaluator fSatfcTae;
     private final CommandLineTargetAlgorithmEvaluator fCliTae;
@@ -57,7 +57,7 @@ public class SatfcCliTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
     private final String fInterferencesConfigFolderDir;
     private final String fTmpDir;
 
-    SatfcCliTargetAlgorithmEvaluator(SATFCTargetAlgorithmEvaluator aSatfcTae, CommandLineTargetAlgorithmEvaluator aCliTae, String aInterferencesConfigFolderDir, String aTmpDir) {
+    SwitchFCTargetAlgorithmEvaluator(SATFCTargetAlgorithmEvaluator aSatfcTae, CommandLineTargetAlgorithmEvaluator aCliTae, String aInterferencesConfigFolderDir, String aTmpDir) {
         if (aSatfcTae == null) throw new IllegalArgumentException("SATFC TAE cannot be null.");
         if (aCliTae == null) throw new IllegalArgumentException("CLI TAE cannot be null.");
         if (aInterferencesConfigFolderDir == null) throw new IllegalArgumentException("Interferences folder cannot be null.");
