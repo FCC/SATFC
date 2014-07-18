@@ -2,7 +2,9 @@ package ca.ubc.cs.beta.stationpacking.execution;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -19,6 +21,7 @@ import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import au.com.bytecode.opencsv.CSVReader;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
@@ -113,212 +116,205 @@ public class EncodedInstanceToCNFConverter {
         
         log.debug("Reading instance from {} ...",encoded_instance_filename);
         
-        /*
-         * Get data from instance.
-         */
-        Map<Integer,Set<Integer>> stationID_domains = new HashMap<Integer,Set<Integer>>();
-        Map<Integer,Integer> previous_assignmentID = new HashMap<Integer,Integer>();
-        String config_foldername;
+ 
         
-        List<String> lines;
-        try {
-            //Get the first line of the file.
-            lines = FileUtils.readLines(encoded_instance_file);
-        } catch (IOException e) {
-            e.printStackTrace();
-            throw new IllegalArgumentException("Could not read encoded instance from file \""+encoded_instance_filename+"\".");
-        }
-        
-        if(lines.size()==0)
+        try(CSVReader reader = new CSVReader(new FileReader(encoded_instance_file), ',', '\"', '\n'))
         {
-            throw new IllegalArgumentException("There are no lines in encoded instance file \""+encoded_instance_filename+"\".");
-        }
-        
-        int l=0;
-        for(String line : lines)
-        {
-            System.out.println(line);
+            String[] row = null;
             
-            log.debug("Parsing instance {}/{} ...",++l,lines.size());
-            
-            String encoded_instance_string = line;
-            String[] encoded_instance_parts = encoded_instance_string.split("_");
-            
-            if(encoded_instance_parts.length == 0)
+            int l=0;
+            while((row = reader.readNext()) != null)
             {
-                throw new IllegalArgumentException("Unparseable encoded instance string \""+encoded_instance_string+"\".");
-            }
-            
-            //Get the config folder name.
-            config_foldername = interference_config_foldername + File.separator + encoded_instance_parts[0];
-            
-            //Get problem info.
-            for(int i=1;i<encoded_instance_parts.length;i++)
-            {
-                Integer station;
-                Integer previousChannel;
-                Set<Integer> domain;
                 
-                String station_info_string = encoded_instance_parts[i];
-                String[] station_info_parts = station_info_string.split(";");
+                /*
+                 * Get data from instance.
+                 */
+                Map<Integer,Set<Integer>> stationID_domains = new HashMap<Integer,Set<Integer>>();
+                Map<Integer,Integer> previous_assignmentID = new HashMap<Integer,Integer>();
+                String config_foldername;
                 
-                String station_string = station_info_parts[0];
-                if(isInteger(station_string))
+                
+                log.debug("Parsing instance {} ...",++l);
+                
+                String encoded_instance_string = row[2];
+                String[] encoded_instance_parts = encoded_instance_string.split("_");
+                
+                if(encoded_instance_parts.length == 0)
                 {
-                    station = Integer.parseInt(station_string);
-                }
-                else
-                {
-                    throw new IllegalArgumentException("Unparseable station info \""+station_info_string+"\" (station ID "+station_string+" is not an integer).");
+                    throw new IllegalArgumentException("Unparseable encoded instance string \""+encoded_instance_string+"\".");
                 }
                 
-                String previous_channel_string = station_info_parts[1];
-                if(isInteger(previous_channel_string))
+                //Get the config folder name.
+                config_foldername = interference_config_foldername + File.separator + encoded_instance_parts[0];
+                
+                //Get problem info.
+                for(int i=1;i<encoded_instance_parts.length;i++)
                 {
-                    previousChannel = Integer.parseInt(previous_channel_string);
-                    if(previousChannel <= 0)
+                    Integer station;
+                    Integer previousChannel;
+                    Set<Integer> domain;
+                    
+                    String station_info_string = encoded_instance_parts[i];
+                    String[] station_info_parts = station_info_string.split(";");
+                    
+                    String station_string = station_info_parts[0];
+                    if(isInteger(station_string))
                     {
-                        previousChannel = null;
-                    }
-                }
-                else
-                {
-                    throw new IllegalArgumentException("Unparseable station info \""+station_info_string+"\" (previous channel "+previous_channel_string+" is not an integer).");
-                }
-                
-                
-                domain = new HashSet<Integer>();
-                String channels_string = station_info_parts[2];
-                String[] channels_parts = channels_string.split(",");
-                for(String channel_string : channels_parts)
-                {
-                    if(isInteger(channel_string))
-                    {
-                        domain.add(Integer.parseInt(channel_string));
+                        station = Integer.parseInt(station_string);
                     }
                     else
                     {
-                        throw new IllegalArgumentException("Unparseable station info \""+station_info_string+"\" (domain channel "+channel_string+" is not an integer).");
+                        throw new IllegalArgumentException("Unparseable station info \""+station_info_string+"\" (station ID "+station_string+" is not an integer).");
+                    }
+                    
+                    String previous_channel_string = station_info_parts[1];
+                    if(isInteger(previous_channel_string))
+                    {
+                        previousChannel = Integer.parseInt(previous_channel_string);
+                        if(previousChannel <= 0)
+                        {
+                            previousChannel = null;
+                        }
+                    }
+                    else
+                    {
+                        throw new IllegalArgumentException("Unparseable station info \""+station_info_string+"\" (previous channel "+previous_channel_string+" is not an integer).");
+                    }
+                    
+                    
+                    domain = new HashSet<Integer>();
+                    String channels_string = station_info_parts[2];
+                    String[] channels_parts = channels_string.split(",");
+                    for(String channel_string : channels_parts)
+                    {
+                        if(isInteger(channel_string))
+                        {
+                            domain.add(Integer.parseInt(channel_string));
+                        }
+                        else
+                        {
+                            throw new IllegalArgumentException("Unparseable station info \""+station_info_string+"\" (domain channel "+channel_string+" is not an integer).");
+                        }
+                    }
+                    
+                    
+                    stationID_domains.put(station, domain);
+                    if(previousChannel != null)
+                    {
+                        previous_assignmentID.put(station, previousChannel);
                     }
                 }
                 
-                
-                stationID_domains.put(station, domain);
-                if(previousChannel != null)
+                /*
+                 * Validate instance data.
+                 */
+                File config_folder = new File(config_foldername);
+                if(!config_folder.exists())
                 {
-                    previous_assignmentID.put(station, previousChannel);
+                    throw new IllegalArgumentException("Encoded instance's interference config folder \""+config_foldername+"\" does not exist.");
                 }
-            }
-            
-            /*
-             * Validate instance data.
-             */
-            File config_folder = new File(config_foldername);
-            if(!config_folder.exists())
-            {
-                throw new IllegalArgumentException("Encoded instance's interference config folder \""+config_foldername+"\" does not exist.");
-            }
-            else if(!config_folder.isDirectory())
-            {
-                throw new IllegalArgumentException("Encoded instance's interference config folder \""+config_foldername+"\" is not a directory.");
-            }
-            
-            if(!stationID_domains.keySet().containsAll(previous_assignmentID.keySet()))
-            {
-                log.warn("Encoded instance's previous assignment contains stations not in the indicated domains.");
-            }
-            
-            System.out.println(stationID_domains);
-            System.out.println(previous_assignmentID);
-            System.out.println(config_foldername);
-            
-            /*
-             * Construct station packing instances. 
-             */
-            
-            ManagerBundle data_bundle;
-            try {
-                data_bundle = data_manager.getData(config_foldername);
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-                throw new IllegalArgumentException("Could not load interference data from \""+config_foldername+"\".");
-            }
-            IStationManager station_manager = data_bundle.getStationManager();
-            IConstraintManager constraint_manager = data_bundle.getConstraintManager();
-           
-            Map<Station,Set<Integer>> domains = new HashMap<Station,Set<Integer>>();
-            for(Entry<Integer,Set<Integer>> stationID_domains_entry : stationID_domains.entrySet())
-            {
-                Integer stationID = stationID_domains_entry.getKey();
-                Set<Integer> domain = stationID_domains_entry.getValue();
-                
-                Station station = station_manager.getStationfromID(stationID);
-                
-                Set<Integer> truedomain = station_manager.getDomain(station);
-                if(!truedomain.containsAll(domain))
+                else if(!config_folder.isDirectory())
                 {
-                    //log.warn("Domain {} of station {} does not contain all stations specified in problem domain {}.",truedomain,stationID,domain);
+                    throw new IllegalArgumentException("Encoded instance's interference config folder \""+config_foldername+"\" is not a directory.");
                 }
                 
-                domains.put(station, domain);
-            }
-            
-            Map<Station,Integer> previous_assignment = new HashMap<Station,Integer>();
-            for(Entry<Integer,Integer> previous_assignmentID_entry : previous_assignmentID.entrySet())
-            {
-                Integer stationID = previous_assignmentID_entry.getKey();
-                Integer previous_channel = previous_assignmentID_entry.getValue();
-                
-                Station station = station_manager.getStationfromID(stationID);
-                
-                Set<Integer> truedomain = station_manager.getDomain(station);
-                if(!truedomain.contains(previous_channel))
+                if(!stationID_domains.keySet().containsAll(previous_assignmentID.keySet()))
                 {
-                    log.warn("Domain {} of station {} does not contain previous assigned channel {}.",truedomain,stationID,previous_channel);
+                    log.warn("Encoded instance's previous assignment contains stations not in the indicated domains.");
                 }
                 
-                previous_assignment.put(station, previous_channel);
+                /*
+                 * Construct station packing instances. 
+                 */
                 
+                ManagerBundle data_bundle;
+                try {
+                    data_bundle = data_manager.getData(config_foldername);
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                    throw new IllegalArgumentException("Could not load interference data from \""+config_foldername+"\".");
+                }
+                IStationManager station_manager = data_bundle.getStationManager();
+                IConstraintManager constraint_manager = data_bundle.getConstraintManager();
+               
+                Map<Station,Set<Integer>> domains = new HashMap<Station,Set<Integer>>();
+                for(Entry<Integer,Set<Integer>> stationID_domains_entry : stationID_domains.entrySet())
+                {
+                    Integer stationID = stationID_domains_entry.getKey();
+                    Set<Integer> domain = stationID_domains_entry.getValue();
+                    
+                    Station station = station_manager.getStationfromID(stationID);
+                    
+                    Set<Integer> truedomain = station_manager.getDomain(station);
+                    if(!truedomain.containsAll(domain))
+                    {
+                        //log.warn("Domain {} of station {} does not contain all stations specified in problem domain {}.",truedomain,stationID,domain);
+                    }
+                    
+                    domains.put(station, domain);
+                }
+                
+                Map<Station,Integer> previous_assignment = new HashMap<Station,Integer>();
+                for(Entry<Integer,Integer> previous_assignmentID_entry : previous_assignmentID.entrySet())
+                {
+                    Integer stationID = previous_assignmentID_entry.getKey();
+                    Integer previous_channel = previous_assignmentID_entry.getValue();
+                    
+                    Station station = station_manager.getStationfromID(stationID);
+                    
+                    Set<Integer> truedomain = station_manager.getDomain(station);
+                    if(!truedomain.contains(previous_channel))
+                    {
+                        log.warn("Domain {} of station {} does not contain previous assigned channel {}.",truedomain,stationID,previous_channel);
+                    }
+                    
+                    previous_assignment.put(station, previous_channel);
+                    
+                }
+                
+                StationPackingInstance instance = new StationPackingInstance(domains,previous_assignment);
+                
+                
+                /*
+                 * Encode instance into CNF.
+                 */
+                ISATEncoder SATencoder;
+                if(SATencoders.containsKey(data_bundle))
+                {
+                    SATencoder = SATencoders.get(data_bundle);
+                }
+                else
+                {
+                    SATencoder = new SATCompressor(constraint_manager);
+                    SATencoders.put(data_bundle, SATencoder);
+                }
+        
+                log.debug("Encoding into SAT...");
+                Pair<CNF,ISATDecoder> encoding = SATencoder.encode(instance);
+                CNF cnf = encoding.getKey();
+                
+                
+                String aCNFFilename = output_foldername+ File.separator +instance.getHashString()+".cnf";
+                log.debug("Saving CNF to {}...",aCNFFilename);
+                
+                
+                List<Integer> sortedStationIDs = new ArrayList<Integer>(stationID_domains.keySet());
+                Collections.sort(sortedStationIDs);
+                List<Integer> sortedAllChannels = new ArrayList<Integer>(instance.getAllChannels());
+                Collections.sort(sortedAllChannels);
+                
+                try {
+                    FileUtils.writeStringToFile(new File(aCNFFilename), cnf.toDIMACS(new String[]{"FCC Feasibility Checking Instance","Original Encoded Instance File"+encoded_instance_filename+" line "+l,"Channels: "+StringUtils.join(sortedAllChannels,","),"Stations: "+StringUtils.join(sortedStationIDs,",")}));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    throw new IllegalStateException("Could not write CNF to file.");
+                }
             }
-            
-            StationPackingInstance instance = new StationPackingInstance(domains,previous_assignment);
-            
-            
-            /*
-             * Encode instance into CNF.
-             */
-            ISATEncoder SATencoder;
-            if(SATencoders.containsKey(data_bundle))
-            {
-                SATencoder = SATencoders.get(data_bundle);
-            }
-            else
-            {
-                SATencoder = new SATCompressor(constraint_manager);
-                SATencoders.put(data_bundle, SATencoder);
-            }
-    
-            log.debug("Encoding into SAT...");
-            Pair<CNF,ISATDecoder> encoding = SATencoder.encode(instance);
-            CNF cnf = encoding.getKey();
-            
-            
-            String aCNFFilename = output_foldername+ File.separator +instance.getHashString()+".cnf";
-            log.debug("Saving CNF to {}...",aCNFFilename);
-            
-            
-            List<Integer> sortedStationIDs = new ArrayList<Integer>(stationID_domains.keySet());
-            Collections.sort(sortedStationIDs);
-            List<Integer> sortedAllChannels = new ArrayList<Integer>(instance.getAllChannels());
-            Collections.sort(sortedAllChannels);
-            
-            try {
-                FileUtils.writeStringToFile(new File(aCNFFilename), cnf.toDIMACS(new String[]{"FCC Feasibility Checking Instance","Original Encoded Instance File"+encoded_instance_filename+" line "+l,"Channels: "+StringUtils.join(sortedAllChannels,","),"Stations: "+StringUtils.join(sortedStationIDs,",")}));
-            } catch (IOException e) {
-                e.printStackTrace();
-                throw new IllegalStateException("Could not write CNF to file.");
-            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new IllegalArgumentException("Could not read instance from file "+encoded_instance_filename+".",e);
         }
+        
         
         return;
         
