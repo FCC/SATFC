@@ -59,8 +59,8 @@ public class SATFCSolverBundle extends ASolverBundle{
 		ISolver VHFClaspBasedSolver = new CompressedSATBasedSolver(aHVHFClaspSATsolver, aCompressor,  this.getConstraintManager(), aGrouper);
 		
 		//Chain pre-solving and main solver.
-		final double UNSATcertifiercutoff = 10;
-		final double SATcertifiercutoff = 10;
+		final double UNSATcertifiercutoff = 5;
+		final double SATcertifiercutoff = 5;
 		
 		ISolver UHFsolver;
 		ISolver VHFsolver;
