@@ -74,12 +74,17 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
         fInterferencesConfigFolderDir = aInterferencesConfigFolderDir;
 
         File aTmpDir = new File(aTmpDirname);        
-        
-        if (!aTmpDir.exists() && !aTmpDir.mkdirs()) {
-            throw new IllegalStateException("Failed to create temp folder " + aTmpDir.getAbsolutePath());
-        } else {
-            fTmpDirname = aTmpDirname;
+
+        if (!aTmpDir.exists()) {
+            if (!aTmpDir.mkdirs()) {
+                throw new IllegalStateException("Failed to create temp directory " + aTmpDir.getAbsolutePath());
+            }
+        } else if (!aTmpDir.isDirectory()){
+            throw new IllegalArgumentException(aTmpDir.getAbsolutePath() + " is not a directory.");
         }
+
+        fTmpDirname = aTmpDirname;
+
     }
 
     @Override
@@ -146,14 +151,14 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
 
             @Override
             public void currentStatus(List<? extends AlgorithmRunResult> runs) {
-                
+
                 List<AlgorithmRunResult> fixedRuns = new ArrayList<AlgorithmRunResult>(runs.size());
-                
+
                 for( final AlgorithmRunResult run : runs)
                 {
                     if(run.getRunStatus().equals(RunStatus.RUNNING))
                     {
-                        
+
                         KillHandler kh = new KillHandler()
                         {
 
@@ -168,21 +173,21 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
                             public boolean isKilled() {
                                 return b.get();
                             }
-                            
+
                         };
-                        
+
                         if(transformedToOriginalCliConfigurationsMapping.get(run.getAlgorithmRunConfiguration()) == null)
                         {
                             log.error("Couldn't find original run config for {} in {} ", run.getAlgorithmRunConfiguration(), transformedToOriginalCliConfigurationsMapping);
                         }
                         fixedRuns.add(new RunningAlgorithmRunResult(transformedToOriginalCliConfigurationsMapping.get(run.getAlgorithmRunConfiguration()),run.getRuntime(),run.getRunLength(), run.getQuality(), run.getResultSeed(), run.getWallclockExecutionTime(),kh));
-                        
+
                     } else
                     {
                         fixedRuns.add(new ExistingAlgorithmRunResult(transformedToOriginalCliConfigurationsMapping.get(run.getAlgorithmRunConfiguration()), run.getRunStatus(), run.getRuntime(), run.getRunLength(), run.getQuality(),run.getResultSeed(),run.getAdditionalRunData(), run.getWallclockExecutionTime()));
                     }
                 }
-                
+
                 if(runStatusObserver != null)
                 {
                     runStatusObserver.currentStatus(fixedRuns);
@@ -193,7 +198,7 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
         /*
          * Run the configurations in the corresponding target algorithm evaluators. 
          */
-        
+
         // Run SATFC configs
         List<AlgorithmRunResult> satfcResults = fSatfcTae.evaluateRun(satfcConfigurations, runStatusObserver);
 
