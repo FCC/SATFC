@@ -143,7 +143,7 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
         }
 
         List<AlgorithmRunConfiguration> transformedCliConfigurations = Lists.newArrayList(transformedToOriginalCliConfigurationsMapping.keySet());
-
+        
         /*
          * Create observer that is to be passed to the CLI TAE.
          */
@@ -203,7 +203,7 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
         List<AlgorithmRunResult> satfcResults = fSatfcTae.evaluateRun(satfcConfigurations, runStatusObserver);
 
         // Run CLI configs
-        List<AlgorithmRunResult> cliResults = fSatfcTae.evaluateRun(transformedCliConfigurations, cliRunStatusObserver);
+        List<AlgorithmRunResult> cliResults = fCliTae.evaluateRun(transformedCliConfigurations, cliRunStatusObserver);
 
         List<AlgorithmRunResult> results = new ArrayList<AlgorithmRunResult>(runConfigs.size());
 

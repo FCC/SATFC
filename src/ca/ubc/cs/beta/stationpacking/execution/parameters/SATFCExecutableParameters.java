@@ -2,7 +2,8 @@ package ca.ubc.cs.beta.stationpacking.execution.parameters;
 
 import ca.ubc.cs.beta.aeatk.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aeatk.options.AbstractOptions;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.base.StationPackingQuestionParameters;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.base.QuestionInstanceParameters;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.base.SQLInstanceParameters;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
@@ -14,8 +15,9 @@ public class SATFCExecutableParameters extends AbstractOptions {
 	public SATFCParameters SATFCParameters = new SATFCParameters();
 	
 	@ParametersDelegate
-	public StationPackingQuestionParameters QuestionParameters = new StationPackingQuestionParameters();
+	public QuestionInstanceParameters QuestionParameters = new QuestionInstanceParameters();
 	
 	@Parameter(names = "-WORKDIR", description = "Working directory (especially where to find problem data).")
 	public String WorkDirectory = "";
+	
 }
