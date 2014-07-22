@@ -55,9 +55,9 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
     private final Map<ManagerBundle,ISATEncoder> fSATencoders;
 
     private final String fInterferencesConfigFolderDir;
-    private final String fTmpDir;
+    private final String fTmpDirname;
 
-    SwitchFCTargetAlgorithmEvaluator(SATFCTargetAlgorithmEvaluator aSatfcTae, CommandLineTargetAlgorithmEvaluator aCliTae, String aInterferencesConfigFolderDir, String aTmpDir) {
+    SwitchFCTargetAlgorithmEvaluator(SATFCTargetAlgorithmEvaluator aSatfcTae, CommandLineTargetAlgorithmEvaluator aCliTae, String aInterferencesConfigFolderDir, String aTmpDirname) {
         if (aSatfcTae == null) throw new IllegalArgumentException("SATFC TAE cannot be null.");
         if (aCliTae == null) throw new IllegalArgumentException("CLI TAE cannot be null.");
         if (aInterferencesConfigFolderDir == null) throw new IllegalArgumentException("Interferences folder cannot be null.");
@@ -73,9 +73,12 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
 
         fInterferencesConfigFolderDir = aInterferencesConfigFolderDir;
 
-        fTmpDir = aTmpDir;
-        if (!new File(fTmpDir).mkdirs()) {
-            throw new IllegalStateException("Failed to create temp folder " +fTmpDir);
+        File aTmpDir = new File(aTmpDirname);        
+        
+        if (!aTmpDir.exists() && !aTmpDir.mkdirs()) {
+            throw new IllegalStateException("Failed to create temp folder " + aTmpDir.getAbsolutePath());
+        } else {
+            fTmpDirname = aTmpDirname;
         }
     }
 
@@ -122,7 +125,7 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
 
                 // transform problem instance to CLI-friendly
 
-                String cnfFilename = writeCNFtoFile(encodedInstanceString, fTmpDir);
+                String cnfFilename = writeCNFtoFile(encodedInstanceString, fTmpDirname);
 
                 ProblemInstanceSeedPair transformedProblemInstance = new ProblemInstanceSeedPair(
                         new ProblemInstance(cnfFilename), runConfig.getProblemInstanceSeedPair().getSeed());
