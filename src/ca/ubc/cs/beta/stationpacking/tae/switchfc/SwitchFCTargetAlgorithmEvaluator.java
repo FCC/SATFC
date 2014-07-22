@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -18,6 +19,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,6 +123,8 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
         List<AlgorithmRunConfiguration> satfcConfigurations = new ArrayList<AlgorithmRunConfiguration>();
         Map<AlgorithmRunConfiguration, AlgorithmRunConfiguration> transformedToOriginalCliConfigurationsMapping = new HashMap<AlgorithmRunConfiguration, AlgorithmRunConfiguration>();
 
+        Map<AlgorithmRunConfiguration, ISATDecoder> transformedCliConfigurationsToCNFDecoderMapping = new HashMap<AlgorithmRunConfiguration, ISATDecoder>();
+
         /*
          * Partition run configurations into either SATFC or CLI.
          * For the CLI run configurations, we must transform the encoded instance problem to a CNF file.
@@ -139,9 +143,8 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
 
                 // transform problem instance to CLI-friendly
 
-                String cnfFilename = writeCNFtoFile(encodedInstanceString, fTmpDirname);
-                
-                
+                Pair<CNF, ISATDecoder> cnf = createCNFfromInstanceString(encodedInstanceString);
+                String cnfFilename = printCNFtoFile(fTmpDirname, cnf);
 
                 ProblemInstanceSeedPair transformedProblemInstance = new ProblemInstanceSeedPair(
                         new ProblemInstance(cnfFilename), runConfig.getProblemInstanceSeedPair().getSeed());
@@ -150,16 +153,18 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
                         transformedProblemInstance, runConfig.getParameterConfiguration(), runConfig.getAlgorithmExecutionConfiguration());                
 
                 transformedToOriginalCliConfigurationsMapping.put(transformedCliRunConfig, runConfig);
+                transformedCliConfigurationsToCNFDecoderMapping.put(transformedCliRunConfig, cnf.getValue());
             }
         }
-        
+
         final Map<AlgorithmRunConfiguration, AlgorithmRunConfiguration> unmodifiableTransformedToOriginalCliConfigurationsMapping = Collections.unmodifiableMap(transformedToOriginalCliConfigurationsMapping);
-        
+        final Map<AlgorithmRunConfiguration, ISATDecoder> unmodifiableTransformedCliConfigurationsToCNFDecoderMapping = Collections.unmodifiableMap(transformedCliConfigurationsToCNFDecoderMapping);
+
         // Ensure is valid partition.
         if (!Sets.union(Sets.newHashSet(transformedToOriginalCliConfigurationsMapping.values()), Sets.newHashSet(satfcConfigurations)).equals(Sets.newHashSet(originalRunConfigurations))) {
             throw new IllegalStateException("Failed to partition configurations.");
         }
-        
+
         /*
          * Create default results for all run configurations.
          */
@@ -171,12 +176,12 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
                 @Override
                 public void kill() {
                     b.set(true);
-                    
+
                     // Change run result to KILLED
                     log.debug("Killing job {}", runConfig);
-                    
+
                     resultsMapping.put(runConfig, new ExistingAlgorithmRunResult(runConfig, RunStatus.KILLED, 0.0, 0.0, 0.0, runConfig.getProblemInstanceSeedPair().getSeed()));
-                    
+
                 }
 
                 @Override
@@ -206,12 +211,12 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
                  */
 
                 Map<AlgorithmRunConfiguration, AlgorithmRunResult> newResults = parseRunResults(
-                        unmodifiableTransformedToOriginalCliConfigurationsMapping, resultsMapping, runs);
-                
+                        unmodifiableTransformedToOriginalCliConfigurationsMapping, unmodifiableTransformedCliConfigurationsToCNFDecoderMapping, resultsMapping, runs);
+
                 // Ensure that the following section of code is executable by only one thread at a time.
-                
+
                 fObserverLock.lock();
-                
+
                 log.trace("Updating run results.");
 
                 try {
@@ -219,7 +224,7 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
                     /*
                      * Update mapping with new results.
                      */
-                    
+
                     resultsMapping.putAll(newResults);
 
                     /*
@@ -258,68 +263,68 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
         /*
          * Run the configurations in the corresponding target algorithm evaluators. 
          */
-        
+
         final AtomicBoolean satfcDone = new AtomicBoolean(false);
         final AtomicBoolean cliDone = new AtomicBoolean(false);
-        
+
         TargetAlgorithmEvaluatorCallback satfcCallback = new TargetAlgorithmEvaluatorCallback() {
 
             @Override
             public void onSuccess(List<AlgorithmRunResult> runs) {
-                
+
                 // Ensure that all are finished.
                 for (AlgorithmRunResult runResult : runs) {
                     if (runResult.getRunStatus().equals(RunStatus.RUNNING)) {
                         throw new IllegalStateException("SATFC TAE returned a run result that is RUNNING, " +runResult);
                     }
                 }
-                
-                Map<AlgorithmRunConfiguration, AlgorithmRunResult> results = parseRunResults(unmodifiableTransformedToOriginalCliConfigurationsMapping, resultsMapping, runs);
+
+                Map<AlgorithmRunConfiguration, AlgorithmRunResult> results = parseRunResults(unmodifiableTransformedToOriginalCliConfigurationsMapping, unmodifiableTransformedCliConfigurationsToCNFDecoderMapping, resultsMapping, runs);
                 resultsMapping.putAll(results);
-                
+
                 log.trace("{} runs solved by SATFC.", runs.size());
-                
+
                 satfcDone.set(true);
             }
 
             @Override
             public void onFailure(RuntimeException e) {
-                
+
                 satfcDone.set(true);
-                
+
                 log.error("Failed in SATFC TAE.", e);
-                
+
                 throw e;
             }
         };
-        
+
         TargetAlgorithmEvaluatorCallback cliCallback = new TargetAlgorithmEvaluatorCallback() {
 
             @Override
             public void onSuccess(List<AlgorithmRunResult> runs) {
-                
+
                 // Ensure that all are finished.
                 for (AlgorithmRunResult runResult : runs) {
                     if (runResult.getRunStatus().equals(RunStatus.RUNNING)) {
                         throw new IllegalStateException("CLI TAE returned a run result that is RUNNING, " +runResult);
                     }
                 }
-                
-                Map<AlgorithmRunConfiguration, AlgorithmRunResult> results = parseRunResults(unmodifiableTransformedToOriginalCliConfigurationsMapping, resultsMapping, runs);
+
+                Map<AlgorithmRunConfiguration, AlgorithmRunResult> results = parseRunResults(unmodifiableTransformedToOriginalCliConfigurationsMapping, unmodifiableTransformedCliConfigurationsToCNFDecoderMapping, resultsMapping, runs);
                 resultsMapping.putAll(results);
-                
+
                 log.trace("{} runs solved by CLI.", runs.size());
-                
+
                 cliDone.set(true);
             }
 
             @Override
             public void onFailure(RuntimeException e) {
-                
+
                 cliDone.set(true);
-                
+
                 log.error("Failed in CLI TAE.", e);
-                
+
                 throw e;
             }
         };
@@ -332,18 +337,18 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
 
         // Wait until both done. 
         while (!satfcDone.get() || !cliDone.get()) {}
-        
+
         /*
          * Return results.
          */     
-        
+
         List<AlgorithmRunResult> results = new ArrayList<AlgorithmRunResult>(originalRunConfigurations.size());
 
         for (AlgorithmRunConfiguration runConfig : originalRunConfigurations) {
 
             results.add(resultsMapping.get(runConfig));
         }
-        
+
         // Ensure that the results we return do not have run status RUNNING.   
         for (AlgorithmRunResult result : results) {
             if (result.getRunStatus().equals(RunStatus.RUNNING)) {
@@ -353,12 +358,13 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
 
         return results;
     }
-    
+
     private Map<AlgorithmRunConfiguration, AlgorithmRunResult> parseRunResults(
-            final Map<AlgorithmRunConfiguration, AlgorithmRunConfiguration> transformedToOriginalCliConfigurationsMapping,
+            final Map<AlgorithmRunConfiguration, AlgorithmRunConfiguration> unmodifiableTransformedToOriginalCliConfigurationsMapping,
+            final Map<AlgorithmRunConfiguration, ISATDecoder> unmodifiableTransformedCliConfigurationsToCNFDecoderMapping, 
             final ConcurrentMap<AlgorithmRunConfiguration, AlgorithmRunResult> resultsMapping,
             List<? extends AlgorithmRunResult> runs) {
-        
+
         Map<AlgorithmRunConfiguration, AlgorithmRunResult> parsedResults =  new HashMap<AlgorithmRunConfiguration, AlgorithmRunResult>();
 
         for (final AlgorithmRunResult runResult : runs) {
@@ -367,7 +373,7 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
 
             AlgorithmRunResult actualResult = runResult;
 
-            if (transformedToOriginalCliConfigurationsMapping.containsKey(runResult.getAlgorithmRunConfiguration())) {
+            if (unmodifiableTransformedToOriginalCliConfigurationsMapping.containsKey(runResult.getAlgorithmRunConfiguration())) {
 
                 if (runResult.getRunStatus().equals(RunStatus.RUNNING)) {
                     KillHandler kh = new KillHandler() {
@@ -386,15 +392,44 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
 
                     };
 
-                    if(transformedToOriginalCliConfigurationsMapping.get(runResult.getAlgorithmRunConfiguration()) == null)
+                    if(unmodifiableTransformedToOriginalCliConfigurationsMapping.get(runResult.getAlgorithmRunConfiguration()) == null)
                     {
-                        log.error("Couldn't find original run config for {} in {} ", runResult.getAlgorithmRunConfiguration(), transformedToOriginalCliConfigurationsMapping);
+                        log.error("Couldn't find original run config for {} in {} ", runResult.getAlgorithmRunConfiguration(), unmodifiableTransformedToOriginalCliConfigurationsMapping);
                     }
 
-                    actualResult = new RunningAlgorithmRunResult(transformedToOriginalCliConfigurationsMapping.get(runResult.getAlgorithmRunConfiguration()),runResult.getRuntime(),runResult.getRunLength(), runResult.getQuality(), runResult.getResultSeed(), runResult.getWallclockExecutionTime(),kh);
+                    actualResult = new RunningAlgorithmRunResult(unmodifiableTransformedToOriginalCliConfigurationsMapping.get(runResult.getAlgorithmRunConfiguration()),runResult.getRuntime(),runResult.getRunLength(), runResult.getQuality(), runResult.getResultSeed(), runResult.getWallclockExecutionTime(),kh);
 
                 } else {
-                    actualResult = new ExistingAlgorithmRunResult(transformedToOriginalCliConfigurationsMapping.get(runResult.getAlgorithmRunConfiguration()), runResult.getRunStatus(), runResult.getRuntime(), runResult.getRunLength(), runResult.getQuality(),runResult.getResultSeed(),runResult.getAdditionalRunData(), runResult.getWallclockExecutionTime());
+
+                    // In addition to switching the run config, we must fix the additional run data
+                    // to provide a valid station-channel assignment if the result is SAT.
+
+                    String additionalRunData = runResult.getAdditionalRunData();
+
+                    if (runResult.getRunStatus().equals(RunStatus.SAT)) {
+                        ISATDecoder decoder = unmodifiableTransformedCliConfigurationsToCNFDecoderMapping.get(runResult.getAlgorithmRunConfiguration());
+                        
+                        // Format is <StationID>=<ChannelAssignment>
+                        Collection<String> assignments = new ArrayList<String>();
+                        
+                        for (String variable : additionalRunData.split(" ")) {
+                            long var = Long.parseLong(variable);
+                            
+                            if (var > 0) {
+                                Pair<Station, Integer> stationChannelVariable = decoder.decode(var);
+                                
+                                assignments.add(stationChannelVariable.getKey().getID() + "=" + stationChannelVariable.getValue());
+                            }
+                        }
+                        
+                        additionalRunData = StringUtils.join(assignments, ";");
+                        
+                    }
+
+                    actualResult = new ExistingAlgorithmRunResult(unmodifiableTransformedToOriginalCliConfigurationsMapping.get(runResult.getAlgorithmRunConfiguration()), runResult.getRunStatus(), runResult.getRuntime(), runResult.getRunLength(), runResult.getQuality(), runResult.getResultSeed(), additionalRunData, runResult.getWallclockExecutionTime());
+
+
+
                 }
             }
 
@@ -406,7 +441,7 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
 
             parsedResults.put(actualResult.getAlgorithmRunConfiguration(), actualResult);
         }
-        
+
         return parsedResults;
     }
 
@@ -415,7 +450,7 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
      * Converts an encoded instance string to a CNF, then writes to a file in the given output folder.
      * @return Location of stored .cnf file
      */
-    private String writeCNFtoFile(String encodedInstanceString, String outputFoldername) {
+    private Pair<CNF, ISATDecoder> createCNFfromInstanceString(String encodedInstanceString) {
         /*
          * Get data from instance.
          */
@@ -531,13 +566,13 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
 
             Station station = station_manager.getStationfromID(stationID);
 
-            Set<Integer> truedomain = station_manager.getDomain(station);
-            if(!truedomain.containsAll(domain))
+            Set<Integer> validDomain = station_manager.getDomain(station);
+            if(!validDomain.containsAll(domain))
             {
                 //log.warn("Domain {} of station {} does not contain all stations specified in problem domain {}.",truedomain,stationID,domain);
             }
 
-            domains.put(station, domain);
+            domains.put(station, Sets.intersection(domain, validDomain));
         }
 
         Map<Station,Integer> previous_assignment = new HashMap<Station,Integer>();
@@ -575,15 +610,13 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
             fSATencoders.put(data_bundle, SATencoder);
         }
 
-        Pair<CNF,ISATDecoder> encoding = SATencoder.encode(instance);
+        return SATencoder.encode(instance);
+    }
+
+    private String printCNFtoFile(String outputFoldername, Pair<CNF, ISATDecoder> encoding) {
         CNF cnf = encoding.getKey();
 
-        String aCNFFilename = outputFoldername+ File.separator +instance.getHashString()+".cnf";
-
-        List<Integer> sortedStationIDs = new ArrayList<Integer>(stationID_domains.keySet());
-        Collections.sort(sortedStationIDs);
-        List<Integer> sortedAllChannels = new ArrayList<Integer>(instance.getAllChannels());
-        Collections.sort(sortedAllChannels);
+        String aCNFFilename = outputFoldername+ File.separator +cnf.getHashString()+".cnf";
 
         try {
             FileUtils.writeStringToFile(new File(aCNFFilename), cnf.toDIMACS(new String[0]));
