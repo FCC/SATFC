@@ -12,7 +12,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.util.Pair;
@@ -28,6 +31,7 @@ import ca.ubc.cs.beta.aeatk.algorithmrunresult.kill.KillHandler;
 import ca.ubc.cs.beta.aeatk.probleminstance.ProblemInstance;
 import ca.ubc.cs.beta.aeatk.probleminstance.ProblemInstanceSeedPair;
 import ca.ubc.cs.beta.aeatk.targetalgorithmevaluator.AbstractSyncTargetAlgorithmEvaluator;
+import ca.ubc.cs.beta.aeatk.targetalgorithmevaluator.TargetAlgorithmEvaluatorCallback;
 import ca.ubc.cs.beta.aeatk.targetalgorithmevaluator.TargetAlgorithmEvaluatorRunObserver;
 import ca.ubc.cs.beta.aeatk.targetalgorithmevaluator.base.cli.CommandLineTargetAlgorithmEvaluator;
 import ca.ubc.cs.beta.stationpacking.base.Station;
@@ -43,6 +47,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
 import ca.ubc.cs.beta.stationpacking.tae.SATFCTargetAlgorithmEvaluator;
 
 import com.beust.jcommander.internal.Lists;
+import com.google.common.collect.Sets;
 
 public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorithmEvaluator {
 
@@ -110,13 +115,17 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
 
     @Override
     public List<AlgorithmRunResult> evaluateRun(
-            List<AlgorithmRunConfiguration> runConfigs, 
+            final List<AlgorithmRunConfiguration> originalRunConfigurations, 
             final TargetAlgorithmEvaluatorRunObserver runStatusObserver) {
 
         List<AlgorithmRunConfiguration> satfcConfigurations = new ArrayList<AlgorithmRunConfiguration>();
-        final Map<AlgorithmRunConfiguration, AlgorithmRunConfiguration> transformedToOriginalCliConfigurationsMapping = new ConcurrentHashMap<AlgorithmRunConfiguration, AlgorithmRunConfiguration>();
+        Map<AlgorithmRunConfiguration, AlgorithmRunConfiguration> transformedToOriginalCliConfigurationsMapping = new HashMap<AlgorithmRunConfiguration, AlgorithmRunConfiguration>();
 
-        for (AlgorithmRunConfiguration runConfig : runConfigs) {
+        /*
+         * Partition run configurations into either SATFC or CLI.
+         * For the CLI run configurations, we must transform the encoded instance problem to a CNF file.
+         */
+        for (AlgorithmRunConfiguration runConfig : originalRunConfigurations) {
 
             if (runConfig.getAlgorithmExecutionConfiguration()
                     .getTargetAlgorithmExecutionContext()
@@ -131,6 +140,8 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
                 // transform problem instance to CLI-friendly
 
                 String cnfFilename = writeCNFtoFile(encodedInstanceString, fTmpDirname);
+                
+                
 
                 ProblemInstanceSeedPair transformedProblemInstance = new ProblemInstanceSeedPair(
                         new ProblemInstance(cnfFilename), runConfig.getProblemInstanceSeedPair().getSeed());
@@ -141,89 +152,262 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
                 transformedToOriginalCliConfigurationsMapping.put(transformedCliRunConfig, runConfig);
             }
         }
-
-        List<AlgorithmRunConfiguration> transformedCliConfigurations = Lists.newArrayList(transformedToOriginalCliConfigurationsMapping.keySet());
+        
+        final Map<AlgorithmRunConfiguration, AlgorithmRunConfiguration> unmodifiableTransformedToOriginalCliConfigurationsMapping = Collections.unmodifiableMap(transformedToOriginalCliConfigurationsMapping);
+        
+        // Ensure is valid partition.
+        if (!Sets.union(Sets.newHashSet(transformedToOriginalCliConfigurationsMapping.values()), Sets.newHashSet(satfcConfigurations)).equals(Sets.newHashSet(originalRunConfigurations))) {
+            throw new IllegalStateException("Failed to partition configurations.");
+        }
         
         /*
-         * Create observer that is to be passed to the CLI TAE.
+         * Create default results for all run configurations.
          */
-        TargetAlgorithmEvaluatorRunObserver cliRunStatusObserver = new TargetAlgorithmEvaluatorRunObserver() {
+        final ConcurrentMap<AlgorithmRunConfiguration, AlgorithmRunResult> resultsMapping = new ConcurrentHashMap<AlgorithmRunConfiguration, AlgorithmRunResult>();
+        for (final AlgorithmRunConfiguration runConfig : originalRunConfigurations) {
+            KillHandler stubKillHander = new KillHandler() {
+
+                AtomicBoolean b = new AtomicBoolean(false);
+                @Override
+                public void kill() {
+                    b.set(true);
+                    
+                    // Change run result to KILLED
+                    log.debug("Killing job {}", runConfig);
+                    
+                    resultsMapping.put(runConfig, new ExistingAlgorithmRunResult(runConfig, RunStatus.KILLED, 0.0, 0.0, 0.0, runConfig.getProblemInstanceSeedPair().getSeed()));
+                    
+                }
+
+                @Override
+                public boolean isKilled() {
+                    return b.get();
+                }
+
+            };
+
+            AlgorithmRunResult stubRunResult = new RunningAlgorithmRunResult(runConfig, 0.0, 0.0, 0.0, runConfig.getProblemInstanceSeedPair().getSeed(), 0.0, stubKillHander);
+
+            resultsMapping.put(runConfig, stubRunResult);
+        }
+
+        /*
+         * Create observer that is passed to the child TAEs.
+         */
+        TargetAlgorithmEvaluatorRunObserver decoratedRunStatusObserver = new TargetAlgorithmEvaluatorRunObserver() {
+
+            Lock fObserverLock = new ReentrantLock();
 
             @Override
-            public void currentStatus(List<? extends AlgorithmRunResult> runs) {
+            public void currentStatus(List<? extends AlgorithmRunResult> runs) {                    
 
-                List<AlgorithmRunResult> fixedRuns = new ArrayList<AlgorithmRunResult>(runs.size());
+                /*
+                 * Parse results and ensure that these are the ones that the observer expects.
+                 */
 
-                for( final AlgorithmRunResult run : runs)
-                {
-                    if(run.getRunStatus().equals(RunStatus.RUNNING))
-                    {
+                Map<AlgorithmRunConfiguration, AlgorithmRunResult> newResults = parseRunResults(
+                        unmodifiableTransformedToOriginalCliConfigurationsMapping, resultsMapping, runs);
+                
+                // Ensure that the following section of code is executable by only one thread at a time.
+                
+                fObserverLock.lock();
+                
+                log.trace("Updating run results.");
 
-                        KillHandler kh = new KillHandler()
-                        {
+                try {
 
-                            AtomicBoolean b = new AtomicBoolean(false);
-                            @Override
-                            public void kill() {
-                                b.set(true);
-                                run.kill();
-                            }
+                    /*
+                     * Update mapping with new results.
+                     */
+                    
+                    resultsMapping.putAll(newResults);
 
-                            @Override
-                            public boolean isKilled() {
-                                return b.get();
-                            }
+                    /*
+                     * Build the list of results.
+                     */
 
-                        };
+                    List<AlgorithmRunResult> resultsList = new ArrayList<AlgorithmRunResult>();
 
-                        if(transformedToOriginalCliConfigurationsMapping.get(run.getAlgorithmRunConfiguration()) == null)
-                        {
-                            log.error("Couldn't find original run config for {} in {} ", run.getAlgorithmRunConfiguration(), transformedToOriginalCliConfigurationsMapping);
+                    for (AlgorithmRunConfiguration runConfig : originalRunConfigurations) {
+
+                        AlgorithmRunResult result = resultsMapping.get(runConfig);
+
+                        if (result == null) {
+                            throw new IllegalStateException("Result is null for run configuration " +runConfig);
                         }
-                        fixedRuns.add(new RunningAlgorithmRunResult(transformedToOriginalCliConfigurationsMapping.get(run.getAlgorithmRunConfiguration()),run.getRuntime(),run.getRunLength(), run.getQuality(), run.getResultSeed(), run.getWallclockExecutionTime(),kh));
 
-                    } else
-                    {
-                        fixedRuns.add(new ExistingAlgorithmRunResult(transformedToOriginalCliConfigurationsMapping.get(run.getAlgorithmRunConfiguration()), run.getRunStatus(), run.getRuntime(), run.getRunLength(), run.getQuality(),run.getResultSeed(),run.getAdditionalRunData(), run.getWallclockExecutionTime()));
+                        resultsList.add(result);
+
                     }
-                }
 
-                if(runStatusObserver != null)
-                {
-                    runStatusObserver.currentStatus(fixedRuns);
+                    /*
+                     * Send to observer
+                     */
+
+                    runStatusObserver.currentStatus(resultsList);
+
+                } finally {
+
+                    fObserverLock.unlock();
+
                 }
             }
+
         };
 
         /*
          * Run the configurations in the corresponding target algorithm evaluators. 
          */
+        
+        final AtomicBoolean satfcDone = new AtomicBoolean(false);
+        final AtomicBoolean cliDone = new AtomicBoolean(false);
+        
+        TargetAlgorithmEvaluatorCallback satfcCallback = new TargetAlgorithmEvaluatorCallback() {
+
+            @Override
+            public void onSuccess(List<AlgorithmRunResult> runs) {
+                
+                // Ensure that all are finished.
+                for (AlgorithmRunResult runResult : runs) {
+                    if (runResult.getRunStatus().equals(RunStatus.RUNNING)) {
+                        throw new IllegalStateException("SATFC TAE returned a run result that is RUNNING, " +runResult);
+                    }
+                }
+                
+                Map<AlgorithmRunConfiguration, AlgorithmRunResult> results = parseRunResults(unmodifiableTransformedToOriginalCliConfigurationsMapping, resultsMapping, runs);
+                resultsMapping.putAll(results);
+                
+                log.trace("{} runs solved by SATFC.", runs.size());
+                
+                satfcDone.set(true);
+            }
+
+            @Override
+            public void onFailure(RuntimeException e) {
+                
+                satfcDone.set(true);
+                
+                log.error("Failed in SATFC TAE.", e);
+                
+                throw e;
+            }
+        };
+        
+        TargetAlgorithmEvaluatorCallback cliCallback = new TargetAlgorithmEvaluatorCallback() {
+
+            @Override
+            public void onSuccess(List<AlgorithmRunResult> runs) {
+                
+                // Ensure that all are finished.
+                for (AlgorithmRunResult runResult : runs) {
+                    if (runResult.getRunStatus().equals(RunStatus.RUNNING)) {
+                        throw new IllegalStateException("CLI TAE returned a run result that is RUNNING, " +runResult);
+                    }
+                }
+                
+                Map<AlgorithmRunConfiguration, AlgorithmRunResult> results = parseRunResults(unmodifiableTransformedToOriginalCliConfigurationsMapping, resultsMapping, runs);
+                resultsMapping.putAll(results);
+                
+                log.trace("{} runs solved by CLI.", runs.size());
+                
+                cliDone.set(true);
+            }
+
+            @Override
+            public void onFailure(RuntimeException e) {
+                
+                cliDone.set(true);
+                
+                log.error("Failed in CLI TAE.", e);
+                
+                throw e;
+            }
+        };
 
         // Run SATFC configs
-        List<AlgorithmRunResult> satfcResults = fSatfcTae.evaluateRun(satfcConfigurations, runStatusObserver);
+        fSatfcTae.evaluateRunsAsync(satfcConfigurations, satfcCallback, decoratedRunStatusObserver);
 
         // Run CLI configs
-        List<AlgorithmRunResult> cliResults = fCliTae.evaluateRun(transformedCliConfigurations, cliRunStatusObserver);
+        fCliTae.evaluateRunsAsync(Lists.newArrayList(transformedToOriginalCliConfigurationsMapping.keySet()), cliCallback, decoratedRunStatusObserver);
 
-        List<AlgorithmRunResult> results = new ArrayList<AlgorithmRunResult>(runConfigs.size());
+        // Wait until both done. 
+        while (!satfcDone.get() || !cliDone.get()) {}
+        
+        /*
+         * Return results.
+         */     
+        
+        List<AlgorithmRunResult> results = new ArrayList<AlgorithmRunResult>(originalRunConfigurations.size());
 
-        for (AlgorithmRunConfiguration aConfig : runConfigs) {
-            if (satfcConfigurations.contains(aConfig)) {
+        for (AlgorithmRunConfiguration runConfig : originalRunConfigurations) {
 
-                int index = satfcConfigurations.indexOf(aConfig);
-                results.add(satfcResults.get(index));
-
-            } else if (transformedCliConfigurations.contains(aConfig)) {
-
-                int index = transformedCliConfigurations.indexOf(aConfig);
-                results.add(cliResults.get(index));
-
-            } else {
-                throw new IllegalStateException("Run config " +aConfig+ " was not partitioned into either a SATFC or CLI run.");
+            results.add(resultsMapping.get(runConfig));
+        }
+        
+        // Ensure that the results we return do not have run status RUNNING.   
+        for (AlgorithmRunResult result : results) {
+            if (result.getRunStatus().equals(RunStatus.RUNNING)) {
+                throw new IllegalStateException("Attempted to return a result that is still RUNNING: " + result);
             }
         }
 
         return results;
+    }
+    
+    private Map<AlgorithmRunConfiguration, AlgorithmRunResult> parseRunResults(
+            final Map<AlgorithmRunConfiguration, AlgorithmRunConfiguration> transformedToOriginalCliConfigurationsMapping,
+            final ConcurrentMap<AlgorithmRunConfiguration, AlgorithmRunResult> resultsMapping,
+            List<? extends AlgorithmRunResult> runs) {
+        
+        Map<AlgorithmRunConfiguration, AlgorithmRunResult> parsedResults =  new HashMap<AlgorithmRunConfiguration, AlgorithmRunResult>();
+
+        for (final AlgorithmRunResult runResult : runs) {
+
+            // Check if run is one of the transformed configurations, then we must revert it.
+
+            AlgorithmRunResult actualResult = runResult;
+
+            if (transformedToOriginalCliConfigurationsMapping.containsKey(runResult.getAlgorithmRunConfiguration())) {
+
+                if (runResult.getRunStatus().equals(RunStatus.RUNNING)) {
+                    KillHandler kh = new KillHandler() {
+
+                        AtomicBoolean b = new AtomicBoolean(false);
+                        @Override
+                        public void kill() {
+                            b.set(true);
+                            runResult.kill();
+                        }
+
+                        @Override
+                        public boolean isKilled() {
+                            return b.get();
+                        }
+
+                    };
+
+                    if(transformedToOriginalCliConfigurationsMapping.get(runResult.getAlgorithmRunConfiguration()) == null)
+                    {
+                        log.error("Couldn't find original run config for {} in {} ", runResult.getAlgorithmRunConfiguration(), transformedToOriginalCliConfigurationsMapping);
+                    }
+
+                    actualResult = new RunningAlgorithmRunResult(transformedToOriginalCliConfigurationsMapping.get(runResult.getAlgorithmRunConfiguration()),runResult.getRuntime(),runResult.getRunLength(), runResult.getQuality(), runResult.getResultSeed(), runResult.getWallclockExecutionTime(),kh);
+
+                } else {
+                    actualResult = new ExistingAlgorithmRunResult(transformedToOriginalCliConfigurationsMapping.get(runResult.getAlgorithmRunConfiguration()), runResult.getRunStatus(), runResult.getRuntime(), runResult.getRunLength(), runResult.getQuality(),runResult.getResultSeed(),runResult.getAdditionalRunData(), runResult.getWallclockExecutionTime());
+                }
+            }
+
+            // Check that the new run result is one that we're expecting.
+
+            if (!resultsMapping.containsKey(actualResult.getAlgorithmRunConfiguration())) {
+                throw new IllegalStateException("Observed a run result that does not correspond to any of the run configurations.");
+            }
+
+            parsedResults.put(actualResult.getAlgorithmRunConfiguration(), actualResult);
+        }
+        
+        return parsedResults;
     }
 
 
@@ -391,14 +575,10 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
             fSATencoders.put(data_bundle, SATencoder);
         }
 
-        log.debug("Encoding into SAT...");
         Pair<CNF,ISATDecoder> encoding = SATencoder.encode(instance);
         CNF cnf = encoding.getKey();
 
-
         String aCNFFilename = outputFoldername+ File.separator +instance.getHashString()+".cnf";
-        log.debug("Saving CNF to {}...",aCNFFilename);
-
 
         List<Integer> sortedStationIDs = new ArrayList<Integer>(stationID_domains.keySet());
         Collections.sort(sortedStationIDs);
