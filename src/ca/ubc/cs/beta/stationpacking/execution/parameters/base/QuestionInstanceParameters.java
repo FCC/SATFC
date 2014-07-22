@@ -20,13 +20,20 @@ import com.beust.jcommander.IStringConverter;
 import com.beust.jcommander.Parameter;
 
 @UsageTextField(title="FCC Station Packing Packing Question Options",description="Parameters necessary to define a station packing question.")
-public class StationPackingQuestionParameters extends AbstractOptions {
+public class QuestionInstanceParameters extends AbstractOptions implements IInstanceParameters {
 	
 	public static class StationPackingQuestionConverter implements IStringConverter<StationPackingQuestion>
 	{
 		@Override
 		public StationPackingQuestion convert(String value) {
-			return new StationPackingQuestion(value);
+		    if(value == null)
+		    {
+		        return null;
+		    }
+		    else
+		    {
+		        return new StationPackingQuestion(value);    
+		    }
 		}
 	}
 	
@@ -160,7 +167,7 @@ public class StationPackingQuestionParameters extends AbstractOptions {
 	}
 	
 	
-	@Parameter(names = "-QUESTION", description = "Question file.",required=true,converter=StationPackingQuestionConverter.class)
+	@Parameter(names = "-QUESTION", description = "Question file.",converter=StationPackingQuestionConverter.class)
 	private StationPackingQuestion fQuestion; 
 	
 	public String getData()
