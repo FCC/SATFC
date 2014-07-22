@@ -20,6 +20,8 @@ import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Sets;
+
 import au.com.bytecode.opencsv.CSVReader;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
@@ -177,13 +179,13 @@ public class EncodedInstanceToCNFConverter {
                     
                     Station station = station_manager.getStationfromID(stationID);
                     
-                    Set<Integer> truedomain = station_manager.getDomain(station);
-                    if(!truedomain.containsAll(domain))
+                    Set<Integer> validDomain = station_manager.getDomain(station);
+                    if(!validDomain.containsAll(domain))
                     {
                         //log.warn("Domain {} of station {} does not contain all stations specified in problem domain {}.",truedomain,stationID,domain);
                     }
                     
-                    domains.put(station, domain);
+                    domains.put(station, Sets.intersection(domain, validDomain));
                 }
                 
                 Map<Station,Integer> previous_assignment = new HashMap<Station,Integer>();
