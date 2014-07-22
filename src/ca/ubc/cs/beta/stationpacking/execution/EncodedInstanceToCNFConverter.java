@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -43,89 +42,23 @@ public class EncodedInstanceToCNFConverter {
             + "<encoded instance file> -- file containing each encoded instance on a different line.\n"
             + "<output folder> -- where to save the CNF.";
     
-    public static void main(String[] args) {
+    
+    public static List<Pair<StationPackingInstance,String>> readSQLInstancesFromFile(String aFilename, String aInterferenceConfigFoldername, DataManager aDataManager)
+    {
+        List<Pair<StationPackingInstance,String>> instances = new ArrayList<Pair<StationPackingInstance,String>>();
         
-        //Static objects used throughout the method.
-        final DataManager data_manager = new DataManager();
-        final Map<ManagerBundle,ISATEncoder> SATencoders = new HashMap<ManagerBundle,ISATEncoder>();
-        
-        
-      //Check for help or invalid number of arguments.
-        boolean needHelp = false;
-        for(String arg : args)
+        if(aDataManager == null)
         {
-            if(arg.equals("-h") || arg.equals("-help") || arg.equals("--help") || arg.equals("--h"))
-            {
-                needHelp = true;
-                break;
-            }
-        }
-        if(needHelp || args.length!=3)
-        {
-            if(args.length != 3)
-            {
-                System.out.println("Invalid number of arguments: \""+Arrays.toString(args)+"\".");
-            }
-            
-            System.out.println(USAGE);
-            return;
+            aDataManager = new DataManager();
         }
         
-        
-        /*
-         * Get arguments.
-         */
-        
-        String interference_config_foldername = args[0];
-        String encoded_instance_filename = args[1];
-        String output_foldername = args[2];
-        
-        
-        /*
-         * Validate arguments.
-         */
-        File interference_config_folder = new File(interference_config_foldername);
-        if(!interference_config_folder.exists())
-        {
-            throw new IllegalArgumentException("Provided interference config folder \""+interference_config_foldername+"\" does not exist.");
-        }
-        else if(!interference_config_folder.isDirectory())
-        {
-            throw new IllegalArgumentException("Provided interference config folder \""+interference_config_foldername+"\" is not a directory.");
-        }
-        
-        File encoded_instance_file = new File(encoded_instance_filename);
-        if(!encoded_instance_file.exists())
-        {
-            throw new IllegalArgumentException("Provided encoded instance file \""+encoded_instance_file+"\" does not exist.");
-        }
-        if(!encoded_instance_file.isFile())
-        {
-            throw new IllegalArgumentException("Provided encoded instance file \""+encoded_instance_file+"\" is not a file.");
-        }
-        
-        File output_folder = new File(output_foldername);
-        if(!output_folder.exists())
-        {
-            throw new IllegalArgumentException("Provided output folder \""+output_foldername+"\" does not exist.");
-        }
-        else if(!output_folder.isDirectory())
-        {
-            throw new IllegalArgumentException("Provided output folder \""+output_foldername+"\" is not a directory.");
-        }
-        
-        log.debug("Reading instance from {} ...",encoded_instance_filename);
-        
- 
-        
-        try(CSVReader reader = new CSVReader(new FileReader(encoded_instance_file), ',', '\"', '\n'))
+        try(CSVReader reader = new CSVReader(new FileReader(aFilename), ',', '\"', '\n'))
         {
             String[] row = null;
             
             int l=0;
             while((row = reader.readNext()) != null)
             {
-                
                 /*
                  * Get data from instance.
                  */
@@ -145,7 +78,7 @@ public class EncodedInstanceToCNFConverter {
                 }
                 
                 //Get the config folder name.
-                config_foldername = interference_config_foldername + File.separator + encoded_instance_parts[0];
+                config_foldername = aInterferenceConfigFoldername + File.separator + encoded_instance_parts[0];
                 
                 //Get problem info.
                 for(int i=1;i<encoded_instance_parts.length;i++)
@@ -229,13 +162,12 @@ public class EncodedInstanceToCNFConverter {
                 
                 ManagerBundle data_bundle;
                 try {
-                    data_bundle = data_manager.getData(config_foldername);
+                    data_bundle = aDataManager.getData(config_foldername);
                 } catch (FileNotFoundException e) {
                     e.printStackTrace();
                     throw new IllegalArgumentException("Could not load interference data from \""+config_foldername+"\".");
                 }
                 IStationManager station_manager = data_bundle.getStationManager();
-                IConstraintManager constraint_manager = data_bundle.getConstraintManager();
                
                 Map<Station,Set<Integer>> domains = new HashMap<Station,Set<Integer>>();
                 for(Entry<Integer,Set<Integer>> stationID_domains_entry : stationID_domains.entrySet())
@@ -274,45 +206,152 @@ public class EncodedInstanceToCNFConverter {
                 
                 StationPackingInstance instance = new StationPackingInstance(domains,previous_assignment);
                 
+                instances.add(new Pair<StationPackingInstance,String>(instance,config_foldername));
                 
-                /*
-                 * Encode instance into CNF.
-                 */
-                ISATEncoder SATencoder;
-                if(SATencoders.containsKey(data_bundle))
-                {
-                    SATencoder = SATencoders.get(data_bundle);
-                }
-                else
-                {
-                    SATencoder = new SATCompressor(constraint_manager);
-                    SATencoders.put(data_bundle, SATencoder);
-                }
-        
-                log.debug("Encoding into SAT...");
-                Pair<CNF,ISATDecoder> encoding = SATencoder.encode(instance);
-                CNF cnf = encoding.getKey();
-                
-                
-                String aCNFFilename = output_foldername+ File.separator +instance.getHashString()+".cnf";
-                log.debug("Saving CNF to {}...",aCNFFilename);
-                
-                
-                List<Integer> sortedStationIDs = new ArrayList<Integer>(stationID_domains.keySet());
-                Collections.sort(sortedStationIDs);
-                List<Integer> sortedAllChannels = new ArrayList<Integer>(instance.getAllChannels());
-                Collections.sort(sortedAllChannels);
-                
-                try {
-                    FileUtils.writeStringToFile(new File(aCNFFilename), cnf.toDIMACS(new String[]{"FCC Feasibility Checking Instance","Original Encoded Instance File"+encoded_instance_filename+" line "+l,"Channels: "+StringUtils.join(sortedAllChannels,","),"Stations: "+StringUtils.join(sortedStationIDs,",")}));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    throw new IllegalStateException("Could not write CNF to file.");
-                }
             }
         } catch (IOException e) {
             e.printStackTrace();
-            throw new IllegalArgumentException("Could not read instance from file "+encoded_instance_filename+".",e);
+            throw new IllegalArgumentException("Could not read instance from file "+aFilename+".",e);
+        }
+        
+        return instances;
+    }
+    
+    public static void main(String[] args) {
+        
+        //Static objects used throughout the method.
+        final DataManager data_manager = new DataManager();
+        final Map<ManagerBundle,ISATEncoder> SATencoders = new HashMap<ManagerBundle,ISATEncoder>();
+        
+        
+      //Check for help or invalid number of arguments.
+        boolean needHelp = false;
+        for(String arg : args)
+        {
+            if(arg.equals("-h") || arg.equals("-help") || arg.equals("--help") || arg.equals("--h"))
+            {
+                needHelp = true;
+                break;
+            }
+        }
+        if(needHelp || args.length!=3)
+        {
+            if(args.length != 3)
+            {
+                System.out.println("Invalid number of arguments: \""+Arrays.toString(args)+"\".");
+            }
+            
+            System.out.println(USAGE);
+            return;
+        }
+        
+        
+        /*
+         * Get arguments.
+         */
+        
+        String interference_config_foldername = args[0];
+        String encoded_instance_filename = args[1];
+        String output_foldername = args[2];
+        
+        
+        /*
+         * Validate arguments.
+         */
+        File interference_config_folder = new File(interference_config_foldername);
+        if(!interference_config_folder.exists())
+        {
+            throw new IllegalArgumentException("Provided interference config folder \""+interference_config_foldername+"\" does not exist.");
+        }
+        else if(!interference_config_folder.isDirectory())
+        {
+            throw new IllegalArgumentException("Provided interference config folder \""+interference_config_foldername+"\" is not a directory.");
+        }
+        
+        File encoded_instance_file = new File(encoded_instance_filename);
+        if(!encoded_instance_file.exists())
+        {
+            throw new IllegalArgumentException("Provided encoded instance file \""+encoded_instance_file+"\" does not exist.");
+        }
+        if(!encoded_instance_file.isFile())
+        {
+            throw new IllegalArgumentException("Provided encoded instance file \""+encoded_instance_file+"\" is not a file.");
+        }
+        
+        File output_folder = new File(output_foldername);
+        if(!output_folder.exists())
+        {
+            throw new IllegalArgumentException("Provided output folder \""+output_foldername+"\" does not exist.");
+        }
+        else if(!output_folder.isDirectory())
+        {
+            throw new IllegalArgumentException("Provided output folder \""+output_foldername+"\" is not a directory.");
+        }
+        
+        log.debug("Reading instance from {} ...",encoded_instance_filename);
+ 
+        List<Pair<StationPackingInstance,String>> instances = readSQLInstancesFromFile(encoded_instance_filename, interference_config_foldername, data_manager);
+        
+        int l =0;
+        for(Pair<StationPackingInstance,String> instanceEntry : instances)
+        {
+            StationPackingInstance instance = instanceEntry.getFirst();
+            String config_foldername = instanceEntry.getSecond();
+            
+            ManagerBundle data_bundle;
+            try {
+                data_bundle = data_manager.getData(config_foldername);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+                throw new IllegalArgumentException("Could not load interference data from \""+config_foldername+"\".");
+            }
+            
+            IConstraintManager constraint_manager = data_bundle.getConstraintManager();
+            
+            /*
+             * Encode instance into CNF.
+             */
+            ISATEncoder SATencoder;
+            if(SATencoders.containsKey(data_bundle))
+            {
+                SATencoder = SATencoders.get(data_bundle);
+            }
+            else
+            {
+                SATencoder = new SATCompressor(constraint_manager);
+                SATencoders.put(data_bundle, SATencoder);
+            }
+    
+            log.debug("Encoding into SAT...");
+            Pair<CNF,ISATDecoder> encoding = SATencoder.encode(instance);
+            CNF cnf = encoding.getKey();
+            
+            
+            String aCNFFilename = output_foldername+ File.separator +instance.getHashString()+".cnf";
+            log.debug("Saving CNF to {}...",aCNFFilename);
+            
+            
+            List<Integer> sortedStationIDs = new ArrayList<Integer>();
+            for(Station station : instance.getStations())
+            {
+                sortedStationIDs.add(station.getID());
+            }
+            Collections.sort(sortedStationIDs);
+            List<Integer> sortedAllChannels = new ArrayList<Integer>(instance.getAllChannels());
+            Collections.sort(sortedAllChannels);
+            
+            try {
+                FileUtils.writeStringToFile(new File(aCNFFilename), cnf.toDIMACS(
+                        new String[]{
+                                "FCC Feasibility Checking Instance",
+                                "Original Encoded Instance File"+encoded_instance_filename+" line "+l,
+                                "Channels: "+StringUtils.join(sortedAllChannels,","),
+                                "Stations: "+StringUtils.join(sortedStationIDs,",")}));
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw new IllegalStateException("Could not write CNF to file.");
+            }
+            l++;
         }
         
         
