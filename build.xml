@@ -82,7 +82,17 @@ dirty: ${git.dirty}</echo>
 			<fileset dir="${aeatk.location}/" id="aeatk">
 				<include name="**/*"/>
 			</fileset>
+			
 		</path>	
+		
+		<!--Copy the necessary lib folders to dist.-->
+		<copy todir="dist/">
+			<fileset dir="lib/">
+				<include name="cplex/*"/>
+				<include name="plugins/**"/>
+			</fileset>
+		</copy>
+		
 	</target>
 	
 	
@@ -146,6 +156,10 @@ dirty: ${git.dirty}</echo>
 			<fileset dir="">
 				<include name="conf/**"/>
 			</fileset>
+		
+		</copy>
+		
+		<copy todir="dist/lib/" force="true">
 			<fileset refid="lib"/>
 			<fileset refid="aeatk"/>
 		</copy>
@@ -162,14 +176,14 @@ dirty: ${git.dirty}</echo>
 		</java>
 		
 		<java classname="ca.ubc.cs.beta.aeatk.ant.execscript.ExecScriptCreator" failonerror="true" classpathref="build.classpath" fork="true">
-							<arg value="--class"/>
-							<arg value="ca.ubc.cs.beta.stationpacking.execution.EncodedInstanceToCNFConverter"/>
-							<arg value="--name"/>
-							<arg value="cnf-extractor"/>
-							<arg value="--file-to-write"/>
-							<arg value="dist/"/>	
-							<arg value="--default-mem"/>
-							<arg value="2048"/>
+					<arg value="--class"/>
+					<arg value="ca.ubc.cs.beta.stationpacking.execution.EncodedInstanceToCNFConverter"/>
+					<arg value="--name"/>
+					<arg value="cnf-extractor"/>
+					<arg value="--file-to-write"/>
+					<arg value="dist/"/>	
+					<arg value="--default-mem"/>
+					<arg value="2048"/>
 		</java>
 	
 	</target>
