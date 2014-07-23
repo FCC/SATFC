@@ -297,6 +297,7 @@ public class EncodedInstanceToCNFConverter {
         int l =0;
         for(Pair<StationPackingInstance,String> instanceEntry : instances)
         {
+            log.debug("Saving instance {} ...",++l);
             StationPackingInstance instance = instanceEntry.getFirst();
             String config_foldername = instanceEntry.getSecond();
             
@@ -329,8 +330,7 @@ public class EncodedInstanceToCNFConverter {
             CNF cnf = encoding.getKey();
             
             
-            String aCNFFilename = output_foldername+ File.separator +instance.getHashString()+".cnf";
-            log.debug("Saving CNF to {}...",aCNFFilename);
+            
             
             
             List<Integer> sortedStationIDs = new ArrayList<Integer>();
@@ -341,6 +341,18 @@ public class EncodedInstanceToCNFConverter {
             Collections.sort(sortedStationIDs);
             List<Integer> sortedAllChannels = new ArrayList<Integer>(instance.getAllChannels());
             Collections.sort(sortedAllChannels);
+            
+            
+            
+            String aCNFFilename = output_foldername+ File.separator +instance.getHashString()+".cnf";
+            log.debug("Saving CNF to {} ...",aCNFFilename);
+            
+            File cnfFile = new File(aCNFFilename);
+            
+            if(cnfFile.exists())
+            {
+                log.warn("CNF file already exists with name \"{}\".",cnfFile);
+            }
             
             try {
                 FileUtils.writeStringToFile(new File(aCNFFilename), cnf.toDIMACS(
@@ -353,7 +365,6 @@ public class EncodedInstanceToCNFConverter {
                 e.printStackTrace();
                 throw new IllegalStateException("Could not write CNF to file.");
             }
-            l++;
         }
         
         
