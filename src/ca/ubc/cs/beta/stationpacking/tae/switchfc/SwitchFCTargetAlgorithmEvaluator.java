@@ -2,6 +2,7 @@ package ca.ubc.cs.beta.stationpacking.tae.switchfc;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -14,6 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
@@ -37,6 +39,7 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager
 import ca.ubc.cs.beta.stationpacking.execution.EncodedInstanceToCNFConverter;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.data.DataManager;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.data.ManagerBundle;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATDecoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
@@ -150,11 +153,9 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
 
                 String cnfFilename = fTmpDirname+ File.separator +decodedInstanceAndConfigFoldername.getFirst().getHashString()+".cnf";
                 tmpFiles.add(cnfFilename);                
-                
-                ISATEncoder SATencoder = getSATEncoder(decodedInstanceAndConfigFoldername.getSecond());
-                
-                ISATDecoder SATdecoder = EncodedInstanceToCNFConverter.encodeInstanceToCNFFile(
-                        decodedInstanceAndConfigFoldername.getFirst(), cnfFilename, SATencoder, new String[]{});
+
+                ISATDecoder SATdecoder = encodeInstanceToCNFFile(
+                        decodedInstanceAndConfigFoldername.getFirst(), cnfFilename, getSATEncoder(decodedInstanceAndConfigFoldername.getSecond()));
 
                 ProblemInstanceSeedPair transformedProblemInstance = new ProblemInstanceSeedPair(
                         new ProblemInstance(cnfFilename), runConfig.getProblemInstanceSeedPair().getSeed());
@@ -483,6 +484,20 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
         }
         
         return SATencoder;
+    }
+    
+    private ISATDecoder encodeInstanceToCNFFile(StationPackingInstance aInstance, String aOutputFilename, ISATEncoder aSATencoder) {
+        Pair<CNF, ISATDecoder> encoding = aSATencoder.encode(aInstance);
+        CNF cnf = encoding.getKey();
+        
+        try {
+            FileUtils.writeStringToFile(new File(aOutputFilename), cnf.toDIMACS(new String[0]));
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new IllegalStateException("Could not write CNF to file.");
+        }
+        
+        return encoding.getSecond();
     }
 
 }
