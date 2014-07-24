@@ -282,6 +282,26 @@ public class EncodedInstanceToCNFConverter {
                 StationPackingInstance instance = SQLinstance.getFirst();
                 String config_foldername = SQLinstance.getSecond();
                 
+                List<Integer> sortedStationIDs = new ArrayList<Integer>();
+                for(Station station : instance.getStations())
+                {
+                    sortedStationIDs.add(station.getID());
+                }
+                Collections.sort(sortedStationIDs);
+                List<Integer> sortedAllChannels = new ArrayList<Integer>(instance.getAllChannels());
+                Collections.sort(sortedAllChannels);
+                
+                String aCNFFilename = output_foldername+ File.separator +instance.getHashString()+".cnf";
+                
+                String[] aComments = new String[]{
+                        "FCC Feasibility Checking Instance",
+                        "Original Encoded Instance File"+encoded_instance_filename+" line "+l,
+                        "Channels: "+StringUtils.join(sortedAllChannels,","),
+                        "Stations: "+StringUtils.join(sortedStationIDs,",")};
+                
+                /*
+                 * Create/Get SAT encoder.
+                 */
                 ManagerBundle data_bundle;
                 try {
                     data_bundle = data_manager.getData(config_foldername);
@@ -292,9 +312,6 @@ public class EncodedInstanceToCNFConverter {
                 
                 IConstraintManager constraint_manager = data_bundle.getConstraintManager();
                 
-                /*
-                 * Encode instance into CNF.
-                 */
                 ISATEncoder SATencoder;
                 if(SATencoders.containsKey(data_bundle))
                 {
@@ -306,40 +323,11 @@ public class EncodedInstanceToCNFConverter {
                     SATencoders.put(data_bundle, SATencoder);
                 }
         
+                /*
+                 * Encode instance into CNF.
+                 */
                 log.debug("Encoding into SAT...");
-                Pair<CNF,ISATDecoder> encoding = SATencoder.encode(instance);
-                CNF cnf = encoding.getKey();
-                
-                List<Integer> sortedStationIDs = new ArrayList<Integer>();
-                for(Station station : instance.getStations())
-                {
-                    sortedStationIDs.add(station.getID());
-                }
-                Collections.sort(sortedStationIDs);
-                List<Integer> sortedAllChannels = new ArrayList<Integer>(instance.getAllChannels());
-                Collections.sort(sortedAllChannels);
-                
-                String aCNFFilename = output_foldername+ File.separator +instance.getHashString()+".cnf";
-                log.debug("Saving CNF to {} ...",aCNFFilename);
-                
-                File cnfFile = new File(aCNFFilename);
-                
-                if(cnfFile.exists())
-                {
-                    log.warn("CNF file already exists with name \"{}\".",cnfFile);
-                }
-                
-                try {
-                    FileUtils.writeStringToFile(new File(aCNFFilename), cnf.toDIMACS(
-                            new String[]{
-                                    "FCC Feasibility Checking Instance",
-                                    "Original Encoded Instance File"+encoded_instance_filename+" line "+l,
-                                    "Channels: "+StringUtils.join(sortedAllChannels,","),
-                                    "Stations: "+StringUtils.join(sortedStationIDs,",")}));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    throw new IllegalStateException("Could not write CNF to file.");
-                }
+                encodeInstanceToCNFFile(instance, aCNFFilename, SATencoder, aComments);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -350,6 +338,32 @@ public class EncodedInstanceToCNFConverter {
         
     }
 
+    /**
+     * Encodes a given station packing instance to a CNF file. 
+     * @return the decoder for the CNF
+     */
+    public static ISATDecoder encodeInstanceToCNFFile(StationPackingInstance instance, String aCNFFilename, ISATEncoder SATencoder, String[] aComments) {
+        Pair<CNF,ISATDecoder> encoding = SATencoder.encode(instance);
+        CNF cnf = encoding.getKey();
+        
+        log.debug("Saving CNF to {} ...",aCNFFilename);
+        
+        File cnfFile = new File(aCNFFilename);
+        
+        if(cnfFile.exists())
+        {
+            log.warn("CNF file already exists with name \"{}\".",cnfFile);
+        }
+        
+        try {
+            FileUtils.writeStringToFile(new File(aCNFFilename), cnf.toDIMACS(aComments));
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new IllegalStateException("Could not write CNF to file.");
+        }
+        
+        return encoding.getSecond();
+    }
     
     private static boolean isInteger(String s) {
         try { 
