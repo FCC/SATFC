@@ -119,6 +119,8 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
 
         Map<AlgorithmRunConfiguration, ISATDecoder> transformedCliConfigurationsToCNFDecoderMapping = new HashMap<AlgorithmRunConfiguration, ISATDecoder>();
 
+        Collection<String> tmpFiles = new ArrayList<String>();
+        
         /*
          * Partition run configurations into either SATFC or CLI.
          * For the CLI run configurations, we must transform the encoded instance problem to a CNF file.
@@ -147,6 +149,7 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
                 }
 
                 String cnfFilename = fTmpDirname+ File.separator +decodedInstanceAndConfigFoldername.getFirst().getHashString()+".cnf";
+                tmpFiles.add(cnfFilename);                
                 
                 ISATEncoder SATencoder = getSATEncoder(decodedInstanceAndConfigFoldername.getSecond());
                 
@@ -361,6 +364,11 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
             if (result.getRunStatus().equals(RunStatus.RUNNING)) {
                 throw new IllegalStateException("Attempted to return a result that is still RUNNING: " + result);
             }
+        }
+        
+        // Delete all temporary files.
+        for (String tmp : tmpFiles) {
+            new File(tmp).delete();
         }
 
         return results;
