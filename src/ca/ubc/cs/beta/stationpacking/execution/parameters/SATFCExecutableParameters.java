@@ -3,7 +3,6 @@ package ca.ubc.cs.beta.stationpacking.execution.parameters;
 import ca.ubc.cs.beta.aeatk.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aeatk.options.AbstractOptions;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.base.QuestionInstanceParameters;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.base.SQLInstanceParameters;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
