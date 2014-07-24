@@ -327,7 +327,24 @@ public class EncodedInstanceToCNFConverter {
                  * Encode instance into CNF.
                  */
                 log.debug("Encoding into SAT...");
-                encodeInstanceToCNFFile(instance, aCNFFilename, SATencoder, aComments);
+                Pair<CNF,ISATDecoder> encoding = SATencoder.encode(instance);
+                CNF cnf = encoding.getKey();
+                
+                log.debug("Saving CNF to {} ...",aCNFFilename);
+                
+                File cnfFile = new File(aCNFFilename);
+                
+                if(cnfFile.exists())
+                {
+                    log.warn("CNF file already exists with name \"{}\".",cnfFile);
+                }
+                
+                try {
+                    FileUtils.writeStringToFile(new File(aCNFFilename), cnf.toDIMACS(aComments));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    throw new IllegalStateException("Could not write CNF to file.");
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -336,33 +353,6 @@ public class EncodedInstanceToCNFConverter {
         
         return;
         
-    }
-
-    /**
-     * Encodes a given station packing instance to a CNF file. 
-     * @return the decoder for the CNF
-     */
-    public static ISATDecoder encodeInstanceToCNFFile(StationPackingInstance instance, String aCNFFilename, ISATEncoder SATencoder, String[] aComments) {
-        Pair<CNF,ISATDecoder> encoding = SATencoder.encode(instance);
-        CNF cnf = encoding.getKey();
-        
-        log.debug("Saving CNF to {} ...",aCNFFilename);
-        
-        File cnfFile = new File(aCNFFilename);
-        
-        if(cnfFile.exists())
-        {
-            log.warn("CNF file already exists with name \"{}\".",cnfFile);
-        }
-        
-        try {
-            FileUtils.writeStringToFile(new File(aCNFFilename), cnf.toDIMACS(aComments));
-        } catch (IOException e) {
-            e.printStackTrace();
-            throw new IllegalStateException("Could not write CNF to file.");
-        }
-        
-        return encoding.getSecond();
     }
     
     private static boolean isInteger(String s) {
