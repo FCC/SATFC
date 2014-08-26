@@ -8,6 +8,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import ca.ubc.cs.beta.stationpacking.modelcount.mbound.base.MBoundResult;
 import ca.ubc.cs.beta.stationpacking.modelcount.mbound.base.MBoundResult.MBoundResultType;
 import ca.ubc.cs.beta.stationpacking.modelcount.mbound.parameters.MBoundParameters;
@@ -27,6 +30,8 @@ import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
  *
  */
 public class MBoundAlgorithm {
+    
+    private static final Logger log = LoggerFactory.getLogger(MBoundAlgorithm.class);
 
     /**
      * Solve the CNF with additional randomly generated parity constraints. This is done in trials. 
@@ -41,18 +46,17 @@ public class MBoundAlgorithm {
      */
     public static MBoundResult solve(MBoundParameters aMBoundParameters, CNF aCNF, ISATSolver aSATSolver, ITerminationCriterion aTerminationCriterion, Long aSeed) {
 
-        int k = aMBoundParameters.getXorClauseSize();
+        int n =  aCNF.getVariables().size();        
+        int k = aMBoundParameters.getXorClauseSizeRatio() * n;
         int s = aMBoundParameters.getNumXorClauses();
         int t = aMBoundParameters.getNumTrials();
         double deviation = aMBoundParameters.getDeviation();
         double slack = aMBoundParameters.getPrecisionSlack();
-
-        if (k > aCNF.getVariables().size()) {
-            throw new IllegalArgumentException("Size of generated XOR clauses cannot be larger than the number of variables ("+aCNF.getVariables().size()+").");
-        }
+        
+        log.trace("Running MBound algorithm with {} variables, {} clauses, and parameters: k={}, s={}, t={}, deviation={}, slack={}", n,aCNF.size(),k,s,t,deviation,slack);
         
         int numSat = 0;
-
+        
         // Perform t trails. TODO: do in parallel
         for (int i=0; i<t; i++) {
             CNF cnfWithParityConstraints = addRandomParityConstraints(aCNF, s, k);
