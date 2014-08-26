@@ -3,8 +3,10 @@ package ca.ubc.cs.beta.stationpacking.modelcount.mbound.algorithm;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 import ca.ubc.cs.beta.stationpacking.modelcount.mbound.base.MBoundResult;
 import ca.ubc.cs.beta.stationpacking.modelcount.mbound.base.MBoundResult.MBoundResultType;
@@ -16,8 +18,6 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ISATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
-
-import com.google.common.collect.Lists;
 
 /**
  * Implements the MBound algorithm as specified in the paper "Model Counting: A New Strategy for Obtaining Good Bounds"
@@ -133,78 +133,71 @@ public class MBoundAlgorithm {
             
             return Collections.<Clause>emptyList();
             
-        } else if (xorVariables.size() == 1) {
-            
-            Clause singleClause = new Clause();
-            singleClause.add(new Literal(xorVariables.get(1), true));
-            
-            return Lists.<Clause>newArrayList(singleClause);
-            
-        } else if (xorVariables.size() == 2) {
-
-            // Create the CNF (a v b) ^ (~a v ~b)
-            
-            Long var1 = xorVariables.get(1);
-            Long var2 = xorVariables.get(2);
-            
-            List<Clause> baseClause = new ArrayList<Clause>(2);
-            
-            Clause negClause = new Clause();
-            negClause.add(new Literal(var1, false));
-            negClause.add(new Literal(var2, false));
-            
-            Clause posClause = new Clause();
-            posClause.add(new Literal(var1, true));
-            posClause.add(new Literal(var2, true));
-            
-            baseClause.add(negClause);
-            baseClause.add(posClause);
-            
-            return baseClause;
-            
         } else {
             
-            // Store a variable, cut down the problem size and recurse.
+            Map<Long, Literal> posVars = new HashMap<Long, Literal>(xorVariables.size());
+            Map<Long, Literal> negVars = new HashMap<Long, Literal>(xorVariables.size());
             
-            List<Long> copyVariables = new ArrayList<Long>(xorVariables);
-            Long lastVariable = copyVariables.remove(copyVariables.size()-1);
-            
-            Collection<Clause> firstClauses = convertXorClauseToCNF(copyVariables);
-            
-            // For each clause, append either the last variable or the negated last variable.
-            // If appending the negated last variable, also negate one variable within the clause.
-            
-            Collection<Clause> retClauses = new HashSet<Clause>();
-            
-            Literal posLiteral = new Literal(lastVariable, true);
-            Literal negLiteral = new Literal(lastVariable, false);
-            
-            for (Clause clause : firstClauses) {
-                Clause appendedClause = new Clause();
-                appendedClause.addAll(clause);
-                appendedClause.add(posLiteral);
-                
-                retClauses.add(appendedClause);
+            for (Long var : xorVariables) {
+                posVars.put(var, new Literal(var, true));
+                negVars.put(var, new Literal(var, false));
             }
             
-            for (Clause clause : firstClauses) {
+            // Generate CNF clauses. Each clause should have an even number of negations.
+            // Here, we generate binary strings with even number of 1s. A 1 will indicate a negation.
+            
+            String[] binaryStrings = generateBinaryStringsWithEvenNumberOfOnes(xorVariables.size());
+            
+            Collection<Clause> disjunctionClauses = new HashSet<Clause>();
+
+            for (String binary : binaryStrings) {
                 
-                for (Literal literal : clause) {
+                Clause clause = new Clause();
+                
+                for(int i=0, n=binary.length() ; i<n ; i++) { 
                     
-                    Clause negatedClause = new Clause();
-                    negatedClause.addAll(clause);
-                    negatedClause.remove(literal);
-                    negatedClause.add(new Literal(literal.getVariable(), !literal.getSign()));
+                    char inclusion = binary.charAt(i); 
+                    Long var = xorVariables.get(i);
                     
-                    negatedClause.add(negLiteral);
-                    
-                    retClauses.add(negatedClause);
+                    if (inclusion == '1') {
+                        
+                        // negate
+                        clause.add(negVars.get(var));
+                        
+                    } else {
+                        
+                        clause.add(posVars.get(var));
+                        
+                    }
                 }
                 
+                disjunctionClauses.add(clause);
+                
             }
             
-            return retClauses;
-            
+            return disjunctionClauses;
         }
     }
+    
+    /**
+     * Generates binary strings with even number of ones, up the given length.
+     */
+    private static String[] generateBinaryStringsWithEvenNumberOfOnes(int length) {
+        
+        int n = (int) Math.pow(2,length-1);
+        
+        String[] ret = new String[n];
+        
+        for (int i=0; i<n ; i++) {
+            
+            char digit = Integer.bitCount(i) % 2 == 0 ? '0' : '1';
+            
+            String binaryString = String.format("%0" +length+ "d", Integer.parseInt(Integer.toBinaryString(i) + digit));
+            
+            ret[i] = binaryString;
+        }
+        
+        return ret;
+    }
+
 }
