@@ -2,7 +2,7 @@ package ca.ubc.cs.beta.stationpacking.modelcount.mbound.parameters;
 
 public class MBoundParameters {
     
-    private final Integer fXorClauseSizeToNumVarsRatio;
+    private final Double fXorClauseSizeToNumVarsRatio;
     private final Integer fNumXorClauses;
     private final Integer fNumTrials;
     
@@ -17,7 +17,7 @@ public class MBoundParameters {
      * @param aDeviation the deviation from the 50-50. Higher deviation will produce better bounds but may fail to find a bound. (0 to 0.5)
      * @param aPrecisionSlack a precision slack variable. (>=1)
      */
-    public MBoundParameters(Integer aXorClauseSizeToNumVarsRatio, Integer aNumXorClauses, Integer aNumTrials, Double aDeviation, Double aPrecisionSlack) {
+    public MBoundParameters(Double aXorClauseSizeToNumVarsRatio, Integer aNumXorClauses, Integer aNumTrials, Double aDeviation, Double aPrecisionSlack) {
         
         if (aXorClauseSizeToNumVarsRatio > 0 && aXorClauseSizeToNumVarsRatio <= 0.5) {
             fXorClauseSizeToNumVarsRatio = aXorClauseSizeToNumVarsRatio;
@@ -41,7 +41,7 @@ public class MBoundParameters {
         fNumTrials = aNumTrials;
     }
     
-    public Integer getXorClauseSizeRatio() {
+    public Double getXorClauseSizeRatio() {
         return fXorClauseSizeToNumVarsRatio;
     }
     
