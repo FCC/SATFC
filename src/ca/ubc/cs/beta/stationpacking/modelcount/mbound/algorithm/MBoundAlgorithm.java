@@ -48,7 +48,7 @@ public class MBoundAlgorithm {
     public static MBoundResult solve(MBoundParameters aMBoundParameters, CNF aCNF, ISATSolver aSATSolver, ITerminationCriterion aTerminationCriterion, Long aSeed) {
 
         int n =  aCNF.getVariables().size();        
-        int k = aMBoundParameters.getXorClauseSizeRatio() * n;
+        int k = (int) Math.ceil(aMBoundParameters.getXorClauseSizeRatio() * n);
         int s = aMBoundParameters.getNumXorClauses();
         int t = aMBoundParameters.getNumTrials();
         double deviation = aMBoundParameters.getDeviation();
