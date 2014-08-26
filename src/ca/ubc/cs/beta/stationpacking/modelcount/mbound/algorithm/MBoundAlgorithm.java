@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,11 +56,12 @@ public class MBoundAlgorithm {
         
         log.trace("Running MBound algorithm with {} variables, {} clauses, and parameters: k={}, s={}, t={}, deviation={}, slack={}", n,aCNF.size(),k,s,t,deviation,slack);
         
+        Random rng = new Random(aSeed);
         int numSat = 0;
         
-        // Perform t trails. TODO: do in parallel
+        // Perform t trails. TODO: do in parallel       
         for (int i=0; i<t; i++) {
-            CNF cnfWithParityConstraints = addRandomParityConstraints(aCNF, s, k);
+            CNF cnfWithParityConstraints = addRandomParityConstraints(aCNF, s, k, rng);
             SATSolverResult result = aSATSolver.solve(cnfWithParityConstraints, aTerminationCriterion, aSeed);
 
             if (result.getResult().equals(SATResult.SAT)) {
@@ -110,7 +112,7 @@ public class MBoundAlgorithm {
      * @param xorClauseSize size of the parity constraints. 
      * @return a new CNF with additional parity constraints
      */
-    private static CNF addRandomParityConstraints(CNF cnf, Integer numConstraints, Integer xorClauseSize) {
+    private static CNF addRandomParityConstraints(CNF cnf, Integer numConstraints, Integer xorClauseSize, Random aRandom) {
 
         List<Long> variables = new ArrayList<Long>(cnf.getVariables());
 
@@ -135,7 +137,7 @@ public class MBoundAlgorithm {
             List<Long> randomlySampledSubset = new ArrayList<Long>();
             
             // Uniformly sample from subsets of size k by first sorting the variables and taking the first k variables.
-            Collections.shuffle(variables);
+            Collections.shuffle(variables, aRandom);
             for (int j=0; j<xorClauseSize; j++) {
                 randomlySampledSubset.add(variables.get(j));
             }
@@ -194,10 +196,13 @@ public class MBoundAlgorithm {
                         // negate
                         clause.add(negVars.get(var));
                         
-                    } else {
+                    } else if (inclusion == '0') {
                         
                         clause.add(posVars.get(var));
                         
+                    } else {
+                        
+                        throw new IllegalStateException(binary + " not a binary string?");
                     }
                 }
                 
