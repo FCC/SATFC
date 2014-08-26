@@ -41,13 +41,16 @@ public class MBoundAlgorithm {
      */
     public static MBoundResult solve(MBoundParameters aMBoundParameters, CNF aCNF, ISATSolver aSATSolver, ITerminationCriterion aTerminationCriterion, Long aSeed) {
 
-        // Parse parameters
         int k = aMBoundParameters.getXorClauseSize();
         int s = aMBoundParameters.getNumXorClauses();
         int t = aMBoundParameters.getNumTrials();
         double deviation = aMBoundParameters.getDeviation();
         double slack = aMBoundParameters.getPrecisionSlack();
 
+        if (k > aCNF.getVariables().size()) {
+            throw new IllegalArgumentException("Size of generated XOR clauses cannot be larger than the number of variables ("+aCNF.getVariables().size()+").");
+        }
+        
         int numSat = 0;
 
         // Perform t trails. TODO: do in parallel
@@ -62,11 +65,34 @@ public class MBoundAlgorithm {
 
         // Return lower/upper bound or failure.
         if (numSat >= t * (0.5+deviation)) {
-            return new MBoundResult(MBoundResultType.LOWERBOUND, Math.pow(2, s-slack));
-        } else if (numSat <= t * (0.5 - deviation)) {
-            return new MBoundResult(MBoundResultType.UPPERBOUND, Math.pow(2, s+slack));
+            return new MBoundResult(MBoundResultType.LOWERBOUND, Math.pow(2, s-slack), calculateMaximumErrorProbability(aMBoundParameters));
+        } else if (numSat <= t * (0.5-deviation)) {
+            return new MBoundResult(MBoundResultType.UPPERBOUND, Math.pow(2, s+slack), calculateMaximumErrorProbability(aMBoundParameters));
         } else {
-            return new MBoundResult(MBoundResultType.FAILURE, null);
+            return new MBoundResult(MBoundResultType.FAILURE, null, null);
+        }
+    }
+    
+    /**
+     * Calculates the probability that, if a bound be returned by MBound, the bound is incorrect.
+     * @param aMBoundParameters
+     * @return
+     */
+    public static Double calculateMaximumErrorProbability(MBoundParameters aMBoundParameters) {
+
+        int t = aMBoundParameters.getNumTrials();
+        double deviation = aMBoundParameters.getDeviation();
+        double slack = aMBoundParameters.getPrecisionSlack();
+        
+        if (deviation == 0.5) {
+            
+            return Math.pow(2, - slack * t);
+            
+        } else {
+
+            Double b = (Math.pow(2,slack) * (0.5 + deviation)) - 1; 
+            return Math.pow(Math.exp(b) / Math.pow(1+b, 1+b), t / Math.pow(2,b)); 
+            
         }
     }
 
@@ -97,15 +123,15 @@ public class MBoundAlgorithm {
 
         Collection<Clause> additionalNewClauses = new HashSet<Clause>();
 
-        // Add the always-true variable as a clause.        
+        // Add the always-true variable as a clause.
         additionalNewClauses.add(alwaysTrueVariableClause);
 
         for (int i=0; i<numConstraints; i++) {
 
+            List<Long> randomlySampledSubset = new ArrayList<Long>();
+            
             // Uniformly sample from subsets of size k by first sorting the variables and taking the first k variables.
             Collections.shuffle(variables);
-
-            List<Long> randomlySampledSubset = new ArrayList<Long>();
             for (int j=0; j<xorClauseSize; j++) {
                 randomlySampledSubset.add(variables.get(j));
             }
