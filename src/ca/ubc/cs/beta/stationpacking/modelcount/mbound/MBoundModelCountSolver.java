@@ -83,20 +83,6 @@ public class MBoundModelCountSolver implements IModelCountSolver {
         }
     }
 
-    private Pair<Double, Double> getLowerAndUpperBounds(CNF aCNF, Long aSeed) {
-        // Construct MBound parameters.
-        // TODO: make smarter.
-        MBoundParameters parameters = new MBoundParameters(0.2, 10, 10, 0.1, 1.5);
-
-        log.debug("MBound has error probability {}.", MBoundAlgorithm.calculateMaximumErrorProbability(parameters));
-
-        MBoundResult result = MBoundAlgorithm.solve(parameters, aCNF, fSATSolver, fSATSolverTerminationCriterion, aSeed);
-
-        log.debug("MBound result {}.", result);
-
-        return new Pair<Double,Double>(result.getBound(), result.getBound());
-    }
-
     @Override
     public Long countSatisfiablePackingsContainingStation(StationPackingInstance aInstance, Station aStation, long aSeed) {
 
@@ -136,6 +122,18 @@ public class MBoundModelCountSolver implements IModelCountSolver {
 
         }
         
+    }
+    
+    private Pair<Double, Double> getLowerAndUpperBounds(CNF aCNF, Long aSeed) {
+        // Construct MBound parameters.
+        // TODO: make smarter.
+        MBoundParameters parameters = new MBoundParameters(0.2, 10, 10, 0.1, 1.5);
+
+        MBoundResult result = MBoundAlgorithm.solve(parameters, aCNF, fSATSolver, fSATSolverTerminationCriterion, aSeed);
+
+        log.debug("MBound result {}.", result);
+
+        return new Pair<Double,Double>(result.getBound(), result.getBound());
     }
 
     @Override
