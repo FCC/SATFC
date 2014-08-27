@@ -1,5 +1,6 @@
 package ca.ubc.cs.beta.stationpacking.modelcount;
 
+import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 
 /**
@@ -11,7 +12,6 @@ import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 public interface IModelCountSolver {
     
     /**
-     * 
      * Produces a count (or estimate) of the total number of SAT results involving any
      * <i>station subset</i> of the given instance, excluding the empty subset.
      * 
@@ -20,6 +20,16 @@ public interface IModelCountSolver {
      * @return
      */
     public Long countSatisfiablePackings(StationPackingInstance aInstance, long aSeed);
+    
+    /**
+     * Produces a count (or estimate) of the total number of SAT results involving station subsets
+     * which contain the target station of the given instance.
+     * @param aInstance
+     * @param aStation
+     * @param aSeed
+     * @return
+     */
+    public Long countSatisfiablePackingsContainingStation(StationPackingInstance aInstance, Station aStation, long aSeed);
     
     /**
      * Tries to stop the solve call if implemented, if not throws an UnsupportedOperationException.
