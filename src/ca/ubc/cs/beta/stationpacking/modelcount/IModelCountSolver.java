@@ -19,7 +19,7 @@ public interface IModelCountSolver {
      * @param aSeed - the execution seed.
      * @return
      */
-    public Long countSatisfiablePackings(StationPackingInstance aInstance, long aSeed);
+    public Double countSatisfiablePackings(StationPackingInstance aInstance, long aSeed);
     
     /**
      * Produces a count (or estimate) of the total number of SAT results involving station subsets
@@ -29,7 +29,7 @@ public interface IModelCountSolver {
      * @param aSeed
      * @return
      */
-    public Long countSatisfiablePackingsContainingStation(StationPackingInstance aInstance, Station aStation, long aSeed);
+    public Double countSatisfiablePackingsContainingStation(StationPackingInstance aInstance, Station aStation, long aSeed);
     
     /**
      * Tries to stop the solve call if implemented, if not throws an UnsupportedOperationException.

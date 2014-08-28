@@ -21,7 +21,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Clause;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.ISATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.base.SATSolverResult;
-import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.walltime.WalltimeTerminationCriterion;
 
 /**
  * Implements the MBound algorithm as specified in the paper "Model Counting: A New Strategy for Obtaining Good Bounds"
@@ -45,10 +45,10 @@ public class MBoundAlgorithm {
      * @param aSeed seed for the SAT solver
      * @return
      */
-    public static MBoundResult solve(MBoundParameters aMBoundParameters, CNF aCNF, ISATSolver aSATSolver, ITerminationCriterion aTerminationCriterion, Long aSeed) {
+    public static MBoundResult solve(MBoundParameters aMBoundParameters, CNF aCNF, ISATSolver aSATSolver, int aSatSolverCutoff, Long aSeed) {
 
         int n =  aCNF.getVariables().size();        
-        int k = (int) Math.ceil(aMBoundParameters.getXorClauseSizeRatio() * n);
+        int k = aMBoundParameters.getXorClauseSize();
         int s = aMBoundParameters.getNumXorClauses();
         int t = aMBoundParameters.getNumTrials();
         double deviation = aMBoundParameters.getDeviation();
@@ -62,7 +62,7 @@ public class MBoundAlgorithm {
         // Perform t trails. TODO: do in parallel       
         for (int i=0; i<t; i++) {
             CNF cnfWithParityConstraints = addRandomParityConstraints(aCNF, s, k, rng);
-            SATSolverResult result = aSATSolver.solve(cnfWithParityConstraints, aTerminationCriterion, aSeed);
+            SATSolverResult result = aSATSolver.solve(cnfWithParityConstraints, new WalltimeTerminationCriterion(aSatSolverCutoff), aSeed);
 
             if (result.getResult().equals(SATResult.SAT)) {
                 numSat++;
