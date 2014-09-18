@@ -26,6 +26,7 @@ public interface ISolver {
 	
 	/**
 	 * Tries to stop the solve call if implemented, if not throws an UnsupportedOperationException.
+	 * @throws UnsupportedOperationException if interruption is not supported
 	 */
 	public void interrupt() throws UnsupportedOperationException;
 	

@@ -2,15 +2,11 @@ package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental;
 
 import java.util.HashSet;
 import java.util.Random;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
@@ -39,9 +35,6 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 {
 	
 	private static Logger log = LoggerFactory.getLogger(ClaspSATSolver.class);
-	
-	private static final int TIMER_TERMINATION_RETRY_COUNTS = 10;
-	private static final int TIMER_TERMINATION_WAIT_TIME = 5;
 	
 	private ClaspLibrary fClaspLibrary;
 	private String fParameters;

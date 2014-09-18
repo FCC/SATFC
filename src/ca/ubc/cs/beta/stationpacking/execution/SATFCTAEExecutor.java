@@ -17,9 +17,15 @@ import ca.ubc.cs.beta.stationpacking.tae.SATFCTargetAlgorithmEvaluator;
 import ca.ubc.cs.beta.stationpacking.tae.SATFCTargetAlgorithmEvaluatorFactory;
 import ca.ubc.cs.beta.stationpacking.tae.SATFCTargetAlgorithmEvaluatorOptions;
 
+/**
+ * Executes SATFC TAE. For testing purposes only.
+ * @author afrechet
+ */
 public class SATFCTAEExecutor {
 	
-	public static void main(String[] args) {
+	@SuppressWarnings("javadoc")
+    public static void main(String[] args) {
+	    
 		System.out.println(TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators());
 		SATFCTargetAlgorithmEvaluatorFactory factory = new SATFCTargetAlgorithmEvaluatorFactory();
 		

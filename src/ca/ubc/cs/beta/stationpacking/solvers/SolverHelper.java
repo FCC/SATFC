@@ -18,9 +18,8 @@ public class SolverHelper {
 	}
 	
 	/**
-	 * Combine the results of solving a single station packing instance in different ways.
 	 * @param aComponentResults
-	 * @return
+	 * @return the combined the results of solving a single station packing instance in different ways.
 	 */
 	public static SolverResult combineResults(Collection<SolverResult> aComponentResults)
 	{
@@ -89,9 +88,8 @@ public class SolverHelper {
 	
 	
 	/**
-	 * Merge the results of solving multiple disconnected components of a same station packing problem.
 	 * @param aComponentResults
-	 * @return
+	 * @return the merged the results of solving multiple disconnected components of a same station packing problem.
 	 */
 	public static SolverResult mergeComponentResults(Collection<SolverResult> aComponentResults){
 		double aRuntime = 0.0;

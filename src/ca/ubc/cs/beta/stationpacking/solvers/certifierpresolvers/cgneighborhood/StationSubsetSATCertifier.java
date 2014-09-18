@@ -20,6 +20,11 @@ import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
 import com.google.common.collect.Sets;
 
+/**
+ * SAT certifier. Pre-solver that checks whether the missing stations plus their neighborhood are packable when all other stations are fixed
+ * to their previous assignment values.
+ * @author afrechet
+ */
 public class StationSubsetSATCertifier implements IStationSubsetCertifier {
 
 	private static Logger log = LoggerFactory.getLogger(StationSubsetSATCertifier.class);

@@ -13,10 +13,14 @@ import ca.ubc.cs.beta.stationpacking.facade.SATFCResult;
 
 import com.beust.jcommander.ParameterException;
 
+/**
+ * Executes a SATFC facade built from parameters on an instance given in parameters.
+ * @author afrechet
+ */
 public class SATFCFacadeExecutor {
 
 	/**
-	 * @param args
+	 * @param args - parameters satisfying {@link SATFCFacadeParameters}.
 	 */
 	public static void main(String[] args) {
 		
@@ -56,7 +60,7 @@ public class SATFCFacadeExecutor {
 						parameters.fInstanceParameters.getPreviousAssignment(),
 						parameters.fInstanceParameters.Cutoff,
 						parameters.fInstanceParameters.Seed,
-						parameters.fDataFoldername);
+						parameters.fInstanceParameters.fDataFoldername);
 				
 				log.info("..done!");
 				

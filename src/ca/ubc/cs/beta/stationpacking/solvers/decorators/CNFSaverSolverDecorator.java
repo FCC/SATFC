@@ -16,6 +16,10 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
+/**
+ * Solver decorator that saves CNFs on solve query. 
+ * @author afrechet
+ */
 public class CNFSaverSolverDecorator extends ASolverDecorator
 {	
 	private final IConstraintManager fConstraintManager;

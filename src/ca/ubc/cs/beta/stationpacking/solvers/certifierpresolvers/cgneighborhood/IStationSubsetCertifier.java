@@ -8,12 +8,19 @@ import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
 /**
- * Certifies if a station subset is packable or unpackable.
+ * Certifies if a station subset is packable or unpackable. Usually can only answer SAT or UNSAT cases exclusively.
  * @author afrechet
- *
  */
 public interface IStationSubsetCertifier {
-
+    
+    /**
+     * Certifies if a station subset is packable or unpackable.
+     * @param aInstance
+     * @param aToPackStations
+     * @param aTerminationCriterion
+     * @param aSeed
+     * @return
+     */
 	public SolverResult certify(
 			StationPackingInstance aInstance,
 			Set<Station> aToPackStations,
@@ -22,6 +29,7 @@ public interface IStationSubsetCertifier {
 	
 	/**
 	 * Tries to stop the solve call if implemented, if not throws an UnsupportedOperationException.
+	 * @throws UnsupportedOperationException thrown if interruption is not supported.
 	 */
 	public void interrupt() throws UnsupportedOperationException;
 	

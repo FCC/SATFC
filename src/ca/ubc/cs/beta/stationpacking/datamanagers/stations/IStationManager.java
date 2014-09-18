@@ -7,6 +7,10 @@ import java.util.Set;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 
 
+/**
+ * Interface for objects in charge of managing a collection of stations.
+ * @author afrechet
+ */
 public interface IStationManager {
 
 	/**
@@ -16,7 +20,7 @@ public interface IStationManager {
 	
 	/**
 	 * 
-	 * @param a station ID.
+	 * @param aID - a station ID.
 	 * @return the station for the particular ID.
 	 * @throws IllegalArgumentException - if the provided ID cannot be found in the stations.
 	 */

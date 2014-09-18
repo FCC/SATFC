@@ -33,6 +33,10 @@ import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Collections2;
 
+/**
+ * Converts a question type station packing instance to corresponding CNF.
+ * @author afrechet
+ */
 public class QuestionToCNFConverter {
 	
 	private static Logger log = LoggerFactory.getLogger(QuestionToCNFConverter.class);
@@ -44,6 +48,7 @@ public class QuestionToCNFConverter {
 										"<output directory> -- directory where output CNFs will be written.\n"+
 										"<question filename i> -- the filename of a feasibility checking question to convert to CNF.";
 	/**
+	 * See static <code>USAGE</code> string.
 	 * @param args
 	 */
 	public static void main(String[] args) {

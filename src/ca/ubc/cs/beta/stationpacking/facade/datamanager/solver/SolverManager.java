@@ -14,7 +14,7 @@ import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBu
 /**
  * Manages the solvers & data corresponding to different directories to make sure it is only read once.
  */
-public class SolverManager {
+public class SolverManager implements AutoCloseable{
 	private static Logger log = LoggerFactory.getLogger(SolverManager.class);
 	
 	private HashMap<String, ISolverBundle> fSolverData;
@@ -85,16 +85,14 @@ public class SolverManager {
 		return bundle;
 	}
 
-	/**
-	 * Calls notify shutdown on all the solvers contained in the manager and removes them.
-	 */
-	public void notifyShutdown()
+	@Override
+	public void close() throws Exception
 	{
 		HashSet<String> keys = new HashSet<String>(fSolverData.keySet());
 		for (String path : keys)
 		{
 			ISolverBundle bundle = fSolverData.get(path);
-			bundle.notifyShutdown();
+			bundle.close();
 			fSolverData.remove(path);
 		}
 	}

@@ -1,5 +1,9 @@
 package ca.ubc.cs.beta.stationpacking.modelcount.mbound.parameters;
 
+/**
+ * Parameters for the MBound algorithm.
+ * @author tqichen
+ */
 public class MBoundParameters {
 
     private final Integer fXorClauseSize;
@@ -11,6 +15,7 @@ public class MBoundParameters {
 
     /**
      * 
+     * @param aXorClauseSize - size of the XOR clauses to add.
      * @param aXorClauseSizeToNumVarsRatio the size of the streamlined XOR clauses as a percentage of the number of variables. (0 to 0.5)
      * @param aNumXorClauses number of streamlined XOR clauses.
      * @param aNumTrials the number of repetitions or trials.
@@ -38,27 +43,39 @@ public class MBoundParameters {
         fXorClauseSize = aXorClauseSize;
         fNumXorClauses = aNumXorClauses;
         fNumTrials = aNumTrials;
-        
-        
-        
     }
-
+    
+    /**
+     * @return the XOR clause size.
+     */
     public Integer getXorClauseSize() {
         return fXorClauseSize;
     }
 
+    /**
+     * @return the number of XOR clauses to add.
+     */
     public Integer getNumXorClauses() {
         return fNumXorClauses;
     }
 
+    /**
+     * @return the number of trials to make.
+     */
     public Integer getNumTrials() {
         return fNumTrials;
     }
-
+    
+    /**
+     * @return the deviation to tolerate.
+     */
     public Double getDeviation() {
         return fDeviation;
     }
 
+    /**
+     * @return the precision slack to tolerate.
+     */
     public Double getPrecisionSlack() {
         return fPrecisionSlack;
     }    

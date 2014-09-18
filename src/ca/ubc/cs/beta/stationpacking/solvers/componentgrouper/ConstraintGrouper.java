@@ -12,6 +12,10 @@ import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 
+/**
+ * Groups the stations in a station packing instance based on connected components in interference constraint graph.
+ * @author afrechet
+ */
 public class ConstraintGrouper implements IComponentGrouper{
 	
 	//NA - just assume that at least two feasible channels are adjacent (so that ADJ constraints are relevant).
