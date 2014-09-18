@@ -25,6 +25,10 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.ClaspSAT
 import ca.ubc.cs.beta.stationpacking.solvers.termination.cputime.CPUTimeTerminationCriterionFactory;
 import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
 
+/**
+ * SATFC solver bundle that lines up pre-solving and main solver.
+ * @author afrechet
+ */
 public class SATFCSolverBundle extends ASolverBundle{
 
 	private static Logger log = LoggerFactory.getLogger(SATFCSolverBundle.class);
@@ -32,6 +36,14 @@ public class SATFCSolverBundle extends ASolverBundle{
 	private final ISolver fUHFSolver;
 	private final ISolver fVHFSolver;
 	
+	/**
+	 * Create a SATFC solver bundle.
+	 * @param aClaspLibraryPath - library for the clasp to use.
+	 * @param aStationManager - station manager.
+	 * @param aConstraintManager - constraint manager.
+	 * @param aCNFDirectory - directory in which CNFs should be saved (optional).
+	 * @param aResultFile - file to which results should be written (optional).
+	 */
 	public SATFCSolverBundle(
 			String aClaspLibraryPath,
 			IStationManager aStationManager,
@@ -43,9 +55,6 @@ public class SATFCSolverBundle extends ASolverBundle{
 		super(aStationManager, aConstraintManager);
 		
 		log.debug("Solver selector: PRE-SOLVING WITH CLASP AS MAIN SOLVER.");
-		
-		//Initialize clasp.
-		//log.warn("Initializing clasps with internal configurations.");
 		
 		SATCompressor aCompressor = new SATCompressor(this.getConstraintManager());
 		IComponentGrouper aGrouper = new NoGrouper();
@@ -124,7 +133,7 @@ public class SATFCSolverBundle extends ASolverBundle{
 	}
 
 	@Override
-	public void notifyShutdown() {
+	public void close() {
 		fUHFSolver.notifyShutdown();
 		fVHFSolver.notifyShutdown();
 	}

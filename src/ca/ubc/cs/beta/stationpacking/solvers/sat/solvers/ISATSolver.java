@@ -4,6 +4,10 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
+/**
+ * Interface for a SAT solver.
+ * @author afrechet
+ */
 public interface ISATSolver {
 
 	/**

@@ -28,7 +28,6 @@
 	<classpathentry kind="lib" path="/AEATK/lib/commons-collections-3.2.1.jar"/>
 	<classpathentry kind="lib" path="/AEATK/lib/commons-io-2.1.jar"/>
 	<classpathentry kind="lib" path="/AEATK/lib/commons-math-2.2.jar"/>
-	<classpathentry kind="lib" path="/AEATK/lib/commons-math3-3.2.jar"/>
 	<classpathentry kind="lib" path="/AEATK/lib/DomainInter.jar"/>
 	<classpathentry kind="lib" path="/AEATK/lib/exp4j-0.3.10-sources.jar"/>
 	<classpathentry kind="lib" path="/AEATK/lib/exp4j-0.3.10.jar"/>
@@ -47,5 +46,6 @@
 	<classpathentry kind="lib" path="/AEATK/lib/logback-access-1.1.2.jar"/>
 	<classpathentry kind="lib" path="/AEATK/lib/logback-classic-1.1.2.jar" sourcepath="/AEATK/libsrc/logback-classic-1.1.2-sources.jar"/>
 	<classpathentry kind="lib" path="/AEATK/lib/logback-core-1.1.2.jar"/>
+	<classpathentry kind="lib" path="/AEATK/lib/commons-math3-3.3.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

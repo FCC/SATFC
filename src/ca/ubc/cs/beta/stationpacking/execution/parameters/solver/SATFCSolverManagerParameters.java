@@ -20,25 +20,43 @@ import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.SATFCSolv
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
+/**
+ * Parameters to cosntruct a SATFC solver manager.
+ * @author afrechet
+ */
 @UsageTextField(title="SATFC Solver Manager Parameters",description="Parameters defining a SATFC solver manager.")
-public class SolverManagerParameters extends AbstractOptions {
+public class SATFCSolverManagerParameters extends AbstractOptions {
 	
-	//Solver parameters
+    /**
+     * ISolver parameters.
+     */
 	@ParametersDelegate
 	public ClaspLibSATSolverParameters SolverParameters = new ClaspLibSATSolverParameters();
 	
+	/**
+	 * Config foldernames.
+	 */
 	@Parameter(names = "-DATA-FOLDERNAME",description = "a list of data foldernames that SATFC should know about.", required=true)
 	public List<String> DataFoldernames = new ArrayList<String>();
 	
+	/**
+	 * CNF directory.
+	 */
 	@Parameter(names = "-CNF-DIRECTORY",description = "a directory in which to put CNF problems encountered by SATFC.")
 	public String CNFDirectory = null;
 	
+	/**
+	 * Result file.
+	 */
 	@Parameter(names = "-RESULT-FILE", description = "a file in which to save the results of problems encountered.")
 	public String ResultFile = null;
 	
+	/**
+	 * @return SATFC solver manager initialized with the given parameters.
+	 */
 	public SolverManager getSolverManager()
 	{
-		Logger log = LoggerFactory.getLogger(SolverManagerParameters.class);
+		Logger log = LoggerFactory.getLogger(SATFCSolverManagerParameters.class);
 		
 		//Setup solvers.
 		final String clasplibrary = SolverParameters.Library; 

@@ -14,6 +14,10 @@ import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
+/**
+ * Composes a list of solvers and executes each one ata time.
+ * @author afrechet
+ */
 public class SequentialSolversComposite implements ISolver{
 
 	private static Logger log = LoggerFactory.getLogger(SequentialSolversComposite.class);

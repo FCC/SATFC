@@ -19,9 +19,8 @@ import ca.ubc.cs.beta.stationpacking.solvers.termination.composite.DisjunctiveCo
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
 /**
- * Checks if a given neighborhood of instances cannot be packed together.
+ * UNSAT certifier. Checks if a given neighborhood of instances cannot be packed together.
  * @author afrechet
- *
  */
 public class StationSubsetUNSATCertifier implements IStationSubsetCertifier {
 

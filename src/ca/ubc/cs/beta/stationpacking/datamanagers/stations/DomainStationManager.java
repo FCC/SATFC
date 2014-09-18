@@ -14,7 +14,7 @@ import au.com.bytecode.opencsv.CSVReader;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 
 /**
- * Station manager that is populated from a channel domain file.
+ * In charge of managing collections of stations read from a domain file.
  * @author afrechet
  */
 public class DomainStationManager implements IStationManager{
@@ -22,6 +22,10 @@ public class DomainStationManager implements IStationManager{
 	private final Map<Integer,Station> fStations = new HashMap<Integer,Station>();
 	private final Map<Station,Set<Integer>> fDomains = new HashMap<Station,Set<Integer>>();
 	
+	/**
+	 * @param aStationDomainsFilename - domain file from which stations should be read.
+	 * @throws FileNotFoundException - if domain file is not found.
+	 */
 	public DomainStationManager(String aStationDomainsFilename) throws FileNotFoundException{
 	
 		CSVReader aReader;
@@ -67,7 +71,8 @@ public class DomainStationManager implements IStationManager{
 		return new HashSet<Station>(fStations.values());
 	}
 	
-	public Station getStationfromID(Integer aID){
+	@Override
+    public Station getStationfromID(Integer aID){
 		
 		if(!fStations.containsKey(aID))
 		{
@@ -97,9 +102,9 @@ public class DomainStationManager implements IStationManager{
 		return domain;
 	}
 	
-	/*
-	 * Return a mapping between stationIDs and domains
-	 * @param all stationIDs
+	/**
+	 * @param stationIDs - all stationIDs
+	 * @return a mapping between stationIDs and domains 
 	 */
 	public Map<Integer, Set<Integer>> getDomainsFromIDs(Set<Integer> stationIDs) {
 		Map<Integer, Set<Integer>> domainsFromID = new HashMap<Integer, Set<Integer>>();

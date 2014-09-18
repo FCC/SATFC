@@ -8,7 +8,7 @@ import java.util.TreeSet;
 import org.apache.commons.lang3.StringUtils;
 
 /**
- * A disjunctive clause (OR's of litterals).
+ * A disjunctive clause (OR's of litterals). Implementation-wise just a litteral collection wrapper.
  * @author afrechet
  *
  */

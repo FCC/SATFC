@@ -3,7 +3,7 @@ package ca.ubc.cs.beta.stationpacking.solvers.sat.base;
 import java.io.Serializable;
 
 /**
- * The construction blocks of SAT clauses, consists of an integral variable (long) and its sign/negation (true=not negated, false=negated). 
+ * The construction blocks of SAT clauses, consists of an integral variable (long) and its sign/negation/polarity (true=not negated, false=negated). 
  * @author afrechet
  */
 public class Literal implements Serializable{
@@ -24,10 +24,16 @@ public class Literal implements Serializable{
 		fSign = aSign;
 	}
 	
+	/**
+	 * @return the literal variable.
+	 */
 	public long getVariable() {
 		return fVariable;
 	}
 
+	/**
+	 * @return the literal sign.
+	 */
 	public boolean getSign() {
 		return fSign;
 	}

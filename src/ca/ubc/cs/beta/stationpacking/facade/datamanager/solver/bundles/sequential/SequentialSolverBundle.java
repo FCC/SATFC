@@ -11,10 +11,19 @@ import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBu
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.composites.SequentialSolversComposite;
 
+/**
+ * Executes solver bundles in sequence to solve a single instance.
+ * @author afrechet
+ */
 public class SequentialSolverBundle extends ASolverBundle {
 
 	private final List<ISolverBundle> fSolverBundles;
 	
+    /**
+     * @param aStationManager - station manager to create instances.
+     * @param aConstraintManager - constraint manager to create instances.
+     * @param aSolverBundles - the list of solver bundles to execute.
+     */
 	public SequentialSolverBundle(IStationManager aStationManager, IConstraintManager aConstraintManager, List<ISolverBundle> aSolverBundles)
 	{
 		super(aStationManager,aConstraintManager);
@@ -35,10 +44,11 @@ public class SequentialSolverBundle extends ASolverBundle {
 	}
 
 	@Override
-	public void notifyShutdown() {
+	public void close() throws Exception
+	{
 		for(ISolverBundle bundle : fSolverBundles)
 		{
-			bundle.notifyShutdown();
+			bundle.close();
 		}
 	}
 

@@ -19,32 +19,40 @@ import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
 import com.beust.jcommander.IStringConverter;
 import com.beust.jcommander.Parameter;
 
+/**
+ * Parses smooth ladder simulator feasibility checking instances in "question" format.
+ * @author afrechet
+ */
 @UsageTextField(title="FCC Station Packing Packing Question Options",description="Parameters necessary to define a station packing question.")
 public class QuestionInstanceParameters extends AbstractOptions implements IInstanceParameters {
 	
-	public static class StationPackingQuestionConverter implements IStringConverter<StationPackingQuestion>
-	{
-		@Override
-		public StationPackingQuestion convert(String value) {
-		    if(value == null)
-		    {
-		        return null;
-		    }
-		    else
-		    {
-		        return new StationPackingQuestion(value);    
-		    }
-		}
-	}
-	
+    /**
+     * Station packing question built from a question filename.
+     * @author afrechet
+     */
 	public static class StationPackingQuestion
 	{
+		/**
+		 * Set of station IDs in instance.
+		 */
 		public final Set<Integer> fStationIDs;
+		/**
+		 * Set of channels to pack into.
+		 */
 		public final Set<Integer> fChannels;
+		/**
+		 * Valid previous assignment.
+		 */
 		public final Map<Integer,Integer> fPreviousAssignment;
 		
+		/**
+		 * Interference data foldername.
+		 */
 		public final String fData;
 		
+		/**
+		 * Instance cutoff time (s).
+		 */
 		public final double fCutoff;
 		
 		private boolean isInteger(String s)
@@ -57,6 +65,10 @@ public class QuestionInstanceParameters extends AbstractOptions implements IInst
 		    return true;
 		}
 		
+		/**
+		 * Construct a station packing question from the corresponding question filename.
+		 * @param aQuestion
+		 */
 		public StationPackingQuestion(String aQuestion)
 		{
 			Set<Integer> stationIDs = new HashSet<Integer>();
@@ -130,27 +142,27 @@ public class QuestionInstanceParameters extends AbstractOptions implements IInst
 			}
 			switch(band)
 			{
-			case("LVHF"):
-			case("1"):
-				fChannels = new HashSet<Integer>(StationPackingUtils.LVHF_CHANNELS);
-				break;
-			case("2"):
-			case("HVHF"):
-				fChannels = new HashSet<Integer>(StationPackingUtils.HVHF_CHANNELS);
-				break;
-			case("3"):
-			case("UHF"):
-				fChannels = new HashSet<Integer>();
-				for(Integer channel : StationPackingUtils.UHF_CHANNELS)
-				{
-					if(channel <= highest)
-					{
-						fChannels.add(channel);
-					}
-				}
-				break;
-			default:
-				throw new IllegalArgumentException("Unrecognized BAND value "+band);
+    			case("LVHF"):
+    			case("1"):
+    				fChannels = new HashSet<Integer>(StationPackingUtils.LVHF_CHANNELS);
+    				break;
+    			case("2"):
+    			case("HVHF"):
+    				fChannels = new HashSet<Integer>(StationPackingUtils.HVHF_CHANNELS);
+    				break;
+    			case("3"):
+    			case("UHF"):
+    				fChannels = new HashSet<Integer>();
+    				for(Integer channel : StationPackingUtils.UHF_CHANNELS)
+    				{
+    					if(channel <= highest)
+    					{
+    						fChannels.add(channel);
+    					}
+    				}
+    				break;
+    			default:
+    				throw new IllegalArgumentException("Unrecognized BAND value "+band);
 			}
 			
 			fPreviousAssignment = previousAssignment;
@@ -166,21 +178,42 @@ public class QuestionInstanceParameters extends AbstractOptions implements IInst
 		}
 	}
 	
-	
+    /**
+     * Converts a string question filename to the corresponding station packing question.
+     * @author afrechet
+     */
+    public static class StationPackingQuestionConverter implements IStringConverter<StationPackingQuestion>
+    {
+        @Override
+        public StationPackingQuestion convert(String value) {
+            if(value == null)
+            {
+                return null;
+            }
+            else
+            {
+                return new StationPackingQuestion(value);    
+            }
+        }
+    }
 	@Parameter(names = "-QUESTION", description = "Question file.",converter=StationPackingQuestionConverter.class)
 	private StationPackingQuestion fQuestion; 
+
 	
-	public String getData()
+	@Override
+    public String getInterferenceData()
 	{
 		return fQuestion.fData;
 	}
 	
-	public double getCutoff()
+	@Override
+    public double getCutoff()
 	{
 		return fQuestion.fCutoff;
 	}
 	
-	public StationPackingInstance getInstance(IStationManager aStationManager)
+	@Override
+    public StationPackingInstance getInstance(IStationManager aStationManager)
 	{
 		Map<Station,Integer> prevAssignment = new HashMap<Station,Integer>();
 		Set<Station> stations = new HashSet<Station>();

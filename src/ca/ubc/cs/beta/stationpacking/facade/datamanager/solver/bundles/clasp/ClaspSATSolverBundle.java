@@ -17,6 +17,10 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSo
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.ClaspSATSolver;
 import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
 
+/**
+ * Solver bundle for a clasp SAT solver.
+ * @author afrechet
+ */
 public class ClaspSATSolverBundle extends ASolverBundle{
 	
 	private static Logger log = LoggerFactory.getLogger(ClaspSATSolverBundle.class);
@@ -25,6 +29,11 @@ public class ClaspSATSolverBundle extends ASolverBundle{
 	private final ISolver fClaspHVHF;
 	private final ISolver fClaspUHF;
 	
+	/**
+	 * @param aClaspLibraryPath - clasp library path.
+	 * @param aStationManager - station manager to create instances.
+	 * @param aConstraintManager - constraint manager to create instances.
+	 */
 	public ClaspSATSolverBundle(String aClaspLibraryPath, IStationManager aStationManager, IConstraintManager aConstraintManager)
 	{
 		super(aStationManager,aConstraintManager);
@@ -33,11 +42,6 @@ public class ClaspSATSolverBundle extends ASolverBundle{
 		
 		SATCompressor aCompressor = new SATCompressor(this.getConstraintManager());
 		IComponentGrouper aGrouper = new NoGrouper();
-		
-//		log.info("Creating incremental library clasp.");
-//		SATEncoder aSATEncoder = new SATEncoder(fStationManager,aConstraintManager);
-//		AbstractSATSolver aIncrementalClaspSATsolver = new IncrementalClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.ORIGINAL_CONFIG_03_13, 1);
-//		fClaspGeneral = new SATBasedSolver(aIncrementalClaspSATsolver, aSATEncoder, aConstraintManager, aGrouper);
 		
 		log.debug("Initializing clasp solvers.");
 		AbstractCompressedSATSolver aClaspSATsolver =  new ClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.ALL_CONFIG_11_13);
@@ -70,12 +74,13 @@ public class ClaspSATSolverBundle extends ASolverBundle{
 			return fClaspGeneral;
 		}
 	}
-	
-	@Override
-	public void notifyShutdown() {
-		fClaspGeneral.notifyShutdown();
-		fClaspHVHF.notifyShutdown();
-	}
+
+
+    @Override
+    public void close() throws Exception {
+        fClaspGeneral.notifyShutdown();
+        fClaspHVHF.notifyShutdown();
+    }
 
 
 
