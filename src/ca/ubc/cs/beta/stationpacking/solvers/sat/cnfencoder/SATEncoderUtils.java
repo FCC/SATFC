@@ -41,7 +41,6 @@ public class SATEncoderUtils {
 	{
 		long a = (long) (z-Math.pow(Math.floor(Math.sqrt(z)),2));
 		long b =(long) Math.floor(Math.sqrt(z));
-	
 		
 		if(a<b)
 		{

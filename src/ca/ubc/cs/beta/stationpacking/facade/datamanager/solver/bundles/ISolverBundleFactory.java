@@ -3,6 +3,10 @@ package ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 
+/**
+ * Factory object for {@link ISolverBundle}.
+ * @author afrechet
+ */
 public interface ISolverBundleFactory {
 	
 	/**

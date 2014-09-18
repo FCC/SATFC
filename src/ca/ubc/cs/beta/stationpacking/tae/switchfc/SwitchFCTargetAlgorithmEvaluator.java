@@ -61,7 +61,11 @@ public class SwitchFCTargetAlgorithmEvaluator extends AbstractSyncTargetAlgorith
     private final String fInterferencesConfigFolderDirname;
     private final String fTmpDirname;
 
-    SwitchFCTargetAlgorithmEvaluator(SATFCTargetAlgorithmEvaluator aSatfcTae, CommandLineTargetAlgorithmEvaluator aCliTae, String aInterferencesConfigFolderDir, String aTmpDirname) {
+    SwitchFCTargetAlgorithmEvaluator(
+            SATFCTargetAlgorithmEvaluator aSatfcTae,
+            CommandLineTargetAlgorithmEvaluator aCliTae,
+            String aInterferencesConfigFolderDir,
+            String aTmpDirname) {
         if (aSatfcTae == null) throw new IllegalArgumentException("SATFC TAE cannot be null.");
         if (aCliTae == null) throw new IllegalArgumentException("CLI TAE cannot be null.");
         if (aInterferencesConfigFolderDir == null) throw new IllegalArgumentException("Interferences folder cannot be null.");

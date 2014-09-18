@@ -4,6 +4,11 @@ import org.apache.commons.math3.util.Pair;
 
 import ca.ubc.cs.beta.stationpacking.base.Station;
 
+/**
+ * Decodes variables to their station/channel equivalents.
+ * @author afrechet
+ *
+ */
 public interface ISATDecoder {
 	
 	/**

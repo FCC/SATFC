@@ -15,6 +15,9 @@ public class SATFCFacadeBuilder {
 	private String fCNFDirectory;
 	private String fResultFile;
 	
+	/**
+	 * Create a SATFCFacadeBuilder with the default parameters - no logging initialized, autodetected clasp library, no saving of CNFs and results.
+	 */
 	public SATFCFacadeBuilder()
 	{
 		fInitializeLogging = false;
@@ -23,9 +26,12 @@ public class SATFCFacadeBuilder {
 		fResultFile = null;
 	}
 	
+	/**
+	 * Some autodetection magic to find clasp library.
+	 * @return the path to the detected clasp library, null if none found.
+	 */
 	private String findSATFCLibrary()
 	{
-		
 		String relativeLibPath = "clasp"+File.separator+"jna"+File.separator+"libjnaclasp";
 		
 		String osName = System.getProperty("os.name").toLowerCase();

@@ -27,7 +27,7 @@ public class SATFCFacadeTests {
 	private static final long SEED = 0;
 	
 	@Test
-	public void testPreviousAssignment() {
+	public void testPreviousAssignment() throws Exception {
 		
 		IStringConverter<HashMap<Integer,Integer>> prevAssignmentConverter = new PreviousAssignmentConverter();
 		IStringConverter<HashMap<Integer,Set<Integer>>> domainsConverter = new StationDomainsConverter();

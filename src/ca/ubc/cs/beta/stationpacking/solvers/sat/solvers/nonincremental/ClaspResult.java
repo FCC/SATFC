@@ -2,6 +2,10 @@ package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental;
 
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 
+/**
+ * Clasp library result.
+ * @author gsauln
+ */
 public class ClaspResult {
 
 	private final SATResult fSATResult;

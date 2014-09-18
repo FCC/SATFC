@@ -23,6 +23,10 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.ClaspSAT
 import ca.ubc.cs.beta.stationpacking.solvers.termination.cputime.CPUTimeTerminationCriterionFactory;
 import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
 
+/**
+ * Solver bundles that only performs SATFC pre-solving.
+ * @author afrechet
+ */
 public class PreSolvingOnlySolverBundle extends ASolverBundle {
 
 	private static Logger log = LoggerFactory.getLogger(PreSolvingOnlySolverBundle.class);
@@ -30,6 +34,12 @@ public class PreSolvingOnlySolverBundle extends ASolverBundle {
 	private final ISolver fUHFSolver;
 	private final ISolver fVHFSolver;
 	
+	/**
+	 * Create a pre-solving only solver bundle.
+	 * @param aClaspLibraryPath - clasp library to use in pre-solvers.
+	 * @param aStationManager - station manager.
+	 * @param aConstraintManager - constraint manager.
+	 */
 	public PreSolvingOnlySolverBundle(String aClaspLibraryPath,
 			IStationManager aStationManager,
 			IConstraintManager aConstraintManager) {
@@ -96,7 +106,7 @@ public class PreSolvingOnlySolverBundle extends ASolverBundle {
 	}
 
 	@Override
-	public void notifyShutdown() {
+	public void close() {
 		fUHFSolver.notifyShutdown();
 		fVHFSolver.notifyShutdown();
 	}

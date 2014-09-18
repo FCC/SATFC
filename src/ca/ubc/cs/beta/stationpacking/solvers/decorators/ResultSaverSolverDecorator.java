@@ -13,6 +13,10 @@ import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
+/**
+ * Solver decorator that saves solve results post-execution. 
+ * @author afrechet
+ */
 @NotThreadSafe
 public class ResultSaverSolverDecorator extends ASolverDecorator {
 	
