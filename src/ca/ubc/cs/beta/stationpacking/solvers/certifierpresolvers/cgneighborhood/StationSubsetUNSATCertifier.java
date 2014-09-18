@@ -77,7 +77,7 @@ public class StationSubsetUNSATCertifier implements IStationSubsetCertifier {
 
 	@Override
 	public void notifyShutdown() {
-		log.warn("Not shutting down associated solver as it may be used elsewhere.");
+		log.debug("Not shutting down associated solver as it may be used elsewhere.");
 	}
 
 	@Override
