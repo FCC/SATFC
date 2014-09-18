@@ -38,18 +38,32 @@ public abstract class AbstractFromFileConverter<O extends AbstractOptions> imple
 		return aTempOptions.Options;
 	}
 	
+	/**
+	 * Generic implicit converter options that serves as a delegate that is parsed from an options file.
+	 * @author afrechet
+	 *
+	 */
 	public class ConverterOptions extends AbstractOptions
-	{
+	{  
+	    /**
+	     * File from which generic options are read.
+	     */
 		@Parameter
 		@ParameterFile
 		//Parameter is never shown.
 		public File OptionsFile;
 		
+		/**
+		 * Generic options read from file.
+		 */
 		@ParametersDelegate
 		public O Options = getInstance();
 		
 	}
 	
+	/**
+	 * @return constructs an empty options instance to be populated in the file read.
+	 */
 	protected abstract O getInstance();
 
 }

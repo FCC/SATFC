@@ -13,7 +13,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 
 /**
- * A SAT formula in Conjunctive Normal Form (a conjunction of clauses - AND's of OR's of literals). Implementation wise just a clause set wrapper. 
+ * A SAT formula in Conjunctive Normal Form (a conjunction of clauses - AND's of OR's of literals). Implementation wise just a clause collection wrapper. 
  * @author afrechet
  */
 public class CNF implements Collection<Clause>{

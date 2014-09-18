@@ -111,7 +111,12 @@ public class SATFCTargetAlgorithmEvaluator extends
 
 	@Override
 	protected void subtypeShutdown() {
-		fSATFCFacade.close();
+		try {
+            fSATFCFacade.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            log.error("Could not shutdown SATFC facade.",e);
+        }
 	}
 	
 	@Override

@@ -330,13 +330,12 @@ public class SATFCFacade implements AutoCloseable{
 	}
 
 	@Override
-	public void close(){
+	public void close() throws Exception{
 		log.info("Shutting down...");
-		fSolverManager.notifyShutdown();
+		fSolverManager.close();
 		log.info("Goodbye!");
 	}
-	
-	
+
 	
 	private static final String LOGBACK_CONFIGURATION_FILE_PROPERTY ="logback.configurationFile";
 	/**

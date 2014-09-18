@@ -20,8 +20,6 @@ import org.apache.commons.math3.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.Sets;
-
 import au.com.bytecode.opencsv.CSVReader;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
@@ -34,6 +32,12 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATDecoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
 
+import com.google.common.collect.Sets;
+
+/**
+ * Utility that converts an encoded instance to a CNF.
+ * @author afrechet
+ */
 public class EncodedInstanceToCNFConverter {
     
     private static final Logger log = LoggerFactory.getLogger(EncodedInstanceToCNFConverter.class);
@@ -44,7 +48,12 @@ public class EncodedInstanceToCNFConverter {
             + "<encoded instance file> -- file containing each encoded instance on a different line.\n"
             + "<output folder> -- where to save the CNF.";
     
-    
+    /**
+     * @param aSQLInstanceString - a SQL instance string (special encoding used to convert station packing instance to string).
+     * @param aInterferenceConfigFoldername - config foldername.
+     * @param aDataManager - a data manager (usually corresponding to the aInterferenceConfigFoldername, we provide both because the string config foldername is actually needed).
+     * @return a station packing instance with its corresponding interference config folder name.
+     */
     public static Pair<StationPackingInstance,String> getInstanceFromSQLString(String aSQLInstanceString, String aInterferenceConfigFoldername, DataManager aDataManager)
     {
         /*
@@ -193,7 +202,10 @@ public class EncodedInstanceToCNFConverter {
         return new Pair<StationPackingInstance,String>(instance,config_foldername);
     }
     
-    
+    /**
+     * Converts an (SQL) encoded instance to CNF.
+     * @param args - see static <code>USAGE</code> string.
+     */
     public static void main(String[] args) {
         
         //Static objects used throughout the method.

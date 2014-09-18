@@ -3,6 +3,11 @@ package ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.base;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 
+/**
+ * Compression bijection that maps any number to [n] where n is the number of values seen so far.
+ * @author afrechet
+ * @param <X> - domain of bijection.
+ */
 public class CompressionBijection<X extends Number> implements IBijection<X, Long> {
 
 	private final HashBiMap<X,Long> fCompressionMap;

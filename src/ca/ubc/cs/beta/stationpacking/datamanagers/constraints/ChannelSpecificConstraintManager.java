@@ -17,6 +17,10 @@ import au.com.bytecode.opencsv.CSVReader;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 
+/**
+ * Channel specific interference constraint data manager.
+ * @author afrechet, narnosti, tqichen
+ */
 public class ChannelSpecificConstraintManager implements IConstraintManager{
 	
 	private static Logger log = LoggerFactory.getLogger(ChannelSpecificConstraintManager.class);
@@ -134,7 +138,7 @@ public class ChannelSpecificConstraintManager implements IConstraintManager{
 	/**
 	 * Construct a Channel Specific Constraint Manager from a station manager and an interference constraints filename.
 	 * @param aStationManager - station manager.
-	 * @param aInterferenceConstraintsFilenamer - name of the file containing interference constraints.
+	 * @param aInterferenceConstraintsFilename - name of the file containing interference constraints.
 	 * @throws FileNotFoundException - if indicated file cannot be found.
 	 */
 	public ChannelSpecificConstraintManager(IStationManager aStationManager, String aInterferenceConstraintsFilename) throws FileNotFoundException

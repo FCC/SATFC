@@ -36,14 +36,14 @@ public class MBoundAlgorithm {
 
     /**
      * Solve the CNF with additional randomly generated parity constraints. This is done in trials. 
-     * Return an upper bound or lower bound depending on the number of SAT trials.  
      * 
      * @param aMBoundParameters
      * @param aCNF
      * @param aSATSolver a SAT solver used for solving CNFs.
+     * @param aSatSolverCutoff cutoff time (s) allocated to SAT solver.
      * @param aTerminationCriterion termination criteria for the SAT solver
      * @param aSeed seed for the SAT solver
-     * @return
+     * @return an upper bound or lower bound depending on the number of SAT trials.
      */
     public static MBoundResult solve(MBoundParameters aMBoundParameters, CNF aCNF, ISATSolver aSATSolver, int aSatSolverCutoff, Long aSeed) {
 
@@ -80,9 +80,8 @@ public class MBoundAlgorithm {
     }
     
     /**
-     * Calculates the probability that, if a bound be returned by MBound, the bound is incorrect.
      * @param aMBoundParameters
-     * @return
+     * @return the probability that, if a bound be returned by MBound, the bound is incorrect.
      */
     public static Double calculateMaximumErrorProbability(MBoundParameters aMBoundParameters) {
 

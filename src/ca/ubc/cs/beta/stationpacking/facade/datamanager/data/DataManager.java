@@ -10,15 +10,25 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.stations.DomainStationManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 
 /**
- * Manages the data contained in different station config directories to make sure it is only read once.
+ * Manages the data contained in different station config directories to make sure they are only read once.
+ * @author afrechet
  */
 public class DataManager {
-
+    
+    /**
+     * File path suffix for a (station config / interference) domain file.
+     */
 	public static String DOMAIN_FILE = File.separator+"domains.csv";
+	/**
+	 * File path suffix for a (station config / interference) interference constraints file.
+	 */
 	public static String INTERFERENCES_FILE = File.separator+"interferences.csv";
 	
 	private HashMap<String, ManagerBundle> fData;
 	
+	/**
+	 * Create a new (empty) data manager.
+	 */
 	public DataManager()
 	{
 		fData = new HashMap<String, ManagerBundle>();

@@ -32,7 +32,7 @@ public class SATFCExecutor {
 	private final static long SEED = 1;
 	
 	/**
-	 * @param args
+	 * @param args - arguments satisfying {@link SATFCExecutableParameters}.
 	 */
 	public static void main(String[] args) {
 		
@@ -55,7 +55,7 @@ public class SATFCExecutor {
 		SolverManager solverManager = parameters.SATFCParameters.SolverManagerParameters.getSolverManager();
 
 		log.debug("Initializing problem data...");
-		String data = parameters.WorkDirectory+File.separator+parameters.QuestionParameters.getData(); 
+		String data = parameters.WorkDirectory+File.separator+parameters.QuestionParameters.getInterferenceData(); 
 		
 		ISolverBundle bundle;
 		try {

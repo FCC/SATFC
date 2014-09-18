@@ -25,7 +25,7 @@ public class StationPackingInstance {
 	
 	/**
 	 * Create a station packing instance.
-	 * @params aDomains - a map taking each station to its domain of packable channels.
+	 * @param aDomains - a map taking each station to its domain of packable channels.
 	 */
 	public StationPackingInstance(Map<Station,Set<Integer>> aDomains){
 		this(aDomains,new HashMap<Station,Integer>());
@@ -33,7 +33,7 @@ public class StationPackingInstance {
 	
 	/**
 	 * Create a station packing instance.
-	 * @params aDomains - a map taking each station to its domain of packable channels.
+	 * @param aDomains - a map taking each station to its domain of packable channels.
 	 * @param aPreviousAssignment - a map taking stations to the channels they were assigned to previously.
 	 */
 	public StationPackingInstance(Map<Station,Set<Integer>> aDomains, Map<Station,Integer> aPreviousAssignment){
@@ -57,6 +57,12 @@ public class StationPackingInstance {
 		fPreviousAssignment = new HashMap<Station,Integer>(aPreviousAssignment);
 	}
 	
+	/**
+	 * @param aStations - set of stations to pack.
+	 * @param aChannels - set of channels to pack into.
+	 * @param aPreviousAssignment - valid previous assignment for the stations on the channels.
+	 * @return a station packing instance consisting of packing all the given stations in the given channels.
+	 */
 	public static StationPackingInstance constructUniformDomainInstance(Set<Station> aStations, Set<Integer> aChannels, Map<Station,Integer> aPreviousAssignment)
 	{
 		Map<Station,Set<Integer>> domains = new HashMap<Station,Set<Integer>>();
