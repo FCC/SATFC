@@ -2,7 +2,6 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="src" path="conf"/>
-	<classpathentry kind="src" path="tests"/>
 	<classpathentry kind="src" path="SATsolvers"/>
 	<classpathentry kind="src" path="version"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
@@ -11,12 +10,6 @@
 	<classpathentry kind="lib" path="lib/opencsv-2.3/deploy/opencsv-2.3.jar"/>
 	<classpathentry kind="lib" path="lib/jgrapht-0.8.3/jgrapht-jdk1.6.jar"/>
 	<classpathentry kind="lib" path="lib/jna-4.0.0.jar"/>
-	<classpathentry kind="lib" path="lib/guava-14.0.1.jar"/>
-	<classpathentry kind="lib" path="lib/libtw/libtw.jar" sourcepath="lib/libtw/libtw-src.zip">
-		<attributes>
-			<attribute name="javadoc_location" value="jar:platform:/resource/FCCStationPacking/lib/libtw/libtw-src.zip!/"/>
-		</attributes>
-	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="src" path=".apt_generated">
 		<attributes>
@@ -27,11 +20,9 @@
 	<classpathentry kind="lib" path="/AEATK/lib/slf4j-api-1.7.5.jar"/>
 	<classpathentry kind="lib" path="/AEATK/lib/commons-collections-3.2.1.jar"/>
 	<classpathentry kind="lib" path="/AEATK/lib/commons-io-2.1.jar"/>
-	<classpathentry kind="lib" path="/AEATK/lib/commons-math-2.2.jar"/>
 	<classpathentry kind="lib" path="/AEATK/lib/DomainInter.jar"/>
 	<classpathentry kind="lib" path="/AEATK/lib/exp4j-0.3.10-sources.jar"/>
 	<classpathentry kind="lib" path="/AEATK/lib/exp4j-0.3.10.jar"/>
-	<classpathentry kind="lib" path="/AEATK/lib/guava-14.0.1-sources.jar"/>
 	<classpathentry kind="lib" path="/AEATK/lib/guava-14.0.1.jar" sourcepath="/AEATK/lib/guava-14.0.1-sources.jar"/>
 	<classpathentry kind="lib" path="/AEATK/lib/jackson-annotations-2.3.1.jar"/>
 	<classpathentry kind="lib" path="/AEATK/lib/jackson-core-2.3.1.jar" sourcepath="/home/sjr/git/jackson-core/src/main/java"/>
