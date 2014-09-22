@@ -122,12 +122,12 @@ public class SATFCSolverBundle extends ASolverBundle{
 		
 		if(StationPackingUtils.HVHF_CHANNELS.containsAll(aInstance.getAllChannels()) || StationPackingUtils.LVHF_CHANNELS.containsAll(aInstance.getAllChannels()))
 		{
-			log.debug("Returning clasp configured for VHF (September 2013) with Ilya's station subset pre-solving.");
+			log.debug("Returning clasp configured for VHF v2 with station subset pre-solving.");
 			return fVHFSolver;
 		}
 		else
 		{
-			log.debug("Returning clasp configured for UHF (November 2013) with Ilya's station subset pre-solving.");
+			log.debug("Returning clasp configured for UHF v2 with station subset pre-solving.");
 			return fUHFSolver;
 		}
 	}
