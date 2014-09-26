@@ -48,7 +48,7 @@ public class SATFCFacadeExecutor {
 			{
 				satfcBuilder.setLibrary(parameters.fClaspLibrary);
 			}
-			satfcBuilder.setInitializeLogging(true);
+			satfcBuilder.setInitializeLogging(false);
 			
 			try(SATFCFacade satfc = satfcBuilder.build())
 			{
