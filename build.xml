@@ -71,7 +71,9 @@ dirty: ${git.dirty}</echo>
 		<mkdir dir="build/classes/"/>
 		<mkdir dir="dist"/>
 		
+		<!-- First tries to load identical branch library, then falls back to development branch library-->
 		<property file="${software.dir}${file.separator}aeatk-${git.branch}.latest"/>
+		<property file="${software.dir}${file.separator}aeatk-${fallback.branch}.latest"/>
 		<fail unless="aeatk.location" message="${line.separator}================[ ERROR ] ==============${line.separator}You must check out and build the aeatk project on this branch (${git.branch}) first${line.separator}Expected to find file:${software.dir}${file.separator}aeatk-${git.branch}.latest${line.separator}This file should contain the location of aeatk"/> 
 
 		<path id="compile.classpath">
@@ -93,12 +95,28 @@ dirty: ${git.dirty}</echo>
 			</fileset>
 		</copy>
 		
+		<!--Copy the source to a build src for possible modifications-->
+		<copy todir="src-build">
+			<fileset dir="src/">
+			</fileset>
+		</copy>
+		
 	</target>
 	
+	<target name="add-license" description="Adds liscense file to the beginning of all source files in dist.">
+	    <loadfile property="javaheader" srcFile="release-info/license-src.txt"/>
+	    <replaceregexp match="(/\*.*\*/.*)??^package " flags="sm"
+	        replace="${javaheader}${line.separator}package ">
+	        <fileset dir="src-build">
+	            <include name="**/*.java"/>
+	        </fileset>
+	    </replaceregexp>
+	</target>
 	
 	<target name="clean" description="Deletes all previously build artificacts and start fresh.">
 		<delete dir="build"/>
 		<delete dir="dist"/>
+		<delete dir="src-build"/>
 	</target>
 	
 	<target name="make-clasp" description="Moves necessary clasp components to dist.">
@@ -110,24 +128,15 @@ dirty: ${git.dirty}</echo>
 				<include name="jna/libjnaclasp.*"/>
 			</fileset>
 		</copy>
-		
-		
 	</target>
 	
 	
-	<target name="compile" depends="init">
-		<javac srcdir="src" destdir="build/classes" debug="true" target="1.7">
+	<target name="compile" depends="init,add-license">
+		
+		<javac srcdir="src-build" destdir="build/classes" debug="true" target="1.7">
 			<classpath refid="compile.classpath"/>
 		</javac>
-		
-		<!--
-		<copy todir="build/classes">
-			<fileset dir="src/">
-				<include name="tables.sql"/>
-			</fileset>
-		</copy>
-		-->
-		
+			
 		<path id="build.classpath">
 			<path refid="compile.classpath"/>
 			<path location="build/classes"/>
@@ -145,47 +154,46 @@ dirty: ${git.dirty}</echo>
 		<echo file="build/classes/${version.file}">${version.string} (${git.shortcommit})</echo>
 			
 		<property name="outputfilename" value="${ant.project.name}-${version.string}"/>
-		<jar destfile="dist/${ant.project.name}.jar" basedir="build/classes"/>
-				
-		<jar destfile="dist/${ant.project.name}-src.jar">
+		<jar destfile="dist/${ant.project.name}.jar" basedir="build/classes">
 			<fileset dir="src/">
-				 <include name="**/*.java"/>
+				 <include name="**/*.xml"/>
 			</fileset>
 		</jar>
-		<copy todir="dist/">
-			<fileset dir="">
-				<include name="conf/**"/>
+				
+		<jar destfile="dist/${ant.project.name}-src.jar">
+			<fileset dir="src-build">
+				 <include name="**/*.java"/>
 			</fileset>
-		
-		</copy>
+			<fileset dir="release-info">
+				<include name="license.txt"/>
+			</fileset>
+		</jar>
 		
 		<copy todir="dist/lib/" force="true">
 			<fileset refid="lib"/>
 			<fileset refid="aeatk"/>
 		</copy>
 		
-		<java classname="ca.ubc.cs.beta.aeatk.ant.execscript.ExecScriptCreator" failonerror="true" classpathref="build.classpath" fork="true">
-					<arg value="--class"/>
-					<arg value="ca.ubc.cs.beta.stationpacking.execution.SATFCFacadeExecutor"/>
-					<arg value="--name"/>
-					<arg value="satfc"/>
-					<arg value="--file-to-write"/>
-					<arg value="dist/"/>	
-					<arg value="--default-mem"/>
-					<arg value="2048"/>
-		</java>
+		<copy todir="dist/" force="true">
+			<fileset dir="release-info">
+				<include name="license.txt"/>
+				<include name="SATFC-manual.pdf"/>
+			</fileset>
+		</copy>
 		
 		<java classname="ca.ubc.cs.beta.aeatk.ant.execscript.ExecScriptCreator" failonerror="true" classpathref="build.classpath" fork="true">
-					<arg value="--class"/>
-					<arg value="ca.ubc.cs.beta.stationpacking.execution.EncodedInstanceToCNFConverter"/>
-					<arg value="--name"/>
-					<arg value="cnf-extractor"/>
-					<arg value="--file-to-write"/>
-					<arg value="dist/"/>	
-					<arg value="--default-mem"/>
-					<arg value="2048"/>
+			<arg value="--class"/>
+			<arg value="ca.ubc.cs.beta.stationpacking.execution.SATFCFacadeExecutor"/>
+			<arg value="--name"/>
+			<arg value="satfc"/>
+			<arg value="--file-to-write"/>
+			<arg value="dist/"/>	
+			<arg value="--default-mem"/>
+			<arg value="2048"/>
+			<arg value="--bat-file"/>
+			<arg value="false"/>
 		</java>
-	
+			
 	</target>
 	
 	
