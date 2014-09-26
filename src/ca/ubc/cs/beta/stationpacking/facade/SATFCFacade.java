@@ -67,6 +67,7 @@ public class SATFCFacade implements AutoCloseable{
 		//Initialize logging.
 		if(!logInitialized && aInitializeLogging)
 		{
+		    System.out.println("Initializing default logging.");
 			initializeLogging(LogLevel.INFO);
 			log = LoggerFactory.getLogger(getClass());
 			log.warn("Logging initialized by default to INFO.");
@@ -144,7 +145,8 @@ public class SATFCFacade implements AutoCloseable{
 			Map<Integer,Set<Integer>> aDomains,
 			Map<Integer,Integer> aPreviousAssignment,
 			double aCutoff, 
-			long aSeed, String aStationConfigFolder)
+			long aSeed, 
+			String aStationConfigFolder)
 	{
 		if(aDomains == null || aPreviousAssignment == null || aStationConfigFolder == null)
 		{
@@ -186,6 +188,10 @@ public class SATFCFacade implements AutoCloseable{
 			Set<Integer> stationDomain = stationManager.getDomain(station);
 			
 			Set<Integer> truedomain = Sets.intersection(domain, stationDomain);
+			if(truedomain.size() < domain.size())
+			{
+			    log.debug("Station {}'s queried domain has some entries that are no in the station's available channels.",stationID);
+			}
 			
 			if(truedomain.isEmpty())
 			{
@@ -351,7 +357,8 @@ public class SATFCFacade implements AutoCloseable{
 		{
 			Logger log = LoggerFactory.getLogger(SATFCFacade.class);
 			log.debug("System property for logback.configurationFile has been found already set as {} , logging will follow this file.", System.getProperty(LOGBACK_CONFIGURATION_FILE_PROPERTY));
-		} else
+		} 
+		else
 		{
 			
 			String newXML = SATFCFacade.class.getPackage().getName().replace(".", File.separator) + File.separator+  "logback.xml";
