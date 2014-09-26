@@ -20,6 +20,7 @@ version
 *.out
 *.synctex*
 *.toc
+/manual/*.pdf
 
 /FCCStationPacking/SATsolvers/clasp/claspx64osx/build
 /bin
