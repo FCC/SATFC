@@ -171,21 +171,25 @@ The broadcast interference constraint data (as specified by the FCC) consists of
 
 \paragraph{Domains} The domains file consists of a CSV with no header where each row encodes a station's domain (the list of channels on which a station can broadcast). The first entry of a row is always the \texttt{DOMAIN} keyword, the second entry is the station ID, and all subsequent entries are domain channels. Note that \SATFC uses this file to define the set of available stations (so it should contain all the station IDs that will be used in defining problems).
 
-\paragraph{Interferences} The interferences file consists of a CSV with no header where each row is a compact representation of many pairwise interference constraints between a single subject station on possibly many subject channels with possibly many target stations. Specifically, the entries of a row are, in order, a key indicating the type of constraint, a lowest and highest channel between which the constraint applies, the subject station of the constraint, and then a list of target stations to which the constraint applies. Here it is in more compact format:
+\paragraph{Interferences} The interferences file consists of a CSV with no header where each row is a representation of many pairwise interference constraints between a single subject station on a single subject channels with possibly many target stations. Specifically, the entries of a row are, in order, a key indicating the type of constraint, a subject and target channel on which the constraint applies, the subject station of the constraint, and then a list of target stations to which the constraint applies. Here it is in more compact format:
 \begin{center}
-\texttt{<key>,<low channel>,<high channel>,<subject station>,<target station 1>,\ldots}
+\texttt{<key>,<subject channel>,<target channel>,<subject station>,<target station 1>,\ldots}
 \end{center}
-There are two possible constraint keys: \texttt{CO} and \texttt{ADJ+1}. The former indicates a \emph{co-channel constraint}, stating that the subject station and any target station cannot be on the same channel, for any channel in between the low and high channel limits. The latter describes an \emph{adjacent plus one constraint} which implies a co-channel constraint as well as stating that, for any channel $c$ in between the low and the high channel, the subject station cannot be on channel $c$ together with any target station on channel $c+1$.
+There are three possible constraint keys: \texttt{CO}, \texttt{ADJ+1} and \texttt{ADJ-1}. The former indicates a \emph{co-channel constraint}, stating that the subject station and any target station cannot be on the same target/subject channel. The second describes an \emph{adjacent plus one constraint} which implies that the subject station cannot be on its subject channel $c$ together with any target station on the target channel $c+1$. The third one is an \emph{adjacent minus one constraint}, which is just an adjacent plus one constraint with subject station and channels interchanged with target station and channel, respectively.
 
 Here are two examples of interference constraints:
 \begin{center}
-\texttt{CO,14,20,1,2,3}
+\texttt{CO,4,4,1,2,3}
 \end{center}
-This constraint means that for any channel $c$ between 14 and 20, neither stations 1 and 2 nor stations 1 and 3 can be jointly assigned $c$.
+This constraint means that neither stations 1 and 2 nor stations 1 and 3 can be jointly assigned to channel 4
 \begin{center}
-\texttt{ADJ+1,14,20,1,2,3}
+\texttt{ADJ+1,8,9,1,2,3}
 \end{center}
-This constraint implies the corresponding the co-channel constraint ``\texttt{CO,14,20,1,2,3}'', as well as the following: for any channel $c$ between 14 and 20, neither stations 1 and 2 nor stations 1 and 3 can be on channels $c$ and $c+1$ respectively.
+This constraint implies that neither stations 1 and 2 nor stations 1 and 3 can be on channels 8 and 9 respectively.
+\begin{center}
+\texttt{ADJ-1,8,7,1,2,3}
+\end{center}
+This constraint implies that neither stations 1 and 2 nor stations 1 and 3 can be on channels 8 and 7 respectively.
 
 \subsubsection{Parameters \& Options}
 In addition to the required arguments discussed above, command-line \SATFC also exposes the following optional parameters:
