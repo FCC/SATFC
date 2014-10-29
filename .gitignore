@@ -30,6 +30,10 @@ lib/redis-client/*.class
 lib/redis-client/example_answer.csv
 dump.rdb
 
+Input/*
+Output/*
+
+
 src/ca/ubc/cs/beta/stationpacking/base/StationPackingInstance.class
 src/ca/ubc/cs/beta/stationpacking/execution/parameters/solver/SolverManagerParameters$1.class
 src/ca/ubc/cs/beta/stationpacking/execution/parameters/solver/SolverManagerParameters.class
