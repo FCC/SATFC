@@ -50,12 +50,13 @@ SATFC was developed to work particularly well on the auction designs that are be
 
 ### Setting Up
 
-Packaged with SATFC are its source code, the necessary libraries, execution scripts as well as a copy of clasp. The latter needs to be compiled on your machine:
-
-```
-cd satfc-v1.x.xa-release-x/clasp/
-bash compile.sh
-```
+* A compiled release of SATFC is located in the `satfc-v1.x.xa-release-x` directory and the pre-built execution scripts should be used for those not interested in the SATFC source code.
+* Packaged with SATFC are its source code, the necessary libraries, execution scripts as well as a copy of clasp. The latter needs to be compiled on your machine:  
+  
+  ```
+  cd satfc-v1.x.xa-release-x/clasp/
+  bash compile.sh
+  ```
 
 ### Standalone
 
