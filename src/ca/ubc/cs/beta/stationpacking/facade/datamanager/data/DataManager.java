@@ -19,11 +19,11 @@ public class DataManager {
     /**
      * File path suffix for a (station config / interference) domain file.
      */
-	public static String DOMAIN_FILE = File.separator+"domains.csv";
+	public static String DOMAIN_FILE = File.separator+"Domain.csv'";
 	/**
 	 * File path suffix for a (station config / interference) interference constraints file.
 	 */
-	public static String INTERFERENCES_FILE = File.separator+"interferences.csv";
+	public static String INTERFERENCES_FILE = File.separator+"Interference_Paired.csv";
 	
 	private HashMap<String, ManagerBundle> fData;
 	
