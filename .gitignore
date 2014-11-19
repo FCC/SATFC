@@ -12,6 +12,7 @@ version
 *.directory
 *.DS_Store
 *.swp
+*.class
 
 *.aux
 *.lof
@@ -30,7 +31,5 @@ lib/redis-client/*.class
 lib/redis-client/example_answer.csv
 dump.rdb
 
-Input/*
-Output/*
 
 
