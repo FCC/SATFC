@@ -24,7 +24,7 @@ import com.beust.jcommander.Parameter;
 public class InstanceParameters extends AbstractOptions {
 	
 	@Parameter(names = "-PACKING-CHANNELS", description = "List of channels to pack into.")
-	private List<String> fPackingChannels = Arrays.asList("14" ,"15" ,"16" ,"17" ,"18" ,"19" ,"20" ,"21" ,"22" ,"23" ,"24" ,"25" ,"26" ,"27" ,"28" ,"29" ,"30");
+	private List<String> fPackingChannels = null;
 	/**
 	 * @return the instance's packing channels.
 	 */
@@ -34,15 +34,26 @@ public class InstanceParameters extends AbstractOptions {
 		log.debug("Getting packing channels...");
 		
 		HashSet<Integer> aPackingChannels = new HashSet<Integer>();
-		for(String aChannel : fPackingChannels)
+		
+		if(fPackingChannels != null)
 		{
-			aPackingChannels.add(Integer.valueOf(aChannel));
+			for(String aChannel : fPackingChannels)
+			{
+				aPackingChannels.add(Integer.valueOf(aChannel));
+			}
+		}
+		else
+		{
+			for(Integer stationID : fDomains.keySet())
+			{
+				aPackingChannels.addAll(fDomains.get(stationID));
+			}
 		}
 		return aPackingChannels;
 	}
 	
 	@Parameter(names = "-PACKING-STATIONS", description = "List of stations to pack.")
-	private List<String> fPackingStations;
+	private List<String> fPackingStations = null;
 	/**
 	 * @return the IDs of the packing stations.
 	 */

@@ -71,10 +71,12 @@ public class SATFCFacadeExecutor {
 		} catch (ParameterException e)
 		{
 			log.error("Invalid parameter argument detected ({}).",e.getMessage());
+			e.printStackTrace();
 			System.exit(AEATKReturnValues.PARAMETER_EXCEPTION);
 		} catch (RuntimeException e)
 		{
 			log.error("Runtime exception encountered ({})",e.getMessage());
+			e.printStackTrace();
 			System.exit(AEATKReturnValues.UNCAUGHT_EXCEPTION);
 		}catch(UnsatisfiedLinkError e)
 		{
@@ -83,6 +85,7 @@ public class SATFCFacadeExecutor {
 		}catch(Throwable t)
 		{
 			log.error("Throwable encountered ({})",t.getMessage());
+			t.printStackTrace();
 			System.exit(AEATKReturnValues.UNCAUGHT_EXCEPTION);
 		}
 	}
