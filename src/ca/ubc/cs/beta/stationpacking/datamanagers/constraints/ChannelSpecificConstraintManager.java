@@ -222,7 +222,7 @@ public class ChannelSpecificConstraintManager implements IConstraintManager{
 				//Check if we have already seen station1
 				if(allStations.contains(station1))
 				{
-					log.error("Station {} is assigned to multiple channels.");
+					//log.error("Station {} is assigned to multiple channels.");
 					return false;
 				}
 				
@@ -232,7 +232,7 @@ public class ChannelSpecificConstraintManager implements IConstraintManager{
 				{
 					if(coInterferingStations.contains(station2))
 					{
-						log.error("Station {} and {} share channel {} on which they CO interfere.",station1,station2,channel);
+						//log.error("Station {} and {} share channel {} on which they CO interfere.",station1,station2,channel);
 						return false;
 					}
 				}
@@ -247,7 +247,7 @@ public class ChannelSpecificConstraintManager implements IConstraintManager{
 					{
 						if(adjInterferingStations.contains(station2))
 						{
-							log.error("Station {} is on channel {}, and station {} is on channel {}, causing ADJ+1 interference.",station1,channel,station2,channelp1);
+							//log.error("Station {} is on channel {}, and station {} is on channel {}, causing ADJ+1 interference.",station1,channel,station2,channelp1);
 							return false;
 						}
 					}

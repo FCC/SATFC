@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aeatk.concurrent.threadfactory.SequentiallyNamedThreadFactory;
+import ca.ubc.cs.beta.aeatk.misc.returnvalues.AEATKReturnValues;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
@@ -50,17 +51,22 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 	 */
 	private final AtomicLong currentRequestID = new AtomicLong(1);
 	
+	/**
+	 * Constructs a clasp SAT solver from a clasp library and a parameter string.
+	 * @param libraryPath - a path to the clasp library.
+	 * @param parameters - a string of clasp parameters.
+	 */
 	public ClaspSATSolver(String libraryPath, String parameters)
 	{
 		init(libraryPath, parameters, 128);
 	}
 	
-	public ClaspSATSolver(String libraryPath, String parameters, int maxArgs)
-	{
-		log.info("Building a Clasp solver from library {} and configuration {}.",libraryPath,parameters);
-		
-		init(libraryPath, parameters, maxArgs);
-	}
+//	private ClaspSATSolver(String libraryPath, String parameters, int maxArgs)
+//	{
+//		log.info("Building a Clasp solver from library {} and configuration {}.",libraryPath,parameters);
+//		
+//		init(libraryPath, parameters, maxArgs);
+//	}
 
 	private void init(String libraryPath, String parameters, int maxArgs)
 	{
@@ -129,7 +135,6 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
 		watch.reset();
 		watch.start();
 		
-		
 		// Launches a timer that will set the interrupt flag of the result object to true after aCutOff seconds. 
 		Future<?> timeoutFuture = fTimerService.schedule(
 		        new Runnable(){
@@ -169,6 +174,22 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
             			    }
         			}
         		},SCHEDULING_FREQUENCY_IN_SECONDS,TimeUnit.SECONDS);
+		
+		//launches a suicide SATFC time that just kills everything if it finishes and we're still on the same job.
+		final int SUICIDE_GRACE_IN_SECONDS = 5*60;
+		Future<?> suicideFuture = fTimerService.schedule(
+		        new Runnable(){
+		            
+		            @Override
+		            public void run()
+		            {
+		                if(MY_REQUEST_ID == currentRequestID.get())
+		                {
+		                    log.error("Clasp has spent {} more seconds than expected ({}) on current run, killing everything (i.e. System.exit(1) ).",SUICIDE_GRACE_IN_SECONDS,cutoff);
+		                    System.exit(AEATKReturnValues.OH_THE_HUMANITY_EXCEPTION);
+		                }
+		            }
+		        }, (long) cutoff + SUICIDE_GRACE_IN_SECONDS, TimeUnit.SECONDS);
 		
 
 		// Start solving
