@@ -49,15 +49,23 @@ dottedtoc % Dotted lines leading to the page numbers in the table of contents
 % CUSTOMIZATION
 %===================================================================
 %\usepackage{fullpage}
-\usepackage{mdframed}
 \usepackage{needspace}
 
-\newmdenv[
-frametitle={\needspace{5\baselineskip}\begin{tabular}{@{}c@{}}\includegraphics[scale=0.15]{images/warning}\end{tabular} Warning},
-skipabove=10pt,
-skipbelow=10pt
-]{fwarning}
+%Warning environment.
 
+% STUPID MDFRAMED NOT WORKING WITH MY MACTEX RELEASE ... Makes me sad.
+%\usepackage{mdframed}
+%\newmdenv[
+%frametitle={\needspace{5\baselineskip}\begin{tabular}{@{}c@{}}\includegraphics[scale=0.15]{images/warning}\end{tabular} Warning},
+%skipabove=10pt,
+%skipbelow=10pt
+%]{fwarning}
+
+%Alternate 'fwarning' environment because the mdframed package is causing troubles with my MacTex release.
+\usepackage[tikz]{bclogo}
+\newenvironment{fwarning}{\needspace{5\baselineskip}\begin{bclogo}[logo=\bcattention, barre = none, marge=6]{Warning}}{\end{bclogo}}
+
+%Bash coding environment.
 \usepackage{listings}
 \lstdefinestyle{Bash}
 {language=bash,
