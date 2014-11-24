@@ -151,7 +151,7 @@ To use \SATFC from the command line to solve feasibility checking problems, go i
 \end{lstlisting}
 where 
 \begin{itemize}
-\item \texttt{data folder} points to a folder containing the \emph{broadcasting interference constraints data} (\texttt{Domains.csv} and \texttt{Interference\_Paired.csv} files) - see Section \ref{sec:data} for further information, and
+\item \texttt{data folder} points to a folder containing the \emph{broadcasting interference constraints data} (\texttt{Domain.csv} and \texttt{Interference\_Paired.csv} files) - see Section \ref{sec:data} for further information, and
 \item \texttt{station domains} is a string listing a set of stations to be packed, and for each station a set of eligible channels. This \emph{domains string} consists of \emph{single station domains strings} joined by ';', where each single domain string consists of a station numerical ID, a ':', and a list of integer channels joined by ','. 
 
 For example, the problem of packing stations 1 and 2 into channels 14,15,16,17,18,19,20 and station 3 into channels 14,15,16 would be specified by the following string:
@@ -167,7 +167,7 @@ to get a list of the \SATFC options and parameters.
 
 \subsubsection{Data}\label{sec:data}
 
-The broadcast interference constraint data (as specified by the FCC) consists of two files, one specifying station domains, and one specifying pairwise interference between stations. As one of its required arguments, command-line \SATFC expects a path to a folder containing both of these files, named \texttt{domains.csv} and \texttt{interferences.csv}, respectively.
+The broadcast interference constraint data (as specified by the FCC) consists of two files, one specifying station domains, and one specifying pairwise interference between stations. As one of its required arguments, command-line \SATFC expects a path to a folder containing both of these files, named \texttt{Domain.csv} and \texttt{Interference\_Paired.csv}, respectively.
 
 \paragraph{Domains} The domains file consists of a CSV with no header where each row encodes a station's domain (the list of channels on which a station can broadcast). The first entry of a row is always the \texttt{DOMAIN} keyword, the second entry is the station ID, and all subsequent entries are domain channels. Note that \SATFC uses this file to define the set of available stations (so it should contain all the station IDs that will be used in defining problems).
 
