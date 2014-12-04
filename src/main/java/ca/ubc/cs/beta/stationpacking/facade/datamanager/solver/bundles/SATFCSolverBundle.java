@@ -123,9 +123,11 @@ public class SATFCSolverBundle extends ASolverBundle{
 		//Decorate solvers.
 		
 		//Remove unconstrained stations.
+		/**
 		log.debug("Decorate solver to first remove underconstrained stations.");
 		UHFsolver = new UnderconstrainedStationRemoverSolverDecorator(UHFsolver, aConstraintManager);
 		VHFsolver = new UnderconstrainedStationRemoverSolverDecorator(VHFsolver, aConstraintManager);
+		**/
 		
 		
 		//Save CNFs, if needed.
