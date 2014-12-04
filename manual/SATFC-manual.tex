@@ -141,13 +141,19 @@ The releases folder in \SATFC's repository should contain a compiled, ready-to-g
 \end{lstlisting}
 This builds and packages \SATFC in \texttt{<SATFC repository>/build/install/}, and may be a lengthy process as it (possibly) installs Gradle, downloads all of \SATFC's dependencies (from external repositories) and builds the project. Note that it can sometimes fail while trying to download dependencies - restarting the process fixes this.
 
-In any case, \clasp may need to be compiled for your machine. This can be done as follows:
+In any case, \clasp may need to be compiled for your machine. To compile \clasp joined to a \SATFC release, do the following:
 \begin{lstlisting}[style=Bash]
-> cd <SATFC folder>
-> cd src/dist/clasp/
+> cd <SATFC directory>
+> cd clasp/
 > bash compile.sh
 \end{lstlisting}
-The \SATFC folder is either the decompressed pre-compiled \SATFC folder, or \texttt{build/install/SATFC} inside the \SATFC repository if you are building your own version.
+To compile the source's \clasp (so that your custom built \SATFC has an already compiled \clasp), instead execute:
+\begin{lstlisting}[style=Bash]
+> cd <SATFC repository>
+> cd src/dist/clasp
+> bash compile.sh
+\end{lstlisting}
+
 
 \subsection{Standalone}\label{sec:standalone}
 
