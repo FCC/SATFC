@@ -21,8 +21,6 @@
  */
 package ca.ubc.cs.beta.stationpacking.execution;
 
-import java.util.Arrays;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

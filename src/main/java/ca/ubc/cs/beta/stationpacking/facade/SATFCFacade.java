@@ -52,6 +52,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.termination.cputime.CPUTimeTerminat
 import ca.ubc.cs.beta.stationpacking.solvers.termination.walltime.WalltimeTerminationCriterion;
 
 import com.google.common.collect.Sets;
+import com.google.common.io.Resources;
 
 /**
  * A facade for solving station packing problems with SATFC.
@@ -375,14 +376,13 @@ public class SATFCFacade implements AutoCloseable{
 		} else
 		{
 			
-			String newXML = SATFCFacade.class.getPackage().getName().replace(".", File.separator) + File.separator+  "logback.xml";
-			
-			System.setProperty(LOGBACK_CONFIGURATION_FILE_PROPERTY, newXML);
+			String logback = Resources.getResource("logback.xml").toString(); 
+			System.setProperty(LOGBACK_CONFIGURATION_FILE_PROPERTY, logback);
 			
 			Logger log = LoggerFactory.getLogger(SATFCFacade.class);
 			if(log.isDebugEnabled())
 			{
-				log.debug("Logging initialized to use file:" + newXML);
+				log.debug("Logging initialized to use file:" + logback);
 			} else
 			{
 				log.debug("Logging initialized");
