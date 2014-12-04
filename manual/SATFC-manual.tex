@@ -134,12 +134,12 @@ To take advantage of the specific distribution of encountered feasibility checki
 
 The releases folder in \SATFC's repository should contain a compiled, ready-to-go compressed version of \SATFC. Packaged with \SATFC are its source code, necessary libraries as well as a copy of \clasp. 
 
-To build your own command-line executable version, execute the following:
+\SATFC uses the Gradle build system and maven for dependency resolution. To build your own command-line executable version of \SATFC, execute the following:
 \begin{lstlisting}[style=Bash]
 > cd <SATFC repository>
 > ./gradlew installApp
 \end{lstlisting}
-This build and package \SATFC in \texttt{<SATFC repository>/build/install/}. This may be a lengthy process as it is possibly installing Gradle, downloading all of \SATFC's dependencies and building the project. Note that it can sometimes fail while trying to download dependencies - restarting the process fixes this.
+This builds and packages \SATFC in \texttt{<SATFC repository>/build/install/}, and may be a lengthy process as it (possibly) installs Gradle, downloads all of \SATFC's dependencies (from external repositories) and builds the project. Note that it can sometimes fail while trying to download dependencies - restarting the process fixes this.
 
 In any case, \clasp may need to be compiled for your machine. This can be done as follows:
 \begin{lstlisting}[style=Bash]
