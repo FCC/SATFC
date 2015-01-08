@@ -41,7 +41,6 @@ import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat.ClaspLibSAT
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.SolverManager;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBundle;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBundleFactory;
-import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.MIPFCSolverBundle;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.SATFCSolverBundle;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
@@ -157,7 +156,7 @@ public class SATFCFacade implements AutoCloseable{
 									aSATFCParameters.getCNFDirectory(),
 									aSATFCParameters.getResultFile());
 						case MIPFC:
-							return new MIPFCSolverBundle(aStationManager, aConstraintManager);
+							throw new UnsupportedOperationException("MIPFC not available in current release.");
 						default:
 							throw new IllegalArgumentException("Unrecognized solver choice "+aSATFCParameters.getSolverChoice());
 						}

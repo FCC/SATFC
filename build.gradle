@@ -70,9 +70,6 @@ dependencies {
     testCompile 'junit:junit:4.11'
     testCompile 'org.mockito:mockito-all:1.10.8'
     
-    //Local dependencies
-    compile files('libs/cplex.jar')
-    
 }
 
 //Grab git information.
