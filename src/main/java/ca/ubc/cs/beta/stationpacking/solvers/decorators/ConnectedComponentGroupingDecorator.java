@@ -71,12 +71,10 @@ public class ConnectedComponentGroupingDecorator extends ASolverDecorator {
                 final StationPackingInstance componentInstance = new StationPackingInstance(subDomains, previousAssignment);
                 final SolverResult componentResult = fDecoratedSolver.solve(componentInstance, aTerminationCriterion, aSeed);
                 solverResults.put(id, componentResult);
-                return !componentResult.getResult().equals(SATResult.SAT) || aTerminationCriterion.hasToStop();
+                return !componentResult.getResult().equals(SATResult.SAT);
             });
         watch.stop();
         final SolverResult result = SolverHelper.mergeComponentResults(solverResults.values(), watch.getElapsedTime());
-        
-                
         
         if (result.getResult() == SATResult.SAT)
         {

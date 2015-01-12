@@ -22,3 +22,4 @@ local.properties
 *.toc
 manual/*.pdf
 cplex.jar
+*.iml

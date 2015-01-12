@@ -26,6 +26,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import ca.ubc.cs.beta.stationpacking.solvers.underconstrained.IUnderconstrainedStationFinder;
+import ca.ubc.cs.beta.stationpacking.solvers.underconstrained.UnderconstrainedStationFinder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,10 +60,12 @@ public class UnderconstrainedStationRemoverSolverDecorator extends ASolverDecora
 	private final Logger log = LoggerFactory.getLogger(UnderconstrainedStationRemoverSolverDecorator.class);
 	
 	private final IConstraintManager fConstraintManager;
+	private final IUnderconstrainedStationFinder fUnderconstrainedStationFinder;
 	
 	public UnderconstrainedStationRemoverSolverDecorator(ISolver aSolver, IConstraintManager aConstraintManager) {
 		super(aSolver);
 		fConstraintManager = aConstraintManager;
+		fUnderconstrainedStationFinder = new UnderconstrainedStationFinder(fConstraintManager);
 	}
 	
 	@Override
@@ -70,74 +74,10 @@ public class UnderconstrainedStationRemoverSolverDecorator extends ASolverDecora
 		
 		Watch watch = new Watch();
 		watch.start();
-		
-		//Find  the under constrained nodes in the instance.
-		final Set<Station> underconstrainedStations = new HashSet<Station>();
+
 		final Map<Station,Set<Integer>> domains = aInstance.getDomains();
-		
-		log.debug("Finding underconstrained stations in the instance...");
-		
-		final Map<Station,Integer> numCoNeighbours = new HashMap<Station,Integer>();
-		final Map<Station,Integer> numAdjNeighbours = new HashMap<Station,Integer>();
-		
-		for(Station station : domains.keySet())
-		{
-			final Set<Integer> domain = domains.get(station); 
-			for(Integer domainChannel : domain)
-			{
-				for(Station coNeighbour : fConstraintManager.getCOInterferingStations(station,domainChannel))
-				{
-					if(domains.keySet().contains(coNeighbour) && domains.get(coNeighbour).contains(domainChannel))
-					{
-						Integer stationNumCo = numCoNeighbours.get(station);
-						if(stationNumCo == null)
-						{
-							stationNumCo = 0;
-						}
-						stationNumCo++;
-						numCoNeighbours.put(station, stationNumCo);
-						
-						Integer neighbourNumCo = numCoNeighbours.get(coNeighbour);
-						if(neighbourNumCo == null)
-						{
-							neighbourNumCo = 0;
-						}
-						neighbourNumCo++;
-						numCoNeighbours.put(coNeighbour, neighbourNumCo);
-					}
-				}
-				for(Station adjNeighbour : fConstraintManager.getADJplusInterferingStations(station, domainChannel))
-				{
-					if(domains.keySet().contains(adjNeighbour) && domains.get(adjNeighbour).contains(domainChannel+1))
-					{
-						Integer stationNumAdj = numAdjNeighbours.get(station);
-						if(stationNumAdj == null)
-						{
-							stationNumAdj = 0;
-						}
-						stationNumAdj++;
-						numAdjNeighbours.put(station, stationNumAdj);
-					}
-				}
-			}
-		}
-		
-		for(Station station : domains.keySet())
-		{
-			final Set<Integer> domain = domains.get(station);
-			
-			final int domainSize = domain.size();
-			final int numCo = numCoNeighbours.containsKey(station) ? numCoNeighbours.get(station) : 0;
-			final int numAdj = numAdjNeighbours.containsKey(station) ? numAdjNeighbours.get(station) : 0;
-			
-			if(domainSize > numCo + numAdj)
-			{
-				log.trace("Station {} is underconstrained ({} domain but {} co- and {} adj-neighbours), removing it from the instance (to be rea-dded after solving).",station,domainSize,numCo,numAdj);
-				underconstrainedStations.add(station);
-			}
-		}
-		
-		
+		final Set<Station> underconstrainedStations = fUnderconstrainedStationFinder.getUnderconstrainedStations(domains);
+
 		log.debug("Removing {} underconstrained stations...",underconstrainedStations.size());
 		
 		//Remove the nodes from the instance.

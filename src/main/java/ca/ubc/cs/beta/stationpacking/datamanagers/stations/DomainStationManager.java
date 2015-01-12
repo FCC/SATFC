@@ -87,6 +87,11 @@ public class DomainStationManager implements IStationManager{
 		
 	}
 	
+	public DomainStationManager(Map<Integer, Set<Integer>> domains) {
+		domains.keySet().forEach(stationId -> fStations.put(stationId, new Station(stationId)));
+		domains.entrySet().forEach(entry -> fDomains.put(fStations.get(entry.getKey()), entry.getValue()));
+	}
+	
 	@Override
 	public Set<Station> getStations() {
 		return new HashSet<Station>(fStations.values());

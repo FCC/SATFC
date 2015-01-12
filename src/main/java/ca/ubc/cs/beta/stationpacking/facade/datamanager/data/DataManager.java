@@ -25,15 +25,18 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.HashMap;
 
+import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.ChannelSpecificConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.UnabridgedFormatConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.DomainStationManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Manages the data contained in different station config directories to make sure they are only read once.
  * @author afrechet
  */
+@Slf4j
 public class DataManager {
     
 	/**
@@ -73,9 +76,18 @@ public class DataManager {
 		else
 		{
 			IStationManager stationManager = new DomainStationManager(path+DOMAIN_FILE);
-			
-			//IConstraintManager constraintManager = new ChannelSpecificConstraintManager(stationManager, path+INTERFERENCES_FILE);
-			IConstraintManager constraintManager = new UnabridgedFormatConstraintManager(stationManager, path+INTERFERENCES_FILE);
+
+			IConstraintManager constraintManager;
+			try
+			{
+				constraintManager = new UnabridgedFormatConstraintManager(stationManager, path + INTERFERENCES_FILE);
+			}
+			catch (Exception eUnabridged)
+			{
+				log.warn("Error parsing data in the unabridged format", eUnabridged);
+				log.warn("Attempting to parse the data using the channel specific constraint manager...");
+				constraintManager = new ChannelSpecificConstraintManager(stationManager, path + INTERFERENCES_FILE);
+			}
 			fData.put(path, new ManagerBundle(stationManager, constraintManager));
 			return true;
 		}

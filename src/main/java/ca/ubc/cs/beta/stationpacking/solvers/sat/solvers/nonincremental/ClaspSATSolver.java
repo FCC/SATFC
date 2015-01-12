@@ -165,8 +165,8 @@ public class ClaspSATSolver extends AbstractCompressedSATSolver
                             if(MY_REQUEST_ID == currentRequestID.get())
                             {
                 				log.trace("Interrupting clasp as we are past cutoff of {} s.",cutoff);
-                				fClaspLibrary.interrupt(facade);
                 				timedOut.set(true);
+                				fClaspLibrary.interrupt(facade);
                             } 
             			    
             			}

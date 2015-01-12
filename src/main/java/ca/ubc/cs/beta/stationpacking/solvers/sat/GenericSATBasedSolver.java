@@ -104,21 +104,6 @@ public class GenericSATBasedSolver implements ISolver {
 
         SolverResult solverResult = new SolverResult(satSolverResult.getResult(), satSolverResult.getRuntime(), aStationAssignment);
 
-        //Post-process the result for correctness.
-        if (satSolverResult.getResult().equals(SATResult.SAT)) {
-
-            log.debug("Independently verifying the veracity of returned assignment");
-            //Check assignment has the right number of stations
-            int aAssignmentSize = 0;
-            for (Integer aChannel : solverResult.getAssignment().keySet()) {
-                aAssignmentSize += solverResult.getAssignment().get(aChannel).size();
-            }
-            if (aAssignmentSize != aInstance.getStations().size()) {
-                throw new IllegalStateException("Merged station assignment doesn't assign exactly the stations in the instance.");
-            }
-        }
-        log.debug("...done.");
-
         watch.stop();
         double extraTime = watch.getElapsedTime();
         solverResult = SolverResult.addTime(solverResult, extraTime);
