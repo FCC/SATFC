@@ -154,7 +154,8 @@ public class SATFCFacade implements AutoCloseable{
 									aStationManager,
 									aConstraintManager,
 									aSATFCParameters.getCNFDirectory(),
-									aSATFCParameters.getResultFile());
+									aSATFCParameters.getResultFile(),
+									aSATFCParameters.getOptions());
 						case MIPFC:
 							throw new UnsupportedOperationException("MIPFC not available in current release.");
 						default:
@@ -252,12 +253,6 @@ public class SATFCFacade implements AutoCloseable{
 		//Get solver
 		ISolver solver = bundle.getSolver(instance);
 		
-		log.debug("Setting termination criterion...");
-		//Set termination criterion.
-		ITerminationCriterion CPUtermination = new CPUTimeTerminationCriterion(aCutoff);
-		ITerminationCriterion WALLtermination = new WalltimeTerminationCriterion(aCutoff);
-		ITerminationCriterion termination = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(CPUtermination,WALLtermination)); 
-		
 		/*
 		 * Logging problem info
 		 */
@@ -268,6 +263,12 @@ public class SATFCFacade implements AutoCloseable{
 		log.debug("{} all channels.",instance.getAllChannels().size());
 		log.debug("all channels: {}.",instance.getAllChannels());
 		log.debug("Previous assignment: {}",instance.getPreviousAssignment());
+		
+		log.debug("Setting termination criterion...");
+        //Set termination criterion.
+        ITerminationCriterion CPUtermination = new CPUTimeTerminationCriterion(aCutoff);
+        ITerminationCriterion WALLtermination = new WalltimeTerminationCriterion(aCutoff);
+        ITerminationCriterion termination = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(CPUtermination,WALLtermination));
 		
     	SolverResult result; 
 		//Solve instance.

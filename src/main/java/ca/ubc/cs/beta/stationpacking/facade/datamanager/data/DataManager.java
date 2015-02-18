@@ -75,19 +75,73 @@ public class DataManager {
 		}
 		else
 		{
-			IStationManager stationManager = new DomainStationManager(path+DOMAIN_FILE);
+			final IStationManager stationManager = new DomainStationManager(path+DOMAIN_FILE);
 
-			IConstraintManager constraintManager;
+			final IConstraintManager constraintManager;
+			
+			
+			//Try parsing unabridged.
+			Exception uaE = null;
+			IConstraintManager unabridgedConstraintManager = null;
 			try
 			{
-				constraintManager = new UnabridgedFormatConstraintManager(stationManager, path + INTERFERENCES_FILE);
+				unabridgedConstraintManager= new UnabridgedFormatConstraintManager(stationManager, path + INTERFERENCES_FILE);
 			}
-			catch (Exception eUnabridged)
+			catch(Exception e)
 			{
-				log.warn("Error parsing data in the unabridged format", eUnabridged);
-				log.warn("Attempting to parse the data using the channel specific constraint manager...");
-				constraintManager = new ChannelSpecificConstraintManager(stationManager, path + INTERFERENCES_FILE);
+				uaE = e;
 			}
+			
+
+			//Try parsing channel specific.
+			Exception csE = null;
+			IConstraintManager channelspecificConstraintManager = null;
+			try
+			{
+				channelspecificConstraintManager= new ChannelSpecificConstraintManager(stationManager, path + INTERFERENCES_FILE);
+			}
+			catch(Exception e)
+			{
+				csE = e;
+			}
+			
+			
+			if(uaE != null && csE != null)
+			{
+				log.error("Could not parse interference data both in unabridged and channel specific formats.");
+				
+				log.error("Unabridged format exception:",uaE);
+				log.error("Channel specific format exception:",csE);
+				
+				throw new IllegalArgumentException("Unrecognized interference constraint format.");
+			}
+			else if(uaE == null && csE == null)
+			{
+				throw new IllegalStateException("Provided interference constraint format satisfies both unabridged and channel specific formats.");
+			}
+			else if(uaE == null)
+			{
+				if(unabridgedConstraintManager == null)
+				{
+					throw new IllegalStateException("Parsing of unabridged formatted interference constraints had no exceptions, but corresponding manager is null.");
+				}
+				log.info("Unabridged format recognized for interference constraints.");
+				constraintManager = unabridgedConstraintManager;
+			}
+			else if(csE == null)
+			{
+				if(channelspecificConstraintManager == null)
+				{
+					throw new IllegalStateException("Parsing of channel specific formatted interference constraints had no exceptions, but corresponding manager is null.");
+				}
+				log.info("Channel specific format recognized for interference constraints.");
+				constraintManager = channelspecificConstraintManager;
+			}
+			else
+			{
+				throw new IllegalStateException("Could not parse interference constraints with any recognized format.");
+			}
+			
 			fData.put(path, new ManagerBundle(stationManager, constraintManager));
 			return true;
 		}

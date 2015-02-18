@@ -62,17 +62,16 @@ public class ClaspSATSolverBundle extends ASolverBundle{
 		log.debug("Initializing clasp selector bundle.");
 		
 		SATCompressor aCompressor = new SATCompressor(this.getConstraintManager());
-		IComponentGrouper aGrouper = new NoGrouper();
 		
 		log.debug("Initializing clasp solvers.");
 		AbstractCompressedSATSolver aClaspSATsolver =  new ClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.ALL_CONFIG_11_13);
-		fClaspGeneral = new CompressedSATBasedSolver(aClaspSATsolver, aCompressor,  this.getConstraintManager(), aGrouper);
+		fClaspGeneral = new CompressedSATBasedSolver(aClaspSATsolver, aCompressor,  this.getConstraintManager());
 		
 		AbstractCompressedSATSolver aUHFClaspSATsolver = new ClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.ALL_CONFIG_11_13);
-		fClaspUHF = new CompressedSATBasedSolver(aUHFClaspSATsolver, aCompressor,  this.getConstraintManager(), aGrouper);
+		fClaspUHF = new CompressedSATBasedSolver(aUHFClaspSATsolver, aCompressor,  this.getConstraintManager());
 		
 		AbstractCompressedSATSolver aHVHFClaspSATsolver = new ClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.HVHF_CONFIG_09_13);
-		fClaspHVHF = new CompressedSATBasedSolver(aHVHFClaspSATsolver, aCompressor,  this.getConstraintManager(), aGrouper);
+		fClaspHVHF = new CompressedSATBasedSolver(aHVHFClaspSATsolver, aCompressor,  this.getConstraintManager());
 	}
 	
 	@Override
@@ -102,7 +101,5 @@ public class ClaspSATSolverBundle extends ASolverBundle{
         fClaspGeneral.notifyShutdown();
         fClaspHVHF.notifyShutdown();
     }
-
-
 
 }

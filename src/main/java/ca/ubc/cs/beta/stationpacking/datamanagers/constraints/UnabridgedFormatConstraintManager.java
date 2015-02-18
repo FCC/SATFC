@@ -230,8 +230,8 @@ public class UnabridgedFormatConstraintManager implements IConstraintManager{
                     }
                     catch(Exception e)
                     {
-                        log.error("Could not parse unabridged format constraint line:");
-                        log.error(StringUtils.join(line, ","));
+                        log.debug("Could not parse unabridged format constraint line:");
+                        log.debug(StringUtils.join(line, ","));
                         throw e;
                     }
                     
@@ -259,7 +259,7 @@ public class UnabridgedFormatConstraintManager implements IConstraintManager{
                 //Check if we have already seen station1
                 if(allStations.contains(station1))
                 {
-                    log.error("Station {} is assigned to multiple channels.");
+                    log.debug("Station {} is assigned to multiple channels.");
                     return false;
                 }
                 
@@ -269,7 +269,7 @@ public class UnabridgedFormatConstraintManager implements IConstraintManager{
                 {
                     if(coInterferingStations.contains(station2))
                     {
-                        log.error("Station {} and {} share channel {} on which they CO interfere.",station1,station2,channel);
+                        log.debug("Station {} and {} share channel {} on which they CO interfere.",station1,station2,channel);
                         return false;
                     }
                 }
@@ -284,7 +284,7 @@ public class UnabridgedFormatConstraintManager implements IConstraintManager{
                     {
                         if(adjInterferingStations.contains(station2))
                         {
-                            log.error("Station {} is on channel {}, and station {} is on channel {}, causing ADJ+1 interference.",station1,channel,station2,channelp1);
+                            log.debug("Station {} is on channel {}, and station {} is on channel {}, causing ADJ+1 interference.",station1,channel,station2,channelp1);
                             return false;
                         }
                     }

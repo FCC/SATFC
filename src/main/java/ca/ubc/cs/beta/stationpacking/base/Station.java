@@ -21,6 +21,15 @@
  */
 package ca.ubc.cs.beta.stationpacking.base;
 
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
+
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Collections;
@@ -33,6 +42,7 @@ import java.util.LinkedList;
  * Also contains the station's domain (channels it can be on).
  * @author afrechet
  */
+@JsonSerialize(using = ToStringSerializer.class, as=String.class)
 public class Station implements Comparable<Station>, Serializable{
 	
 	/**

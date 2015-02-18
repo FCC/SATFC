@@ -100,7 +100,7 @@ public class InstanceParameters extends AbstractOptions {
 		return aPackingStations;
 	}
 	
-	@Parameter(names = "-DOMAINS", description = "Map taking station IDs to reduced domain set (e.g. 1:14,15,16;2:14,15)", converter=StationDomainsConverter.class, required=true)
+	@Parameter(names = "-DOMAINS", description = "Map taking station IDs to reduced domain set (e.g. 1:14,15,16;2:14,15)", converter=StationDomainsConverter.class)
 	private HashMap<Integer,Set<Integer>> fDomains;
 	/**
 	 * @return the channel domain on which to pack each station.
@@ -149,9 +149,9 @@ public class InstanceParameters extends AbstractOptions {
     /**
      * The instance station config foldername.
      */	
-	@Parameter(names = "-DATA-FOLDERNAME",description = "station config data folder name", required=true)
+	@Parameter(names = "-DATA-FOLDERNAME",description = "station config data folder name")
     public String fDataFoldername;
-	
+
 	@Override
 	public String toString()
 	{

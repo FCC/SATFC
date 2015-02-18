@@ -19,22 +19,18 @@
  * For questions, contact us at:
  * afrechet@cs.ubc.ca
  */
-package ca.ubc.cs.beta.stationpacking.solvers.sat;
+package ca.ubc.cs.beta.stationpacking.version;
 
-import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
-import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
+import org.mangosdk.spi.ProviderFor;
 
-/**
- * SAT based feasibility checking solver for SAT solvers that required compressed CNFs.
- * @author afrechet
- */
-public class CompressedSATBasedSolver extends GenericSATBasedSolver {
+import ca.ubc.cs.beta.aeatk.misc.version.AbstractVersionInfo;
+import ca.ubc.cs.beta.aeatk.misc.version.VersionInfo;
 
-	public CompressedSATBasedSolver(AbstractCompressedSATSolver aSATSolver, SATCompressor aSATCompressor, IConstraintManager aConstraintManager)
-	{
-		super(aSATSolver,aSATCompressor);
+@ProviderFor(VersionInfo.class)
+public class SATFCVersionInfo extends AbstractVersionInfo {
+
+	public SATFCVersionInfo() {
+		super("SATFC", "satfc-version.txt", true);
 	}
 
 }

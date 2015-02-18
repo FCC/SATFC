@@ -181,11 +181,30 @@ For example, the problem of packing stations 1 and 2 into channels 14,15,16,17,1
 \texttt{1:14,15,16,17,18,19,20;2:14,15,16,17,18,19,20;3:14,15,16}
 \end{center}
 \end{itemize}
+It is recommended to surround the argument values given to \SATFC by double-quotes.
+
 One can also run
 \begin{lstlisting}[style=Bash]
 > bash satfc --help
 \end{lstlisting}
 to get a list of the \SATFC options and parameters.
+
+\SATFC's output mainly comprises informative logging and three result lines. Here is an example where we ask \SATFC to pack a single station 13933 into channels 14 to 29:
+\begin{lstlisting}[style=Bash]
+> bash bin/SATFC -DATA-FOLDERNAME "interference-data/fcc-interference-data/" -DOMAINS "13933:14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29"
+07:27:47.765 [main] INFO  SATFCFacadeExecutor - Initializing facade.
+Found default library SATFC/clasp/jna/libjnaclasp.so.
+07:27:47.809 [main] INFO  SATFCFacadeExecutor - Solving ...
+07:27:47.809 [main] WARN  SolverManager - Requested data from interference-data/fcc-interference-data/ not available, will try to add it.
+07:27:52.580 [main] INFO  SATFCFacadeExecutor - ..done!
+SAT
+0.017
+{13933=16}
+07:27:52.580 [main] INFO  SATFCFacade - Shutting down...
+07:27:52.580 [main] INFO  SATFCFacade - Goodbye!
+\end{lstlisting}
+Most of the informative logging starts with a times stamp, the thread generating the logging, the log level and the class generating the logging. It can be useful to understand a buggy scenario or to monitor a \SATFC run. The three main lines of interest are the \texttt{SAT}, \texttt{0.017} and \texttt{\{13933=16\}} lines, which correspond to the run result, run time and witness assignment, respectively. The run result can be one of \texttt{SAT}isfiable, \texttt{UNSAT}isfiable or \texttt{TIMEOUT} (or the rarer \texttt{CRASHED}, \texttt{INTERRUPTED}) and corresponds to the repackability of the given problem. The runtime is the CPU time, in seconds, that \SATFC has taken to solve the given problem. Finally, the witness assignment is present only if the given problem is repackable (\emph{i.e.} \texttt{SAT}) and consists of a new valid channel assignment for the given stations.
+
 
 \subsubsection{Data}\label{sec:data}
 
@@ -233,9 +252,19 @@ The most efficient way of using \SATFC is as a Java library. This source code is
 
 Even though \SATFC is built using gradle, native components such as \clasp are not yet packaged in \SATFC's maven repository. Hence, to build a project that uses \SATFC, one must strictly depend on it at a project level for it to find a copy of \clasp, for example. 
 
+\SATFC uses \href{http://projectlombok.org/}{Lombok} annotations to streamline its source code. We suggest you install the \href{http://projectlombok.org/download.html}{Lombok plugin} for your favorite IDE. Otherwise, it possible to ``\href{http://projectlombok.org/features/delombok.html}{delombok}'' the source code, but that will make your code completely incompatible with \SATFC's pipeline.
+
+
 %\section{Frequently Asked Questions}
 %
-%A short list of frequent
+%A (short) list of frequently asked questions:
+%\begin{enumerate}
+% \item Missing double quotes
+% \item I want to know what caused UNSAT.
+% \item Support for windows.
+%\end{enumerate}
+
+
 
 \section{Acknowledgements} 
 

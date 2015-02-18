@@ -72,15 +72,14 @@ public class PreSolvingOnlySolverBundle extends ASolverBundle {
 		log.warn("Initializing clasps with internal configurations.");
 		
 		SATCompressor aCompressor = new SATCompressor(this.getConstraintManager());
-		IComponentGrouper aGrouper = new NoGrouper();
 		
 		log.debug("Initializing clasp solvers.");
 		
 		AbstractCompressedSATSolver aUHFClaspSATsolver = new ClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.ALL_CONFIG_11_13);
-		ISolver UHFClaspBasedSolver = new CompressedSATBasedSolver(aUHFClaspSATsolver, aCompressor,  this.getConstraintManager(), aGrouper);
+		ISolver UHFClaspBasedSolver = new CompressedSATBasedSolver(aUHFClaspSATsolver, aCompressor,  this.getConstraintManager());
 		
 		AbstractCompressedSATSolver aHVHFClaspSATsolver = new ClaspSATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.HVHF_CONFIG_09_13);
-		ISolver VHFClaspBasedSolver = new CompressedSATBasedSolver(aHVHFClaspSATsolver, aCompressor,  this.getConstraintManager(), aGrouper);
+		ISolver VHFClaspBasedSolver = new CompressedSATBasedSolver(aHVHFClaspSATsolver, aCompressor,  this.getConstraintManager());
 		
 		final double UNSATcertifiercutoff = 30;
 		final double SATcertifiercutoff = 30;

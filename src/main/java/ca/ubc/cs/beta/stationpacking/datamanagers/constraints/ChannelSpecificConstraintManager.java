@@ -224,7 +224,7 @@ public class ChannelSpecificConstraintManager implements IConstraintManager{
 					}
 					catch(Exception e)
 					{
-						log.error("Could not read constraint from line:\n{}",StringUtils.join(line,','));
+						log.debug("Could not read constraint from line:\n{}",StringUtils.join(line,','));
 						throw e;
 					}
 					

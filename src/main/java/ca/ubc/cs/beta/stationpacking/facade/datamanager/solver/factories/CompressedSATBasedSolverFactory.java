@@ -37,7 +37,6 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSo
 public class CompressedSATBasedSolverFactory implements ISolverFactory {
 
 	private AbstractCompressedSATSolver fSATSolver;
-	private IComponentGrouper fGrouper;
 	
 	/**
 	 * Creates a new factory that will use the given solver and grouper to create ISolvers.
@@ -47,13 +46,12 @@ public class CompressedSATBasedSolverFactory implements ISolverFactory {
 	public CompressedSATBasedSolverFactory(AbstractCompressedSATSolver solver, IComponentGrouper grouper)
 	{
 		fSATSolver = solver;
-		fGrouper = grouper;
 	}
 	
 	@Override
 	public ISolver create(IStationManager stationManager, IConstraintManager constraintManager) {
 		SATCompressor encoder = new SATCompressor(constraintManager);
-		ISolver solver = new CompressedSATBasedSolver(fSATSolver, encoder, constraintManager, fGrouper);
+		ISolver solver = new CompressedSATBasedSolver(fSATSolver, encoder, constraintManager);
 		return solver;
 	}
 

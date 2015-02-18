@@ -66,6 +66,7 @@ public class DisjunctiveCompositeTerminationCriterion implements ITerminationCri
 		{
 			if(criterion.hasToStop())
 			{
+			    log.trace("Criterion {} says we should stop ({} s left).",criterion,criterion.getRemainingTime());
 				return true;
 			}
 		}

@@ -33,6 +33,7 @@ import ca.ubc.cs.beta.aeatk.options.AbstractOptions;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat.ClaspLibSATSolverParameters;
+import ca.ubc.cs.beta.stationpacking.facade.SATFCFacadeParameter;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.SolverManager;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBundle;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBundleFactory;
@@ -71,7 +72,7 @@ public class SATFCSolverManagerParameters extends AbstractOptions {
 	 */
 	@Parameter(names = "-RESULT-FILE", description = "a file in which to save the results of problems encountered.")
 	public String ResultFile = null;
-	
+
 	/**
 	 * @return SATFC solver manager initialized with the given parameters.
 	 */
@@ -83,19 +84,20 @@ public class SATFCSolverManagerParameters extends AbstractOptions {
 		final String clasplibrary = SolverParameters.Library; 
 		SolverManager aSolverManager = new SolverManager(
 				new ISolverBundleFactory() {
-			
+
 					@Override
 					public ISolverBundle getBundle(IStationManager aStationManager,
 							IConstraintManager aConstraintManager) {
-						
+
 						/*
 						 * Set what solver selector will be used here.
 						 */
-						return new SATFCSolverBundle(clasplibrary, aStationManager, aConstraintManager,CNFDirectory,ResultFile);
-						
+						// TODO: allow specification of solver customization options
+						return new SATFCSolverBundle(clasplibrary, aStationManager, aConstraintManager,CNFDirectory,ResultFile, new SATFCFacadeParameter.SolverCustomizationOptions());
+
 					}
 				}
-				
+
 				);
 		
 		//Gather any necessary station packing data.

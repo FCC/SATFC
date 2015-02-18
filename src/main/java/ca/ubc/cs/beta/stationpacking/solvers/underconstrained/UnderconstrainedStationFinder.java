@@ -1,13 +1,17 @@
 package ca.ubc.cs.beta.stationpacking.solvers.underconstrained;
 
-import ca.ubc.cs.beta.stationpacking.base.Station;
-import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
-import lombok.extern.slf4j.Slf4j;
-
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+
+import com.google.common.collect.Sets;
+
+import lombok.extern.slf4j.Slf4j;
+import ca.ubc.cs.beta.stationpacking.base.Station;
+import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 
 /**
  * Created by newmanne on 1/8/15.
@@ -29,66 +33,84 @@ public class UnderconstrainedStationFinder implements IUnderconstrainedStationFi
 
         log.debug("Finding underconstrained stations in the instance...");
 
-        final Map<Station,Integer> numCoNeighbours = new HashMap<Station,Integer>();
-        final Map<Station,Integer> numAdjNeighbours = new HashMap<Station,Integer>();
-
-        for(Station station : domains.keySet())
+        final Map<Station,Set<Integer>> badChannels = new HashMap<Station,Set<Integer>>();
+        for(final Entry<Station, Set<Integer>> domainEntry : domains.entrySet())
         {
-            final Set<Integer> domain = domains.get(station);
+            final Station station = domainEntry.getKey();
+            final Set<Integer> domain = domainEntry.getValue();
+            
             for(Integer domainChannel : domain)
             {
                 for(Station coNeighbour : fConstraintManager.getCOInterferingStations(station,domainChannel))
                 {
-                    if(domains.keySet().contains(coNeighbour) && domains.get(coNeighbour).contains(domainChannel))
-                    {
-                        Integer stationNumCo = numCoNeighbours.get(station);
-                        if(stationNumCo == null)
-                        {
-                            stationNumCo = 0;
-                        }
-                        stationNumCo++;
-                        numCoNeighbours.put(station, stationNumCo);
-
-                        Integer neighbourNumCo = numCoNeighbours.get(coNeighbour);
-                        if(neighbourNumCo == null)
-                        {
-                            neighbourNumCo = 0;
-                        }
-                        neighbourNumCo++;
-                        numCoNeighbours.put(coNeighbour, neighbourNumCo);
+                   if(domains.keySet().contains(coNeighbour) && domains.get(coNeighbour).contains(domainChannel))
+                   {
+                       Set<Integer> stationBadChannels = badChannels.get(station);
+                       if(stationBadChannels == null)
+                       {
+                           stationBadChannels = new HashSet<Integer>();
+                       }
+                       stationBadChannels.add(domainChannel);
+                       badChannels.put(station, stationBadChannels);
+                       
+                       Set<Integer> coneighbourBadChannels = badChannels.get(coNeighbour);
+                       if(coneighbourBadChannels == null)
+                       {
+                           coneighbourBadChannels = new HashSet<Integer>();
+                       }
+                       coneighbourBadChannels.add(domainChannel);
+                       badChannels.put(coNeighbour, coneighbourBadChannels);
                     }
-                }
+                 }
                 for(Station adjNeighbour : fConstraintManager.getADJplusInterferingStations(station, domainChannel))
                 {
                     if(domains.keySet().contains(adjNeighbour) && domains.get(adjNeighbour).contains(domainChannel+1))
                     {
-                        Integer stationNumAdj = numAdjNeighbours.get(station);
-                        if(stationNumAdj == null)
+                        Set<Integer> stationBadChannels = badChannels.get(station);
+                        if(stationBadChannels == null)
                         {
-                            stationNumAdj = 0;
+                            stationBadChannels = new HashSet<Integer>();
                         }
-                        stationNumAdj++;
-                        numAdjNeighbours.put(station, stationNumAdj);
-                    }
-                }
-            }
+                        stationBadChannels.add(domainChannel);
+                        badChannels.put(station, stationBadChannels);
+                        
+                        Set<Integer> adjneighbourBadChannels = badChannels.get(adjNeighbour);
+                        if(adjneighbourBadChannels == null)
+                        {
+                            adjneighbourBadChannels = new HashSet<Integer>();
+                        }
+                        adjneighbourBadChannels.add(domainChannel+1);
+                        badChannels.put(adjNeighbour, adjneighbourBadChannels);
+                      }
+                  }
+              }
         }
-
-        for(Station station : domains.keySet())
+        
+        for(final Entry<Station, Set<Integer>> domainEntry : domains.entrySet())
         {
-            final Set<Integer> domain = domains.get(station);
-
-            final int domainSize = domain.size();
-            final int numCo = numCoNeighbours.containsKey(station) ? numCoNeighbours.get(station) : 0;
-            final int numAdj = numAdjNeighbours.containsKey(station) ? numAdjNeighbours.get(station) : 0;
-
-            if(domainSize > numCo + numAdj)
+            final Station station = domainEntry.getKey();
+            final Set<Integer> domain = domainEntry.getValue();
+            
+            Set<Integer> stationBadChannels = badChannels.get(station);
+            if(stationBadChannels == null)
             {
-                log.trace("Station {} is underconstrained ({} domain but {} co- and {} adj-neighbours), removing it from the instance (to be rea-dded after solving).",station,domainSize,numCo,numAdj);
+                stationBadChannels = Collections.emptySet();
+            }
+            
+            final Set<Integer> stationGoodChannels = Sets.difference(domain, stationBadChannels);
+            
+            log.trace("Station {} domain channels: {}.",station,domain);
+            log.trace("Station {} bad channels: {}.",station,stationBadChannels);
+            
+            if(!stationGoodChannels.isEmpty())
+            {
+                log.trace("Station {} is underconstrained has it has {} domain channels ({}) on which it interferes with no one.",station,stationGoodChannels.size(),stationGoodChannels);
                 underconstrainedStations.add(station);
             }
         }
+        
         return underconstrainedStations;
+       
     }
 
 }

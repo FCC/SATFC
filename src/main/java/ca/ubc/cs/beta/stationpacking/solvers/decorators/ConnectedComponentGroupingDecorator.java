@@ -57,6 +57,8 @@ public class ConnectedComponentGroupingDecorator extends ASolverDecorator {
         final AtomicInteger idTracker = new AtomicInteger();
         final Map<Integer, SolverResult> solverResults = Maps.newHashMap();
         stationComponents.stream()
+            // sort the components in ascending order of size. The idea is that this would decrease runtime if one of the small components was UNSAT
+            .sorted((o1, o2) -> Integer.compare(o1.size(), o2.size()))
             // Note that anyMatch is a short-circuiting operation
             // If any component matches this clause (is not SAT), the whole instance cannot be SAT, might as well stop then
             .anyMatch(stationComponent -> {

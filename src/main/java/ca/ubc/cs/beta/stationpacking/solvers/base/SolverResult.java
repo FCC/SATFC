@@ -28,6 +28,8 @@ import java.util.Map;
 import java.util.Set;
 
 import ca.ubc.cs.beta.stationpacking.base.Station;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import lombok.EqualsAndHashCode;
 
 
 /**
@@ -35,6 +37,8 @@ import ca.ubc.cs.beta.stationpacking.base.Station;
  * @author afrechet
  *
  */
+@JsonDeserialize(using = SolverResultDeserializer.class)
+@EqualsAndHashCode
 public class SolverResult implements Serializable {
 	
 	/**

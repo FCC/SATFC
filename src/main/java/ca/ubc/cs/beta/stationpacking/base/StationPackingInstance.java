@@ -31,6 +31,8 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -109,7 +111,8 @@ public class StationPackingInstance {
 		}
 		return allChannels;
 	}
-	
+
+	// warning: changing this method will completely mess up hashing!
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder();

@@ -1,6 +1,8 @@
 package ca.ubc.cs.beta.stationpacking.solvers.decorators;
 
-import com.google.common.base.Preconditions;
+
+import static com.google.common.base.Preconditions.checkState;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,8 +12,6 @@ import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
-
-import static com.google.common.base.Preconditions.checkState;
 
 /**
  * Verifies the assignments returned by decorated solver for satisfiability. 

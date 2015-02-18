@@ -43,18 +43,18 @@ public class WalltimeTerminationCriterion implements ITerminationCriterion {
 	 */
 	private WalltimeTerminationCriterion(long aApplicationStartTimeMilli, double aWalltimeLimit)
 	{
-		this.fEndTimeMilli = aApplicationStartTimeMilli +  (long) (aWalltimeLimit *1000);
-		
+	    fEndTimeMilli = aApplicationStartTimeMilli +  (long)(aWalltimeLimit *1000);
 	}
 	@Override
 	public boolean hasToStop() {
-		return (System.currentTimeMillis() >= fEndTimeMilli);
-		
+		return getRemainingTime()<=0;
 	}
 
 	@Override
 	public double getRemainingTime() {
-		return (fEndTimeMilli-System.currentTimeMillis())/1000.0;
+	    final long currentTime = System.currentTimeMillis();
+	    final double remainingTime = (fEndTimeMilli-currentTime)/1000.0; 
+		return remainingTime;
 	}
 	@Override
 	public void notifyEvent(double aTime) {

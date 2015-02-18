@@ -24,7 +24,9 @@ package ca.ubc.cs.beta.stationpacking.execution.parameters;
 import ca.ubc.cs.beta.aeatk.logging.ComplexLoggingOptions;
 import ca.ubc.cs.beta.aeatk.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aeatk.options.AbstractOptions;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.SolverCustomizationOptionsParameters;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.base.InstanceParameters;
+import ca.ubc.cs.beta.stationpacking.facade.SATFCFacadeParameter;
 import ca.ubc.cs.beta.stationpacking.facade.SATFCFacadeParameter.SolverChoice;
 
 import com.beust.jcommander.Parameter;
@@ -42,7 +44,18 @@ public class SATFCFacadeParameters extends AbstractOptions {
      */
 	@ParametersDelegate
 	public InstanceParameters fInstanceParameters = new InstanceParameters();
-	
+
+	@Parameter(names = "-INSTANCES-FILE", description = "file listing each instance file on a separate line")
+	public String fInstanceFile;
+	@Parameter(names = "-INSTANCES-FOLDER", description = "folder where the instance files are located")
+	public String fInstanceFolder;
+	@Parameter(names = "-INTERFERENCES-FOLDER", description = "folder containing all the other interference folders")
+	public String fInterferencesFolder;
+	@Parameter(names = "-CSV-OUTPUT", description = "csv output file summarizing results")
+	public String fCsvOutputFile;
+
+	@ParametersDelegate
+	public SolverCustomizationOptionsParameters fSolverOptions = new SolverCustomizationOptionsParameters();
 	/**
 	 * Clasp library to use (optional - can be automatically detected).
 	 */
@@ -51,11 +64,12 @@ public class SATFCFacadeParameters extends AbstractOptions {
 	
 	@Parameter(names = "-SOLVER-CHOICE", description = "type of SATFC")
 	public SolverChoice fSolverChoice = SolverChoice.SATFC;
-	
+
 	/**
 	 * Logging options.
 	 */
 	@ParametersDelegate
 	public ComplexLoggingOptions fLoggingOptions = new ComplexLoggingOptions();
-	
+
+
 }

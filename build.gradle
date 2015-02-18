@@ -13,6 +13,7 @@
 
 // Build script dependencies.
 buildscript {
+
 	repositories { 
 		mavenCentral() 
 	}
@@ -47,7 +48,7 @@ dependencies {
 
     //All the product dependencies.
     compile 'org.slf4j:slf4j-api:1.7.7'
-    compile 'ca.ubc.cs.beta:aeatk:2.08.01-development-82e4ccb826d1'
+    compile 'ca.ubc.cs.beta:aeatk:2.08.01-development-de3ee6617d5c'
     compile 'commons-codec:commons-codec:1.7'
     compile 'org.apache.commons:commons-lang3:3.3.1'
     compile 'org.jgrapht:jgrapht-core:0.9.0'
@@ -65,6 +66,8 @@ dependencies {
     compile 'commons-collections:commons-collections:3.2.1'
     compile 'net.java.dev.jna:jna:4.0.0'
     compile 'com.mangosdk:spi:0.2.4'
+	compile 'redis.clients:jedis:2.6.1'
+	compile 'io.dropwizard.metrics:metrics-core:3.1.0'
 
     // Test dependencies.
     testCompile 'junit:junit:4.11'

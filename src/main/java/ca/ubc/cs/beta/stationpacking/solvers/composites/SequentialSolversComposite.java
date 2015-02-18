@@ -56,8 +56,14 @@ public class SequentialSolversComposite implements ISolver{
 		
 		Collection<SolverResult> results = new ArrayList<SolverResult>();
 		
-		for(int i=0;i<fSolvers.size() && !aTerminationCriterion.hasToStop();i++)
+		for(int i=0;i<fSolvers.size();i++)
 		{
+		    if(aTerminationCriterion.hasToStop())
+		    {
+		        log.trace("All time spent.");
+		        break;
+		    }
+		    
 			log.debug("Trying solver {}.",i+1);
 			
 			SolverResult result = fSolvers.get(i).solve(aInstance, aTerminationCriterion, aSeed);
