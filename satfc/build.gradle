@@ -1,0 +1,218 @@
+/*
+ * SATFC Build file.
+ * @author afrechet
+ * @author newmanne
+ * 
+ * @TODO 
+ *	1. Automatic git push after publish.
+ *	2. Resolve native dependencies (e.g. on clasp). 
+ *  3. Figure out how to work with private, password protected non-maven-central repo.
+ *  4. Nicer failure on local.properties
+ *
+ */
+
+// Build script dependencies.
+buildscript {
+	dependencies { 
+		classpath 'org.ajoberstar:gradle-git:0.12.0'
+        classpath 'nl.javadude.gradle.plugins:license-gradle-plugin:0.11.0'
+	}
+}
+
+apply plugin: 'license'
+apply plugin: 'application'
+apply plugin: 'maven-publish'
+
+// In this section you declare the dependencies for your production and test code
+dependencies {
+
+    //All the product dependencies.
+    compile 'org.slf4j:slf4j-api:1.7.7'
+    compile 'ca.ubc.cs.beta:aeatk:2.08.01-development-de3ee6617d5c'
+    compile 'commons-codec:commons-codec:1.7'
+    compile 'org.apache.commons:commons-lang3:3.3.1'
+    compile 'org.jgrapht:jgrapht-core:0.9.0'
+    compile 'au.com.bytecode:opencsv:2.4'
+    compile 'com.google.guava:guava:18.0'
+    compile 'org.projectlombok:lombok:1.14.8'
+    compile 'org.slf4j:slf4j-parent:1.7.5'
+    compile 'ch.qos.logback:logback-access:1.0.13'
+    compile 'ch.qos.logback:logback-classic:1.0.13'
+    compile 'ch.qos.logback:logback-core:1.0.13'
+    compile "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
+    compile "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
+    compile "com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion"
+    compile "com.fasterxml.jackson.datatype:jackson-datatype-guava:$jacksonVersion"
+    compile 'com.beust:jcommander:1.35-patched'
+    compile 'commons-collections:commons-collections:3.2.1'
+    compile 'net.java.dev.jna:jna:4.0.0'
+    compile 'com.mangosdk:spi:0.2.4'
+	compile 'io.dropwizard.metrics:metrics-core:3.1.0'
+	compile 'io.dropwizard.metrics:metrics-jvm:3.1.0'
+    // redis
+    compile 'redis.clients:jedis:2.6.1'
+    compile "org.springframework.data:spring-data-redis:1.5.0.RELEASE"
+
+    // Rest template
+    compile "org.springframework:spring-web:$springVersion"
+
+    // Test dependencies.
+    testCompile 'junit:junit:4.11'
+    testCompile 'org.mockito:mockito-all:1.10.8'
+    
+    //Local dependencies
+    compile files('libs/cplex.jar')
+}
+
+//License.
+license {
+    ext.name = applicationName
+    ext.year = Calendar.getInstance().get(Calendar.YEAR)
+    ext.author1 = 'Alexandre Fréchette'
+    ext.author2 = 'Neil Newman'
+    ext.author3 = 'Kevin Leyton-Brown'
+    ext.email = 'afrechet@cs.ubc.ca'
+    exclude "*.txt"
+    header project.file('../LICENSE')
+}
+
+//Grab git information.
+import org.ajoberstar.grgit.Grgit
+public boolean isGitAvailable() {
+    def repo
+    try
+    {
+        repo = Grgit.open(project.file('..'))
+        return true
+    }
+    catch(Exception e)
+    {
+        println 'Not building SATFC from a git repository, versioning will be limited.'
+        return false
+    }
+}
+
+
+public String getGitName()
+{
+    if (isGitAvailable()) {
+        def repo = Grgit.open(project.file('..'))
+        def branch = repo.branch.current.name
+        def sha = repo.head().abbreviatedId
+        return branch+'-'+sha
+    } else {
+        return 'nogit'
+    }
+}
+
+// Creates scripts for entry points
+// Subproject must apply application plugin to be able to call this method.
+def createScript(project, mainClass, name) {
+    project.tasks.create(name: name, type: CreateStartScripts) {
+    outputDir       = new File(project.buildDir, 'scripts')
+    mainClassName   = mainClass
+    applicationName = name
+    classpath       = project.tasks[JavaPlugin.JAR_TASK_NAME].outputs.files + project.configurations.runtime
+    applicationDefaultJvmArgs = ['-Xmx2048m']
+  }
+  project.tasks[name].dependsOn(project.jar)
+
+  project.applicationDistribution.with {
+    into("bin") {
+      from(project.tasks[name])
+      fileMode = 0755
+    }
+  }
+}
+
+//Project properties.
+applicationName = 'SATFC'
+jar.baseName = applicationName
+version = "1.5-"+getGitName()
+mainClassName = 'ca.ubc.cs.beta.stationpacking.execution.SATFCFacadeExecutor'
+applicationDefaultJvmArgs = ['-Xmx2048m']
+
+//Publishing to EARG maven repo.
+public String getEARGMavenRepo()
+{
+	Properties properties = new Properties()
+	def propertyFilename = 'local.properties'
+	def propertyFile = project.rootProject.file('local.properties')
+	if(!propertyFile.exists()) {
+		println 'Necessary file '+propertyFilename+' was not present, creating an empty version of it!'
+		propertyFile.createNewFile()
+	}
+	properties.load(propertyFile.newDataInputStream())
+	def eargMavenRepo = properties.getProperty('earg.mavenrepo.dir')
+	return eargMavenRepo
+}
+
+task sourceJar(type: Jar) {
+	from sourceSets.main.allJava
+}
+publishing {
+
+	repositories {
+	    //Local EARG maven repo.   
+	    maven {
+	    	url getEARGMavenRepo()+'/snapshots/'
+	    }
+	}
+	
+	publications {
+	
+		maven(MavenPublication) {
+			groupId 'ca.ubc.cs.beta'
+			artifactId applicationName
+			version version
+			
+			from components.java
+			
+			artifact sourceJar {
+				classifier "sources"
+			}
+			artifact distZip {
+				classifier "dist"
+			}
+		}
+	
+	}
+}
+
+def generatedResources = "$buildDir/generated-resources/main"
+
+sourceSets {
+    main {
+        //let's register an output folder on the main SourceSet:
+        output.dir(generatedResources, builtBy: 'generateMyResources')
+        //it is now a part of the 'main' classpath and will be a part of the jar
+    }
+}
+
+//a task that generates the resources:
+task generateMyResources {
+    doLast {
+        def generatedFolder = new File(generatedResources)
+        if (!generatedFolder.exists()) {
+            generatedFolder.mkdirs()
+        }
+        def generated = new File(generatedResources, "version.properties")
+        if (isGitAvailable()) {
+            def repo = Grgit.open(project.file('..'))
+            generated.text = "buildTime=" + new Date().toString() + System.lineSeparator() +
+                    "sha=" + repo.head().id + System.lineSeparator() +
+                    "branch=" + repo.branch.current.name + System.lineSeparator() +
+                    "committer=" + repo.head().committer.name + System.lineSeparator() +
+                    "commitTime=" + repo.head().date + System.lineSeparator() +
+                    "message=" + repo.head().fullMessage + System.lineSeparator()
+        } else {
+            generated.text = "No git available"
+        }
+    }
+}
+
+run {
+    if ( project.hasProperty('args') ) {
+        args project.args.split('\\s+')
+    }
+}

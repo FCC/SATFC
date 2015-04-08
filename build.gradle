@@ -1,185 +1,33 @@
-/*
- * SATFC Build file.
- * @author afrechet
- * @author newmanne
- * 
- * @TODO 
- *	1. Automatic git push after publish.
- *	2. Resolve native dependencies (e.g. on clasp). 
- *  3. Figure out how to work with private, password protected non-maven-central repo.
- *  4. Nicer failure on local.properties
- *
- */
+subprojects {
 
-// Build script dependencies.
-buildscript {
-
-	repositories { 
-		mavenCentral() 
-	}
-	dependencies { 
-		classpath 'org.ajoberstar:gradle-git:0.12.0' 
-	}
-}
-
-plugins {
-    id "com.github.hierynomus.license" version "0.11.0"
-}
-
-// In this section you declare where to find the dependencies of your project
-repositories {
-    //EARG maven repo.   
-    maven {
-    	url 'https://bitbucket.org/EARG-builder/maven-repo/raw/master/releases/'
+    buildscript {
+        repositories {
+            mavenCentral()
+            jcenter()
+        }
     }
-    mavenLocal()
-    mavenCentral()
-}
 
-apply plugin: 'java'
-apply plugin: 'application'
-apply plugin: 'maven-publish'
-apply plugin: 'license'
+    apply plugin: 'java'
 
-sourceCompatibility = 1.8
+    sourceCompatibility = 1.8
+	targetCompatibility = 1.8
 
-// In this section you declare the dependencies for your production and test code
-dependencies {
-
-    //All the product dependencies.
-    compile 'org.slf4j:slf4j-api:1.7.7'
-    compile 'ca.ubc.cs.beta:aeatk:2.08.01-development-de3ee6617d5c'
-    compile 'commons-codec:commons-codec:1.7'
-    compile 'org.apache.commons:commons-lang3:3.3.1'
-    compile 'org.jgrapht:jgrapht-core:0.9.0'
-    compile 'au.com.bytecode:opencsv:2.4'
-    compile 'com.google.guava:guava:18.0'
-    compile 'org.projectlombok:lombok:1.14.8'
-    compile 'org.slf4j:slf4j-parent:1.7.5'
-    compile 'ch.qos.logback:logback-access:1.0.13'
-    compile 'ch.qos.logback:logback-classic:1.0.13'
-    compile 'ch.qos.logback:logback-core:1.0.13'
-    compile 'com.fasterxml.jackson.core:jackson-databind:2.4.4'
-    compile 'com.fasterxml.jackson.core:jackson-core:2.4.4'
-    compile 'com.fasterxml.jackson.core:jackson-annotations:2.4.4'
-    compile 'com.beust:jcommander:1.35-patched'
-    compile 'commons-collections:commons-collections:3.2.1'
-    compile 'net.java.dev.jna:jna:4.0.0'
-    compile 'com.mangosdk:spi:0.2.4'
-	compile 'redis.clients:jedis:2.6.1'
-	compile 'io.dropwizard.metrics:metrics-core:3.1.0'
-
-    // Test dependencies.
-    testCompile 'junit:junit:4.11'
-    testCompile 'org.mockito:mockito-all:1.10.8'
-    
-}
-
-//Grab git information.
-import org.ajoberstar.grgit.Grgit
-public String getGitName()
-{
-	def repo
-	try
-	{
-		repo = Grgit.open(project.file('.'))
-	}
-	catch(Exception e)
-	{
-		println 'Not building SATFC from a git repository, versioning will be limited.'
-		return 'nogit'
-	}
-	
-	def branch = repo.branch.current.name
-	def sha = repo.head().abbreviatedId
-	
-	return branch+'-'+sha
-}
-
-// Creates scripts for entry points
-// Subproject must apply application plugin to be able to call this method.
-def createScript(project, mainClass, name) {
-    project.tasks.create(name: name, type: CreateStartScripts) {
-    outputDir       = new File(project.buildDir, 'scripts')
-    mainClassName   = mainClass
-    applicationName = name
-    classpath       = project.tasks[JavaPlugin.JAR_TASK_NAME].outputs.files + project.configurations.runtime
-    applicationDefaultJvmArgs = ['-Xmx2048m']
-  }
-  project.tasks[name].dependsOn(project.jar)
-
-  project.applicationDistribution.with {
-    into("bin") {
-      from(project.tasks[name])
-      fileMode = 0755
+    ext {
+        springVersion = "4.1.5.RELEASE"
+        jacksonVersion = "2.5.1"
     }
-  }
-}
-
-//Project properties.
-applicationName = 'SATFC'
-jar.baseName = applicationName
-version = "1.3-"+getGitName()
-mainClassName = 'ca.ubc.cs.beta.stationpacking.execution.SATFCFacadeExecutor'
-applicationDefaultJvmArgs = ['-Xmx2048m']
-
-//startScripts.enabled = false
-//run.enabled = false
-//createScript(project, 'ca.ubc.cs.beta.stationpacking.execution.SATFCFacadeExecutor', 'SATFCC')
-
-
-//License.
-license {
-	ext.name = applicationName
-    ext.year = Calendar.getInstance().get(Calendar.YEAR)
-    ext.author1 = 'Alexandre Fréchette'
-    ext.author2 = 'Kevin Leyton-Brown'
-    ext.email = 'afrechet@cs.ubc.ca'
-}
-
-//Publishing to EARG maven repo.
-public String getEARGMavenRepo()
-{
-	Properties properties = new Properties()
-	def propertyFilename = 'local.properties'
-	def propertyFile = project.rootProject.file('local.properties')
-	if(!propertyFile.exists()) {
-		println 'Necessary file '+propertyFilename+' was not present, creating an empty version of it!'
-		propertyFile.createNewFile()
-	}
-	properties.load(propertyFile.newDataInputStream())
-	def eargMavenRepo = properties.getProperty('earg.mavenrepo.dir')
-	return eargMavenRepo
-}
-
-task sourceJar(type: Jar) {
-	from sourceSets.main.allJava
-}
-publishing {
 
 	repositories {
-	    //Local EARG maven repo.   
+	    //EARG maven repo.   
 	    maven {
-	    	url getEARGMavenRepo()+'/snapshots/'
+	    	url 'https://bitbucket.org/EARG-builder/maven-repo/raw/master/releases/'
 	    }
+	    mavenLocal()
+	    mavenCentral()
 	}
-	
-	publications {
-	
-		maven(MavenPublication) {
-			groupId 'ca.ubc.cs.beta'
-			artifactId applicationName
-			version version
-			
-			from components.java
-			
-			artifact sourceJar {
-				classifier "sources"
-			}
-			artifact distZip {
-				classifier "dist"
-			}
-		}
-	
-	}
+
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.3'
 }

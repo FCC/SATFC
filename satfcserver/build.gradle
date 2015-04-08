@@ -1,0 +1,59 @@
+version = 0.1
+
+buildscript {
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:1.2.2.RELEASE")
+        classpath 'nl.javadude.gradle.plugins:license-gradle-plugin:0.11.0'
+    }
+}
+
+apply plugin: 'spring-boot'
+apply plugin: 'license'
+
+jar {
+    baseName = 'SATFCServer'
+    version = '0.1.0'
+}
+
+//License.
+license {
+    ext.name = applicationName
+    ext.year = Calendar.getInstance().get(Calendar.YEAR)
+    ext.author1 = 'Alexandre Fréchette'
+    ext.author2 = 'Neil Newman'
+    ext.author3 = 'Kevin Leyton-Brown'
+    ext.email = 'afrechet@cs.ubc.ca'
+    exclude "*.txt"
+    header project.file('../LICENSE')
+}
+
+dependencies {
+    compile project(':satfc')
+
+    // spring
+    compile("org.springframework.boot:spring-boot-starter-web")
+    compile("org.springframework.boot:spring-boot-starter-actuator")
+
+    // jackson
+    compile "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
+    compile "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
+    compile "com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion"
+    compile "com.fasterxml.jackson.datatype:jackson-datatype-guava:$jacksonVersion"
+
+    // logging
+    compile 'org.slf4j:slf4j-api:1.7.7'
+    compile 'org.slf4j:jcl-over-slf4j:1.7.7'
+    compile 'org.slf4j:jul-to-slf4j:1.7.7'
+    compile 'ch.qos.logback:logback-access:1.0.13'
+    compile 'ch.qos.logback:logback-classic:1.0.13'
+    compile 'ch.qos.logback:logback-core:1.0.13'
+
+    // convenience
+    compile 'org.projectlombok:lombok:1.14.8'
+    compile 'com.google.guava:guava:18.0'
+
+    // test
+    testCompile "org.springframework:spring-test:$springVersion"
+    testCompile "junit:junit:4.11"
+    testCompile "org.mockito:mockito-all:1.10.8"
+}

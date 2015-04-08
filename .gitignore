@@ -23,3 +23,5 @@ local.properties
 manual/*.pdf
 cplex.jar
 *.iml
+.idea/*
+satfc/manual/_minted-SATFC-manual/

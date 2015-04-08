@@ -34,11 +34,11 @@ needspace, % space reservation
 \hyphenation{Fortran hy-phen-ation} % Specify custom hyphenation points in words with dashes where you would like hyphenation to occur, or alternatively, don't put any dashes in a word to stop hyphenation altogether
 
 \newcommand{\SATFC}{\textsc{SATFC}~}
+\newcommand{\SATFCServer}{\textsc{SATFCServer}~}
 \newcommand{\clasp}{\textsc{clasp}~}
 \newcommand{\AEATK}{\textsc{AEATK}}
 
-
-
+\usepackage{minted}
 %----------------------------------------------------------------------------------------
 %	TITLE AND AUTHOR(S)
 %----------------------------------------------------------------------------------------
@@ -47,7 +47,7 @@ needspace, % space reservation
 
 \author{
 \includegraphics[scale=0.2]{images/auctionomics_logo}\\
-\spacedlowsmallcaps{Alexandre Fr\'echette*, Kevin Leyton-Brown*} 
+\spacedlowsmallcaps{Alexandre Fr\'echette*, Neil Newman*, Kevin Leyton-Brown*} 
 }
 
 \date{\today} % An optional date to appear under the author(s)
@@ -112,7 +112,7 @@ needspace, % space reservation
 
 \subsection{System Requirements}
 
-\SATFC is primarily intended to run on Unix-like platforms. It requires Java 8 to run and \href{http://www.gradle.org/}{Gradle} for building. One also needs our modified version of the SAT solver \clasp v2.2.3 compiled for JNA library usage, which in turn necessitates \textsc{gcc} v4.8.1 or higher as well as the standard Unix C libraries (see Section \ref{sec:usage} to learn how to compile \clasp).
+\SATFC is primarily intended to run on Unix-like platforms. It requires Java 8 to run and \href{http://www.gradle.org/}{Gradle} for building. One also needs our modified version of the SAT solver \clasp v2.2.3 compiled for JNA library usage, which in turn necessitates \textsc{gcc} v4.8.1 or higher as well as the standard Unix C libraries (see Section \ref{sec:usage} to learn how to compile \clasp). 
 
 \subsection{Version}
 This manual is for \SATFC v1.2.
@@ -132,20 +132,19 @@ To take advantage of the specific distribution of encountered feasibility checki
 
 \subsection{Setting Up \& Building \SATFC}
 
-The releases folder in \SATFC's repository should contain a compiled, ready-to-go compressed version of \SATFC. Packaged with \SATFC are its source code, necessary libraries as well as a copy of \clasp. 
+The releases folder in root of \SATFC's repository should contain a compiled, ready-to-go compressed version of \SATFC. Packaged with \SATFC are its source code, necessary libraries as well as a copy of \clasp. 
 
-\SATFC uses the Gradle build system and maven for dependency resolution. To compile from source and build your own command-line executable version of \SATFC, execute the following:
+\SATFC uses the Gradle build system for dependency resolution. To compile from source and build your own command-line executable version of \SATFC, execute the following:
 \begin{lstlisting}[style=Bash]
 > cd <SATFC repository>
-> ./gradlew installApp
+> ./gradlew :satfc:installDist
 \end{lstlisting}
-This builds and packages \SATFC in \texttt{<SATFC repository>/build/install/}, and may be a lengthy process as it (possibly) installs Gradle, downloads all of \SATFC's dependencies (from external repositories) and builds the project. Note that it can sometimes fail while trying to download dependencies - restarting the process fixes this. Note that \SATFC's versioning is based on branch and sha1 hash of the latest commit of its git repository. 
+This builds and packages \SATFC in \texttt{<SATFC repository>satfc/build/install/}, and may be a lengthy process as it (possibly) installs Gradle, downloads all of \SATFC's dependencies (from external repositories) and builds the project. Note that it can sometimes fail while trying to download dependencies - restarting the process fixes this. Note that \SATFC's versioning is based on branch and sha1 hash of the latest commit of its git repository. 
 
-Build tasks other than \texttt{installApp} are also available. A list can be obtained by doing
+Build tasks other than \texttt{installDist} are also available. A list can be obtained by doing
 \begin{lstlisting}[style=Bash]
 > ./gradlew tasks
 \end{lstlisting}
-For instance, the \texttt{distTar} or \texttt{distZip} packages a \SATFC release in \texttt{<SATFC repository>/build/distributions/}, and the \texttt{javadoc} task produces all the \SATFC javadocs.
 
 In any case, \clasp may need to be compiled for your machine. To compile the \clasp packaged with a \SATFC release, do the following:
 \begin{lstlisting}[style=Bash]
@@ -264,6 +263,53 @@ Even though \SATFC is built using gradle, native components such as \clasp are n
 % \item Support for windows.
 %\end{enumerate}
 
+
+
+\subsection{\SATFCServer}
+
+There is an entirely optional addition to \SATFC called \SATFCServer. \SATFCServer provides a way to store results from problems that \SATFC solves and use them to solve future problems. It is intended for long term, heavy users of \SATFC.\SATFCServer is web app which uses the \href{http://projects.spring.io/spring-boot/}{Spring Boot} framework. In order to run this component, you need to have a \href{http://redis.io/}{Redis} server running. We recommend using a dedicated Redis server for this purpose.
+
+A ready-to-go \SATFC server can be found in the releases folder of \SATFC's root directory. You can start it by running
+\begin{lstlisting}[style=Bash]
+> java -jar <server.jar> --redis.host <redishost> --redis.port <redisport>
+\end{lstlisting}
+The server has started and is ready for use when you can hit \texttt{<host>:<port>/satfcserver/health} or when you observe a log line similar to 
+\begin{lstlisting}[style=Bash]
+INFO [ca.ubc.cs.beta.stationpacking.webapp.Application] Started Application in 3.878 seconds (JVM running for 4.309)
+\end{lstlisting}
+The command line parameters are summarized below:
+\begin{itemize}
+\item \texttt{---redis.host} The port that the server runs on. Defaults to localhost
+\item \texttt{---redis.port} The port that the server runs on. Defaults to 6379
+\item \texttt{---server.port} The port that the server runs on. Defaults to 8080
+\item \texttt{---logging.level.ca.ubc.cs.beta.stationpacking} The logging level for SATFC classes. Defaults to INFO
+\end{itemize}
+To build \SATFCServer from source, you can run 
+\begin{lstlisting}[style=Bash]
+> ./gradlew :satfcserver:bootRepackage
+\end{lstlisting}
+which will create a jar file in \texttt{<SATFC repository>satfcserver/build/libs/}
+
+\paragraph{Modifications to running \SATFC}
+Once the server is up and running, you can run \SATFC as before with the following changes. If you are running from the command line, you need to add the following parameters: \texttt{---usecache ---serverURL <serverhost>:<serverport>/satfcserver}. If you run \SATFC using the facade, then you need to add the following lines to when you instantiate the facade:
+
+\begin{minted}{java}
+SATFCFacadeBuilder satfcFacadeBuilder = new SATFCFacadeBuilder();
+/* initialize builder normally here
+ * ...
+ */
+// add caching info
+SolverCustomizationOptions options = new SolverCustomizationOptions();
+options.setServerURL("<serverhost>:<serverport>/satfcserver");
+satfcFacadeBuilder.setCustomizationOptions(options);
+// finish like normal
+SATFCFacade satfc = satfcFacadeBuilder.build();
+\end{minted}
+
+
+\begin{fwarning}
+	\SATFCServer is a new project and is undergoing active development. A current limitation is that \SATFCServer builds its cache on startup, but does not dynamically update it. Therefore, we recommend periodically restarting \SATFCServer in order to take advantage of newly solved problems.
+\end{fwarning}
 
 
 \section{Acknowledgements} 
