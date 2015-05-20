@@ -24,4 +24,4 @@ manual/*.pdf
 cplex.jar
 *.iml
 .idea/*
-satfc/manual/_minted-SATFC-manual/
+manual/_minted-SATFC-manual/*

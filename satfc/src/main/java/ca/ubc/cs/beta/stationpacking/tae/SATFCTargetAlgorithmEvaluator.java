@@ -1,20 +1,20 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Kevin Leyton-Brown.
+ * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
- * This file is part of satfc.
+ * This file is part of SATFC.
  *
- * satfc is free software: you can redistribute it and/or modify
+ * SATFC is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * satfc is distributed in the hope that it will be useful,
+ * SATFC is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with satfc.  If not, see <http://www.gnu.org/licenses/>.
+ * along with SATFC.  If not, see <http://www.gnu.org/licenses/>.
  *
  * For questions, contact us at:
  * afrechet@cs.ubc.ca
@@ -39,6 +39,8 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
+import lombok.Data;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +60,8 @@ import ca.ubc.cs.beta.aeatk.targetalgorithmevaluator.exceptions.TargetAlgorithmA
 import ca.ubc.cs.beta.stationpacking.facade.SATFCFacade;
 import ca.ubc.cs.beta.stationpacking.facade.SATFCResult;
 
+import com.google.common.collect.ImmutableMap;
+
 /**
  * Target algorithm evaluator that wraps around the SATFC facade and only
  * solves, synchronously, station packing feasibility problems.
@@ -73,7 +77,6 @@ public class SATFCTargetAlgorithmEvaluator extends
 	public final static String SATFC_CONTEXT_KEY = "SATFC_CONTEXT";
 
 	private final SATFCFacade fSATFCFacade;
-
 	private final String fStationConfigFolder;
 
 	private final ScheduledExecutorService fObserverThreadPool;
@@ -145,20 +148,20 @@ public class SATFCTargetAlgorithmEvaluator extends
 			List<AlgorithmRunConfiguration> aRuns,
 			final TargetAlgorithmEvaluatorRunObserver aObserver) {
 
+		
+		if (!fUniqueSATFCTAESemaphore.tryAcquire()) {
+			System.out.println("[WARNING] Multiple SATFC TAEs probably exist, and this implementation does not support concurrent executions.");
+			log.warn("Multiple SATFC TAEs probably exist, and this implementation does not support concurrent executions.");
+			fUniqueSATFCTAESemaphore.acquireUninterruptibly();
+		}
+		
 		try {
-			if (!fUniqueSATFCTAESemaphore.tryAcquire()) {
-				System.out.println("[WARNING] Multiple SATFC TAEs probably exist, and this implementation does not support concurrent executions.");
-				log.warn("Multiple SATFC TAEs probably exist, and this implementation does not support concurrent executions.");
-				fUniqueSATFCTAESemaphore.acquireUninterruptibly();
-			}
-
 			List<AlgorithmRunResult> results = new ArrayList<AlgorithmRunResult>(
 					aRuns.size());
 
 			// Initialize observation structures.
 			final Map<AlgorithmRunConfiguration, AlgorithmRunResult> resultMap = Collections.synchronizedMap(new LinkedHashMap<AlgorithmRunConfiguration, AlgorithmRunResult>());
 			final Map<AlgorithmRunConfiguration, StopWatch> watchMap = Collections.synchronizedMap(new LinkedHashMap<AlgorithmRunConfiguration, StopWatch>());
-
 			final Map<AlgorithmRunConfiguration, StatusVariableKillHandler> runconfigToKillMap = new ConcurrentHashMap<>();
 			
 			for (AlgorithmRunConfiguration config : aRuns) {
@@ -168,53 +171,22 @@ public class SATFCTargetAlgorithmEvaluator extends
 				watchMap.put(config, new StopWatch());
 			}
 			
-			
-			
-			//Observer thread.
-			Runnable observerThread = new Runnable() {
-				@Override
-				public synchronized void run() {
-				    
-				    //Update current status for wallclock time.
-					List<AlgorithmRunResult> currentResults = new ArrayList<AlgorithmRunResult>(resultMap.size());
-
-					for (AlgorithmRunConfiguration config : resultMap.keySet())
-					{
-						AlgorithmRunResult result = resultMap.get(config);
-						if (result.getRunStatus().equals(RunStatus.RUNNING))
-						{
-							StopWatch configWatch = watchMap.get(config);
-
-							synchronized (configWatch)
-							{
-								currentResults.add(new RunningAlgorithmRunResult(
-												config,
-												0.0,
-												0.0,
-												0.0,
-												config.getProblemInstanceSeedPair().getSeed(),
-												configWatch.time()/1000.0,
-												runconfigToKillMap.get(config)));
-							}
-						} 
-						else
-						{
-							currentResults.add(result);
-						}
-					}
-					
-					aObserver.currentStatus(currentResults);
-				}
-			};
-
+			/*
+			 * Observer thread.
+			 * 
+			 * Provides observation of the run along with estimated wallclock time.
+			 * 
+			 */
+			Runnable observerThread = new SATFCTAEObserverThread(aObserver, resultMap, watchMap, runconfigToKillMap);
 			
 			//Start observer thread.
 			observerThread.run();
-			ScheduledFuture<?> observerFuture = fObserverThreadPool.scheduleAtFixedRate(observerThread, 0, 15,	TimeUnit.SECONDS);
-
+			ScheduledFuture<?> observerFuture = fObserverThreadPool.scheduleAtFixedRate(observerThread, 0, 5, TimeUnit.SECONDS);
+			
+			//Process the runs.
 			for (AlgorithmRunConfiguration config : aRuns) {
 				
-				ExistingAlgorithmRunResult runResult;
+				final ExistingAlgorithmRunResult runResult;
 				
 				if (!runconfigToKillMap.get(config).isKilled())
 				{	
@@ -226,80 +198,28 @@ public class SATFCTargetAlgorithmEvaluator extends
 					log.debug("Solving instance corresponding to algo run config \"{}\"",config);
 					
 					log.debug("Transforming config into SATFC problem...");
-					// Transform algorithm run configuration to SATFC problem.
 					
+					// Transform algorithm run configuration to SATFC problem.
 					SATFCProblem problem = new SATFCProblem(config);
 	
 					log.debug("Giving problem to SATFC facade...");
 					// Solve the problem.
 					SATFCResult result = fSATFCFacade.solve(
-							problem.getStations(),
-							problem.getChannels(),
-							problem.getReducedDomains(),
+							problem.getDomains(),
 							problem.getPreviousAssignment(),
 							problem.getCutoff(),
 							problem.getSeed(),
 							fStationConfigFolder + File.separator
 									+ problem.getStationConfigFolder()
 							);
-	
+					
 					log.debug("Transforming SATFC facade result to TAE result...");
-					// Transform result to algorithm run result.
-					RunStatus status;
-					String additionalRunData;
-					switch (result.getResult()) {
-					case SAT:
-						status = RunStatus.SAT;
-						//Send back the witness assignment.
-						Map<Integer, Integer> witness = result.getWitnessAssignment();
-						StringBuilder sb = new StringBuilder();
-						Iterator<Entry<Integer, Integer>> entryIterator = witness.entrySet().iterator();
-						while (entryIterator.hasNext()) {
-							
-							Entry<Integer, Integer> entry = entryIterator.next();
-							
-							int stationID = entry.getKey();
-							int channel = entry.getValue();
-	
-							sb.append(stationID + "=" + channel);
-	
-							if (entryIterator.hasNext()) {
-								sb.append(",");
-							}
-						}
-						additionalRunData = sb.toString();
-						break;
-					case UNSAT:
-						status = RunStatus.UNSAT;
-						additionalRunData = "";
-						break;
-					case TIMEOUT:
-						status = RunStatus.TIMEOUT;
-						additionalRunData = "";
-						break;
-					default:
-						status = RunStatus.CRASHED;
-						additionalRunData = "";
-						break;
-					}
-	
-	
-					synchronized (configWatch) {
-						configWatch.stop();
-						runResult = new ExistingAlgorithmRunResult(
-								config, 
-								status,
-								result.getRuntime(), 
-								result.getRuntime(),
-								result.getRuntime(),
-								problem.getSeed(),
-								additionalRunData,
-								configWatch.time()/1000.0);
-					}
-				} else
+					runResult = getAlgorithmRunResult(result, config, configWatch, problem.getSeed());
+					
+				} 
+				else
 				{
 					log.debug("Run has been preemptively killed in SATFC TAE");
-					
 					runResult = new ExistingAlgorithmRunResult(
 							config, 
 							RunStatus.KILLED,
@@ -319,8 +239,127 @@ public class SATFCTargetAlgorithmEvaluator extends
 			observerFuture.cancel(false);
 
 			return results;
-		} finally {
+		} 
+		finally 
+		{
 			fUniqueSATFCTAESemaphore.release();
+		}
+	}
+	
+	/**
+	 * Creates the algorithm run result corresponding to the given SATFC result and scenario, and stop the given watch as well.
+	 * 
+	 * @param result - the SATFC result.
+	 * @param config - the config corresponding to the run executed.
+	 * @param configWatch - the running watch used for the run.
+	 * @param seed - the seed used for the run.
+	 * @return the algorithm run result corresponding to the given results and scenario.
+	 */
+	private static ExistingAlgorithmRunResult getAlgorithmRunResult(SATFCResult result, AlgorithmRunConfiguration config, StopWatch configWatch, long seed)
+	{
+		// Transform result to algorithm run result.
+		final RunStatus status;
+		final String additionalRunData;
+		switch (result.getResult()) {
+			case SAT:
+				status = RunStatus.SAT;
+				//Send back the witness assignment.
+				Map<Integer, Integer> witness = result.getWitnessAssignment();
+				StringBuilder sb = new StringBuilder();
+				Iterator<Entry<Integer, Integer>> entryIterator = witness.entrySet().iterator();
+				while (entryIterator.hasNext()) {
+					
+					Entry<Integer, Integer> entry = entryIterator.next();
+					
+					int stationID = entry.getKey();
+					int channel = entry.getValue();
+
+					sb.append(stationID + "=" + channel);
+
+					if (entryIterator.hasNext()) {
+						sb.append(",");
+					}
+				}
+				additionalRunData = sb.toString();
+				break;
+			case UNSAT:
+				status = RunStatus.UNSAT;
+				additionalRunData = "";
+				break;
+			case TIMEOUT:
+				status = RunStatus.TIMEOUT;
+				additionalRunData = "";
+				break;
+			default:
+				status = RunStatus.CRASHED;
+				additionalRunData = "";
+				break;
+		}
+
+		synchronized (configWatch) {
+			configWatch.stop();
+			return new ExistingAlgorithmRunResult(
+					config, 
+					status,
+					result.getRuntime(), 
+					result.getRuntime(),
+					result.getRuntime(),
+					seed,
+					additionalRunData,
+					configWatch.time()/1000.0);
+		}
+	}
+	
+	
+	
+	/**
+	 * Observer runnable that provides ongoing runs with estimate wall clock time to use the real observer on.
+	 *  
+	 * @author afrechet
+	 *
+	 */
+	@Data
+	private static class SATFCTAEObserverThread implements Runnable
+	{
+		private final TargetAlgorithmEvaluatorRunObserver fObserver;
+		
+		private final Map<AlgorithmRunConfiguration,AlgorithmRunResult> fResultMap;
+		private final Map<AlgorithmRunConfiguration,StopWatch> fWatchMap;
+		private final Map<AlgorithmRunConfiguration, StatusVariableKillHandler> fRunconfigToKillMap;
+		
+		@Override
+		public synchronized void run() {
+		    
+		    //Update current status for wallclock time.
+			List<AlgorithmRunResult> currentResults = new ArrayList<AlgorithmRunResult>(fResultMap.size());
+
+			for (AlgorithmRunConfiguration config : fResultMap.keySet())
+			{
+				AlgorithmRunResult result = fResultMap.get(config);
+				if (result.getRunStatus().equals(RunStatus.RUNNING))
+				{
+					StopWatch configWatch = fWatchMap.get(config);
+
+					synchronized (configWatch)
+					{
+						currentResults.add(new RunningAlgorithmRunResult(
+										config,
+										0.0,
+										0.0,
+										0.0,
+										config.getProblemInstanceSeedPair().getSeed(),
+										configWatch.time()/1000.0,
+										fRunconfigToKillMap.get(config)));
+					}
+				} 
+				else
+				{
+					currentResults.add(result);
+				}
+			}
+			
+			//Trigger observer.
+			fObserver.currentStatus(currentResults);
 		}
 	}
 
@@ -330,13 +369,14 @@ public class SATFCTargetAlgorithmEvaluator extends
 	 * 
 	 * @author afrechet
 	 */
+	@Data
 	private static class SATFCProblem {
 		
-		private final Map<Integer, Set<Integer>> fDomains;
-		private final Map<Integer, Integer> fPreviousAssignment;
-		private final double fCutoff;
-		private final long fSeed;
-		private final String fStationConfigFolder;
+		private final ImmutableMap<Integer, Set<Integer>> domains;
+		private final ImmutableMap<Integer, Integer> previousAssignment;
+		private final double cutoff;
+		private final long seed;
+		private final String stationConfigFolder;
 
 		public SATFCProblem(AlgorithmRunConfiguration aConfig){
 
@@ -351,12 +391,12 @@ public class SATFCTargetAlgorithmEvaluator extends
 			
 			//Read the straightforward parameters from the problem instance.
 			
-			fCutoff = aConfig.getCutoffTime();
+			cutoff = aConfig.getCutoffTime();
 
 			ProblemInstanceSeedPair pisp = aConfig
 					.getProblemInstanceSeedPair();
 
-			fSeed = pisp.getSeed();
+			seed = pisp.getSeed();
 
 			//Read the feasibility checking instance from the additional run info.
 			
@@ -372,10 +412,10 @@ public class SATFCTargetAlgorithmEvaluator extends
 				throw new IllegalArgumentException("Instance string is not a valid SATFC TAE instance:\n "+instanceString);
 			}
 			
-			fStationConfigFolder = instanceParts[0];
+			stationConfigFolder = instanceParts[0];
 			
-			fDomains = new HashMap<Integer,Set<Integer>>();
-			fPreviousAssignment = new HashMap<Integer,Integer>();
+			Map<Integer,Set<Integer>> tempdomains = new HashMap<Integer,Set<Integer>>();
+			Map<Integer,Integer> temppreviousassignment = new HashMap<Integer,Integer>();
 			
 			for(int i=1;i<instanceParts.length;i++)
 			{
@@ -392,7 +432,7 @@ public class SATFCTargetAlgorithmEvaluator extends
 				
 				if(previousChannel>0)
 				{
-					fPreviousAssignment.put(stationID, previousChannel);
+					temppreviousassignment.put(stationID, previousChannel);
 				}
 				
 				String channelsString = stationParts[2];
@@ -406,41 +446,13 @@ public class SATFCTargetAlgorithmEvaluator extends
 					domain.add(channel);
 				}
 				
-				fDomains.put(stationID, domain);
+				tempdomains.put(stationID, domain);
 			}
+			
+			domains = ImmutableMap.copyOf(tempdomains);
+			previousAssignment = ImmutableMap.copyOf(temppreviousassignment);
 		}
-
-		public Set<Integer> getStations() {
-			return Collections.unmodifiableSet(fDomains.keySet());
-		}
-
-		public Set<Integer> getChannels() {
-			Set<Integer> channels = new HashSet<Integer>();
-			for (Set<Integer> domain : fDomains.values()) {
-				channels.addAll(domain);
-			}
-			return Collections.unmodifiableSet(channels);
-		}
-
-		public Map<Integer, Set<Integer>> getReducedDomains() {
-			return Collections.unmodifiableMap(fDomains);
-		}
-
-		public Map<Integer, Integer> getPreviousAssignment() {
-			return Collections.unmodifiableMap(fPreviousAssignment);
-		}
-
-		public double getCutoff() {
-			return fCutoff;
-		}
-
-		public long getSeed() {
-			return fSeed;
-		}
-
-		public String getStationConfigFolder() {
-			return fStationConfigFolder;
-		}
-
 	}
+	
+	
 }

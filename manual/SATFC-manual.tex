@@ -34,7 +34,7 @@ needspace, % space reservation
 \hyphenation{Fortran hy-phen-ation} % Specify custom hyphenation points in words with dashes where you would like hyphenation to occur, or alternatively, don't put any dashes in a word to stop hyphenation altogether
 
 \newcommand{\SATFC}{\textsc{SATFC}~}
-\newcommand{\SATFCServer}{\textsc{SATFCServer}~}
+\newcommand{\SATFCServer}{\textsc{SATFC-Server}~}
 \newcommand{\clasp}{\textsc{clasp}~}
 \newcommand{\AEATK}{\textsc{AEATK}}
 
@@ -102,7 +102,7 @@ needspace, % space reservation
 
 \paragraph{Abstract} \SATFC (\emph{SAT-based Feasibility Checker}) solves radio-spectrum repacking feasibility problems arising in the FCC's upcoming reverse auction. It combines a formulation of feasibility checking based on propositional satisfiability with a heuristic pre-solver and a SAT solver tuned for the types of instances observed in auction simulations.
 
-\paragraph{Authors \& Collaborators}  \SATFC is the product of the ideas and hard work of \href{http://www.auctionomics.com/}{Auctionomics}, notably \href{http://www.cs.ubc.ca/~afrechet/}{Alexandre Fr\'echette}, \href{http://www.cs.ubc.ca/~newmanne/}{Neil Newman}, \href{http://www.cs.mcgill.ca/~gsauln/}{Guillaume Saulnier-Comte}, \href{http://web.stanford.edu/~narnosti/}{Nick Arnosti}, and \href{http://www.cs.ubc.ca/~kevinlb/}{Kevin Leyton-Brown}.
+\paragraph{Authors \& Collaborators}  \SATFC is the product of the ideas and hard work of \href{http://www.auctionomics.com/}{Auctionomics}, notably \href{http://www.cs.ubc.ca/~afrechet/}{Alexandre Fr\'echette}, \href{http://www.cs.ubc.ca/~newmanne/}{Neil Newman}, Paul Cernek, Emily Chenn, \href{http://www.cs.mcgill.ca/~gsauln/}{Guillaume Saulnier-Comte}, \href{http://web.stanford.edu/~narnosti/}{Nick Arnosti}, and \href{http://www.cs.ubc.ca/~kevinlb/}{Kevin Leyton-Brown}.
 
 \paragraph{Contact} Questions, bug reports and feature suggestions should be directed to \href{mailto:afrechet@cs.ubc.ca}{Alexandre Fr\'echette} -- afrechet@cs.ubc.ca.
 
@@ -158,6 +158,7 @@ To compile the source's \clasp (so that your custom built \SATFC has an already 
 > cd src/dist/clasp
 > bash compile.sh
 \end{lstlisting}
+Note that this version of \clasp requires some threading library that may not be part of your linux distribution - keep an eye on the output of the compile script.
 
 
 \subsection{Standalone}\label{sec:standalone}
@@ -271,7 +272,7 @@ There is an entirely optional addition to \SATFC called \SATFCServer. \SATFCServ
 
 A ready-to-go \SATFC server can be found in the releases folder of \SATFC's root directory. You can start it by running
 \begin{lstlisting}[style=Bash]
-> java -jar <server.jar> --redis.host <redishost> --redis.port <redisport>
+> ./SATFCServer --redis.host=<redishost> --redis.port=<redisport>
 \end{lstlisting}
 The server has started and is ready for use when you can hit \texttt{<host>:<port>/satfcserver/health} or when you observe a log line similar to 
 \begin{lstlisting}[style=Bash]
@@ -286,9 +287,9 @@ The command line parameters are summarized below:
 \end{itemize}
 To build \SATFCServer from source, you can run 
 \begin{lstlisting}[style=Bash]
-> ./gradlew :satfcserver:bootRepackage
+> ./gradlew :satfcserver:installDist
 \end{lstlisting}
-which will create a jar file in \texttt{<SATFC repository>satfcserver/build/libs/}
+which will create a runnable script in \texttt{<SATFC repository>satfcserver/build/install/SATFCServer/bin}
 
 \paragraph{Modifications to running \SATFC}
 Once the server is up and running, you can run \SATFC as before with the following changes. If you are running from the command line, you need to add the following parameters: \texttt{---usecache ---serverURL <serverhost>:<serverport>/satfcserver}. If you run \SATFC using the facade, then you need to add the following lines to when you instantiate the facade:
@@ -299,18 +300,10 @@ SATFCFacadeBuilder satfcFacadeBuilder = new SATFCFacadeBuilder();
  * ...
  */
 // add caching info
-SolverCustomizationOptions options = new SolverCustomizationOptions();
-options.setServerURL("<serverhost>:<serverport>/satfcserver");
-satfcFacadeBuilder.setCustomizationOptions(options);
+satfcFacadeBuilder.setServerURL(<serverURL>)
 // finish like normal
 SATFCFacade satfc = satfcFacadeBuilder.build();
 \end{minted}
-
-
-\begin{fwarning}
-	\SATFCServer is a new project and is undergoing active development. A current limitation is that \SATFCServer builds its cache on startup, but does not dynamically update it. Therefore, we recommend periodically restarting \SATFCServer in order to take advantage of newly solved problems.
-\end{fwarning}
-
 
 \section{Acknowledgements} 
 

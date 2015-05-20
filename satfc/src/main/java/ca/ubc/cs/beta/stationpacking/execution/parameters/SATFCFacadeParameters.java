@@ -1,20 +1,20 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Kevin Leyton-Brown.
+ * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
- * This file is part of satfc.
+ * This file is part of SATFC.
  *
- * satfc is free software: you can redistribute it and/or modify
+ * SATFC is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * satfc is distributed in the hope that it will be useful,
+ * SATFC is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with satfc.  If not, see <http://www.gnu.org/licenses/>.
+ * along with SATFC.  If not, see <http://www.gnu.org/licenses/>.
  *
  * For questions, contact us at:
  * afrechet@cs.ubc.ca
@@ -44,21 +44,23 @@ public class SATFCFacadeParameters extends AbstractOptions {
 	@ParametersDelegate
 	public InstanceParameters fInstanceParameters = new InstanceParameters();
 
-	@Parameter(names = "-INSTANCES-FILE", description = "file listing each instance file on a separate line")
-	public String fInstanceFile;
-	@Parameter(names = "-INSTANCES-FOLDER", description = "folder where the instance files are located")
-	public String fInstanceFolder;
-	@Parameter(names = "-INTERFERENCES-FOLDER", description = "folder containing all the other interference folders")
-	public String fInterferencesFolder;
-	@Parameter(names = "-OUTPUT-FILE", description = "output file summarizing results")
-	public String fOutputFile;
-	@Parameter(names = "-CNF-DIR", description = "folder for storing cnf results")
-	public String fCNFDir;
+    @Parameter(names = "-CNF-DIR", description = "folder for storing cnf results")
+    public String fCNFDir;
 
-
-	@ParametersDelegate
+    @ParametersDelegate
 	public SolverCustomizationOptionsParameters fSolverOptions = new SolverCustomizationOptionsParameters();
-	/**
+
+    @ParametersDelegate
+    public RedisParameters fRedisParameters = new RedisParameters();
+
+    @Parameter(names = "-INSTANCES-FILE", description = "file listing each instance file on a separate line")
+    public String fFileOfInstanceFiles;
+    @Parameter(names = "-OUTPUT-FILE", description = "output file summarizing results")
+    public String fMetricsFile;
+    @Parameter(names = "-INTERFERENCES-FOLDER", description = "folder containing all the other interference folders")
+    public String fInterferencesFolder;
+
+    /**
 	 * Clasp library to use (optional - can be automatically detected).
 	 */
 	@Parameter(names = "-CLASP-LIBRARY",description = "clasp library file")
@@ -72,6 +74,5 @@ public class SATFCFacadeParameters extends AbstractOptions {
 	 */
 	@ParametersDelegate
 	public ComplexLoggingOptions fLoggingOptions = new ComplexLoggingOptions();
-
 
 }

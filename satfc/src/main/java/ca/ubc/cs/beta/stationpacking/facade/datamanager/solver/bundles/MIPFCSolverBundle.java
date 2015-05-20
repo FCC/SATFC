@@ -1,20 +1,20 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Kevin Leyton-Brown.
+ * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
- * This file is part of satfc.
+ * This file is part of SATFC.
  *
- * satfc is free software: you can redistribute it and/or modify
+ * SATFC is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * satfc is distributed in the hope that it will be useful,
+ * SATFC is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with satfc.  If not, see <http://www.gnu.org/licenses/>.
+ * along with SATFC.  If not, see <http://www.gnu.org/licenses/>.
  *
  * For questions, contact us at:
  * afrechet@cs.ubc.ca
@@ -29,11 +29,9 @@ import org.slf4j.LoggerFactory;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
-import ca.ubc.cs.beta.stationpacking.facade.SolverCustomizationOptions;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.certifiers.cgneighborhood.ConstraintGraphNeighborhoodPresolver;
 import ca.ubc.cs.beta.stationpacking.solvers.certifiers.cgneighborhood.StationSubsetSATCertifier;
-import ca.ubc.cs.beta.stationpacking.solvers.certifiers.cgneighborhood.StationSubsetUNSATCertifier;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.ConstraintGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.composites.SequentialSolversComposite;
@@ -65,7 +63,8 @@ public class MIPFCSolverBundle extends ASolverBundle {
     public MIPFCSolverBundle(
             IStationManager aStationManager,
             IConstraintManager aConstraintManager,
-            SolverCustomizationOptions options
+            boolean presolve,
+            boolean decompose
     		) {
 
         super(aStationManager, aConstraintManager);
@@ -79,10 +78,9 @@ public class MIPFCSolverBundle extends ASolverBundle {
         log.debug("Initializing base MIP solvers.");
         ISolver solver = new MIPBasedSolver(getConstraintManager());
 
-        if (options.isPresolve()) 
+        if (presolve) 
         {
             //Chain pre-solving and main solver.
-            final double UNSATcertifiercutoff = 5;
             final double SATcertifiercutoff = 5;
 
             log.debug("Adding neighborhood presolvers.");
@@ -90,7 +88,6 @@ public class MIPFCSolverBundle extends ASolverBundle {
                     Arrays.asList(
                             new ConstraintGraphNeighborhoodPresolver(aConstraintManager,
                                     Arrays.asList(
-                                            new StationSubsetUNSATCertifier(solver, new CPUTimeTerminationCriterionFactory(UNSATcertifiercutoff)),
                                             new StationSubsetSATCertifier(solver, new CPUTimeTerminationCriterionFactory(SATcertifiercutoff))
                                     )),
                             solver
@@ -104,7 +101,7 @@ public class MIPFCSolverBundle extends ASolverBundle {
          * Decorate solvers - remember that the decorator that you put first is applied last
          */
 
-        if (options.isDecompose()) 
+        if (decompose) 
         {
         	// Split into components
             log.debug("Decorate solver to split the graph into connected components and then merge the results");

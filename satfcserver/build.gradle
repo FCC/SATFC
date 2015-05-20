@@ -1,31 +1,11 @@
-version = 0.1
-
 buildscript {
     dependencies {
         classpath("org.springframework.boot:spring-boot-gradle-plugin:1.2.2.RELEASE")
-        classpath 'nl.javadude.gradle.plugins:license-gradle-plugin:0.11.0'
+        classpath 'org.ajoberstar:gradle-git:0.12.0'
     }
 }
 
 apply plugin: 'spring-boot'
-apply plugin: 'license'
-
-jar {
-    baseName = 'SATFCServer'
-    version = '0.1.0'
-}
-
-//License.
-license {
-    ext.name = applicationName
-    ext.year = Calendar.getInstance().get(Calendar.YEAR)
-    ext.author1 = 'Alexandre Fréchette'
-    ext.author2 = 'Neil Newman'
-    ext.author3 = 'Kevin Leyton-Brown'
-    ext.email = 'afrechet@cs.ubc.ca'
-    exclude "*.txt"
-    header project.file('../LICENSE')
-}
 
 dependencies {
     compile project(':satfc')
@@ -56,4 +36,12 @@ dependencies {
     testCompile "org.springframework:spring-test:$springVersion"
     testCompile "junit:junit:4.11"
     testCompile "org.mockito:mockito-all:1.10.8"
+}
+
+//Project properties.
+applicationName = 'SATFCServer'
+
+jar {
+    baseName = applicationName
+    version = "$SATFCVersion-"+getGitName()
 }

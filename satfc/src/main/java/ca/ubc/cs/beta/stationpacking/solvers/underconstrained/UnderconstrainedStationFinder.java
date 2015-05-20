@@ -1,20 +1,20 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Kevin Leyton-Brown.
+ * Copyright 2015, Auctionomics, Alexandre FrÃ©chette, Neil Newman, Kevin Leyton-Brown.
  *
- * This file is part of satfc.
+ * This file is part of SATFC.
  *
- * satfc is free software: you can redistribute it and/or modify
+ * SATFC is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * satfc is distributed in the hope that it will be useful,
+ * SATFC is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with satfc.  If not, see <http://www.gnu.org/licenses/>.
+ * along with SATFC.  If not, see <http://www.gnu.org/licenses/>.
  *
  * For questions, contact us at:
  * afrechet@cs.ubc.ca
@@ -59,30 +59,30 @@ public class UnderconstrainedStationFinder implements IUnderconstrainedStationFi
         {
             final Station station = domainEntry.getKey();
             final Set<Integer> domain = domainEntry.getValue();
-            
+
             for(Integer domainChannel : domain)
             {
                 for(Station coNeighbour : fConstraintManager.getCOInterferingStations(station,domainChannel))
                 {
-                   if(domains.keySet().contains(coNeighbour) && domains.get(coNeighbour).contains(domainChannel))
-                   {
-                       Set<Integer> stationBadChannels = badChannels.get(station);
-                       if(stationBadChannels == null)
-                       {
-                           stationBadChannels = new HashSet<Integer>();
-                       }
-                       stationBadChannels.add(domainChannel);
-                       badChannels.put(station, stationBadChannels);
-                       
-                       Set<Integer> coneighbourBadChannels = badChannels.get(coNeighbour);
-                       if(coneighbourBadChannels == null)
-                       {
-                           coneighbourBadChannels = new HashSet<Integer>();
-                       }
-                       coneighbourBadChannels.add(domainChannel);
-                       badChannels.put(coNeighbour, coneighbourBadChannels);
+                    if(domains.keySet().contains(coNeighbour) && domains.get(coNeighbour).contains(domainChannel))
+                    {
+                        Set<Integer> stationBadChannels = badChannels.get(station);
+                        if(stationBadChannels == null)
+                        {
+                            stationBadChannels = new HashSet<Integer>();
+                        }
+                        stationBadChannels.add(domainChannel);
+                        badChannels.put(station, stationBadChannels);
+
+                        Set<Integer> coneighbourBadChannels = badChannels.get(coNeighbour);
+                        if(coneighbourBadChannels == null)
+                        {
+                            coneighbourBadChannels = new HashSet<Integer>();
+                        }
+                        coneighbourBadChannels.add(domainChannel);
+                        badChannels.put(coNeighbour, coneighbourBadChannels);
                     }
-                 }
+                }
                 for(Station adjNeighbour : fConstraintManager.getADJplusInterferingStations(station, domainChannel))
                 {
                     if(domains.keySet().contains(adjNeighbour) && domains.get(adjNeighbour).contains(domainChannel+1))
@@ -94,7 +94,7 @@ public class UnderconstrainedStationFinder implements IUnderconstrainedStationFi
                         }
                         stationBadChannels.add(domainChannel);
                         badChannels.put(station, stationBadChannels);
-                        
+
                         Set<Integer> adjneighbourBadChannels = badChannels.get(adjNeighbour);
                         if(adjneighbourBadChannels == null)
                         {
@@ -102,36 +102,36 @@ public class UnderconstrainedStationFinder implements IUnderconstrainedStationFi
                         }
                         adjneighbourBadChannels.add(domainChannel+1);
                         badChannels.put(adjNeighbour, adjneighbourBadChannels);
-                      }
-                  }
-              }
+                    }
+                }
+            }
         }
-        
+
         for(final Entry<Station, Set<Integer>> domainEntry : domains.entrySet())
         {
             final Station station = domainEntry.getKey();
             final Set<Integer> domain = domainEntry.getValue();
-            
+
             Set<Integer> stationBadChannels = badChannels.get(station);
             if(stationBadChannels == null)
             {
                 stationBadChannels = Collections.emptySet();
             }
-            
+
             final Set<Integer> stationGoodChannels = Sets.difference(domain, stationBadChannels);
-            
+
             log.trace("Station {} domain channels: {}.",station,domain);
             log.trace("Station {} bad channels: {}.",station,stationBadChannels);
-            
+
             if(!stationGoodChannels.isEmpty())
             {
                 log.trace("Station {} is underconstrained has it has {} domain channels ({}) on which it interferes with no one.",station,stationGoodChannels.size(),stationGoodChannels);
                 underconstrainedStations.add(station);
             }
         }
-        
+
         return underconstrainedStations;
-       
+
     }
 
 }

@@ -1,20 +1,20 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Kevin Leyton-Brown.
+ * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
- * This file is part of satfc.
+ * This file is part of SATFC.
  *
- * satfc is free software: you can redistribute it and/or modify
+ * SATFC is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * satfc is distributed in the hope that it will be useful,
+ * SATFC is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with satfc.  If not, see <http://www.gnu.org/licenses/>.
+ * along with SATFC.  If not, see <http://www.gnu.org/licenses/>.
  *
  * For questions, contact us at:
  * afrechet@cs.ubc.ca
@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import ca.ubc.cs.beta.stationpacking.solvers.certifiers.cgneighborhood.StationSubsetSATCertifier;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import ca.ubc.cs.beta.stationpacking.base.Station;
@@ -48,6 +49,7 @@ import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.google.common.eventbus.SubscriberExceptionContext;
 import com.google.common.eventbus.SubscriberExceptionHandler;
+
 /**
  * Created by newmanne on 15/01/15.
  */
@@ -150,7 +152,6 @@ public class SATFCMetrics {
         private final String key;
     }
 
-
     public static class MetricHandler {
 
     	private final Map<String, InstanceInfo> metrics = Maps.newLinkedHashMap();
@@ -200,7 +201,7 @@ public class SATFCMetrics {
 
         @Subscribe
         public void onSolvedByEvent(SolvedByEvent event) {
-            if (event.getResult().equals(SATResult.SAT) || event.getResult().equals(SATResult.UNSAT)) {
+            if (event.getResult().isConclusive() && !event.getName().contains(StationSubsetSATCertifier.STATION_SUBSET_SATCERTIFIER)) {
                 metrics.get(event.getName()).setSolvedBy(event.getSolvedBy());
             }
         }
@@ -218,7 +219,7 @@ public class SATFCMetrics {
         public void onJustifiedByCacheEvent(JustifiedByCacheEvent event) {
             metrics.get(event.getName()).setCacheResultUsed(event.getKey());
         }
-        
+
     }
 
     // codahale metrics for jvm stuff:

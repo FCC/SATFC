@@ -1,0 +1,40 @@
+// A big sparsely connected graph consisting of 15 nodes (labeled from 0 - 14).
+// Traveling from node 0, a breadth-first search should give you a total of 4 circles of neighbors.
+// - 1st layer of neighbors (from node 0):
+//   	1,2,3,4,10,12
+// - 2nd layer:
+//	   5,6,8,9,11
+// - 3rd layer:
+//		 7,13
+// - 4th layer:
+// 		 14
+
+0 1
+0 2
+0 3
+0 4
+0 10
+0 12
+
+1 5
+
+2 6
+2 8
+
+4 12
+
+6 7
+
+7 8
+7 13
+7 14
+
+8 9
+
+9 10
+9 13
+
+11 12
+
+13 14
+ 

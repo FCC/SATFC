@@ -15,17 +15,13 @@
 buildscript {
 	dependencies { 
 		classpath 'org.ajoberstar:gradle-git:0.12.0'
-        classpath 'nl.javadude.gradle.plugins:license-gradle-plugin:0.11.0'
 	}
 }
 
-apply plugin: 'license'
-apply plugin: 'application'
 apply plugin: 'maven-publish'
 
 // In this section you declare the dependencies for your production and test code
 dependencies {
-
     //All the product dependencies.
     compile 'org.slf4j:slf4j-api:1.7.7'
     compile 'ca.ubc.cs.beta:aeatk:2.08.01-development-de3ee6617d5c'
@@ -56,53 +52,15 @@ dependencies {
     // Rest template
     compile "org.springframework:spring-web:$springVersion"
 
+    // Containment cache
+    compile 'ca.ubc.cs.beta:ContainmentCache:0.91'
+
     // Test dependencies.
     testCompile 'junit:junit:4.11'
     testCompile 'org.mockito:mockito-all:1.10.8'
-    
+
     //Local dependencies
     compile files('libs/cplex.jar')
-}
-
-//License.
-license {
-    ext.name = applicationName
-    ext.year = Calendar.getInstance().get(Calendar.YEAR)
-    ext.author1 = 'Alexandre Fréchette'
-    ext.author2 = 'Neil Newman'
-    ext.author3 = 'Kevin Leyton-Brown'
-    ext.email = 'afrechet@cs.ubc.ca'
-    exclude "*.txt"
-    header project.file('../LICENSE')
-}
-
-//Grab git information.
-import org.ajoberstar.grgit.Grgit
-public boolean isGitAvailable() {
-    def repo
-    try
-    {
-        repo = Grgit.open(project.file('..'))
-        return true
-    }
-    catch(Exception e)
-    {
-        println 'Not building SATFC from a git repository, versioning will be limited.'
-        return false
-    }
-}
-
-
-public String getGitName()
-{
-    if (isGitAvailable()) {
-        def repo = Grgit.open(project.file('..'))
-        def branch = repo.branch.current.name
-        def sha = repo.head().abbreviatedId
-        return branch+'-'+sha
-    } else {
-        return 'nogit'
-    }
 }
 
 // Creates scripts for entry points
@@ -128,7 +86,7 @@ def createScript(project, mainClass, name) {
 //Project properties.
 applicationName = 'SATFC'
 jar.baseName = applicationName
-version = "1.5-"+getGitName()
+version = "$SATFCVersion-"+getGitName()
 mainClassName = 'ca.ubc.cs.beta.stationpacking.execution.SATFCFacadeExecutor'
 applicationDefaultJvmArgs = ['-Xmx2048m']
 
@@ -137,7 +95,7 @@ public String getEARGMavenRepo()
 {
 	Properties properties = new Properties()
 	def propertyFilename = 'local.properties'
-	def propertyFile = project.rootProject.file('local.properties')
+	def propertyFile = project.rootProject.file(propertyFilename)
 	if(!propertyFile.exists()) {
 		println 'Necessary file '+propertyFilename+' was not present, creating an empty version of it!'
 		propertyFile.createNewFile()
@@ -147,9 +105,6 @@ public String getEARGMavenRepo()
 	return eargMavenRepo
 }
 
-task sourceJar(type: Jar) {
-	from sourceSets.main.allJava
-}
 publishing {
 
 	repositories {
@@ -168,7 +123,7 @@ publishing {
 			
 			from components.java
 			
-			artifact sourceJar {
+			artifact sourcesJar {
 				classifier "sources"
 			}
 			artifact distZip {
@@ -197,17 +152,7 @@ task generateMyResources {
             generatedFolder.mkdirs()
         }
         def generated = new File(generatedResources, "version.properties")
-        if (isGitAvailable()) {
-            def repo = Grgit.open(project.file('..'))
-            generated.text = "buildTime=" + new Date().toString() + System.lineSeparator() +
-                    "sha=" + repo.head().id + System.lineSeparator() +
-                    "branch=" + repo.branch.current.name + System.lineSeparator() +
-                    "committer=" + repo.head().committer.name + System.lineSeparator() +
-                    "commitTime=" + repo.head().date + System.lineSeparator() +
-                    "message=" + repo.head().fullMessage + System.lineSeparator()
-        } else {
-            generated.text = "No git available"
-        }
+        generated.text = getGitInfo()
     }
 }
 

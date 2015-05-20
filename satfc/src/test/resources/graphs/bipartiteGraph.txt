@@ -1,0 +1,24 @@
+// Represents a bipartite graph
+// http://en.wikipedia.org/wiki/Bipartite_graph
+//
+// First cluster consists of even nodes, second of odd nodes
+// No connections within a cluster, but clusters are completely connected otherwise
+0 1
+0 3
+0 5
+0 7
+
+2 1
+2 3
+2 5
+2 7
+
+4 1
+4 3
+4 5
+4 7
+
+6 1
+6 3
+6 5
+6 7

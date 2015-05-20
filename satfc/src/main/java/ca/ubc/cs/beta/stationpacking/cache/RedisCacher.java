@@ -1,35 +1,34 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Kevin Leyton-Brown.
+ * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
- * This file is part of satfc.
+ * This file is part of SATFC.
  *
- * satfc is free software: you can redistribute it and/or modify
+ * SATFC is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * satfc is distributed in the hope that it will be useful,
+ * SATFC is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with satfc.  If not, see <http://www.gnu.org/licenses/>.
+ * along with SATFC.  If not, see <http://www.gnu.org/licenses/>.
  *
  * For questions, contact us at:
  * afrechet@cs.ubc.ca
  */
 package ca.ubc.cs.beta.stationpacking.cache;
 
-import java.util.Date;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
-
+import com.google.common.collect.*;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
@@ -43,9 +42,6 @@ import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.utils.JSONUtils;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.ListMultimap;
-import com.google.common.collect.Sets;
 
 /**
  * Created by newmanne on 02/12/14.
@@ -60,7 +56,7 @@ public class RedisCacher {
         this.redisTemplate = template;
     }
 
-    public void cacheResult(CacheCoordinate cacheCoordinate, StationPackingInstance instance, SolverResult result) {
+    public String cacheResult(CacheCoordinate cacheCoordinate, StationPackingInstance instance, SolverResult result) {
         Preconditions.checkState(result.getResult().equals(SATResult.UNSAT) || result.getResult().equals(SATResult.SAT), "Result must be SAT or UNSAT in order to cache");
         final String jsonResult;
         final Map<String, Object> metadata = instance.getMetadata();
@@ -75,6 +71,7 @@ public class RedisCacher {
         final String key = cacheCoordinate.toKey(result.getResult(), instance);
         log.info("Adding result for " + instance.getName() + " to cache with key " + key);
         redisTemplate.boundValueOps(key).set(jsonResult);
+        return key;
     }
 
 
@@ -116,8 +113,21 @@ public class RedisCacher {
         final ListMultimap<CacheCoordinate, ContainmentCacheSATEntry> SATResults = ArrayListMultimap.create();
         final ListMultimap<CacheCoordinate, ContainmentCacheUNSATEntry> UNSATResults = ArrayListMultimap.create();
 
-        final Set<String> SATKeys = redisTemplate.keys("SATFC:SAT:*");
+        final Set<String> SATKeys = new HashSet<>();
+        final Set<String> UNSATKeys = new HashSet<>();
+
+        final Cursor<byte[]> scan = redisTemplate.getConnectionFactory().getConnection().scan(ScanOptions.scanOptions().build());
+        scan.forEachRemaining(k -> {
+            final String key = new String(k);
+            if (key.startsWith("SATFC:SAT:")) {
+                SATKeys.add(key);
+            } else if (key.startsWith("SATFC:UNSAT:")) {
+                UNSATKeys.add(key);
+            }
+        });
+
         log.info("Found " + SATKeys.size() + " SAT keys");
+        log.info("Found " + UNSATKeys.size() + " UNSAT keys");
 
         // process SATs
         final AtomicInteger progressIndex = new AtomicInteger();
@@ -135,10 +145,6 @@ public class RedisCacher {
         SATResults.keySet().forEach(cacheCoordinate -> {
             log.info("Found {} SAT entries for cache " + cacheCoordinate, SATResults.get(cacheCoordinate).size());
         });
-
-        // process UNSATs
-        final Set<String> UNSATKeys = redisTemplate.keys("SATFC:UNSAT:*");
-        log.info("Found " + UNSATKeys.size() + " UNSAT keys");
 
         progressIndex.set(0);
         UNSATKeys.forEach(key -> {
@@ -169,6 +175,27 @@ public class RedisCacher {
         public Set<CacheCoordinate> getCaches() {
             return Sets.union(SATResults.keySet(), UNSATResults.keySet());
         }
+    }
+
+
+    /**
+     * Removes the cache entries in Redis
+     * @param collection collection of SAT entries
+     */
+    public void deleteSATCollection(List<ContainmentCacheSATEntry> collection){
+        List<String> keys = new ArrayList<>();
+        collection.forEach(entry -> keys.add(entry.getKey()));
+        redisTemplate.delete(keys);
+    }
+
+    /**
+     * Removes the cache entries in Redis
+     * @param collection collection of UNSAT entries
+     */
+    public void deleteUNSATCollection(List<ContainmentCacheUNSATEntry> collection){
+        List<String> keys = new ArrayList<>();
+        collection.forEach(entry -> keys.add(entry.getKey()));
+        redisTemplate.delete(keys);
     }
 
 }
