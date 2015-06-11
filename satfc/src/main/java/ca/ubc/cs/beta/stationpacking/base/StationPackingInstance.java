@@ -30,6 +30,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import lombok.Getter;
 import lombok.NonNull;
@@ -58,7 +60,7 @@ public class StationPackingInstance {
     private final ImmutableMap<Station, Set<Integer>> domains;
 	private final ImmutableMap<Station, Integer> previousAssignment;
 	@Getter
-	private final Map<String, Object> metadata;
+	private final ConcurrentMap<String, Object> metadata;
 
 	/**
 	 * Create a station packing instance.
@@ -78,7 +80,7 @@ public class StationPackingInstance {
 	 * @param aPreviousAssignment - a map taking stations to the channels they were assigned to previously.
 	 */
 	public StationPackingInstance(Map<Station,Set<Integer>> aDomains, Map<Station,Integer> aPreviousAssignment, @NonNull Map<String, Object> metadata){
-		this.metadata = new HashMap<>(metadata);
+		this.metadata = new ConcurrentHashMap<>(metadata);
 		//Validate assignment domain.
 		for(Station station : aDomains.keySet())
 		{

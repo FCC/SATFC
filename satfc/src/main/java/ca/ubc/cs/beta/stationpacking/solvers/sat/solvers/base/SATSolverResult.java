@@ -61,4 +61,8 @@ public class SATSolverResult implements Serializable {
 		return fResult+","+fRuntime+","+fAssignment;
 	}
 
+    public static SATSolverResult timeout(double time) {
+        return new SATSolverResult(SATResult.TIMEOUT, time, ImmutableSet.of());
+    }
+
 }

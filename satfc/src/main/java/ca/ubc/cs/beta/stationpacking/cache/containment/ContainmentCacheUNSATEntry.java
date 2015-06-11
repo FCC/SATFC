@@ -29,7 +29,6 @@ import java.util.stream.StreamSupport;
 import lombok.Data;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.utils.GuavaCollectors;
-import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
 import containmentcache.ICacheEntry;
 
 /**
@@ -49,7 +48,7 @@ public class ContainmentCacheUNSATEntry implements ICacheEntry<Station> {
     public ContainmentCacheUNSATEntry(final Map<Station, Set<Integer>> domains, final String key) {
         this.key = key;
         this.domains = domains;
-        this.bitSet = new BitSet(StationPackingUtils.N_STATIONS);
+        this.bitSet = new BitSet(2174); // hardcoded number that represents the expected number of stations in the universe. This is just space pre-allocation, if the estimate is wrong, no harm is done.
         domains.keySet().forEach(station -> bitSet.set(station.getID()));
     }
 

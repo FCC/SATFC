@@ -20,7 +20,7 @@ allprojects {
     ext {
         springVersion = "4.1.5.RELEASE"
         jacksonVersion = "2.5.1"
-        SATFCVersion = "1.6"
+        SATFCVersion = "1.7"
     }
 
     repositories {
@@ -66,8 +66,12 @@ subprojects {
     }
 
     test {
-        testLogging.showStandardStreams = true
-        testLogging.showStackTraces = true
+        beforeTest { descriptor ->
+            logger.lifecycle(System.lineSeparator + "Running test: " + descriptor)
+        }
+        testLogging {
+            events "passed", "skipped", "failed", "standardError"
+        }
     }
 
 }

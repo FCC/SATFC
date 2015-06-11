@@ -23,20 +23,22 @@ package ca.ubc.cs.beta.stationpacking.execution;
 
 import java.io.IOException;
 
-import ca.ubc.cs.beta.stationpacking.metrics.SATFCMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.aeatk.misc.jcommander.JCommanderHelper;
 import ca.ubc.cs.beta.aeatk.misc.returnvalues.AEATKReturnValues;
 import ca.ubc.cs.beta.aeatk.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
+import ca.ubc.cs.beta.stationpacking.execution.metricwriters.IMetricWriter;
+import ca.ubc.cs.beta.stationpacking.execution.metricwriters.MetricWriterFactory;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.SATFCFacadeParameters;
-import ca.ubc.cs.beta.stationpacking.execution.problemgenerators.IProblemGenerator;
+import ca.ubc.cs.beta.stationpacking.execution.problemgenerators.IProblemReader;
 import ca.ubc.cs.beta.stationpacking.execution.problemgenerators.ProblemGeneratorFactory;
 import ca.ubc.cs.beta.stationpacking.execution.problemgenerators.SATFCFacadeProblem;
 import ca.ubc.cs.beta.stationpacking.facade.SATFCFacade;
 import ca.ubc.cs.beta.stationpacking.facade.SATFCFacadeBuilder;
 import ca.ubc.cs.beta.stationpacking.facade.SATFCResult;
+import ca.ubc.cs.beta.stationpacking.metrics.SATFCMetrics;
 
 import com.beust.jcommander.ParameterException;
 import com.google.common.base.Charsets;
@@ -60,32 +62,37 @@ public class SATFCFacadeExecutor {
         try {
             log.info("Initializing facade.");
             SATFCFacadeBuilder satfcBuilder = new SATFCFacadeBuilder();
-            SATFCFacade satfc = satfcBuilder.buildFromParameters(parameters);
-            IProblemGenerator problemGenerator = ProblemGeneratorFactory.createFromParameters(parameters);
-            SATFCFacadeProblem problem;
-            while ((problem = problemGenerator.getNextProblem()) != null) {
-                SATFCMetrics.postEvent(new SATFCMetrics.NewStationPackingInstanceEvent(problem.getStationsToPack(), problem.getInstanceName()));
-                log.info("Beginning problem {}", problem.getInstanceName());
-                log.info("Solving ...");
-                SATFCResult result = satfc.solve(
-                        problem.getStationsToPack(),
-                        problem.getChannelsToPackOn(),
-                        problem.getDomains(),
-                        problem.getPreviousAssignment(),
-                        parameters.fInstanceParameters.Cutoff,
-                        parameters.fInstanceParameters.Seed,
-                        problem.getStationConfigFolder(),
-                        problem.getInstanceName()
-                );
-                log.info("..done!");
-                System.out.println(result.getResult());
-                System.out.println(result.getRuntime());
-                System.out.println(result.getWitnessAssignment());
-                SATFCMetrics.postEvent(new SATFCMetrics.InstanceSolvedEvent(problem.getInstanceName(), result.getResult(), result.getRuntime()));
-                problemGenerator.onPostProblem(problem, result);
+            try(final SATFCFacade satfc = satfcBuilder.buildFromParameters(parameters)) {
+                IProblemReader problemGenerator = ProblemGeneratorFactory.createFromParameters(parameters);
+                IMetricWriter metricWriter = MetricWriterFactory.createFromParameters(parameters);
+                SATFCFacadeProblem problem;
+                while ((problem = problemGenerator.getNextProblem()) != null) {
+                    SATFCMetrics.postEvent(new SATFCMetrics.NewStationPackingInstanceEvent(problem.getStationsToPack(), problem.getInstanceName()));
+                    log.info("Beginning problem {}", problem.getInstanceName());
+                    log.info("Solving ...");
+                    SATFCResult result = satfc.solve(
+                            problem.getStationsToPack(),
+                            problem.getChannelsToPackOn(),
+                            problem.getDomains(),
+                            problem.getPreviousAssignment(),
+                            parameters.fInstanceParameters.Cutoff,
+                            parameters.fInstanceParameters.Seed,
+                            problem.getStationConfigFolder(),
+                            problem.getInstanceName()
+                    );
+                    log.info("..done!");
+                    System.out.println(result.getResult());
+                    System.out.println(result.getRuntime());
+                    System.out.println(result.getWitnessAssignment());
+                    SATFCMetrics.postEvent(new SATFCMetrics.InstanceSolvedEvent(problem.getInstanceName(), result.getResult(), result.getRuntime()));
+                    problemGenerator.onPostProblem(problem, result);
+                    metricWriter.writeMetrics();
+                    SATFCMetrics.clear();
+                }
+                log.info("Finished all of the problems!");
+                problemGenerator.onFinishedAllProblems();
+                metricWriter.onFinished();
             }
-            log.info("Finished all of the problems!");
-            problemGenerator.onFinishedAllProblems();
         } catch (ParameterException e) {
             log.error("Invalid parameter argument detected ({}).", e.getMessage());
             e.printStackTrace();
@@ -95,13 +102,14 @@ public class SATFCFacadeExecutor {
             e.printStackTrace();
             System.exit(AEATKReturnValues.UNCAUGHT_EXCEPTION);
         } catch (UnsatisfiedLinkError e) {
-            log.error("Couldn't initialize facade, see previous log messages and/or try logging with DEBUG.");
+            log.error("Couldn't initialize facade, see previous log messages and/or try logging with DEBUG.", e);
             System.exit(AEATKReturnValues.UNCAUGHT_EXCEPTION);
         } catch (Throwable t) {
             log.error("Throwable encountered ({})", t.getMessage());
             t.printStackTrace();
             System.exit(AEATKReturnValues.UNCAUGHT_EXCEPTION);
         }
+        log.info("Normal termination. Goodbye");
     }
 
     private static Logger parseParameter(String[] args, SATFCFacadeParameters parameters) {

@@ -24,6 +24,9 @@ package ca.ubc.cs.beta.stationpacking.solvers.componentgrouper;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import net.jcip.annotations.ThreadSafe;
 
 import org.jgrapht.alg.ConnectivityInspector;
 import org.jgrapht.graph.DefaultEdge;
@@ -37,6 +40,7 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager
  * Groups the stations in a station packing instance based on connected components in interference constraint graph.
  * @author afrechet
  */
+@ThreadSafe
 public class ConstraintGrouper implements IComponentGrouper{
 	
 	//NA - just assume that at least two feasible channels are adjacent (so that ADJ constraints are relevant).
@@ -48,11 +52,8 @@ public class ConstraintGrouper implements IComponentGrouper{
 		HashSet<Set<Station>> aGroups = new HashSet<Set<Station>>();
 		
 		ConnectivityInspector<Station, DefaultEdge> aConnectivityInspector = new ConnectivityInspector<Station,DefaultEdge>(aConstraintGraph);
-		
-		for(Set<Station> aConnectedComponent : aConnectivityInspector.connectedSets())
-		{
-			aGroups.add(aConnectedComponent);
-		}
+
+        aGroups.addAll(aConnectivityInspector.connectedSets().stream().collect(Collectors.toList()));
 		
 		return aGroups;
 	}

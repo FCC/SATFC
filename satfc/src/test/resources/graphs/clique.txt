@@ -1,4 +1,4 @@
-// A fully-connected graph of 5 nodes. 
+// A fully-connected graph of 5 nodes.
 0 1
 0 2
 0 3

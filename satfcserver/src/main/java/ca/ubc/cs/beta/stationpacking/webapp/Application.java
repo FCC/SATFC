@@ -21,6 +21,10 @@
  */
 package ca.ubc.cs.beta.stationpacking.webapp;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
+
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -35,10 +39,15 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import redis.clients.jedis.JedisShardInfo;
 import ca.ubc.cs.beta.stationpacking.cache.CacheLocator;
 import ca.ubc.cs.beta.stationpacking.cache.ICacheLocator;
+import ca.ubc.cs.beta.stationpacking.cache.ISatisfiabilityCacheFactory;
 import ca.ubc.cs.beta.stationpacking.cache.RedisCacher;
+import ca.ubc.cs.beta.stationpacking.cache.SatisfiabilityCacheFactory;
 import ca.ubc.cs.beta.stationpacking.utils.JSONUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Charsets;
+import com.google.common.io.Files;
+import com.google.common.io.Resources;
 
 /**
  * Created by newmanne on 23/03/15.
@@ -56,6 +65,8 @@ public class Application {
     String redisURL;
     @Value("${redis.port:6379}")
     int redisPort;
+    @Value("${stations.file:}")
+    String stationsFile;
 
     @Bean
     MappingJackson2HttpMessageConverter mappingJackson2HttpMessageConverter() {
@@ -83,7 +94,25 @@ public class Application {
 
     @Bean
     ICacheLocator containmentCache() {
-        return new CacheLocator(cacher());
+        return new CacheLocator(cacher(), satisfiabilityCacheFactory());
+    }
+
+    @Bean
+    ISatisfiabilityCacheFactory satisfiabilityCacheFactory() {
+        final List<String> stationIds;
+        // By default, just load the universe of stations from our internal file; if the user specified somewhere else, load from there
+        try {
+            if (stationsFile.isEmpty()) {
+                log.info("Reading station universe file from internal resources");
+                stationIds = Resources.readLines(Resources.getResource("universe.txt"), Charsets.UTF_8);
+            } else {
+                log.info("Reading station universe file from " + stationsFile);
+                stationIds = Files.readLines(new File(stationsFile), Charsets.UTF_8);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Couldn't load stations file " + stationsFile + " that lists what stations are in the universe");
+        }
+        return new SatisfiabilityCacheFactory(stationIds);
     }
 
 }

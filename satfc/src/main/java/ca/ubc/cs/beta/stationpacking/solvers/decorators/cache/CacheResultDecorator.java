@@ -22,8 +22,8 @@
 package ca.ubc.cs.beta.stationpacking.solvers.decorators.cache;
 
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.cache.CacheCoordinate;
 import ca.ubc.cs.beta.stationpacking.cache.ICacher;
-import ca.ubc.cs.beta.stationpacking.cache.ICacher.CacheCoordinate;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.decorators.ASolverDecorator;

@@ -158,7 +158,7 @@ To compile the source's \clasp (so that your custom built \SATFC has an already 
 > cd src/dist/clasp
 > bash compile.sh
 \end{lstlisting}
-Note that this version of \clasp requires some threading library that may not be part of your linux distribution - keep an eye on the output of the compile script.
+Note that this version of \clasp requires a version of libtbb (\url{https://www.threadingbuildingblocks.org/}) that may not be part of your linux distribution by default - keep an eye on the output of the compile script.
 
 
 \subsection{Standalone}\label{sec:standalone}
@@ -243,6 +243,7 @@ In addition to the required arguments discussed above, command-line \SATFC also 
 \end{fwarning}
 \item \texttt{-SEED} -- the seed to use for any (non-\clasp) randomization done in \SATFC.
 \item \texttt{-CLASP-LIBRARY} -- a path to the compiled ``\texttt{.so}'' \clasp library to use.
+\item \texttt{-PARALLELISM-LEVEL} -- the maximum number of algorithms SATFC is allowed to execute in parallel.
 \item \texttt{---log-level} -- \SATFC's logging level. Can be one of \texttt{ERROR}, \texttt{WARN}, \texttt{INFO}, \texttt{DEBUG}, \texttt{TRACE} (listed in increasing order of verbosity).
 \end{itemize}
 
@@ -305,7 +306,7 @@ satfcFacadeBuilder.setServerURL(<serverURL>)
 SATFCFacade satfc = satfcFacadeBuilder.build();
 \end{minted}
 
-\section{Acknowledgements} 
+\section{Acknowledgments} 
 
 Steve Ramage deserves a special mention as he is indirectly responsible for much of \SATFC's quality, via his package \AEATK, one of the main libraries in \SATFC that was used throughout its development for various prototypes, as well as different other miscellaneous features. He also was a constant source of technical help and knowledge when it came to the software design of \SATFC.
 

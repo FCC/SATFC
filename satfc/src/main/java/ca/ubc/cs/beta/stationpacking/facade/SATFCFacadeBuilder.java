@@ -26,18 +26,18 @@ import java.net.URISyntaxException;
 import java.net.URL;
 
 import lombok.NonNull;
-import lombok.extern.slf4j.Slf4j;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.SATFCFacadeParameters;
 import ca.ubc.cs.beta.stationpacking.facade.SATFCFacadeParameter.SolverChoice;
 import ca.ubc.cs.beta.stationpacking.solvers.decorators.CNFSaverSolverDecorator;
 
 /**
  * Builder in charge of creating a SATFC facade, feeding it the necessary options.
+ * DO NOT USE LOGGER IN THIS CLASS. LOGGING HAS NOT BEEN INITIALIZED
  * @author afrechet
  */
-@Slf4j
 public class SATFCFacadeBuilder {
 
+    public static final String SATFC_CLASP_LIBRARY_ENV_VAR = "SATFC_CLASP_LIBRARY";
     private boolean fPresolve;
     private boolean fUnderconstrained;
     private boolean fDecompose;
@@ -47,6 +47,7 @@ public class SATFCFacadeBuilder {
 	private SATFCFacadeParameter.SolverChoice fSolverChoice;
     private String serverURL;
     private CNFSaverSolverDecorator.ICNFSaver CNFSaver;
+    private int parallelismLevel;
 
     /**
 	 * Create a SATFCFacadeBuilder with the default parameters - no logging initialized, autodetected clasp library, no saving of CNFs and results.
@@ -56,7 +57,8 @@ public class SATFCFacadeBuilder {
 		fInitializeLogging = false;
 		fLibrary = findSATFCLibrary();
 		fResultFile = null;
-		fSolverChoice = SolverChoice.SATFC;
+        parallelismLevel = Runtime.getRuntime().availableProcessors();
+		fSolverChoice = parallelismLevel >= 4 ? SolverChoice.SATFC_PARALLEL : SolverChoice.SATFC_SEQUENTIAL;
         fPresolve = true;
         fUnderconstrained = true;
         fDecompose = true;
@@ -69,29 +71,24 @@ public class SATFCFacadeBuilder {
 	 */
 	public static String findSATFCLibrary()
 	{
-		String relativeLibPath = "clasp"+File.separator+"jna"+File.separator+"libjnaclasp";
+        final String envPath = System.getenv(SATFC_CLASP_LIBRARY_ENV_VAR);
+        if (envPath != null) {
+			System.out.println("Using path set from env variable " + envPath);
+            return envPath;
+        }
+
+		//Relative path pointing to the clasp .so
+		final String relativeLibPath = "clasp"+File.separator+"jna"+File.separator+"libjnaclasp.so";
 		
-		String osName = System.getProperty("os.name").toLowerCase();
-		boolean isMacOs = osName.startsWith("mac os x");
-		if(isMacOs)
-		{
-			relativeLibPath+=".dylib";
-		}
-		else
-		{
-			relativeLibPath+=".so";
-		}
-		
-		//SATFCFacadeBuilder.class.getProtectionDomain().getCodeSource().getLocation().getPath();
-		
-		URL url = SATFCFacadeBuilder.class.getProtectionDomain().getCodeSource().getLocation();
+		//Find the root of the clasp relative path.
+		final URL url = SATFCFacadeBuilder.class.getProtectionDomain().getCodeSource().getLocation();
 		File f;
 		try {
 		  f = new File(url.toURI());
 		} catch(URISyntaxException e) {
 		  f = new File(url.getPath());
 		}
-		String currentLocation;
+		final String currentLocation;
 		
 		if(f.isDirectory())
 		{
@@ -110,7 +107,7 @@ public class SATFCFacadeBuilder {
 			currentLocation = f.getParentFile().getParentFile().getAbsolutePath();
 		}
 		
-		File file = new File(currentLocation + File.separator + relativeLibPath);
+		final File file = new File(currentLocation + File.separator + relativeLibPath);
 		if(file.exists())
 		{
 			System.out.println("Found default library "+file.getAbsolutePath()+".");
@@ -135,6 +132,11 @@ public class SATFCFacadeBuilder {
 		{
 			throw new IllegalArgumentException("Facade builder did not auto-detect default library, and no other library was provided.");
 		}
+        if (fSolverChoice.equals(SolverChoice.SATFC_PARALLEL)) {
+            if (parallelismLevel < 4) {
+                throw new IllegalArgumentException("Trying to initialize the parallel solver with too few cores! Use the " + SolverChoice.SATFC_SEQUENTIAL + " solver instead. We recommend the " + SolverChoice.SATFC_PARALLEL + " solver with >= than 4 threads");
+            }
+        }
 		return new SATFCFacade(new SATFCFacadeParameter(
                 fLibrary,
                 fInitializeLogging,
@@ -144,7 +146,8 @@ public class SATFCFacadeBuilder {
                 fUnderconstrained,
                 fDecompose,
                 CNFSaver,
-                serverURL
+                serverURL,
+                parallelismLevel
         ));
 	}
 	
@@ -207,11 +210,18 @@ public class SATFCFacadeBuilder {
     public void setServerURL(@NonNull String serverURL) {
         this.serverURL = serverURL;
     }
+
+    /**
+     * Set the maximum number of solvers that SATFC will execute in parallel
+     * @param parallelismLevel
+     */
+    public void setParallelismLevel(int parallelismLevel) {this.parallelismLevel = parallelismLevel; }
 	
     public SATFCFacade buildFromParameters(@NonNull SATFCFacadeParameters parameters) {
         if (parameters.fClaspLibrary != null) {
             setLibrary(parameters.fClaspLibrary);
         }
+        setParallelismLevel(parameters.numCores);
         setInitializeLogging(true);
         setSolverChoice(parameters.fSolverChoice);
         setDecompose(parameters.fSolverOptions.decomposition);
@@ -222,10 +232,10 @@ public class SATFCFacadeBuilder {
         }
         if (parameters.fSolverChoice.equals(SolverChoice.CNF)) {
             if (parameters.fRedisParameters.areValid()) {
-                log.info("CNF files will be saved to redis");
+                System.out.println("Saving CNFS to redis");
                 setCNFSaver(new CNFSaverSolverDecorator.RedisCNFSaver(parameters.fRedisParameters.getJedis(), parameters.fRedisParameters.fRedisQueue));
             } else {
-                log.info("Will save CNF files to disk at " + parameters.fCNFDir);
+                System.out.println("Saving CNFS to disk");
                 setCNFSaver(new CNFSaverSolverDecorator.FileCNFSaver(parameters.fCNFDir));
             }
         }

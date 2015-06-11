@@ -26,6 +26,4 @@ package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers;
  */
 public abstract class AbstractCompressedSATSolver implements ISATSolver{
 
-
-
 }

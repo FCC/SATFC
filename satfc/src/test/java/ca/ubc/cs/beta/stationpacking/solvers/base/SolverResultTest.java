@@ -46,13 +46,6 @@ public class SolverResultTest {
     private SolverResult result;
 
     @Test
-    public void testSerialization() throws Exception {
-        Set<Station> s = Sets.newHashSet();
-        s.add(new Station(3));
-        assertEquals("{\"assignment\":{\"3\":[\"3\"]},\"runtime\":37.4,\"result\":\"SAT\"}", JSONUtils.toString(result));
-    }
-
-    @Test
     public void testSerializationDeserializationAreInverses() throws Exception {
         assertEquals(result, JSONUtils.toObject(JSONUtils.toString(result), SolverResult.class));
     }

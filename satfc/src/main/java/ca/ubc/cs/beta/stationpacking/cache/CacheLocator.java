@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -34,13 +35,13 @@ import net.jcip.annotations.ThreadSafe;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 
-import ca.ubc.cs.beta.stationpacking.cache.ICacher.CacheCoordinate;
 import ca.ubc.cs.beta.stationpacking.cache.RedisCacher.ContainmentCacheInitData;
 import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheSATEntry;
 import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheUNSATEntry;
 import ca.ubc.cs.beta.stationpacking.cache.containment.containmentcache.ISatisfiabilityCache;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 
 /**
  * Created by newmanne on 25/03/15.
@@ -52,10 +53,11 @@ public class CacheLocator implements ICacheLocator, ApplicationListener<ContextR
     private final RedisCacher cacher;
     private final Map<CacheCoordinate, ISatisfiabilityCache> caches;
     private final ReadWriteLock readWriteLock;
-    private final ISatisfiabilityCacheFactory cacheFactory = new SatisfiabilityCacheFactory();
+    private final ISatisfiabilityCacheFactory cacheFactory;
 
-    public CacheLocator(RedisCacher cacher) {
+    public CacheLocator(RedisCacher cacher, ISatisfiabilityCacheFactory cacheFactory) {
         this.cacher = cacher;
+        this.cacheFactory = cacheFactory;
         caches = new HashMap<>();
         readWriteLock = new ReentrantReadWriteLock();
     }
@@ -96,4 +98,10 @@ public class CacheLocator implements ICacheLocator, ApplicationListener<ContextR
             caches.put(cacheCoordinate, cache);
         });
     }
+
+	@Override
+	public Set<CacheCoordinate> getCoordinates() {
+		return ImmutableSet.copyOf(caches.keySet());
+	}
+	
 }

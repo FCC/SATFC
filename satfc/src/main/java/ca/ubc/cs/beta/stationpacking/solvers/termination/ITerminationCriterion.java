@@ -56,5 +56,15 @@ public interface ITerminationCriterion {
 	 * @param aTime - the time the event took to complete.
 	 */
 	public void notifyEvent(double aTime);
-	
+
+    /**
+     * A termination criterion that can be interrupted.
+     */
+    public interface IInterruptibleTerminationCriterion extends ITerminationCriterion {
+        /**
+         * @return true if you managed to interrupt, false if already interrupted
+         */
+        boolean interrupt();
+    }
+
 }

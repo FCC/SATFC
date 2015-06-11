@@ -26,6 +26,7 @@ import ca.ubc.cs.beta.aeatk.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aeatk.options.AbstractOptions;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.SolverCustomizationOptionsParameters;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.base.InstanceParameters;
+import ca.ubc.cs.beta.stationpacking.facade.SATFCFacadeParameter;
 import ca.ubc.cs.beta.stationpacking.facade.SATFCFacadeParameter.SolverChoice;
 
 import com.beust.jcommander.Parameter;
@@ -55,7 +56,7 @@ public class SATFCFacadeParameters extends AbstractOptions {
 
     @Parameter(names = "-INSTANCES-FILE", description = "file listing each instance file on a separate line")
     public String fFileOfInstanceFiles;
-    @Parameter(names = "-OUTPUT-FILE", description = "output file summarizing results")
+    @Parameter(names = {"-METRICS-FILE", "-OUTPUT-FILE"}, description = "Causes the FileMetricWriter to be used, outputs a file with metrics (may cause performance loss)")
     public String fMetricsFile;
     @Parameter(names = "-INTERFERENCES-FOLDER", description = "folder containing all the other interference folders")
     public String fInterferencesFolder;
@@ -66,8 +67,12 @@ public class SATFCFacadeParameters extends AbstractOptions {
 	@Parameter(names = "-CLASP-LIBRARY",description = "clasp library file")
 	public String fClaspLibrary;
 	
-	@Parameter(names = "-SOLVER-CHOICE", description = "type of SATFC")
-	public SolverChoice fSolverChoice = SolverChoice.SATFC;
+	@Parameter(names = "-SOLVER-CHOICE", description = "Type of SATFC")
+	public SolverChoice fSolverChoice = Runtime.getRuntime().availableProcessors() >= 4 ? SolverChoice.SATFC_PARALLEL : SolverChoice.SATFC_SEQUENTIAL;
+
+
+    @Parameter(names = "-PARALLELISM-LEVEL", description = "Maximum number of algorithms to execute in parallel. Defaults to all available processors")
+    public int numCores = Runtime.getRuntime().availableProcessors();
 
 	/**
 	 * Logging options.

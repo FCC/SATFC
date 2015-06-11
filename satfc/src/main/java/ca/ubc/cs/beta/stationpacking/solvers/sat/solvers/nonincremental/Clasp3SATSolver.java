@@ -1,3 +1,24 @@
+/**
+ * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ *
+ * This file is part of SATFC.
+ *
+ * SATFC is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * SATFC is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with SATFC.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * For questions, contact us at:
+ * afrechet@cs.ubc.ca
+ */
 package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental;
 
 import java.util.HashSet;
@@ -6,7 +27,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import lombok.extern.slf4j.Slf4j;
 import ca.ubc.cs.beta.aeatk.concurrent.threadfactory.SequentiallyNamedThreadFactory;
@@ -18,9 +42,9 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSo
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.jnalibraries.Clasp3Library;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.utils.NativeUtils;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
-import com.google.common.collect.ImmutableSet;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.IntByReference;
@@ -32,8 +56,28 @@ public class Clasp3SATSolver extends AbstractCompressedSATSolver {
     private String fParameters;
     private final ScheduledExecutorService fTimerService = Executors.newScheduledThreadPool(1, new SequentiallyNamedThreadFactory("Clasp SAT Solver Timers", true));
 
+    /**
+     * Integer flag that we use to keep track of our current request, cutoff and timer threads will only execute if
+     * this matches the id when they started.
+     */
+    private final AtomicLong currentRequestID = new AtomicLong(1);
+    private final Lock lock = new ReentrantLock();
+    private Pointer currentProblemPointer;
+    // boolean represents whether or not a solve is in progress, so that it is safe to do an interrupt
+    private final AtomicBoolean isCurrentlySolving = new AtomicBoolean(false);
+    private final int fSeedOffset;
+
     public Clasp3SATSolver(String libraryPath, String parameters) {
-        fClaspLibrary = (Clasp3Library) Native.loadLibrary(libraryPath, Clasp3Library.class);
+        this((Clasp3Library) Native.loadLibrary(libraryPath, Clasp3Library.class, NativeUtils.NATIVE_OPTIONS), parameters);
+    }
+
+    public Clasp3SATSolver(Clasp3Library library, String parameters) {
+        this(library, parameters, 0);
+    }
+
+    public Clasp3SATSolver(Clasp3Library library, String parameters, int seedOffset) {
+        fSeedOffset = seedOffset;
+        fClaspLibrary = library;
         fParameters = parameters;
         // set the info about parameters, throw an exception if seed is contained.
         if (parameters.contains("--seed")) {
@@ -52,12 +96,6 @@ public class Clasp3SATSolver extends AbstractCompressedSATSolver {
         }
     }
 
-    /**
-     * Integer flag that we use to keep track of our current request, cutoff and timer threads will only execute if
-     * this matches the id when they started.
-     */
-    private final AtomicLong currentRequestID = new AtomicLong(1);
-
     /*
      * (non-Javadoc)
      * NOT THREAD SAFE!
@@ -65,32 +103,46 @@ public class Clasp3SATSolver extends AbstractCompressedSATSolver {
      */
     @Override
     public SATSolverResult solve(CNF aCNF, ITerminationCriterion aTerminationCriterion, long aSeed) {
-        Watch watch = Watch.constructAutoStartWatch();
-
+        final Watch watch = Watch.constructAutoStartWatch();
         final long MY_REQUEST_ID = currentRequestID.incrementAndGet();
-        final int seed = Math.abs(new Random(aSeed).nextInt());
+        final int seed = Math.abs(new Random(aSeed + fSeedOffset).nextInt());
         final String params = fParameters + " --seed=" + seed;
-        Pointer problem = null;
-        try  {
+        Future<?> suicideFuture = null;
+        try {
             // create the problem - config params have already been validated in the constructor, so this should work
-            problem = fClaspLibrary.initConfig(params);
-            fClaspLibrary.initProblem(problem, aCNF.toDIMACS(null));
+            if (currentProblemPointer != null) {
+                throw new IllegalStateException("Went to solve a new problem, but there is a problem in progress!");
+            }
+            if (aTerminationCriterion.hasToStop()) {
+                return SATSolverResult.timeout(watch.getElapsedTime());
+            }
 
-            watch.stop();
+            currentProblemPointer = fClaspLibrary.initConfig(params);
+
+            if (aTerminationCriterion.hasToStop()) {
+                return SATSolverResult.timeout(watch.getElapsedTime());
+            }
+
+            fClaspLibrary.initProblem(currentProblemPointer, aCNF.toDIMACS(null));
+
+            if (aTerminationCriterion.hasToStop()) {
+                return SATSolverResult.timeout(watch.getElapsedTime());
+            }
+
+            // We lock this variable so that the interrupt code will only execute if there is a valid problem to interrupt
+            lock.lock();
+            isCurrentlySolving.set(true);
+            lock.unlock();
+
             double preTime = watch.getElapsedTime();
-
-            watch.reset();
-            watch.start();
-
             final double cutoff = aTerminationCriterion.getRemainingTime();
-            if (cutoff <= 0) {
-                log.debug("All time spent.");
-                return new SATSolverResult(SATResult.TIMEOUT, preTime, ImmutableSet.of());
+            if (cutoff <= 0 || aTerminationCriterion.hasToStop()) {
+                return SATSolverResult.timeout(watch.getElapsedTime());
             }
 
             //launches a suicide SATFC time that just kills everything if it finishes and we're still on the same job.
             final int SUICIDE_GRACE_IN_SECONDS = 5 * 60;
-            Future<?> suicideFuture = fTimerService.schedule(
+            suicideFuture = fTimerService.schedule(
                     () -> {
                         if (MY_REQUEST_ID == currentRequestID.get()) {
                             log.error("Clasp has spent {} more seconds than expected ({}) on current run, killing everything (i.e. System.exit(1) ).", SUICIDE_GRACE_IN_SECONDS, cutoff);
@@ -101,55 +153,69 @@ public class Clasp3SATSolver extends AbstractCompressedSATSolver {
             // Start solving
             log.debug("Send problem to clasp cutting off after " + cutoff + "s");
 
-            fClaspLibrary.solveProblem(problem, cutoff);
-            log.debug("Came back from clasp.");
+            fClaspLibrary.solveProblem(currentProblemPointer, cutoff);
+            final double runtime = watch.getElapsedTime() - preTime;
+            log.debug("Came back from clasp after {}s.", runtime);
+            lock.lock();
+            isCurrentlySolving.set(false);
+            lock.unlock();
 
-            watch.stop();
-            final double runtime = watch.getElapsedTime();
-            watch.reset();
-            watch.start();
+            if (aTerminationCriterion.hasToStop()) {
+                return SATSolverResult.timeout(watch.getElapsedTime());
+            }
 
-            final ClaspResult claspResult = getSolverResult(fClaspLibrary, problem, runtime);
-
-            log.trace("Post time to clasp result obtained: {} s.", watch.getElapsedTime());
+            final ClaspResult claspResult = getSolverResult(fClaspLibrary, currentProblemPointer, runtime);
+            final double timeToParseClaspResult = watch.getElapsedTime() - runtime - preTime;
+            log.trace("Time to parse clasp result: {} s.", timeToParseClaspResult);
 
             final HashSet<Literal> assignment = parseAssignment(claspResult.getAssignment());
-            log.trace("Post time to to assignment obtained: {} s.", watch.getElapsedTime());
 
-            watch.stop();
-            final double postTime = watch.getElapsedTime();
-
+            log.trace("Time to parse assignment: {} s.", watch.getElapsedTime() - runtime - preTime - timeToParseClaspResult);
+            final double postTime = watch.getElapsedTime() - runtime - preTime;
             log.trace("Total post time: {} s.", postTime);
             if (postTime > 60) {
                 log.error("Clasp SAT solver post solving time was greater than 1 minute, something wrong must have happened.");
             }
 
-            log.debug("Incrementing job srpkToCnfIndex.");
+            log.debug("Incrementing job number.");
             currentRequestID.incrementAndGet();
 
             log.debug("Cancelling suicide future.");
-            suicideFuture.cancel(true);
+            suicideFuture.cancel(false);
 
             final SATSolverResult output = new SATSolverResult(claspResult.getSATResult(), claspResult.getRuntime() + preTime + postTime, assignment);
-            log.trace("Returning result: {}.", output);
+            log.debug("Returning result: {}.", output);
             return output;
         } finally {
-            if (problem != null) {
+            // Cleanup in the finally block so it always executes: if we instantiated a problem, we make sure that we free it
+            if (currentProblemPointer != null) {
                 log.trace("Destroying problem");
-                fClaspLibrary.destroyProblem(problem);
+                lock.lock();
+                isCurrentlySolving.set(false);
+                lock.unlock();
+                fClaspLibrary.destroyProblem(currentProblemPointer);
+                currentProblemPointer = null;
+            }
+            if (suicideFuture != null) {
+                suicideFuture.cancel(false);
             }
         }
     }
-
+    
     @Override
-    public void interrupt() throws UnsupportedOperationException {
-        // the code for this to occur is there in the fClaspLibrary, but there are synchronization concerns on the java side (keeping a reference to the problem currently being solved, making sure the reference is valid / not destroyed when you interrupt, etc.) that need to be considered before this truly works.
-        throw new RuntimeException("Interrupt not yet implemented");
+    public void interrupt() {
+    	lock.lock();
+        if (isCurrentlySolving.get()) {
+            log.debug("Interrupting clasp");
+            fClaspLibrary.interrupt(currentProblemPointer);
+            log.debug("Back from interrupting clasp");
+        }
+        lock.unlock();
     }
 
     @Override
     public void notifyShutdown() {
-        //No shutdown necessary.
+        fTimerService.shutdown();
     }
 
     private HashSet<Literal> parseAssignment(int[] assignment) {

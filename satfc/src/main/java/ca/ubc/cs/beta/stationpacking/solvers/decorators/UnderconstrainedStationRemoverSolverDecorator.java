@@ -39,7 +39,6 @@ import ca.ubc.cs.beta.stationpacking.solvers.underconstrained.IUnderconstrainedS
 import ca.ubc.cs.beta.stationpacking.solvers.underconstrained.UnderconstrainedStationFinder;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
-import com.google.common.base.Predicate;
 import com.google.common.collect.Maps;
 
 /**
@@ -69,24 +68,25 @@ public class UnderconstrainedStationRemoverSolverDecorator extends ASolverDecora
 	@Override
 	public SolverResult solve(StationPackingInstance aInstance,
 			ITerminationCriterion aTerminationCriterion, long aSeed) {
-		
 		Watch watch = Watch.constructAutoStartWatch();
-
 		final Map<Station,Set<Integer>> domains = aInstance.getDomains();
+        if (aTerminationCriterion.hasToStop()) {
+            log.debug("All time spent.");
+            return new SolverResult(SATResult.TIMEOUT, watch.getElapsedTime());
+        }
 		final Set<Station> underconstrainedStations = fUnderconstrainedStationFinder.getUnderconstrainedStations(domains);
-		SATFCMetrics.postEvent(new SATFCMetrics.UnderconstrainedStationsRemovedEvent(aInstance.getName(), underconstrainedStations));
-		SATFCMetrics.postEvent(new SATFCMetrics.TimingEvent(aInstance.getName(), SATFCMetrics.TimingEvent.FIND_UNDERCONSTRAINED_STATIONS, watch.getElapsedTime()));
-
+        SATFCMetrics.postEvent(new SATFCMetrics.UnderconstrainedStationsRemovedEvent(aInstance.getName(), underconstrainedStations));
+        SATFCMetrics.postEvent(new SATFCMetrics.TimingEvent(aInstance.getName(), SATFCMetrics.TimingEvent.FIND_UNDERCONSTRAINED_STATIONS, watch.getElapsedTime()));
+        if (aTerminationCriterion.hasToStop()) {
+            log.debug("All time spent.");
+            return new SolverResult(SATResult.TIMEOUT, watch.getElapsedTime());
+        }
 
 		log.debug("Removing {} underconstrained stations...",underconstrainedStations.size());
 		
 		//Remove the nodes from the instance.
 		Map<Station,Set<Integer>> alteredDomains = new HashMap<>(domains);
-		alteredDomains = Maps.filterKeys(alteredDomains, new Predicate<Station>(){
-			@Override
-			public boolean apply(Station arg0) {
-				return !underconstrainedStations.contains(arg0);
-			}});
+		alteredDomains = Maps.filterKeys(alteredDomains, station -> !underconstrainedStations.contains(station));
 
 		final SolverResult subResult;
 		final double preTime;

@@ -57,7 +57,7 @@ public class StationSubsetSATCertifier implements IStationSubsetCertifier {
 		fSolver = aSolver;
 		fTerminationCriterionFactory = aTerminationCriterionFactory;
 	}
-	
+
 	@Override
 	public SolverResult certify(StationPackingInstance aInstance,
 			Set<Station> aToPackStations,
@@ -111,14 +111,14 @@ public class StationSubsetSATCertifier implements IStationSubsetCertifier {
         metadata.put(StationPackingInstance.NAME_KEY, aInstance.getName() + STATION_SUBSET_SATCERTIFIER);
         StationPackingInstance SATboundInstance = new StationPackingInstance(reducedDomains, previousAssignment, metadata);
 		
-		if(!aTerminationCriterion.hasToStop())
+		if(!terminationCriterion.hasToStop())
 		{
-			
 			watch.stop();
+            log.debug("Going off to SAT solver...");
 			SolverResult SATboundResult = fSolver.solve(SATboundInstance, terminationCriterion, aSeed);
-			watch.start();
-			
-			
+            log.debug("Back from SAT solver... SAT bound result was {}", SATboundResult.getResult());
+            watch.start();
+
 			if(SATboundResult.getResult().equals(SATResult.SAT))
 			{
 				log.debug("Stations not in previous assignment can be packed with their neighborhood when all other stations are fixed to their previous assignment..");
@@ -145,12 +145,11 @@ public class StationSubsetSATCertifier implements IStationSubsetCertifier {
 
 	@Override
 	public void notifyShutdown() {
-		log.debug("Not shutting down associated solver as it may be used elsewhere.");
+        fSolver.notifyShutdown();
 	}
 
-	@Override
-	public void interrupt() throws UnsupportedOperationException {
-		fSolver.interrupt();
-	}
-
+    @Override
+    public void interrupt() {
+        fSolver.interrupt();
+    }
 }

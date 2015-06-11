@@ -96,7 +96,7 @@ public class ConnectedComponentGroupingDecorator extends ASolverDecorator {
                     .collect(toImmutableMap(Map.Entry::getKey, Map.Entry::getValue));
             final Map<Station, Integer> previousAssignment = aInstance.getPreviousAssignment();
             final String name = aInstance.getName() + "_component" + componentIndex;
-            // update name
+            // update name to include a component prefix
             Map<String, Object> metadata = new HashMap<>(aInstance.getMetadata());
             metadata.put(StationPackingInstance.NAME_KEY, name);
             return new StationPackingInstance(subDomains, previousAssignment, metadata);
@@ -121,14 +121,13 @@ public class ConnectedComponentGroupingDecorator extends ASolverDecorator {
             });
         SolverResult result = SolverHelper.mergeComponentResults(solverResults.values());
         result = SolverResult.addTime(result, watch.getElapsedTime());
-        SATFCMetrics.postEvent(new SATFCMetrics.ComponentsSolvedEvent(aInstance.getName(), solverResults.values(), result.getResult()));
-        
+        SATFCMetrics.postEvent(new SATFCMetrics.SolvedByEvent(aInstance.getName(), SATFCMetrics.SolvedByEvent.CONNECTED_COMPONENTS, result.getResult()));
+
         if (result.getResult() == SATResult.SAT)
         {
             Preconditions.checkState(solverResults.size() == stationComponents.size(), "Determined result was SAT without looking at every component!");
         }
-        log.debug("\nResult:");
-        log.debug(result.toParsableString());
+        log.debug("Result:" + System.lineSeparator() + result.toParsableString());
         return result;
     }
 

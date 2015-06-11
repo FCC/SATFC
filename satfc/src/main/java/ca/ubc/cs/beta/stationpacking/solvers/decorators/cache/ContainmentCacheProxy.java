@@ -21,31 +21,56 @@
  */
 package ca.ubc.cs.beta.stationpacking.solvers.decorators.cache;
 
+import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.cache.CacheCoordinate;
+import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheSATResult;
+import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheUNSATResult;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.utils.JSONUtils;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import org.springframework.web.client.RestTemplate;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.concurrent.FutureCallback;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
+import org.apache.http.impl.nio.client.HttpAsyncClients;
+import org.apache.http.util.EntityUtils;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.cache.ICacher.CacheCoordinate;
-import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheSATResult;
-import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheUNSATResult;
-import ca.ubc.cs.beta.stationpacking.utils.CacheUtils;
+import java.io.IOException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Created by newmanne on 01/03/15.
+ * Abstracts away the Containment Cache data structure, which is really being accessed using web requests
+ * Not threadsafe!
  */
-@RequiredArgsConstructor
 @Slf4j
 public class ContainmentCacheProxy {
 
-    private final RestTemplate restTemplate = CacheUtils.getRestTemplate();
-    private final String baseServerURL;
     private final CacheCoordinate coordinate;
+    private final static CloseableHttpAsyncClient httpClient;
+    private final String SAT_URL;
+    private final String UNSAT_URL;
+    private final AtomicReference<Future<HttpResponse>> activeFuture;
+
+    static {
+        httpClient = HttpAsyncClients.createDefault();
+        httpClient.start();
+    }
+
+    public ContainmentCacheProxy(String baseServerURL, CacheCoordinate coordinate) {
+        SAT_URL = baseServerURL + "/v1/cache/query/SAT";
+        UNSAT_URL = baseServerURL + "/v1/cache/query/UNSAT";
+        this.coordinate = coordinate;
+        activeFuture = new AtomicReference<>();
+    }
 
     /**
      * Object used to represent a cache lookup request
@@ -58,20 +83,83 @@ public class ContainmentCacheProxy {
         private CacheCoordinate coordinate;
     }
 
-    public ContainmentCacheSATResult proveSATBySuperset(StationPackingInstance instance) {
-        final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(baseServerURL + "/v1/cache/query/SAT");
-        final ContainmentCacheRequest request = new ContainmentCacheRequest(instance, coordinate);
-        final String uriString = builder.build().toUriString();
-        log.debug("Making a SAT request to the cache server for instance " + instance.getName() + " " + uriString);
-        return restTemplate.postForObject(uriString, request, ContainmentCacheSATResult.class);
+    public ContainmentCacheSATResult proveSATBySuperset(StationPackingInstance instance, ITerminationCriterion terminationCriterion) {
+        return makePost(SAT_URL, instance, ContainmentCacheSATResult.class, ContainmentCacheSATResult.failure(), terminationCriterion);
     }
 
-    public ContainmentCacheUNSATResult proveUNSATBySubset(StationPackingInstance instance) {
-        final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(baseServerURL + "/v1/cache/query/UNSAT");
-        final ContainmentCacheRequest request = new ContainmentCacheRequest(instance, coordinate);
+    public ContainmentCacheUNSATResult proveUNSATBySubset(StationPackingInstance instance, ITerminationCriterion terminationCriterion) {
+        return makePost(UNSAT_URL, instance, ContainmentCacheUNSATResult.class, ContainmentCacheUNSATResult.failure(), terminationCriterion);
+    }
+
+    private <T> T makePost(String URL, StationPackingInstance instance, Class<T> responseClass, T failure, ITerminationCriterion terminationCriterion) {
+        final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(URL);
         final String uriString = builder.build().toUriString();
-        log.debug("Making an UNSAT request to the cache server for instance " + instance.getName() + " " + uriString);
-        return restTemplate.postForObject(uriString, request, ContainmentCacheUNSATResult.class);
+        final HttpPost httpPost = new HttpPost(uriString);
+        log.debug("Making a request to the cache server for instance " + instance.getName() + " " + uriString);
+        final ContainmentCacheRequest request = new ContainmentCacheRequest(instance, coordinate);
+        final String jsonRequest = JSONUtils.toString(request);
+        final StringEntity stringEntity = new StringEntity(jsonRequest, ContentType.APPLICATION_JSON);
+        httpPost.setEntity(stringEntity);
+        try {
+            final CountDownLatch latch = new CountDownLatch(1);
+            final AtomicReference<HttpResponse> httpResponse = new AtomicReference<>();
+            final AtomicReference<Exception> exception = new AtomicReference<>();
+            activeFuture.set(httpClient.execute(httpPost, new FutureCallback<HttpResponse>() {
+                @Override
+                public void completed(HttpResponse result) {
+                    log.trace("Back from making web request");
+                    httpResponse.set(result);
+                    latch.countDown();
+                }
+
+                @Override
+                public void failed(Exception ex) {
+                    exception.set(ex);
+                    latch.countDown();
+                }
+
+                @Override
+                public void cancelled() {
+                    log.debug("Web request aborted");
+                    latch.countDown();
+                }
+            }));
+            if (terminationCriterion.hasToStop()) {
+                return failure;
+            }
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                throw new RuntimeException("Interrupted while waiting for countdown latch", e);
+            }
+            final Exception ex = exception.get();
+            if (ex != null) {
+                throw new RuntimeException("Error making web request", ex);
+            }
+            if (terminationCriterion.hasToStop()) {
+                return failure;
+            }
+            final String response = EntityUtils.toString(httpResponse.get().getEntity());
+            return JSONUtils.toObject(response, responseClass);
+        } catch (IOException e) {
+            throw new RuntimeException("Error reading input stream from httpResponse", e);
+        }
+    }
+
+    public void interrupt() {
+        final Future<HttpResponse> future = activeFuture.getAndSet(null);
+        if (future != null) {
+            log.debug("Cancelling web request future");
+            future.cancel(true);
+        }
+    }
+
+    public synchronized void notifyShutdown() {
+        try {
+            httpClient.close();
+        } catch (IOException e) {
+            throw new RuntimeException("Couldn't close http client", e);
+        }
     }
 
 }

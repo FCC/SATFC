@@ -1,3 +1,24 @@
+/**
+ * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ *
+ * This file is part of SATFC.
+ *
+ * SATFC is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * SATFC is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with SATFC.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * For questions, contact us at:
+ * afrechet@cs.ubc.ca
+ */
 package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental;
 
 import java.io.IOException;
@@ -22,6 +43,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATDecoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.InterruptibleTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.cputime.CPUTimeTerminationCriterion;
 
 import com.google.common.io.Resources;
@@ -30,6 +52,8 @@ import com.google.common.io.Resources;
 public class Clasp3SATSolverTest {
 
     private static CNF hardCNF;
+    final String libraryPath = SATFCFacadeBuilder.findSATFCLibrary();
+    final String parameters = ClaspLibSATSolverParameters.UHF_CONFIG_04_15_h1;
 
     @BeforeClass
     public static void init() throws IOException {
@@ -53,10 +77,24 @@ public class Clasp3SATSolverTest {
     // Verify that clasp respects the timeout we send it by sending it a hard CNF with a very low cutoff and making sure it doesn't stall
     @Test(timeout = 3000)
     public void testTimeout() {
-        final String libraryPath = SATFCFacadeBuilder.findSATFCLibrary();
-        final String parameters = ClaspLibSATSolverParameters.UHF_CONFIG_04_15_h1;
         final Clasp3SATSolver clasp3SATSolver = new Clasp3SATSolver(libraryPath, parameters);
         final ITerminationCriterion terminationCriterion = new CPUTimeTerminationCriterion(1.0);
+        clasp3SATSolver.solve(hardCNF, terminationCriterion, 1);
+    }
+
+    @Test(timeout = 3000)
+    public void testInterrupt() {
+        final Clasp3SATSolver clasp3SATSolver = new Clasp3SATSolver(libraryPath, parameters);
+        final ITerminationCriterion.IInterruptibleTerminationCriterion terminationCriterion = new InterruptibleTerminationCriterion(new CPUTimeTerminationCriterion(60.0));
+        new Thread(() -> {
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                log.error("Sleep interrupted?", e);
+            }
+            terminationCriterion.interrupt();
+            clasp3SATSolver.interrupt();
+        }).start();
         clasp3SATSolver.solve(hardCNF, terminationCriterion, 1);
     }
 

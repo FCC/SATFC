@@ -21,9 +21,15 @@
  */
 package ca.ubc.cs.beta.stationpacking.cache;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-import com.google.common.collect.*;
+
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
@@ -32,7 +38,6 @@ import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.cache.ICacher.CacheCoordinate;
 import ca.ubc.cs.beta.stationpacking.cache.ICacher.SATCacheEntry;
 import ca.ubc.cs.beta.stationpacking.cache.ICacher.UNSATCacheEntry;
 import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheSATEntry;
@@ -42,6 +47,9 @@ import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.utils.JSONUtils;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ListMultimap;
+import com.google.common.collect.Sets;
 
 /**
  * Created by newmanne on 02/12/14.
@@ -107,6 +115,11 @@ public class RedisCacher {
     }
 
     public ContainmentCacheInitData getContainmentCacheInitData() {
+        return getContainmentCacheInitData(Long.MAX_VALUE);
+    }
+
+
+    public ContainmentCacheInitData getContainmentCacheInitData(long limit) {
         log.info("Pulling precache data from redis");
         long start = System.currentTimeMillis();
 
@@ -117,14 +130,16 @@ public class RedisCacher {
         final Set<String> UNSATKeys = new HashSet<>();
 
         final Cursor<byte[]> scan = redisTemplate.getConnectionFactory().getConnection().scan(ScanOptions.scanOptions().build());
-        scan.forEachRemaining(k -> {
-            final String key = new String(k);
+        long count = 0;
+        while (count < limit && scan.hasNext()) {
+            final String key = new String(scan.next());
+            count++;
             if (key.startsWith("SATFC:SAT:")) {
                 SATKeys.add(key);
             } else if (key.startsWith("SATFC:UNSAT:")) {
                 UNSATKeys.add(key);
             }
-        });
+        }
 
         log.info("Found " + SATKeys.size() + " SAT keys");
         log.info("Found " + UNSATKeys.size() + " UNSAT keys");

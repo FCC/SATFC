@@ -40,8 +40,8 @@ dependencies {
 
 //Project properties.
 applicationName = 'SATFCServer'
+version = "$SATFCVersion-"+getGitName()
 
 jar {
     baseName = applicationName
-    version = "$SATFCVersion-"+getGitName()
 }

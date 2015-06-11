@@ -23,8 +23,10 @@ package ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles;
 
 import java.util.Arrays;
 
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.factories.Clasp3ISolverFactory;
 import lombok.extern.slf4j.Slf4j;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.cache.CacheCoordinate;
 import ca.ubc.cs.beta.stationpacking.cache.CacherProxy;
 import ca.ubc.cs.beta.stationpacking.cache.ICacher;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
@@ -44,10 +46,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.decorators.cache.CacheResultDecorat
 import ca.ubc.cs.beta.stationpacking.solvers.decorators.cache.ContainmentCacheProxy;
 import ca.ubc.cs.beta.stationpacking.solvers.decorators.cache.SubsetCacheUNSATDecorator;
 import ca.ubc.cs.beta.stationpacking.solvers.decorators.cache.SupersetCacheSATDecorator;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.CompressedSATBasedSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.Clasp3SATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.cputime.CPUTimeTerminationCriterionFactory;
 import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
 
@@ -87,14 +86,12 @@ public class SATFCSolverBundle extends ASolverBundle {
         log.debug("SATFC solver bundle.");
 
         SATCompressor aCompressor = new SATCompressor(this.getConstraintManager());
+        final Clasp3ISolverFactory clasp3ISolverFactory = new Clasp3ISolverFactory(new ClaspLibraryGenerator(aClaspLibraryPath), aCompressor, getConstraintManager());
 
         log.debug("Initializing base configured clasp solvers.");
 
-        AbstractCompressedSATSolver aUHFClaspSATsolver = new Clasp3SATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.UHF_CONFIG_04_15_h1);
-        ISolver UHFClaspBasedSolver = new CompressedSATBasedSolver(aUHFClaspSATsolver, aCompressor, this.getConstraintManager());
-
-        AbstractCompressedSATSolver aHVHFClaspSATsolver = new Clasp3SATSolver(aClaspLibraryPath, ClaspLibSATSolverParameters.HVHF_CONFIG_09_13_MODIFIED);
-        ISolver VHFClaspBasedSolver = new CompressedSATBasedSolver(aHVHFClaspSATsolver, aCompressor, this.getConstraintManager());
+        ISolver UHFClaspBasedSolver = clasp3ISolverFactory.create(ClaspLibSATSolverParameters.UHF_CONFIG_04_15_h2);
+        ISolver VHFClaspBasedSolver = clasp3ISolverFactory.create(ClaspLibSATSolverParameters.HVHF_CONFIG_09_13_MODIFIED);
 
         //Chain pre-solving and main solver.
         final double SATcertifiercutoff = 5;
@@ -107,9 +104,9 @@ public class SATFCSolverBundle extends ASolverBundle {
          */
         ContainmentCacheProxy containmentCache = null;
         ICacher cacher = null;
-        ICacher.CacheCoordinate cacheCoordinate = null;
+        CacheCoordinate cacheCoordinate = null;
         if (useCache) {
-            cacheCoordinate = new ICacher.CacheCoordinate(aStationManager.getHashCode(), aConstraintManager.getHashCode());
+            cacheCoordinate = new CacheCoordinate(aStationManager.getHashCode(), aConstraintManager.getHashCode());
             cacher = new CacherProxy(serverURL, cacheCoordinate);
             containmentCache = new ContainmentCacheProxy(serverURL, cacheCoordinate);
         }
@@ -144,7 +141,7 @@ public class SATFCSolverBundle extends ASolverBundle {
                     Arrays.asList(
                             new ConstraintGraphNeighborhoodPresolver(aConstraintManager,
                                     Arrays.asList(
-                                    		new StationSubsetSATCertifier(UHFClaspBasedSolver, new CPUTimeTerminationCriterionFactory(SATcertifiercutoff))
+                                            new StationSubsetSATCertifier(clasp3ISolverFactory.create(ClaspLibSATSolverParameters.UHF_CONFIG_04_15_h1), new CPUTimeTerminationCriterionFactory(SATcertifiercutoff))
                                     ), 1),
                             UHFsolver
                     )
@@ -154,7 +151,7 @@ public class SATFCSolverBundle extends ASolverBundle {
                     Arrays.asList(
                             new ConstraintGraphNeighborhoodPresolver(aConstraintManager,
                                     Arrays.asList(
-                                    		new StationSubsetSATCertifier(VHFClaspBasedSolver, new CPUTimeTerminationCriterionFactory(SATcertifiercutoff))
+                                            new StationSubsetSATCertifier(clasp3ISolverFactory.create(ClaspLibSATSolverParameters.HVHF_CONFIG_09_13_MODIFIED), new CPUTimeTerminationCriterionFactory(SATcertifiercutoff))
                                     ), 1),
                             VHFsolver
                     )

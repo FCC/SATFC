@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre FrÃ©chette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *

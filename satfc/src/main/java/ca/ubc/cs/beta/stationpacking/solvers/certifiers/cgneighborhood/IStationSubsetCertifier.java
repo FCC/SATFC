@@ -49,14 +49,10 @@ public interface IStationSubsetCertifier {
 			long aSeed);
 	
 	/**
-	 * Tries to stop the solve call if implemented, if not throws an UnsupportedOperationException.
-	 * @throws UnsupportedOperationException thrown if interruption is not supported.
-	 */
-	public void interrupt() throws UnsupportedOperationException;
-	
-	/**
 	 * Ask the solver to shutdown.
 	 */
-	public void notifyShutdown();
+	default void notifyShutdown() {};
+
+    default void interrupt() {};
 	
 }

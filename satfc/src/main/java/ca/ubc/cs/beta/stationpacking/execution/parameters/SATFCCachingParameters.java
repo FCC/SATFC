@@ -32,7 +32,7 @@ import com.beust.jcommander.Parameter;
 @UsageTextField(title="SATFC Caching Parameters",description="Parameters for the SATFC problem cache.")
 public class SATFCCachingParameters extends AbstractOptions {
 
-    @Parameter(names = "--serverURL", description = "base URL for the SATFC server", required = false)
+    @Parameter(names = {"--serverURL", "-SERVER-URL"}, description = "base URL for the SATFC server", required = false)
     public String serverURL;
 
 }

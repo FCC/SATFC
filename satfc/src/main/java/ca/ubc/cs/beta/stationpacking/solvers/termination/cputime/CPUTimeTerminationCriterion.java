@@ -76,7 +76,4 @@ public class CPUTimeTerminationCriterion implements ITerminationCriterion
 		fExternalEllapsedCPUTime.addAndGet(aTime);
 	}
 
-	
-
-	
 }

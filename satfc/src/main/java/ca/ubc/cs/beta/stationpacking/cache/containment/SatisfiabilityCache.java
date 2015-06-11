@@ -1,10 +1,35 @@
+/**
+ * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ *
+ * This file is part of SATFC.
+ *
+ * SATFC is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * SATFC is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with SATFC.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * For questions, contact us at:
+ * afrechet@cs.ubc.ca
+ */
 package ca.ubc.cs.beta.stationpacking.cache.containment;
 
+import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.StreamSupport;
 
+import lombok.extern.slf4j.Slf4j;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.cache.containment.containmentcache.ISatisfiabilityCache;
@@ -12,9 +37,6 @@ import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.utils.CacheUtils;
 import containmentcache.ILockableContainmentCache;
-import lombok.extern.slf4j.Slf4j;
-import java.util.*;
-import java.util.stream.StreamSupport;
 
 /**
  * Created by newmanne on 19/04/15.
@@ -22,8 +44,8 @@ import java.util.stream.StreamSupport;
 @Slf4j
 public class SatisfiabilityCache implements ISatisfiabilityCache {
 
-    final ILockableContainmentCache SATCache;
-    final ILockableContainmentCache UNSATCache;
+    final ILockableContainmentCache<Station, ContainmentCacheSATEntry> SATCache;
+    final ILockableContainmentCache<Station, ContainmentCacheUNSATEntry> UNSATCache;
 
     public SatisfiabilityCache(ILockableContainmentCache<Station, ContainmentCacheSATEntry> aSATCache,ILockableContainmentCache<Station, ContainmentCacheUNSATEntry> aUNSATCache) {
         SATCache = aSATCache;
@@ -85,11 +107,18 @@ public class SatisfiabilityCache implements ISatisfiabilityCache {
         }
     }
 
-    // true if a's domain is a superset of b's domain
+    /**
+     * Domain a has less stations than domain b because of previous method call getSubsets();
+     * If each station domain in domain a has same or more channels than the matching station in domain b,
+     * then a is superset of b
+     * @param a superset domain
+     * @param b subset domain
+     * @return true if a's domain is a superset of b's domain
+     */
     private boolean isSupersetOrEqualToByDomains(Map<Station, Set<Integer>> a, Map<Station, Set<Integer>> b) {
-        return b.entrySet().stream().allMatch(entry -> {
-            final Set<Integer> integers = a.get(entry.getKey());
-            return integers != null && integers.containsAll(entry.getValue());
+        return a.entrySet().stream().allMatch(entry -> {
+            final Set<Integer> integers = b.get(entry.getKey());
+            return integers != null && entry.getValue().containsAll(integers);
         });
     }
 

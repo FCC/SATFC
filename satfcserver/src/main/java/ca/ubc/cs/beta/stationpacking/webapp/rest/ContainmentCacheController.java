@@ -21,42 +21,44 @@
  */
 package ca.ubc.cs.beta.stationpacking.webapp.rest;
 
-import java.util.List;
-import java.util.Optional;
-
-import ca.ubc.cs.beta.stationpacking.cache.ISatisfiabilityCacheFactory;
-import ca.ubc.cs.beta.stationpacking.cache.SatisfiabilityCacheFactory;
-import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheSATEntry;
-import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheUNSATEntry;
-import ca.ubc.cs.beta.stationpacking.cache.containment.containmentcache.ISatisfiabilityCache;
-import lombok.extern.slf4j.Slf4j;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.ResponseBody;
-
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.cache.CacherProxy.ContainmentCacheCacheRequest;
 import ca.ubc.cs.beta.stationpacking.cache.ICacheLocator;
 import ca.ubc.cs.beta.stationpacking.cache.RedisCacher;
+import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheSATEntry;
 import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheSATResult;
+import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheUNSATEntry;
 import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheUNSATResult;
+import ca.ubc.cs.beta.stationpacking.cache.containment.containmentcache.ISatisfiabilityCache;
 import ca.ubc.cs.beta.stationpacking.solvers.decorators.cache.ContainmentCacheProxy.ContainmentCacheRequest;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.catalina.connector.ClientAbortException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Optional;
 
 @Controller
 @Slf4j
 @RequestMapping("/v1/cache")
-public class ContainmentCacheController extends AbstractController {
+public class ContainmentCacheController {
+
+    private final String JSON_CONTENT = "application/json";
 
     @Autowired
     ICacheLocator containmentCacheLocator;
 
     @Autowired
     RedisCacher cacher;
+
+    @ExceptionHandler(ClientAbortException.class)
+    void clientAbortException() {
+        // Nothing to do
+        log.trace("ClientAbortException ignored because it is expected behavior");
+    }
 
     // note that while this is conceptually a GET request, the fact that we need to send json means that its simpler to achieve as a POST
     @RequestMapping(value = "/query/SAT", method = RequestMethod.POST, produces = JSON_CONTENT, consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -117,14 +119,9 @@ public class ContainmentCacheController extends AbstractController {
     @RequestMapping(value = "/filter", method = RequestMethod.POST)
     @ResponseBody
     public void filterCache() {
-        ISatisfiabilityCacheFactory cacheFactory = new SatisfiabilityCacheFactory();
-        RedisCacher.ContainmentCacheInitData initCache = cacher.getContainmentCacheInitData();
-        initCache.getCaches().forEach(cacheCoordinate -> {
-            final List<ContainmentCacheSATEntry> SATEntries = initCache.getSATResults().get(cacheCoordinate);
-            final List<ContainmentCacheUNSATEntry> UNSATEntries = initCache.getUNSATResults().get(cacheCoordinate);
-            ISatisfiabilityCache cache = cacheFactory.create(SATEntries, UNSATEntries);
-
+    	containmentCacheLocator.getCoordinates().forEach(cacheCoordinate -> {
             log.info("Finding SAT entries to be filted at cacheCoordinate " + cacheCoordinate);
+            final ISatisfiabilityCache cache = containmentCacheLocator.locate(cacheCoordinate).get();
             List<ContainmentCacheSATEntry> SATPrunables = cache.filterSAT();
             log.info("Pruning " + SATPrunables.size() + " SAT entries from Redis");
             cacher.deleteSATCollection(SATPrunables);

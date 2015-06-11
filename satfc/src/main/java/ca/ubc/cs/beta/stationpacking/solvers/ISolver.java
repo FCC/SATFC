@@ -43,17 +43,13 @@ public interface ISolver {
 	 * @param aSeed - the execution seed.
 	 * @return
 	 */
-	public SolverResult solve(StationPackingInstance aInstance, ITerminationCriterion aTerminationCriterion, long aSeed);
-	
-	/**
-	 * Tries to stop the solve call if implemented, if not throws an UnsupportedOperationException.
-	 * @throws UnsupportedOperationException if interruption is not supported
-	 */
-	public void interrupt() throws UnsupportedOperationException;
+	SolverResult solve(StationPackingInstance aInstance, ITerminationCriterion aTerminationCriterion, long aSeed);
 	
 	/**
 	 * Ask the solver to shutdown.
 	 */
-	public void notifyShutdown();
+	default void notifyShutdown() {};
 	
+	default void interrupt() {};
+
 }

@@ -51,6 +51,8 @@ dependencies {
 
     // Rest template
     compile "org.springframework:spring-web:$springVersion"
+    compile 'org.apache.httpcomponents:httpclient:4.4.1'
+    compile 'org.apache.httpcomponents:httpasyncclient:4.1'
 
     // Containment cache
     compile 'ca.ubc.cs.beta:ContainmentCache:0.91'
@@ -157,7 +159,7 @@ task generateMyResources {
 }
 
 run {
-    if ( project.hasProperty('args') ) {
+    if (project.hasProperty('args') ) {
         args project.args.split('\\s+')
     }
 }

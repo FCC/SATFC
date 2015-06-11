@@ -27,7 +27,7 @@ import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.cache.ICacher;
+import ca.ubc.cs.beta.stationpacking.cache.CacheCoordinate;
 import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheSATResult;
 import ca.ubc.cs.beta.stationpacking.metrics.SATFCMetrics;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
@@ -48,7 +48,7 @@ public class SupersetCacheSATDecorator extends ASolverDecorator {
 
     private final ContainmentCacheProxy proxy;
 
-    public SupersetCacheSATDecorator(ISolver aSolver, ContainmentCacheProxy proxy, ICacher.CacheCoordinate coordinate) {
+    public SupersetCacheSATDecorator(ISolver aSolver, ContainmentCacheProxy proxy, CacheCoordinate coordinate) {
         super(aSolver);
         this.proxy = proxy;
     }
@@ -60,7 +60,7 @@ public class SupersetCacheSATDecorator extends ASolverDecorator {
         // test sat cache - supersets of the problem that are SAT directly correspond to solutions to the current problem!
         final SolverResult result;
         log.debug("Sending query to cache");
-        final ContainmentCacheSATResult containmentCacheSATResult = proxy.proveSATBySuperset(aInstance);
+        final ContainmentCacheSATResult containmentCacheSATResult = proxy.proveSATBySuperset(aInstance, aTerminationCriterion);
         SATFCMetrics.postEvent(new SATFCMetrics.TimingEvent(aInstance.getName(), SATFCMetrics.TimingEvent.FIND_SUPERSET, watch.getElapsedTime()));
         if (containmentCacheSATResult.isValid()) {
             final Map<Integer, Set<Station>> assignment = containmentCacheSATResult.getResult();
@@ -86,4 +86,14 @@ public class SupersetCacheSATDecorator extends ASolverDecorator {
         return result;
     }
 
+    @Override
+    public void interrupt() {
+        proxy.interrupt();
+        super.interrupt();
+    }
+
+    @Override
+    public void notifyShutdown() {
+        proxy.notifyShutdown();
+    }
 }

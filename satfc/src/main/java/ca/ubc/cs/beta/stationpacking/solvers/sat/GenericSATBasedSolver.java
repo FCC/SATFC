@@ -36,7 +36,6 @@ import ca.ubc.cs.beta.stationpacking.metrics.SATFCMetrics;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
-import ca.ubc.cs.beta.stationpacking.solvers.certifiers.cgneighborhood.StationSubsetSATCertifier;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATDecoder;
@@ -62,8 +61,7 @@ public class GenericSATBasedSolver implements ISolver {
     }
 
     @Override
-    public SolverResult solve(StationPackingInstance aInstance, ITerminationCriterion aTerminationCriterion,
-                              long aSeed) {
+    public SolverResult solve(StationPackingInstance aInstance, ITerminationCriterion aTerminationCriterion, long aSeed) {
 
         Watch watch = Watch.constructAutoStartWatch();
 
@@ -139,18 +137,15 @@ public class GenericSATBasedSolver implements ISolver {
             return solverResult;
         }
     }
-        
+    
+    @Override
+    public void interrupt() {
+    	fSATSolver.interrupt();
+    }
 
     @Override
     public void notifyShutdown() {
         fSATSolver.notifyShutdown();
     }
-
-
-    @Override
-    public void interrupt() throws UnsupportedOperationException {
-        fSATSolver.interrupt();
-    }
-
 
 }

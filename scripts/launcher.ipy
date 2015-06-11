@@ -1,8 +1,0 @@
-# Script to get CNF's for a particular auction
-auction = '2912'
-nodeNumbers = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10']
-numJobsPerNode = 8
-for nodeNumber in nodeNumbers:
-	node = 'vickrey' + nodeNumber
-	command = "'cd /ubc/cs/research/arrow/newmanne/satfc-experiments/cnfs && ./cnfs.sh " + str(numJobsPerNode) + "'"
-	!ssh $node $command

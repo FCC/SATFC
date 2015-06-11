@@ -22,9 +22,9 @@
 package ca.ubc.cs.beta.stationpacking.cache;
 
 import java.util.Optional;
+import java.util.Set;
 
 import net.jcip.annotations.ThreadSafe;
-import ca.ubc.cs.beta.stationpacking.cache.ICacher.CacheCoordinate;
 import ca.ubc.cs.beta.stationpacking.cache.containment.containmentcache.ISatisfiabilityCache;
 
 /**
@@ -35,5 +35,6 @@ public interface ICacheLocator {
 
     Optional<ISatisfiabilityCache> locate(CacheCoordinate coordinate);
     void addCache(CacheCoordinate coordinate);
+    Set<CacheCoordinate> getCoordinates();
 
 }

@@ -47,10 +47,10 @@ public class SubsetCacheUNSATDecorator extends ASolverDecorator {
 
     @Override
     public SolverResult solve(StationPackingInstance aInstance, ITerminationCriterion aTerminationCriterion, long aSeed) {
-        Watch watch = Watch.constructAutoStartWatch();
+        final Watch watch = Watch.constructAutoStartWatch();
         final SolverResult result;
         log.debug("Querying UNSAT cache");
-        ContainmentCacheUNSATResult proveUNSATBySubset = containmentCache.proveUNSATBySubset(aInstance);
+        ContainmentCacheUNSATResult proveUNSATBySubset = containmentCache.proveUNSATBySubset(aInstance, aTerminationCriterion);
         SATFCMetrics.postEvent(new SATFCMetrics.TimingEvent(aInstance.getName(), SATFCMetrics.TimingEvent.FIND_SUBSET, watch.getElapsedTime()));
         if (proveUNSATBySubset.isValid()) {
             log.debug("Found a subset in the UNSAT cache - declaring problem UNSAT due to problem " + proveUNSATBySubset.getKey());
@@ -64,5 +64,16 @@ public class SubsetCacheUNSATDecorator extends ASolverDecorator {
             result = SolverResult.addTime(decoratorResult, preTime);
         }
         return result;
+    }
+
+    @Override
+    public void interrupt() {
+        containmentCache.interrupt();
+        super.interrupt();
+    }
+
+    @Override
+    public void notifyShutdown() {
+        containmentCache.notifyShutdown();
     }
 }
