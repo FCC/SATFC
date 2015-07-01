@@ -21,16 +21,16 @@
  */
 package ca.ubc.cs.beta.stationpacking.solvers.decorators.cache;
 
-import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.cache.CacheCoordinate;
-import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheSATResult;
-import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheUNSATResult;
-import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
-import ca.ubc.cs.beta.stationpacking.utils.JSONUtils;
+import java.io.IOException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.concurrent.FutureCallback;
@@ -41,10 +41,12 @@ import org.apache.http.impl.nio.client.HttpAsyncClients;
 import org.apache.http.util.EntityUtils;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.io.IOException;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicReference;
+import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.cache.CacheCoordinate;
+import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheSATResult;
+import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheUNSATResult;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.utils.JSONUtils;
 
 /**
  * Created by newmanne on 01/03/15.

@@ -83,7 +83,7 @@ class Solver {
 public:
 	typedef PodVector<Constraint*>::type      ConstraintDB;
 	typedef const ConstraintDB&               DBRef;
-	typedef SingleOwnerPtr<DecisionHeuristic> Heuristic;
+	typedef SingleOwnerPtr<DecisionHeuristic> HeuristicPtr;
 private:
 	/*!
 	 * \name Construction/Destruction/Setup
@@ -96,24 +96,31 @@ private:
 	~Solver();
 	//! Resets a solver object to the state it had after construction.
 	void reset();
-	void resetId(uint32 id) { strategy.id = id; }
-	void startInit(uint32 constraintGuess);
+	void resetConfig();
+	void resetId(uint32 id) { strategy_.id = id; }
+	void startInit(uint32 constraintGuess, const SolverParams& params);
 	bool cloneDB(const ConstraintDB& db);
 	bool preparePost();
 	bool endInit();
+	bool endStep(uint32 top);
 	//@}
 public:
+	typedef SolverStrategies::SearchStrategy SearchMode;
+	typedef SolverStrategies::UpdateMode     UpdateMode;
+	typedef SolverStrategies::WatchInit      WatchInitMode;
 	//! Returns a pointer to the shared context object of this solver.
 	const SharedContext*    sharedContext() const { return shared_; }
 	//! Returns a pointer to the sat-preprocessor used by this solver.
 	SatPreprocessor*        satPrepro()     const;
-	//! Returns the configuration for this object.
-	const SolverParams&     configuration() const;
 	//! Returns the solve parameters for this object.
 	const SolveParams&      searchConfig()  const;
-	const Heuristic&        heuristic()     const { return heuristic_;}
-	uint32                  id()            const { return strategy.id; }
-	Heuristic&              heuristic()           { return heuristic_;}
+	SearchMode              searchMode()    const { return static_cast<SearchMode>(strategy_.search); }
+	UpdateMode              updateMode()    const { return static_cast<UpdateMode>(strategy_.upMode); }
+	WatchInitMode           watchInitMode() const { return static_cast<WatchInitMode>(strategy_.initWatches); }
+	uint32                  compressLimit() const { return strategy_.compress ? strategy_.compress : UINT32_MAX; }
+	bool                    restartOnModel()const { return strategy_.restartOnModel; }
+	DecisionHeuristic*      heuristic()     const { return heuristic_.get();}
+	uint32                  id()            const { return strategy_.id; }
 	VarInfo                 varInfo(Var v)  const { return shared_->validVar(v) ? shared_->varInfo(v) : VarInfo(); }
 	const SymbolTable&      symbolTable()   const { return shared_->symbolTable(); }
 	Literal                 tagLiteral()    const { return tag_; }
@@ -339,7 +346,7 @@ public:
 	 *  - otherwise true.
 	 *
 	 * \pre hasConflict() == false
-	 * \pre a.isNull() == false || decisionLevel() <= rootLevel() || SearchStrategy == no_learning
+	 * \pre a.isNull() == false || decisionLevel() <= rootLevel() || searchMode() == no_learning
 	 * \post
 	 *  p.var() == trueValue(p) || p.var() == falseValue(p) && hasConflict() == true
 	 *
@@ -381,7 +388,7 @@ public:
 			}
 		}
 		// Can we return to correct level?
-		if (undoUntil(dl, false) == dl) { return force(p, r, d); }
+		if (undoUntil(dl) == dl) { return force(p, r, d); }
 		// Logically the implication is on level dl.
 		// Store enough information so that p can be re-assigned once we backtrack.
 		impliedLits_.add(decisionLevel(), ImpliedLiteral(p, dl, r, d));
@@ -489,7 +496,7 @@ public:
 
 	//! Resolves the active conflict using the selected strategy.
 	/*!
-	 * If the SearchStrategy is set to learning, resolveConflict implements
+	 * If searchMode() is set to learning, resolveConflict implements
 	 * First-UIP learning and backjumping. Otherwise, it simply applies
 	 * chronological backtracking.
 	 * \pre hasConflict()
@@ -509,19 +516,22 @@ public:
 	 */
 	bool backtrack();
 
+	enum UndoMode { undo_default = 0u, undo_pop_bt_level = 1u, undo_save_phases = 2u };
 	//! Undoes all assignments up to (but not including) decision level dl.
 	/*!
 	 * \pre dl > 0 (assignments made on decision level 0 cannot be undone)
-	 * \post decisionLevel == max(min(decisionLevel(), dl), max(rootLevel(), btLevel))
+	 * \post decisionLevel == max(min(decisionLevel(), dl), max(rootLevel(), backtrackLevel()))
+	 * \return The decision level after backtracking.
+	 * \note
+	 *   If undoMode contains undo_pop_bt_level, the function first tries to set the backtrack-level 
+	 *   to min(backtrackLevel(), dl) if possible.
+	 * \note
+	 *   If undoMode contains undo_save_phases, the functions saves the values of variables that are undone.
+	 *   Otherwise, phases are only saved if indicated by the active strategy.
 	 */
-	void undoUntil(uint32 dl);
-	
-	/*!
-	 * Similar to undoUntil but optionally also pops the backtrack-level
-	 * to dl if possible.
-	 * \return The current decision level.
-	 */
-	uint32 undoUntil(uint32 dl, bool popBtLevel);
+	uint32 undoUntil(uint32 dl, uint32 undoMode);
+	//! Behaves like undoUntil(dl, undo_default).
+	uint32 undoUntil(uint32 dl) { return undoUntilImpl(dl, false); }
 	
 	//! Adds a new auxiliary variable to this solver.
 	/*!
@@ -574,6 +584,7 @@ public:
 	 * \pre v is assigned a value in the current assignment
 	 */
 	Literal  trueLit(Var v)         const { assert(value(v) != value_free); return Literal(v, valSign(value(v))); }
+	Literal  defaultLit(Var v)      const;
 	//! Returns the decision level on which v was assigned.
 	/*!
 	 * \note The returned value is only meaningful if value(v) != value_free.
@@ -639,11 +650,10 @@ public:
 		assert(idx < numLearntConstraints());
 		return *static_cast<LearntConstraint*>(learnts_[ idx ]);
 	}
-	
-	SolverStrategies  strategy; /**< Strategies used by this object.              */
-	RNG               rng;      /**< Random number generator for this object.     */
-	ValueVec          model;    /**< Stores the last model (if any).              */
-	SolverStats       stats;    /**< Stores statistics about the solving process. */
+
+	mutable RNG rng;   /**< Random number generator for this object.     */
+	ValueVec    model; /**< Stores the last model (if any).              */
+	SolverStats stats; /**< Stores statistics about the solving process. */
 	//@}
 
 	/*!
@@ -725,6 +735,8 @@ public:
 		assign_.requestPrefs();
 		assign_.setPref(v, which, to);
 	}
+	void resetPrefs() { assign_.resetPrefs(); }
+	void resetLearntActivities();
 	//! Returns the reason for p being true as a set of literals.
 	void reason(Literal p, LitVec& out) { assert(isTrue(p)); out.clear(); return assign_.reason(p.var()).reason(*this, p, out); }
 	//! Computes a new lbd for the antecedent of p given as the range [first, last).
@@ -739,14 +751,14 @@ public:
 	 *       conflict clause that is currently being derived.
 	 */
 	uint32 updateLearnt(Literal p, const Literal* first, const Literal* last, uint32 cLbd, bool forceUp = false) {
-		uint32 up = strategy.updateLbd;
+		uint32 up = strategy_.updateLbd;
 		if ((up || forceUp) && cLbd > 1) {
 			uint32 strict = (up == 2u);
 			uint32 p1     = (up == 3u);
 			uint32 nLbd   = (strict|p1) + countLevels(first, last, cLbd - strict);
 			if (nLbd < cLbd) { cLbd = nLbd - p1; }
 		}
-		if (strategy.bumpVarAct && isTrue(p)) { bumpAct_.push_back(WeightLiteral(p, cLbd)); }
+		if (strategy_.bumpVarAct && isTrue(p)) { bumpAct_.push_back(WeightLiteral(p, cLbd)); }
 		return cLbd;
 	}
 	//! Visitor function for antecedents used during conflict clause minimization.
@@ -779,6 +791,10 @@ public:
 	void markSeen(Var v)         { assert(validVar(v)); assign_.setSeen(v, 3u); }
 	void markSeen(Literal p)     { assert(validVar(p.var())); assign_.setSeen(p.var(), uint8(1+p.sign())); }
 	void clearSeen(Var v)        { assert(validVar(v)); assign_.clearSeen(v);  }
+	void destroyDB(ConstraintDB& db);
+	void setHeuristic(DecisionHeuristic* h);
+	DecisionHeuristic* releaseHeuristic(bool detach);
+	SolverStrategies&  strategies() { return strategy_; }
 	//@}
 private:
 	struct DLevel {
@@ -837,6 +853,7 @@ private:
 	bool    simplifySAT();
 	bool    unitPropagate();
 	void    cancelPropagation() { assign_.qReset(); post_.cancel(); }
+	uint32  undoUntilImpl(uint32 dl, bool sp);
 	void    undoLevel(bool sp);
 	uint32  analyzeConflict();
 	void    otfs(Antecedent& lhs, const Antecedent& rhs, Literal p, bool final);
@@ -853,7 +870,8 @@ private:
 	DBInfo  reduceSortInPlace(uint32 maxR, const CmpScore& cmp, bool onlyPartialSort);
 	ConstraintDB* allocUndo(Constraint* c);
 	SharedContext*    shared_;      // initialized by master thread - otherwise read-only!
-	Heuristic         heuristic_;   // active decision heuristic
+	SolverStrategies  strategy_;    // strategies used by this object
+	HeuristicPtr      heuristic_;   // active decision heuristic
 	CCMinRecursive*   ccMin_;       // additional data for supporting recursive strengthen
 	SmallClauseAlloc* smallAlloc_;  // allocator object for small clauses
 	ConstraintDB*     undoHead_;    // free list of undo DBs
@@ -895,7 +913,18 @@ void simplifyDB(Solver& s, C& db, bool shuffle) {
 	}
 	shrinkVecTo(db, j);
 }
+void destroyDB(Solver::ConstraintDB& db, Solver* s, bool detach);
 
+inline Literal Solver::defaultLit(Var v) const {
+	switch(strategy_.signDef) {
+		default: // 
+		case SolverStrategies::sign_atom: return Literal(v, !varInfo(v).has(VarInfo::BODY));
+		case SolverStrategies::sign_pos : return posLit(v);
+		case SolverStrategies::sign_neg : return negLit(v);
+		case SolverStrategies::sign_rnd : return Literal(v, rng.drand() < 0.5);
+		case SolverStrategies::sign_disj: return Literal(v, !varInfo(v).has(VarInfo::BODY|VarInfo::DISJ));
+	}
+}
 //@}
 
 /**
@@ -926,7 +955,10 @@ public:
 	 * The default-implementation is a noop.
 	 * \param s The solver in which this heuristic is used.
 	 */
-	virtual void endInit(Solver& /* s */) { }  
+	virtual void endInit(Solver& /* s */) { }
+
+	//! Called once if s switches to a different heuristic.
+	virtual void detach(Solver& /* s */) {}
 	
 	/*!
 	 * Called if the state of one or more variables changed. 
@@ -1032,17 +1064,7 @@ public:
 		else if (!prefs.empty()) {
 			return Literal(v, prefs.sign());
 		}
-		return defaultLiteral(s, v);
-	}
-	static Literal defaultLiteral(Solver& s, Var v) {
-		switch(s.strategy.signDef) {
-			default: // 
-			case SolverStrategies::sign_atom: return Literal(v, !s.varInfo(v).has(VarInfo::BODY));
-			case SolverStrategies::sign_no  : return posLit(v);
-			case SolverStrategies::sign_yes : return negLit(v);
-			case SolverStrategies::sign_rnd : return Literal(v, s.rng.drand() < 0.5);
-			case SolverStrategies::sign_disj: return Literal(v, !s.varInfo(v).has(VarInfo::BODY|VarInfo::DISJ));
-		}
+		return s.defaultLit(v);
 	}
 private:
 	DecisionHeuristic(const DecisionHeuristic&);
@@ -1053,7 +1075,7 @@ private:
 class SelectFirst : public DecisionHeuristic {
 public:
 	void updateVar(const Solver& /* s */, Var /* v */, uint32 /* n */) {}
-private:
+protected:
 	Literal doSelect(Solver& s);
 };
 

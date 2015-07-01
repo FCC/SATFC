@@ -42,7 +42,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="..\..\..\..\libclasp"
-				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;WITH_THREADS=1"
+				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;WITH_THREADS=1;WITH_TEST_CLI=1"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -179,6 +179,10 @@
 			</File>
 			<File
 				RelativePath="..\..\..\..\libclasp\tests\clause_test.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\..\..\libclasp\tests\cli_test.cpp"
 				>
 			</File>
 			<File

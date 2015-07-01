@@ -48,7 +48,7 @@ struct HeuParams {
 	HeuParams& score(uint32 x)   { resScore   = static_cast<uint8>(x);    return *this; }
 	uint8 initScore; // currently {no, moms}
 	uint8 otherScore;// currently {no, loop, all, heu}
-	uint8 resScore;  // currently {heu, set}
+	uint8 resScore;  // currently {heu, minSet, litSet, multiset}
 };
 
 //! A variant of the BerkMin decision heuristic from the BerkMin Sat-Solver
@@ -118,7 +118,7 @@ private:
 	typedef VarVec::iterator Pos;
 	
 	struct Order {
-		explicit Order(bool scoreHuang, bool scoreOnce) : decay(0), huang(scoreHuang), once(scoreOnce) {}
+		explicit Order(bool scoreHuang, uint8 rScore) : decay(0), huang(scoreHuang), resScore(rScore) {}
 		struct Compare {
 			explicit Compare(Order* o) : self(o) {}
 			bool operator()(Var v1, Var v2) const {
@@ -142,7 +142,7 @@ private:
 		Scores  score;        // For each var v score_[v] stores heuristic score of v
 		uint32  decay;        // "global" decay counter. Increased every decP_ decisions
 		bool    huang;        // Use Huang's scoring scheme (see: Jinbo Huang: "A Case for Simple SAT Solvers")
-		bool    once;
+		uint8   resScore;
 	private:
 		Order(const Order&);
 		Order& operator=(const Order&);
@@ -227,6 +227,7 @@ private:
 	VarPos  front_; // Current front-position in var list - reset on backtracking 
 	uint32  decay_; // "Global" decay counter. Increased every 512 decisions
 	TypeSet types_; // Type of nogoods to score during resolution
+	uint32  scType_;// Type of scoring
 	const LitVec::size_type MOVE_TO_FRONT;
 };
 
@@ -302,6 +303,7 @@ protected:
 	const double decay_;
 	double       inc_;
 	TypeSet      types_;
+	uint32       scType_;
 };
 typedef ClaspVsids_t<VsidsScore> ClaspVsids;
 
@@ -324,6 +326,28 @@ struct DomScore {
 	uint32 domKey; // index into dom-table if dom var	
 };
 
+//! Domain modification for one literal.
+struct DomEntry {
+	typedef SymbolTable::symbol_type SymbolType;
+	enum Modifier { mod_factor = 0, mod_level = 1, mod_sign = 2, mod_init = 3, mod_tf = 4 };
+	struct Cmp { bool operator()(const SymbolType& lhs, const SymbolType& rhs) const; };
+	struct Lookup : Cmp {
+		using Cmp::operator ();
+		bool operator()(const char* head, const SymbolType& domSym) const;
+		bool operator()(const SymbolType& domSym, const char* head) const;
+	};
+	static bool isDomEntry(const SymbolType& sym);
+	static bool isHeadOf(const char* head, const SymbolType& domSym);
+
+	void init(Literal lit, const SymbolType& domSym);
+	Literal lit;    // literal to which this modification applies
+	Literal cond;   // (optional) condition that must be true for this modification to apply
+	uint32  mod :30;// one of Modifier
+	uint32  pref: 2;// pref value (in case of mod_sign or mod_tf)
+	int16   value;  // value of modification
+	uint16  prio;   // (optional) priority of modification
+};
+
 //! A VSIDS heuristic supporting additional domain knowledge.
 /*!
  * \ingroup heuristic
@@ -336,44 +360,26 @@ class DomainHeuristic : public ClaspVsids_t<DomScore>
                       , private Constraint {
 public:
 	typedef ClaspVsids_t<DomScore> BaseType;
-	enum GlobalPreference { gpref_atom = 1, gpref_scc = 2, gpref_hcc = 4, gpref_disj = 8, gpref_min  = 16, gpref_show = 32 };
-	enum GlobalModifier   { gmod_level = 1, gmod_spos = 2, gmod_true = 3, gmod_sneg  = 4, gmod_false = 5, gmod_max_value };   
+	enum GlobalPreference { gpref_atom = 0, gpref_scc  = 1, gpref_hcc = 2, gpref_disj = 4, gpref_min  = 8, gpref_show = 16 };
+	enum GlobalModifier   { gmod_none  = 0, gmod_level = 1, gmod_spos = 2, gmod_true  = 3, gmod_sneg  = 4, gmod_false = 5  };
 	explicit DomainHeuristic(double d = 0.95, const HeuParams& params = HeuParams());
 	~DomainHeuristic();
+	void setDefaultMod(GlobalModifier mod, uint32 prefSet);
 	virtual void startInit(const Solver& s);
 	using BaseType::endInit;
+
+	const DomScore& score(Var v) const { return score_[v]; }
 protected:
 	// base interface
 	virtual Literal     doSelect(Solver& s);
 	virtual void        initScores(Solver& s, bool moms);
+	virtual void        detach(Solver& s);
 	// Constraint interface
 	virtual Constraint* cloneAttach(Solver&) { return 0; }
 	virtual void        reason(Solver&, Literal, LitVec&){}
 	virtual PropResult  propagate(Solver&, Literal, uint32&);
 	virtual void        undoLevel(Solver& s);
-	// own interface
-	void detach();
 private:
-	// parsing & init
-	typedef SymbolTable::symbol_type    SymbolType;
-	typedef PodVector<SymbolType>::type SymbolMap;
-	class  DomMinimize;
-	struct CmpSymbol;
-	struct DomEntry {
-		enum Modifier { mod_factor = 0, mod_level = 1, mod_sign = 2, mod_tf = 3, mod_init = 4 };
-		DomEntry(const SymbolType* s, Modifier m = mod_init) : sym(s), mod(m), val(0), prio(0), sign(0) {}
-		bool     parse(const char*& mod);
-		ValueRep signValue() const {
-			if (mod == mod_sign) { return ValueRep(val); }
-			if (mod == mod_tf)   { return ValueRep(value_true + sign); }
-			return value_free;
-		}
-		const SymbolType* sym;    // domain symbol
-		Modifier          mod;    // type of modification
-		int16             val;    // value of modification
-		uint16            prio:15;// (optional) priority of modification
-		uint16            sign: 1;// sign in case of mod_tf
-	};
 	struct DomAction {
 		uint32 var:29; // dom var to be modified
 		uint32 mod: 2; // modification to apply
@@ -383,10 +389,10 @@ private:
 		uint16 prio;   // prio of modification
 	};
 	struct DomPrio {
-		void    clear() { prio[0] = prio[1] = prio[2] = 0; }
+		void clear() { prio[0] = prio[1] = prio[2] = prio[3] = 0; }
 		uint16  operator[](unsigned i) const { return prio[i]; }
 		uint16& operator[](unsigned i)       { return prio[i]; }
-		uint16  prio[3];
+		uint16  prio[4];
 	};
 	struct Frame {
 		Frame(uint32 lev, uint32 h) : dl(lev), head(h) {}
@@ -396,25 +402,18 @@ private:
 	typedef PodVector<DomAction>::type ActionVec;
 	typedef PodVector<DomPrio>::type   PrioVec;
 	typedef PodVector<Frame>::type     FrameVec;
-	static const char* const domKey_s;
-	static const char* const domEnd_s;
-	static bool match(const char*& in, const char* match);
-	static bool matchDom(const char*& in, std::string& out);
-	static bool matchInt(const char*& in, int& out);
-	void        addAction(Solver& s, const SymbolType& pre, const DomEntry& e);
-	void        addAction(Solver& s, Literal x, uint32 modf, int16 levVal);
-	void        endInit(const DomEntry& e, const DomPrio& prio) { 
-		Var v = e.sym->lit.var();
-		if (e.val)                            { score_[v].value += e.val; }
-		if (score_[v].domKey < dPrios_.size()){ dPrios_[score_[v].domKey] = prio; }
-	}
-	void        pushUndo(Solver& s, uint32 actionId);
-	void        applyAction(Solver& s, DomAction& act, uint16& oldPrio);
-	Solver*   solver_;  // solver to which we are attached as a constraint
-	LitVec*   minLits_; // optional: domain literals to minimize
+	bool    addAction(Solver& s, const DomEntry& e, int16& init);
+	void    addDefAction(Solver& s, Literal x, int16 levVal, uint32 domKey);
+	void    pushUndo(Solver& s, uint32 actionId);
+	void    applyAction(Solver& s, DomAction& act, uint16& oldPrio);
+	uint16& prio(Var v, uint32 mod) { return prios_[score_[v].domKey][mod]; }
+	LitVec*   domMin_;  // optional: domain literals to minimize
+	PrioVec   prios_;   // priorities for domain vars
 	ActionVec actions_; // dynamic modifications
-	PrioVec   dPrios_;  // dynamic priorities
 	FrameVec  frames_;  // dynamic undo information
+	uint32    symSize_; // offset into symbol table
+	uint16    defMod_;  // default modifier
+	uint16    defPref_; // default preferences
 };
 }
 #endif

@@ -39,4 +39,5 @@ int main() {
 #if WITH_THREADS
 	RUN(example3);
 #endif
+	RUN(example4);
 }

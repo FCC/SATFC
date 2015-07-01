@@ -105,6 +105,7 @@ private:
 	bool parseRule(int ruleType);
 	bool parseSymbolTable();
 	bool parseComputeStatement();
+	bool parseExtStatement();
 	bool parseModels();
 	bool knownRuleType(int rt) { return rt > 0 && rt <= 8 && rt != 4 && rt != 7; }
 	Asp::LogicProgram* builder_;

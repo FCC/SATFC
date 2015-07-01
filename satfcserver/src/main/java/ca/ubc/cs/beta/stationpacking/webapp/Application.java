@@ -21,13 +21,8 @@
  */
 package ca.ubc.cs.beta.stationpacking.webapp;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.List;
-
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
@@ -37,17 +32,19 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 
 import redis.clients.jedis.JedisShardInfo;
+import ca.ubc.cs.beta.aeatk.misc.jcommander.JCommanderHelper;
 import ca.ubc.cs.beta.stationpacking.cache.CacheLocator;
 import ca.ubc.cs.beta.stationpacking.cache.ICacheLocator;
 import ca.ubc.cs.beta.stationpacking.cache.ISatisfiabilityCacheFactory;
 import ca.ubc.cs.beta.stationpacking.cache.RedisCacher;
 import ca.ubc.cs.beta.stationpacking.cache.SatisfiabilityCacheFactory;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.data.DataManager;
 import ca.ubc.cs.beta.stationpacking.utils.JSONUtils;
+import ca.ubc.cs.beta.stationpacking.webapp.parameters.SATFCServerParameters;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Charsets;
-import com.google.common.io.Files;
-import com.google.common.io.Resources;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by newmanne on 23/03/15.
@@ -56,17 +53,15 @@ import com.google.common.io.Resources;
 @SpringBootApplication
 public class Application {
 
+    private final static SATFCServerParameters parameters = new SATFCServerParameters();
+
     public static void main(String[] args) {
+        // Even though spring has its own parameter parsing, JComamnder gives tidier error messages
+        JCommanderHelper.parseCheckingForHelpAndVersion(args, parameters);
+        parameters.validate();
+        log.info("Using the following command line parameters " + System.lineSeparator() + parameters.toString());
         SpringApplication.run(Application.class, args);
     }
-
-    // These will be set by command line properties e.g. --redis.port=8080
-    @Value("${redis.host:localhost}")
-    String redisURL;
-    @Value("${redis.port:6379}")
-    int redisPort;
-    @Value("${stations.file:}")
-    String stationsFile;
 
     @Bean
     MappingJackson2HttpMessageConverter mappingJackson2HttpMessageConverter() {
@@ -78,8 +73,9 @@ public class Application {
 
     @Bean
     RedisConnectionFactory redisConnectionFactory() {
-        log.info("Using the following redis information: host " + redisURL + ", port: " + redisPort);
-        return new JedisConnectionFactory(new JedisShardInfo(redisURL, redisPort));
+        final SATFCServerParameters satfcServerParameters = satfcServerParameters();
+        final int timeout = (int) TimeUnit.SECONDS.toMillis(60);
+        return new JedisConnectionFactory(new JedisShardInfo(satfcServerParameters.getRedisURL(), satfcServerParameters.getRedisPort(), timeout));
     }
 
     @Bean
@@ -94,25 +90,21 @@ public class Application {
 
     @Bean
     ICacheLocator containmentCache() {
-        return new CacheLocator(cacher(), satisfiabilityCacheFactory());
+        return new CacheLocator(satisfiabilityCacheFactory());
     }
 
     @Bean
     ISatisfiabilityCacheFactory satisfiabilityCacheFactory() {
-        final List<String> stationIds;
-        // By default, just load the universe of stations from our internal file; if the user specified somewhere else, load from there
-        try {
-            if (stationsFile.isEmpty()) {
-                log.info("Reading station universe file from internal resources");
-                stationIds = Resources.readLines(Resources.getResource("universe.txt"), Charsets.UTF_8);
-            } else {
-                log.info("Reading station universe file from " + stationsFile);
-                stationIds = Files.readLines(new File(stationsFile), Charsets.UTF_8);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("Couldn't load stations file " + stationsFile + " that lists what stations are in the universe");
-        }
-        return new SatisfiabilityCacheFactory(stationIds);
+        return new SatisfiabilityCacheFactory();
+    }
+
+    @Bean
+    DataManager dataManager() {
+        return new DataManager();
+    }
+
+    @Bean SATFCServerParameters satfcServerParameters() {
+        return parameters;
     }
 
 }

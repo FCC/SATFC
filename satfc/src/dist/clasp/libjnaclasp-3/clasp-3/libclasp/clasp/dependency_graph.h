@@ -73,8 +73,9 @@ public:
 	public:
 		explicit NonHcfComponent(const SharedDependencyGraph& dep, SharedContext& generator, uint32 scc, const VarVec& atoms, const VarVec& bodies);
 		~NonHcfComponent();
-		void assumptionsFromAssignment(const Solver& generator, LitVec& assume) const;
+		void assumptionsFromAssignment(const Solver& generator, LitVec& assumptionsOut) const;
 		bool test(uint32 scc, const Solver& generator, const LitVec& assumptions, VarVec& unfoundedOut)  const;
+		bool simplify(uint32 scc, const Solver& generator) const;
 		const SharedContext& ctx() const { return *prg_; }
 		void update(const SharedContext& generator);
 	private:
@@ -235,6 +236,9 @@ public:
 	 */
 	void addSccs(LogicProgram& prg, const AtomList& sccAtoms, const NonHcfSet& nonHcfs);
 
+	//! Removes inactive non-hcfs.
+	void simplify(const Solver& s);
+
 	//! Number of atoms in graph.
 	uint32 numAtoms() const { return (uint32)atoms_.size();  }
 	//! Number of bodies in graph.
@@ -289,6 +293,7 @@ private:
 	AtomVec        atoms_;
 	BodyVec        bodies_;
 	ComponentMap   components_;
+	uint32         seenComponents_;
 	Configuration* config_;
 };
 

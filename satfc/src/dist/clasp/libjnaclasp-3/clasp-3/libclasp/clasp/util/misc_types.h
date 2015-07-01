@@ -80,7 +80,12 @@ struct ModelEvent : SolveEvent<ModelEvent> {
 
 template <class ToType, class EvType> const ToType* event_cast(const EvType& ev) { return ev.id == ToType::id_s ? static_cast<const ToType*>(&ev) : 0; }
 
-class EventHandler {
+class ModelHandler {
+public:
+	virtual ~ModelHandler() {}
+	virtual bool onModel(const Solver&, const Model&) = 0;
+};
+class EventHandler : public ModelHandler {
 public:	
 	explicit EventHandler(Event::Verbosity verbosity = Event::verbosity_quiet) {
 		for (uint32 i = 0; i != sizeof(verbosity_)/sizeof(verbosity_[0]); ++i) { verbosity_[i] = static_cast<uint8>(verbosity); }
@@ -104,17 +109,6 @@ private:
  * \defgroup misc Miscellaneous and Internal Stuff not specific to clasp.
  */
 //@{
-
-inline unsigned hashId(unsigned key) {  
-	key = ~key + (key << 15);
-	key ^= (key >> 11);
-	key += (key << 3);
-	key ^= (key >> 5);
-	key += (key << 10);
-	key ^= (key >> 16);
-	return key;
-}
-
 // Computes n choose k.
 inline uint64 choose(unsigned n, unsigned k) {
 	if (k == 0) return 1;

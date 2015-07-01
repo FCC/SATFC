@@ -35,4 +35,7 @@ public class SATFCCachingParameters extends AbstractOptions {
     @Parameter(names = {"--serverURL", "-SERVER-URL"}, description = "base URL for the SATFC server", required = false)
     public String serverURL;
 
+    @Parameter(names = "--extendedCacheProblem", description = "solve extended cache problem in redis queue", required = false)
+    public boolean extendedCacheProblem = false;
+
 }

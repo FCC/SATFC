@@ -104,8 +104,9 @@ bool SatBuilder::markAssigned() {
 void SatBuilder::prepareProblem(uint32 numVars, wsum_t cw, uint32 clauseHint) {
 	CLASP_ASSERT_CONTRACT_MSG(ctx(), "startProgram() not called!");
 	ctx()->resizeVars(numVars + 1);
-	ctx()->symbolTable().startInit();
-	ctx()->symbolTable().endInit(SymbolTable::map_direct, numVars+1);
+	ctx()->symbolTable().startInit(SymbolTable::map_direct);
+	ctx()->symbolTable().add(numVars+1);
+	ctx()->symbolTable().endInit();
 	ctx()->startAddConstraints(std::min(clauseHint, uint32(10000)));
 	varState_.resize(numVars + 1);
 	vars_       = ctx()->numVars();
@@ -192,8 +193,9 @@ void PBBuilder::prepareProblem(uint32 numVars, uint32 numProd, uint32 numSoft, u
 	nextVar_      = numVars;
 	maxVar_       = maxVar;
 	ctx()->resizeVars(maxVar + 1);
-	ctx()->symbolTable().startInit();
-	ctx()->symbolTable().endInit(SymbolTable::map_direct, numVars+1);
+	ctx()->symbolTable().startInit(SymbolTable::map_direct);
+	ctx()->symbolTable().add(numVars+1);
+	ctx()->symbolTable().endInit();
 	ctx()->startAddConstraints(numCons);
 }
 uint32 PBBuilder::getNextVar() {

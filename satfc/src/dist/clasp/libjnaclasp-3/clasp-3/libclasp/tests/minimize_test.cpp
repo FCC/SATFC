@@ -215,29 +215,35 @@ public:
 		CPPUNIT_ASSERT(newMin->shared()->adjust(0) == 1 && newMin->shared()->adjust(1) == 0);
 	}
 	void testNegativeLowerInit() {
-		WeightLitVec aMin, bMin;
+		WeightLitVec aMin, bMin, cMin;
 		aMin.push_back( WeightLiteral(a, 1) );
 		aMin.push_back( WeightLiteral(b, 1) );
 		bMin.push_back( WeightLiteral(~a, 1) );
 		bMin.push_back( WeightLiteral(~b, 1) );
+		cMin.push_back( WeightLiteral(a, 1) );
+		cMin.push_back( WeightLiteral(b, 1) );
 		data = MinimizeBuilder()
 			.addRule(aMin)
 			.addRule(bMin)
+			.addRule(cMin)
 			.build(ctx);
 		CPPUNIT_ASSERT(data->lower(0) == 0);
 		CPPUNIT_ASSERT(data->lower(1) == -2);
+		CPPUNIT_ASSERT(data->lower(2) == 0);
 	}
 	void testNegativeLower() {
 		ctx.addBinary(a, b);
-		WeightLitVec aMin, bMin;
+		WeightLitVec aMin, bMin, cMin;
 		aMin.push_back( WeightLiteral(a, 1) );
 		aMin.push_back( WeightLiteral(b, 1) );
 		bMin.push_back( WeightLiteral(~a, 1) );
+		cMin.push_back( WeightLiteral(a, 1) );
 		data = MinimizeBuilder()
 			.addRule(aMin)
 			.addRule(bMin)
+			.addRule(cMin)
 			.build(ctx);
-		newMin = createMin(ctx, *ctx.master(), data, SolverStrategies::opt_hier);
+		newMin = createMin(ctx, *ctx.master(), data, MinimizeMode_t::bb_step_hier);
 		newMin->integrateBound(*ctx.master());
 		
 		Solver& s = *ctx.master();
@@ -368,7 +374,9 @@ public:
 		Solver& solver = *ctx.master();
 		CPPUNIT_ASSERT_EQUAL(true, solver.assume(a) && solver.propagate());
 		CPPUNIT_ASSERT_EQUAL(true, solver.assume(c) && solver.propagate());
+		CPPUNIT_ASSERT(newMin->shared()->optimum(0) == SharedMinimizeData::maxBound());
 		newMin->commitUpperBound(solver);
+		CPPUNIT_ASSERT(newMin->shared()->optimum(0) != SharedMinimizeData::maxBound());
 		solver.undoUntil(0);
 		CPPUNIT_ASSERT_EQUAL(true, newMin->integrateBound(solver));
 		CPPUNIT_ASSERT_EQUAL(true, solver.assume(d) && solver.propagate());
@@ -388,7 +396,10 @@ public:
 			.addRule(aMin)
 			.addRule(bMin)
 			, MinimizeMode_t::enumerate, bound, 2);
-
+		
+		CPPUNIT_ASSERT(newMin->shared()->optimum(0) == SharedMinimizeData::maxBound());
+		CPPUNIT_ASSERT(newMin->shared()->sum(0) == SharedMinimizeData::maxBound());
+		CPPUNIT_ASSERT(newMin->shared()->upper(0) == 1);
 		Solver& solver = *ctx.master();
 		CPPUNIT_ASSERT_EQUAL(true, solver.propagate());
 		
@@ -609,7 +620,7 @@ public:
 		data   = MinimizeBuilder().addRule(min).build(ctx);
 		wsum_t bound = 2;
 		Solver& s = *ctx.master();
-		newMin = createMin(ctx, s, data, SolverStrategies::opt_dec);
+		newMin = createMin(ctx, s, data, MinimizeMode_t::bb_step_dec);
 		data->setMode(MinimizeMode_t::optimize, &bound, 1);
 		s.pushRoot(s.tagLiteral());
 		s.pushRoot(a);
@@ -789,7 +800,7 @@ public:
 			.build(ctx);
 		wsum_t bound[2] = {wsum_t(1),wsum_t(1)};
 		data->setMode(MinimizeMode_t::optimize, bound, 2);
-		newMin = createMin(ctx, *ctx.master(), data, SolverStrategies::opt_hier);
+		newMin = createMin(ctx, *ctx.master(), data, MinimizeMode_t::bb_step_hier);
 		newMin->integrateBound(*ctx.master());
 		CPPUNIT_ASSERT(ctx.master()->value(a.var()) == value_free);
 		ctx.master()->assume(a) && ctx.master()->propagate();
@@ -809,7 +820,7 @@ public:
 			.addRule(aMin)
 			.addRule(bMin)
 			.build(ctx);
-		newMin = static_cast<DefaultMinimize*>(data->attach(*ctx.master()));
+		newMin = static_cast<DefaultMinimize*>(data->attach(*ctx.master(), MinimizeMode_t::opt_bb));
 		SumVec opt;
 		opt.push_back(1);
 		opt.push_back(1);
@@ -884,7 +895,7 @@ public:
 		min1.push_back( WeightLiteral(c, 1) );
 		Solver& solver = *ctx.master();
 		data   = MinimizeBuilder().addRule(min1).build(ctx);
-		newMin = createMin(ctx, solver, data, SolverStrategies::opt_inc);
+		newMin = createMin(ctx, solver, data, MinimizeMode_t::bb_step_inc);
 		Literal minAssume = posLit(solver.pushTagVar(true));
 		SumVec opt(1, 0);
 		setOptimum(solver, opt, false);
@@ -914,7 +925,7 @@ public:
 		builder.addRule(min);
 		Solver& solver = *ctx.master();
 		data   = builder.build(ctx);
-		newMin = createMin(ctx, solver, data, SolverStrategies::opt_hier);
+		newMin = createMin(ctx, solver, data, MinimizeMode_t::bb_step_hier);
 		newMin->integrateBound(solver);
 		solver.assume(a); solver.propagate();
 		solver.assume(b); solver.propagate();
@@ -942,7 +953,7 @@ public:
 		ctx.addBinary(a, ~b);
 		Solver& solver = *ctx.master();
 		data   = builder.build(ctx);
-		newMin = createMin(ctx, solver, data, SolverStrategies::opt_hier);
+		newMin = createMin(ctx, solver, data, MinimizeMode_t::bb_step_hier);
 		newMin->integrateBound(solver);
 		solver.assume(a);
 		solver.propagate();
@@ -984,9 +995,9 @@ private:
 		}
 		return true;
 	}
-	DefaultMinimize* createMin(SharedContext& ctx, Solver& s, SharedMinimizeData* data, SolverStrategies::OptStrategy str = SolverStrategies::opt_def) {
+	DefaultMinimize* createMin(SharedContext& ctx, Solver& s, SharedMinimizeData* data, MinimizeMode_t::BBOption param = MinimizeMode_t::bb_step_def) {
 		ctx.endInit();
-		return static_cast<DefaultMinimize*>(data->attach(s, str));
+		return static_cast<DefaultMinimize*>(data->attach(s, MinimizeMode_t::opt_bb, param));
 	}	
 	DefaultMinimize* buildAndAttach(MinimizeBuilder& x, MinimizeMode m = MinimizeMode_t::optimize, const wsum_t* b = 0, uint32 bs = 0) {
 		DefaultMinimize* con = 0;
@@ -1029,7 +1040,7 @@ public:
 		ctx.startAddConstraints();
 		data = b.build(ctx);
 		ctx.endInit();
-		min = data->attach(*ctx.master(), SolverStrategies::opt_unsat_pre);
+		min = data->attach(*ctx.master(), MinimizeMode_t::opt_usc);
 		CPPUNIT_ASSERT(min->integrate(*ctx.master()));
 	}
 	void testEnumerate() {
@@ -1047,7 +1058,7 @@ public:
 		ctx.endInit();
 		wsum_t bound = 1;
 		data->setMode(MinimizeMode_t::enumerate, &bound, 1);
-		min = data->attach(*ctx.master(), SolverStrategies::opt_unsat_pre);
+		min = data->attach(*ctx.master(), MinimizeMode_t::opt_usc);
 		CPPUNIT_ASSERT(min->integrate(*ctx.master()));
 		
 		ctx.master()->assume(posLit(a));
@@ -1067,7 +1078,7 @@ public:
 		data = builder.build(ctx);
 		ctx.endInit();
 		data->setMode(MinimizeMode_t::optimize);
-		min = data->attach(s, SolverStrategies::opt_unsat_pre);
+		min = data->attach(s, MinimizeMode_t::opt_usc, MinimizeMode_t::usc_preprocess);
 		BasicSolve solve(s);
 		LitVec gp;
 		while (min->integrate(s) || min->handleUnsat(s, true, gp)) {
@@ -1090,7 +1101,7 @@ public:
 		data = builder.build(ctx);
 		ctx.endInit();
 		data->setMode(MinimizeMode_t::optimize);
-		min = data->attach(s, SolverStrategies::opt_unsat_pre);
+		min = data->attach(s, MinimizeMode_t::opt_usc, MinimizeMode_t::usc_preprocess);
 		BasicSolve solve(s);
 		LitVec gp; gp.push_back(posLit(a));
 		solve.assume(gp);
@@ -1110,12 +1121,12 @@ public:
 		lits.push_back(WeightLiteral(posLit(ctx.addVar(Var_t::atom_var)), 1));
 		Solver& s1 = ctx.startAddConstraints();
 		data       = MinimizeBuilder().addRule(lits).build(ctx);
-		ctx.setConcurrency(2);
+		ctx.setConcurrency(2, SharedContext::mode_reserve);
 		ctx.endInit(true);
 		Solver& s2 = *ctx.solver(1);
 		data->setMode(MinimizeMode_t::enumOpt);
-		MinimizeConstraint* m1 = data->attach(s1, SolverStrategies::opt_unsat_pre);
-		MinimizeConstraint* m2 = data->attach(s2, SolverStrategies::opt_unsat_pre);
+		MinimizeConstraint* m1 = data->attach(s1, MinimizeMode_t::opt_usc, MinimizeMode_t::usc_preprocess);
+		MinimizeConstraint* m2 = data->attach(s2, MinimizeMode_t::opt_usc, MinimizeMode_t::usc_preprocess);
 		s1.setEnumerationConstraint(m1);
 		s2.setEnumerationConstraint(m2);
 		BasicSolve solve(s1);
@@ -1160,7 +1171,7 @@ public:
 			.build(ctx);
 		ctx.endInit();
 		data->setMode(MinimizeMode_t::optimize);
-		min = data->attach(s, SolverStrategies::opt_unsat_pre);
+		min = data->attach(s, MinimizeMode_t::opt_usc, MinimizeMode_t::usc_preprocess);
 		
 		LitVec ignore;
 		while (!min->integrate(*ctx.master()) && min->handleUnsat(s, true, ignore)) { ; }

@@ -24,20 +24,10 @@ package ca.ubc.cs.beta.stationpacking.solvers;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import au.com.bytecode.opencsv.CSVReader;
-import ca.ubc.cs.beta.stationpacking.execution.Converter;
-import ca.ubc.cs.beta.stationpacking.facade.SATFCFacadeBuilder;
-import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.SATFCParallelSolverBundle;
-import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.SATFCSolverBundle;
-import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
-import com.google.common.base.Splitter;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.io.Files;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -47,10 +37,17 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.ChannelSpecificCon
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.DomainStationManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
+import ca.ubc.cs.beta.stationpacking.execution.Converter;
+import ca.ubc.cs.beta.stationpacking.facade.SATFCFacadeBuilder;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBundle;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.SATFCParallelSolverBundle;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.SATFCSolverBundle;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.cputime.CPUTimeTerminationCriterion;
 
+import com.google.common.base.Splitter;
+import com.google.common.io.Files;
 import com.google.common.io.Resources;
 
 /**

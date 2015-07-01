@@ -70,7 +70,7 @@ Lookahead::Lookahead(const Params& p)
 	, last_(head_id)    // circular list
 	, pos_(head_id)     // lookahead start pos
 	, top_(uint32(-2))
-	, limit_(0) {
+	, limit_(p.lim) {
 	head()->next = head_id;
 	undo()->next = UINT32_MAX;
 	if (p.type != hybrid_lookahead) {
@@ -87,16 +87,17 @@ Lookahead::Lookahead(const Params& p)
 	score.nant = p.restrictNant;
 }
 
-Lookahead::~Lookahead() {  }
+Lookahead::~Lookahead() {}
 
-void Lookahead::destroy(Solver* s, bool detach) {
-	if (s && detach) {
-		s->removePost(this);
-		while (saved_.size()>1) {
-			s->removeUndoWatch(uint32(saved_.size()-1), this);
-			saved_.pop_back();
-		}
+void Lookahead::detach(Solver& s) {
+	s.removePost(this);
+	while (saved_.size()>1) {
+		s.removeUndoWatch(uint32(saved_.size()-1), this);
+		saved_.pop_back();
 	}
+}
+void Lookahead::destroy(Solver* s, bool detach) {
+	if (s && detach) { Lookahead::detach(*s); }
 	PostPropagator::destroy(s, detach);
 }
 
@@ -233,7 +234,9 @@ bool Lookahead::propagateFixpoint(Solver& s, PostPropagator* ctx) {
 		top_ = s.numAssignedVars();
 		LitVec().swap(imps_);
 	}
-	if (!ctx && limit_ && !limit_->notify(s)) { Lookahead::destroy(&s, true); }
+	if (!ctx && limit_ && --limit_ == 0) { 
+		this->destroy(&s, true);
+	}
 	return ok;
 }
 
@@ -335,63 +338,19 @@ Literal Lookahead::heuristic(Solver& s) {
 	}
 	return choice;
 }
-void Lookahead::setLimit(UnitHeuristic* h) { limit_ = h; }
 /////////////////////////////////////////////////////////////////////////////////////////
 // Lookahead heuristic
 /////////////////////////////////////////////////////////////////////////////////////////
-UnitHeuristic::UnitHeuristic(const Lookahead::Params& p)
-	: look_(new Lookahead(p))
-	, solver_(0) {
+UnitHeuristic::UnitHeuristic() { }
+void UnitHeuristic::endInit(Solver& s) {
+	Lookahead* look = static_cast<Lookahead*>(s.getPost(Lookahead::priority_reserved_look));
+	if (!look) { s.addPost(new Lookahead(Lookahead::atom_lookahead)); }
 }
-
-UnitHeuristic::~UnitHeuristic() {
-	if (solver_) {
-		look_->destroy(solver_, true);
-		look_.release();
-	}
-}
-
-void UnitHeuristic::endInit(Solver& s) { 
-	assert(s.decisionLevel() == 0);
-	if (look_.is_owner()) { 
-		s.addPost(look_.release());
-		solver_ = &s;
-	}
-}
-
 Literal UnitHeuristic::doSelect(Solver& s) {
-	Literal x = look_->heuristic(s);
-	if (x != posLit(0) || s.numFreeVars() == 0) { return x; }
-	// No candidates. This can happen if the problem 
-	// contains choice rules and lookahead is not atom-based.
-	// Add remaining free vars to lookahead so that we can
-	// make an informed decision.
-	VarType types = look_->score.types;
-	uint32  added = 0;
-	for (Var v = 1, end = s.numProblemVars()+1; v != end; ++v) {
-		if ((s.value(v) == value_free || s.level(v) > 0) && (s.varInfo(v).type() & types) == 0) {
-			look_->append(Literal(v, s.varInfo(v).preferredSign()), true);
-			++added;
-		}
-	}
-	assert(added);
-	look_->score.clearDeps();
-	look_->score.types = Var_t::atom_body_var;
-	return s.propagate()
-		? look_->heuristic(s)
-		: negLit(0);
-}
-
-void UnitHeuristic::updateVar(const Solver& s, Var v, uint32 n) {
-	if (s.validVar(v) && !s.auxVar(v)) {
-		growVecTo(look_->score.score, v + n);
-		for (uint32 end = v + n; v != end; ++v) {
-			VarInfo vd = s.varInfo(v);
-			if ((vd.type() & look_->score.types) != 0) {
-				look_->append(Literal(v, vd.preferredSign()), vd.type() == Var_t::atom_body_var || look_->score.types != Var_t::atom_body_var);
-			}
-		}
-	}
+	Lookahead* look = static_cast<Lookahead*>(s.getPost(Lookahead::priority_reserved_look));
+	Literal x       = look ? look->heuristic(s) : posLit(0);
+	if (x != posLit(0)) { return x; }
+	return SelectFirst::doSelect(s);
 }
 /////////////////////////////////////////////////////////////////////////////////////////
 // Restricted Lookahead heuristic - lookahead and heuristic for a limited number of ops
@@ -400,49 +359,35 @@ class Restricted : public UnitHeuristic {
 public:
 	typedef LitVec::size_type size_t;
 	typedef ConstraintType    con_t;
-	Restricted(const Lookahead::Params& p, uint32 numOps, DecisionHeuristic* other)
-		: UnitHeuristic(p)
-		, other_(other)
-		, numOps_(numOps) {
-	}
-	void restoreOther(Solver& s) {
-		solver_ = 0;
-		s.heuristic().reset(other_.release());
-	}
-	// base interface
-	bool notify(Solver& s) {
-		if (--numOps_) { return UnitHeuristic::notify(s); }
-		look_->setLimit(0);
-		restoreOther(s);
-		return false;
-	}
-	void updateVar(const Solver& s, Var v, uint32 n) { other_->updateVar(s, v, n); UnitHeuristic::updateVar(s, v, n); }
-	void endInit(Solver& s) {
-		UnitHeuristic::endInit(s);
-		other_->endInit(s);
-		if (numOps_ > 0){ look_->setLimit(this); }
-		else            { restoreOther(s);       }
+	Restricted(DecisionHeuristic* other)
+		: UnitHeuristic()
+		, other_(other) {
 	}
 	Literal doSelect(Solver& s) {
-		return s.value(look_->score.best) == value_free
-			? UnitHeuristic::doSelect(s)
-			: other_->doSelect(s);
+		Lookahead* look = static_cast<Lookahead*>(s.getPost(Lookahead::priority_reserved_look));
+		if (look && !look->hasLimit()) { look = 0; }
+		Literal x = look ? look->heuristic(s) : posLit(0);
+		if (x == posLit(0)) { x = other_->doSelect(s); }
+		if (!look)          { s.setHeuristic(other_.release()); }
+		return x;
 	}
 	// heuristic interface - forward to other
 	void startInit(const Solver& s)           { other_->startInit(s); }
+	void endInit(Solver& s)                   { other_->endInit(s); }
+	void detach(Solver& s)                    { if (other_.is_owner()) { other_->detach(s); } }
 	void simplify(const Solver& s, size_t st) { other_->simplify(s, st); }
 	void undoUntil(const Solver& s, size_t st){ other_->undoUntil(s, st); }
 	void updateReason(const Solver& s, const LitVec& x, Literal r)            { other_->updateReason(s, x, r); }
 	bool bump(const Solver& s, const WeightLitVec& w, double d)               { return other_->bump(s, w, d); }
 	void newConstraint(const Solver& s, const Literal* p, size_t sz, con_t t) { other_->newConstraint(s, p, sz, t); } 
+	void updateVar(const Solver& s, Var v, uint32 n)                          { other_->updateVar(s, v, n); }
 	Literal selectRange(Solver& s, const Literal* f, const Literal* l)        { return other_->selectRange(s, f, l); }
 private:
 	typedef SingleOwnerPtr<DecisionHeuristic> HeuPtr;
 	HeuPtr other_;
-	uint32 numOps_;
 };
 
-UnitHeuristic* UnitHeuristic::restricted(const Lookahead::Params& p, uint32 numOps, DecisionHeuristic* other) {
-	return new Restricted(p, numOps, other);
+UnitHeuristic* UnitHeuristic::restricted(DecisionHeuristic* other) {
+	return new Restricted(other);
 }
 }

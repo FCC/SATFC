@@ -21,6 +21,8 @@
  */
 package ca.ubc.cs.beta.stationpacking.execution.parameters;
 
+import java.util.concurrent.TimeUnit;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +51,7 @@ public class RedisParameters extends AbstractOptions {
         Logger log = LoggerFactory.getLogger(RedisParameters.class);
         if (jedis == null) {
             log.info("Making a redis connection to {}:{}", fRedisHost, fRedisPort);
-            jedis = new Jedis(fRedisHost, fRedisPort);
+            jedis = new Jedis(fRedisHost, fRedisPort, (int) TimeUnit.SECONDS.toMillis(60));
         }
         return jedis;
     }

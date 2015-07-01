@@ -660,7 +660,6 @@ public:
 	void testCreateSat() {
 		ctx.endInit(true);
 		WeightLitVec lits = makeWeightLits();
-		uint32 sz = lits.size() + 1;
 		Solver& s = *ctx.master();
 		
 		s.force(lits[0].first);

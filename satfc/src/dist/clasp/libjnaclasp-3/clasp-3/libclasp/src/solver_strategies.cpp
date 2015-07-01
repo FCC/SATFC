@@ -19,7 +19,6 @@
 //
 #include <clasp/solver_strategies.h>
 #include <clasp/solver.h>
-#include <clasp/unfounded_check.h>
 #include <clasp/heuristics.h>
 #include <clasp/lookahead.h>
 #include <cmath>
@@ -32,9 +31,8 @@ SolverStrategies::SolverStrategies() {
 	static_assert(sizeof(SolverStrategies) == sizeof(X), "Unsupported Padding");
 	std::memset(this, 0, sizeof(SolverStrategies));
 	ccMinAntes = all_antes;
-	initWatches= 1;
+	initWatches= SolverStrategies::watch_rand;
 	search     = use_learning;
-	loadCfg    = 1;
 }
 void SolverStrategies::prepare() {
 	if (search == SolverStrategies::no_learning) {
@@ -62,10 +60,13 @@ uint32 SolverParams::prepare() {
 		res  |= 1;
 	}
 	if (heuId == Heuristic_t::heu_unit) {
-		if (lookType == Lookahead::no_lookahead || lookOps != 0) { res |= 2; }
-		heuParam = lookType == Lookahead::no_lookahead ? Lookahead::atom_lookahead : static_cast<Lookahead::Type>(lookType);
-		lookType = Lookahead::no_lookahead;
-		lookOps  = 0;
+		if (!Lookahead::isType(lookType)) { res |= 2; lookType = Lookahead::atom_lookahead; }
+		lookOps = 0;
+	}
+	if (heuId != Heuristic_t::heu_domain && (domPref || domMod)) {
+		res |= 4;
+		domPref= 0;
+		domMod = 0;
 	}
 	SolverStrategies::prepare();
 	return res;
@@ -73,9 +74,9 @@ uint32 SolverParams::prepare() {
 /////////////////////////////////////////////////////////////////////////////////////////
 // ScheduleStrategy
 /////////////////////////////////////////////////////////////////////////////////////////
-double growR(uint32 idx, double g)       { return pow(g, (double)idx); }
-double addR(uint32 idx, double a)        { return a * idx; }
-uint32 lubyR(uint32 idx)                 {
+double growR(uint32 idx, double g) { return pow(g, (double)idx); }
+double addR(uint32 idx, double a)  { return a * idx; }
+uint32 lubyR(uint32 idx)           {
 	uint32 i = idx + 1;
 	while ((i & (i+1)) != 0) {
 		i    -= ((1u << log2(i)) - 1);
@@ -228,19 +229,18 @@ bool SolveParams::randomize(Solver& s) const {
 // Configurations
 /////////////////////////////////////////////////////////////////////////////////////////
 Configuration::~Configuration() {}
-bool Configuration::addPost(Solver& s) const {
-	if (s.sharedContext() && s.sharedContext()->sccGraph.get() && !s.getPost(PostPropagator::priority_reserved_ufs)) {
-		return s.addPost(new DefaultUnfoundedCheck());
-	}
-	return true;
-}
 bool UserConfiguration::addPost(Solver& s) const {
 	const SolverOpts& x = solver(s.id());
 	bool  ok            = true;
-	if (x.lookType != Lookahead::no_lookahead && x.lookOps == 0 && !s.getPost(PostPropagator::priority_reserved_look)) {
-		ok = s.addPost(new Lookahead(static_cast<Lookahead::Type>(x.lookType)));
+	if (x.lookType != Lookahead::no_lookahead) {
+		PostPropagator* pp = s.getPost(PostPropagator::priority_reserved_look);
+		if (pp) { pp->destroy(&s, true); }
+		Lookahead::Params p(static_cast<Lookahead::Type>(x.lookType));
+		p.nant(x.unitNant != 0);
+		p.limit(x.lookOps);
+		ok = s.addPost(new Lookahead(p));
 	}
-	return ok && Configuration::addPost(s);
+	return ok;
 }
 BasicSatConfig::BasicSatConfig() {
 	solver_.push_back(SolverParams());
@@ -254,6 +254,7 @@ void BasicSatConfig::prepare(SharedContext& ctx) {
 	}
 	if ((warn & 1) != 0) { ctx.report(warning(Event::subsystem_facade, "Selected heuristic requires lookback strategy!")); }
 	if ((warn & 2) != 0) { ctx.report(warning(Event::subsystem_facade, "Heuristic 'Unit' implies lookahead. Using atom.")); }
+	if ((warn & 4) != 0) { ctx.report(warning(Event::subsystem_facade, "Domain options require heuristic 'Domain'!")); }
 }
 DecisionHeuristic* BasicSatConfig::heuristic(uint32 i)  const {
 	return Heuristic_t::create(BasicSatConfig::solver(i));
@@ -281,9 +282,7 @@ void BasicSatConfig::resize(uint32 solver, uint32 search) {
 // Heuristics
 /////////////////////////////////////////////////////////////////////////////////////////
 DecisionHeuristic* Heuristic_t::create(const SolverParams& str) {
-	if (str.search != SolverStrategies::use_learning && Heuristic_t::isLookback(str.heuId)) {
-		throw std::logic_error("Selected heuristic requires lookback!");
-	}
+	CLASP_FAIL_IF(str.search != SolverStrategies::use_learning && Heuristic_t::isLookback(str.heuId), "Selected heuristic requires lookback!");
 	typedef DecisionHeuristic DH;
 	uint32 heuParam = str.heuParam;
 	uint32 id       = str.heuId;
@@ -291,23 +290,23 @@ DecisionHeuristic* Heuristic_t::create(const SolverParams& str) {
 	HeuParams params;
 	params.other(str.heuOther);
 	params.init(str.heuMoms);
-	params.score(str.berkOnce);
+	params.score(str.heuScore);
 	if      (id == heu_default) { id  = str.search == SolverStrategies::use_learning ? heu_berkmin : heu_none; }
 	if      (id == heu_berkmin) { heu = new ClaspBerkmin(heuParam, params, str.berkHuang != 0); }
 	else if (id == heu_vmtf)    { heu = new ClaspVmtf(heuParam == 0 ? 8 : heuParam, params);    }
-	else if (id == heu_unit)    { 
-		Lookahead::Params p(Lookahead::isType(heuParam) ? static_cast<Lookahead::Type>(heuParam) : Lookahead::atom_lookahead);
-		heu = new UnitHeuristic(p.nant(str.unitNant!=0)); 
-	}
+	else if (id == heu_unit)    { heu = new UnitHeuristic(); }
 	else if (id == heu_none)    { heu = new SelectFirst(); }
 	else if (id == heu_vsids || id == heu_domain) {
 		double m = heuParam == 0 ? 0.95 : heuParam;
 		while (m > 1.0) { m /= 10; } 
 		heu = id == heu_vsids ? (DH*)new ClaspVsids(m, params) : (DH*)new DomainHeuristic(m, params);
+		if (id == heu_domain) {
+			static_cast<DomainHeuristic*>(heu)->setDefaultMod(static_cast<DomainHeuristic::GlobalModifier>(str.domMod), str.domPref);
+		}
 	}
 	else { throw std::logic_error("Unknown heuristic id!"); }
 	if (str.lookType != Lookahead::no_lookahead && str.lookOps > 0 && id != heu_unit) {
-		heu = UnitHeuristic::restricted(Lookahead::Params(static_cast<Lookahead::Type>(str.lookType)).nant(str.unitNant != 0), str.lookOps, heu);
+		heu = UnitHeuristic::restricted(heu);
 	}
 	return heu;
 }

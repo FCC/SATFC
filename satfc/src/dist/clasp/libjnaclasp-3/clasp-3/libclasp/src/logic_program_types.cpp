@@ -18,10 +18,8 @@
 // Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 #ifdef _MSC_VER
-#pragma warning (disable : 4146) // unary minus operator applied to unsigned type, result still unsigned
 #pragma warning (disable : 4996) // 'std::_Fill_n' was declared deprecated
 #endif
-
 #include <clasp/logic_program_types.h>
 #include <clasp/logic_program.h>
 #include <clasp/solver.h>
@@ -506,7 +504,7 @@ PrgNode::PrgNode(uint32 id, bool checkScc)
 /////////////////////////////////////////////////////////////////////////////////////////
 PrgHead::PrgHead(uint32 id, NodeType t, uint32 data, bool checkScc)
 	: PrgNode(id, checkScc)
-	, data_(data), upper_(0), dirty_(0), state_(0), isAtom_(t == PrgEdge::ATOM_NODE)  {
+	, data_(data), upper_(0), dirty_(0), freeze_(0), isAtom_(t == PrgEdge::ATOM_NODE)  {
 	struct X { uint64 x; EdgeVec y; uint32 z; };
 	static_assert(sizeof(PrgHead) == sizeof(X), "Unsupported Alignment");
 }
@@ -544,7 +542,7 @@ bool PrgHead::simplifySupports(LogicProgram& prg, bool strong, uint32* numDiffSu
 		for (it = supports_.begin(); it != supports_.end(); ++it) {
 			PrgNode* x = prg.getSupp(*it);
 			if (x->relevant() && x->value() != value_false && (!strong || x->hasVar())) {
-				if      (!x->seen()) { *j++ = *it; x->markSeen(true); }
+				if      (!x->seen()) { *j++ = *it; x->setSeen(true); }
 				else if (!choices)   { continue; }
 				else                 {
 					for (n = supports_.begin(); n != it && n->node() != it->node(); ++n) {;}
@@ -563,7 +561,7 @@ bool PrgHead::simplifySupports(LogicProgram& prg, bool strong, uint32* numDiffSu
 		choices    = 0;
 		for (it = supports_.begin(); it != supports_.end(); ++it) {
 			PrgNode* x = prg.getSupp(*it);
-			x->markSeen(false);
+			x->setSeen(false);
 			if (strong && ctx.marked(x->literal())) { ctx.unmark(x->var()); }
 			if (it->isChoice()) {
 				++choices;
@@ -874,6 +872,13 @@ void PrgBody::removeHead(PrgHead* h, EdgeType t) {
 	}
 }
 
+bool PrgBody::hasHead(PrgHead* h, EdgeType t) const {
+	if (!hasHeads()) { return false;  }
+	PrgEdge x = PrgEdge::newEdge(h->id(), t, h->isAtom() ? PrgEdge::ATOM_NODE : PrgEdge::DISJ_NODE);
+	head_iterator it = sHead_ != 0 || !extHead() ? std::find(heads_begin(), heads_end(), x) : std::lower_bound(heads_begin(), heads_end(), x);
+	return it != heads_end() && *it == x;
+}
+
 bool PrgBody::eraseHead(PrgEdge h) {
 	PrgEdge* it = const_cast<PrgEdge*>(std::find(heads_begin(), heads_end(), h));
 	if (it != heads_end()) {
@@ -907,7 +912,7 @@ bool PrgBody::simplifyBody(LogicProgram& prg, bool strong, uint32* eqId) {
 	for (Literal* it = j, *end = j + size(); it != end; ++it) {
 		a       = it->var();
 		isEq    = a != prg.getEqAtom(a);
-		oldHash+= hashId(it->sign()?-a:a);
+		oldHash+= hashLit(*it);
 		if (isEq) {
 			prg.getAtom(a)->removeDep(id(), !it->sign()); // remove old edge
 			*it = prg.getAtom(a)->eqGoal(it->sign());     // replace with eq goal
@@ -971,14 +976,14 @@ bool PrgBody::simplifyBody(LogicProgram& prg, bool strong, uint32* eqId) {
 	uint32 newHash = 0;
 	weight_t sumW  = 0, reachW = 0;
 	for (uint32 p = 0, n = size_, i, h; p < n;) {
-		if      (!lits[p].sign())      { h = hashId( (a = lits[i = p++].var()));  }
-		else if (lits[n-1].sign())     { h = hashId(-(a = lits[i = --n].var()));  }
+		if      (!lits[p].sign())      { h = hashLit(lits[i = p++]);  }
+		else if (lits[n-1].sign())     { h = hashLit(lits[i = --n]);  }
 		else /* restore pos|neg order */ {
 			std::swap(lits[p], lits[n-1]);
 			if (jw) { std::swap(jw[p], jw[n-1]); }
 			continue;
 		}
-		assert(a == lits[i].var());
+		a = lits[i].var();
 		if (todos && todo.inBody(lits[i])) {
 			prg.getAtom(a)->addDep(id(), !lits[i].sign());
 			todo.clearBody(lits[i]);
@@ -1124,7 +1129,11 @@ bool PrgBody::mergeHeads(LogicProgram& prg, PrgBody& heads, bool strong, bool si
 		else {
 			assert(heads.sHead_ == 0 && "Heads to merge not simplified!");
 			heads.prepareSimplifyHeads(prg, rs);
-			ok = simplifyHeadsImpl(prg, *this, rs, strong) && heads.simplifyHeadsImpl(prg, *this, rs, strong);
+			if (!simplifyHeadsImpl(prg, *this, rs, strong) && !assignValue(value_false)) {
+				rs.clearAll();
+				return false;
+			}
+			ok = heads.simplifyHeadsImpl(prg, *this, rs, strong);
 			assert(ok || heads.heads_begin() == heads.heads_end());
 		}
 		// clear temporary flags & reestablish ordering
@@ -1341,7 +1350,6 @@ bool PrgBody::addConstraints(const LogicProgram& prg, ClauseCreator& gc) {
 		Literal negB= ~literal();
 		gc.start().add(literal()); 
 		for (const Literal* it = goals_begin(), *end = goals_end(); it != end; ++it) {
-			assert(it->var() != 0);
 			Literal li = prg.getAtom(it->var())->literal() ^ it->sign();
 			if (li == literal()) { taut = true; continue; }
 			if (!prg.ctx()->addBinary(negB, li)) { // [~B li]

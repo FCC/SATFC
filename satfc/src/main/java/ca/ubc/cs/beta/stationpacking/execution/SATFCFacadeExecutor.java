@@ -22,6 +22,7 @@
 package ca.ubc.cs.beta.stationpacking.execution;
 
 import java.io.IOException;
+import java.util.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,8 +62,7 @@ public class SATFCFacadeExecutor {
         logVersionInfo(log);
         try {
             log.info("Initializing facade.");
-            SATFCFacadeBuilder satfcBuilder = new SATFCFacadeBuilder();
-            try(final SATFCFacade satfc = satfcBuilder.buildFromParameters(parameters)) {
+            try(final SATFCFacade satfc = SATFCFacadeBuilder.buildFromParameters(parameters)) {
                 IProblemReader problemGenerator = ProblemGeneratorFactory.createFromParameters(parameters);
                 IMetricWriter metricWriter = MetricWriterFactory.createFromParameters(parameters);
                 SATFCFacadeProblem problem;

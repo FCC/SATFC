@@ -29,9 +29,9 @@ import ca.ubc.cs.beta.stationpacking.execution.parameters.SATFCFacadeParameters;
 public class ProblemGeneratorFactory {
 
     public static IProblemReader createFromParameters(SATFCFacadeParameters parameters) {
-        IProblemReader generator;
+        IProblemReader reader;
         if (parameters.fInstanceParameters.fDataFoldername != null && parameters.fInstanceParameters.getDomains() != null) {
-            generator = new SingleProblemFromCommandLineProblemReader(new SATFCFacadeProblem(
+            reader = new SingleProblemFromCommandLineProblemReader(new SATFCFacadeProblem(
                     parameters.fInstanceParameters.getPackingStationIDs(),
                     parameters.fInstanceParameters.getPackingChannels(),
                     parameters.fInstanceParameters.getDomains(),
@@ -39,13 +39,15 @@ public class ProblemGeneratorFactory {
                     parameters.fInstanceParameters.fDataFoldername,
                     null
             ));
+        } else if (parameters.fRedisParameters.areValid() && parameters.fInterferencesFolder != null && parameters.fSolverOptions.cachingParams.extendedCacheProblem){
+            reader = new ExtendedCacheProblemReader(parameters.fRedisParameters.getJedis(), parameters.fRedisParameters.fRedisQueue);
         } else if (parameters.fRedisParameters.areValid() && parameters.fInterferencesFolder != null) {
-            generator = new RedisProblemReader(parameters.fRedisParameters.getJedis(), parameters.fRedisParameters.fRedisQueue, parameters.fInterferencesFolder);
+            reader = new RedisProblemReader(parameters.fRedisParameters.getJedis(), parameters.fRedisParameters.fRedisQueue, parameters.fInterferencesFolder);
         } else if (parameters.fFileOfInstanceFiles != null && parameters.fInterferencesFolder != null) {
-            generator = new FileProblemReader(parameters.fFileOfInstanceFiles, parameters.fInterferencesFolder);
+            reader = new FileProblemReader(parameters.fFileOfInstanceFiles, parameters.fInterferencesFolder);
         } else {
             throw new IllegalArgumentException("Illegal parameters provided. Must provide -DATA-FOLDERNAME and -DOMAINS. Please consult the SATFC manual for examples");
         }
-        return generator;
+        return reader;
     }
 }

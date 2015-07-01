@@ -24,13 +24,7 @@ package ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles;
 import java.io.File;
 import java.io.IOException;
 
-import lombok.RequiredArgsConstructor;
-import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.CompressedSATBasedSolver;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.jnalibraries.Clasp3Library;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.Clasp3SATSolver;
 import ca.ubc.cs.beta.stationpacking.utils.NativeUtils;
 
 import com.google.common.io.Files;

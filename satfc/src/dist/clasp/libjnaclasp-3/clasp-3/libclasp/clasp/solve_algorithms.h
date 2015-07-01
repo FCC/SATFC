@@ -140,8 +140,9 @@ public:
 
 	//! Runs the solve algorithm.
 	/*!
-	 * \param ctx    A context object containing the problem.
-	 * \param assume A list of initial unit-assumptions.
+	 * \param ctx     A context object containing the problem.
+	 * \param assume  A list of initial unit-assumptions.
+	 * \param onModel Optional handler to be called on each model.
 	 *
 	 * \return
 	 *  - true:  if the search stopped before the search-space was exceeded.
@@ -151,7 +152,7 @@ public:
 	 * The use of assumptions allows for incremental solving. Literals contained
 	 * in assumptions are assumed to be true during search but are undone before solve returns.
 	 */
-	bool solve(SharedContext& ctx, const LitVec& assume = LitVec(), EventHandler* modelHandler = 0);
+	bool solve(SharedContext& ctx, const LitVec& assume = LitVec(), ModelHandler* onModel = 0);
 	
 	//! Resets solving state and sticky messages like terminate.
 	/*!
@@ -159,7 +160,7 @@ public:
 	 */
 	virtual void resetSolve()        = 0;
 	
-	//! Prepares the algorithm for handling (asynchronous) calls to SolveAlgorithm::terminate(int).
+	//! Prepares the algorithm for handling (asynchronous) calls to SolveAlgorithm::interrupt().
 	virtual void enableInterrupts()  = 0;
 	
 	//! Tries to terminate the current solve process.
@@ -177,10 +178,12 @@ protected:
 	virtual bool  doInterrupt()                                     = 0;
 	bool          reportModel(Solver& s) const;
 	Enumerator&   enumerator() { return *enum_;  }
+	uint64        maxModels() const { return enumLimit_; }
+	bool          moreModels(const Solver& s) const;
 private:
 	SolveLimits   limits_;
 	Enumerator*   enum_;
-	EventHandler* onModel_;
+	ModelHandler* onModel_;
 	uint64        enumLimit_;
 };
 
@@ -205,6 +208,7 @@ struct BasicSolveOptions {
 	static uint32   supportedSolvers()        { return 1; }
 	static uint32   recommendedSolvers()      { return 1; }
 	uint32          numSolver() const         { return 1; }
+	void            setSolvers(uint32)        {}
 	bool            defaultPortfolio() const  { return false; }
 };
 

@@ -189,30 +189,29 @@ PrgBody* Preprocessor::addBodyVar(Var bodyId) {
 		prg_->setConflict();
 		return body;
 	}
-	if ((!body->hasHeads() && body->value() != value_false) || !body->relevant()) {
+	if (superfluous(body)) {
 		body->markRemoved();
 		return body;
 	}
 	if (eqId == bodyId) {
 		// The body is unique
 		body->assignVar(*prg_);
-		if      (!known)            { body->markDirty(); }
-		else if (body->size() == 1) {
+		PrgAtom* aEq = body->size() == 1 ? prg_->getAtom(body->goal(0).var()) : 0;
+		if      (!known)                          { body->markDirty(); }
+		else if (aEq && aEq->var() == body->var()){
 			// Body is equivalent to an atom or its negation
 			// Check if the atom is itself equivalent to a body. 
 			// If so, the body is equivalent to the atom's body.
-			PrgAtom* a = prg_->getAtom(body->goal(0).var()); // eq-Atom
 			PrgBody* r = 0; // possible eq-body
 			uint32 rId = varMax;
-			assert(a->var() == body->var());
 			if (body->goal(0).sign()) {
 				Var dualAtom = getRootAtom(body->literal());
-				a = dualAtom != varMax ? prg_->getAtom(dualAtom) : 0;
+				aEq = dualAtom != varMax ? prg_->getAtom(dualAtom) : 0;
 			}
-			if (a && a->supps_begin()->isBody()) {
-				rId = a->supps_begin()->node();
+			if (aEq && aEq->supports() && aEq->supps_begin()->isBody()) {
+				rId = aEq->supps_begin()->node();
 				r   = prg_->getBody(rId);	
-				if (r && r->var() == a->var()) {
+				if (r && r->var() == aEq->var()) {
 					mergeEqBodies(body, rId, false);
 				}
 			}
@@ -279,9 +278,10 @@ bool Preprocessor::addHeadsToUpper(PrgBody* body) {
 // for head simplification in order to detect rules like: a' :- a,B. and a' :- B,not a.
 bool Preprocessor::propagateAtomVar(Var atomId, PrgAtom* a, PrgEdge source) {
 	PrgAtom* comp     = 0;
+	ValueRep value    = a->value();
 	bool fullEq       = eq();
-	bool removeAtom   = a->value() == value_true || a->value() == value_false;
-	bool removeNeg    = removeAtom  || a->value() == value_weak_true;
+	bool removeAtom   = value == value_true || value == value_false;
+	bool removeNeg    = removeAtom  || value == value_weak_true;
 	Literal aLit      = a->literal();
 	if (fullEq) {
 		if (getRootAtom(aLit) == varMax) {
@@ -291,11 +291,12 @@ bool Preprocessor::propagateAtomVar(Var atomId, PrgAtom* a, PrgEdge source) {
 			assert(source.isBody());
 			removeAtom = true;
 			removeNeg  = true;
+			value      = a->value();
 			PrgBody* B = prg_->getBody(source.node());
 			a->setEqGoal(posLit(a->id()));
 			// set positive eq goal - replace if a == {not a'}, replace a with not a' in bodies
 			if (getRootAtom(~aLit) != varMax && B->literal() == aLit && B->size() == 1 && B->goal(0).sign()) {
-				a->setEqGoal(B->goal(0));
+				a->setEqGoal(negLit(getRootAtom(~aLit)));
 			}
 			a->clearLiteral(true); // equivalent atoms don't need vars
 		}
@@ -307,7 +308,7 @@ bool Preprocessor::propagateAtomVar(Var atomId, PrgAtom* a, PrgEdge source) {
 		// propagate any truth-value to complementary eq-class
 		ValueRep cv   = value_free;
 		uint32   mark = 0;
-		if (a->value() != value_free && (cv = (value_false | (a->value()^value_true))) != negA->value()) {
+		if (value != value_free && (cv = (value_false | (value^value_true))) != negA->value()) {
 			mark        = 1;
 			if (!propagateAtomValue(negA, cv)) {
 				return false;
@@ -325,7 +326,7 @@ bool Preprocessor::propagateAtomVar(Var atomId, PrgAtom* a, PrgEdge source) {
 		PrgBody* bn = prg_->getBody(bodyId);
 		if (bn->relevant()) {
 			bool wasSup = bn->isSupported();	
-			bool isSup  = wasSup || (a->value() != value_false && !it->sign() && bn->propagateSupported(atomId));
+			bool isSup  = wasSup || (value != value_false && !it->sign() && bn->propagateSupported(atomId));
 			bool seen   = false;
 			bool dirty  = removeAtom || (removeNeg && it->sign());
 			if (fullEq) {
@@ -380,6 +381,22 @@ bool Preprocessor::hasRootLiteral(PrgBody* body) const {
 		&& getRootAtom(body->literal()) == varMax
 		&& getRootAtom(~body->literal())== varMax;
 }
+// Pre: body is simplified!
+bool Preprocessor::superfluous(PrgBody* body) const {
+	if (!body->relevant()) { return true; }
+	if (!body->hasHeads()) {
+		if (body->value() == value_free) { return true; }
+		if (body->bound() <= 0)          { return true; }
+		if (body->size() == 1)           { 
+			// unit constraint
+			ValueRep exp = body->value() ^ (int)body->goal(0).sign();
+			ValueRep got = prg_->getAtom(body->goal(0).var())->value();
+			assert(got != value_free || !prg_->options().backprop);
+			return got != value_free && (got&value_true) == (exp&value_true);
+		}
+	}
+	return false;
+}
 
 // Simplify the classified body with the given id.
 // Return:
@@ -406,7 +423,7 @@ ValueRep Preprocessor::simplifyBody(PrgBody* b, bool reclass, VarVec& supported)
 				b->clearLiteral(true);
 			}
 		}
-		else if (!b->hasHeads() && b->value() != value_false && b->var() != 0) {
+		else if (b->var() != 0 && superfluous(b)) {
 			// Body is no longer needed. All heads are either superfluous or equivalent
 			// to other atoms. 
 			// Reclassify only if var is not used

@@ -33,9 +33,6 @@ public class MetricWriterFactory {
         if (parameters.fMetricsFile != null) {
             SATFCMetrics.init();
             return new FileMetricsWriter(parameters.fMetricsFile);
-        } else if (parameters.fRedisParameters.areValid()) {
-            SATFCMetrics.init();
-            return new RedisMetricsWriter(parameters.fRedisParameters.getJedis(), parameters.fRedisParameters.fRedisQueue);
         } else {
             return new IMetricWriter() {
                 @Override

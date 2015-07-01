@@ -103,10 +103,14 @@ struct SolverStrategies {
 	//! Default sign heuristic.
 	enum SignHeu {
 		sign_atom = 0, /*!< Prefer negative literal for atoms.                   */
-		sign_no   = 1, /*!< Always prefer positive literal.                      */
-		sign_yes  = 2, /*!< Always prefer negative literal.                      */
+		sign_pos  = 1, /*!< Always prefer positive literal.                      */
+		sign_neg  = 2, /*!< Always prefer negative literal.                      */
 		sign_rnd  = 3, /*!< Prefer random literal.                               */
 		sign_disj = 4, /*!< Prefer negative literal for atoms in hcf-components. */
+	};
+	enum CCMinType {
+		cc_local     = 0,
+		cc_recursive = 1,
 	};
 	//! Antecedents to consider during conflict clause minimization.
 	enum CCMinAntes {
@@ -122,21 +126,6 @@ struct SolverStrategies {
 		cc_rep_uip     = 2,/*!< Replace conflict clause with all uip clause. */
 		cc_rep_dynamic = 3,/*!< Dynamically select between cc_rep_decision and cc_rep_uip. */
 	};
-	enum OptHeu {
-		opt_sign     = 1,  /*!< Use optimize statements in sign heuristic. */ 
-		opt_model    = 2,  /*!< Apply model heuristic when optimizing.     */
-	};
-	//! Strategy to use when optimization is active.
-	enum OptStrategy {
-		opt_def       = 0,  /*!< Use default branch and bound optimization.            */  
-		opt_hier      = 1,  /*!< Use hierarchical branch and bound optimization.       */
-		opt_inc       = 2,  /*!< Use hierarchical optimization with increasing steps.  */
-		opt_dec       = 3,  /*!< Use hierarchical optimization with decreasing steps.  */
-		opt_unsat     = 4,  /*!< Use unsat-core based optimization.                    */
-		opt_unsat_pre = 5,  /*!< Use unsat-core based optimization with preprocessing. */
-		opt_unsat_imp = 6,  /*!< Only add unsat-core constraints for one direction.    */
-		opt_unsat_cl  = 8,  /*!< Only add clauses (instead of cardinality constraints).*/
-	};
 	enum WatchInit  { watch_first = 0, watch_rand = 1, watch_least = 2 };
 	enum UpdateMode { update_on_propagate = 0, update_on_conflict  = 1 };
 
@@ -151,43 +140,47 @@ struct SolverStrategies {
 	uint32    updateLbd     : 2;  /*!< Update lbds of antecedents during conflict analysis. */
 	uint32    ccMinAntes    : 2;  /*!< Antecedents to look at during conflict clause minimization. */
 	uint32    ccRepMode     : 2;  /*!< One of CCRepMode. */
+	uint32    ccMinRec      : 1;  /*!< If 1, use more expensive recursive nogood minimization.  */
 	uint32    initWatches   : 2;  /*!< Initialize watches randomly in clauses. */
-	uint32    optHeu        : 2;  /*!< Set of OptHeu values. */
 	uint32    upMode        : 1;  /*!< One of UpdateMode. */
 	uint32    bumpVarAct    : 1;  /*!< Bump activities of vars implied by learnt clauses with small lbd. */
 	uint32    search        : 1;  /*!< Current search strategy. */
 	uint32    restartOnModel: 1;  /*!< Do a restart after each model. */
 	uint32    signDef       : 3;  /*!< Default sign heuristic.        */
 	uint32    signFix       : 1;  /*!< Disable all sign heuristics and always use default sign. */
-	uint32    loadCfg       : 1;  // (Re-)load config 
+	uint32    hasConfig     : 1;  // config applied to solver?
 	uint32    id            : 6;  // Solver id - SHALL ONLY BE SET BY Shared Context!
 	uint32    heuReserved   : 3;  // id of active heuristic - SHALL ONLY BE SET BY Solver!
+	uint32    reserved      : 1;
 };
 
 //! Parameter-Object for configuring a solver.
 struct SolverParams : SolverStrategies  {
 	SolverParams();
 	uint32 prepare();
-	uint32 seed;          /*!< Seed for the random number generator.                        */ 
+	inline bool forgetHeuristic() const { return (forgetSet & 1u) != 0; }
+	inline bool forgetSigns()     const { return (forgetSet & 2u) != 0; }
+	inline bool forgetActivities()const { return (forgetSet & 4u) != 0; }
+	inline bool forgetLearnts()   const { return (forgetSet & 8u) != 0; }
+	uint32 seed;           /*!< Seed for the random number generator.                        */ 
 	// 32-bit
 	uint32 heuParam  : 16; /*!< Extra parameter for heuristic with meaning depending on type */
 	uint32 lookOps   : 16; /*!< Max. number of lookahead operations (0: no limit).           */
 	// 32-bit
-	uint32 optStrat  : 4;  /*!< Optimization strategy.*/
+	uint32 optStrat  : 1;  /*!< Optimization strategy (see MinimizeMode_t::Strategy).*/
+	uint32 optParam  : 3;  /*!< Parameter for optimization strategy (see MinimizeMode_t::BBOption / MinimizeMode_t::UscOption). */
+	uint32 optHeu    : 2;  /*!< Set of optimize heuristics. */
 	uint32 heuId     : 3;  /*!< Type of decision heuristic.   */
+	uint32 heuScore  : 2;  /*!< Type of scoring during resolution. */ 
 	uint32 heuOther  : 2;  /*!< Consider other learnt nogoods in heuristic (0=no, 1=loops, 2=all, 3=let heuristic decide). */
-	uint32 heuReinit : 1;  /*!< Force reinitialization of heuristic in incremental setting. */
 	uint32 heuMoms   : 1;  /*!< Use MOMS-score as top-level heuristic. */
 	uint32 berkHuang : 1;  /*!< Only for Berkmin. */
-	uint32 berkOnce  : 1;  /*!< Only for Berkmin. */
 	uint32 unitNant  : 1;  /*!< Only for unit.    */
 	uint32 lookType  : 2;  /*!< Type of lookahead operations. */
 	uint32 loopRep   : 2;  /*!< How to represent loops? */
-	uint32 ccMinRec  : 1;  /*!< If 1, use more expensive recursive nogood minimization.  */
-	uint32 dropLearnt: 2;  /*!< Forget learnt 1=nogood scores 2=ngoods on problem update.*/
-	uint32 domPref   : 6;  /*!< Only for domain heuristic. */
+	uint32 forgetSet : 4;  /*!< What to forget on (incremental step). */ 
+	uint32 domPref   : 5;  /*!< Only for domain heuristic. */
 	uint32 domMod    : 3;  /*!< Only for domain heuristic. */
-	uint32 reserved  : 2;
 };
 
 typedef Range<uint32> Range32;
@@ -344,8 +337,8 @@ struct SatPreParams {
 		sat_pre_full   = 3, /**< Run variable- and full blocked clause elimination.    */
 	};
 	SatPreParams() : type(0u), mode(0u), limIters(0u), limTime(0u), limFrozen(0u), limClause(4000u), limOcc(0u) {}
-	uint32 type     :  2; /**< Blocked clause elimination (0=off, 1=limited, 2=full).         */
-	uint32 mode     :  1; /**< One of mode.                                                   */
+	uint32 type     :  2; /**< One of Type. */
+	uint32 mode     :  1; /**< One of Mode. */
 	uint32 limIters : 10; /**< Max. number of iterations.                         (0=no limit)*/
 	uint32 limTime  : 12; /**< Max. runtime in sec, checked after each iteration. (0=no limit)*/
 	uint32 limFrozen:  7; /**< Run only if percent of frozen vars < maxFrozen.    (0=no limit)*/
@@ -373,13 +366,13 @@ struct ContextParams {
 		share_all     = 3, /*!< Share all constraints.                                    */
 		share_auto    = 4, /*!< Use share_no or share_all depending on number of solvers. */
 	};
-	ContextParams() : shareMode(share_auto), stats(0), shortMode(short_implicit), seed(0), reserved(0), cliConfig(0), cliId(0), cliMode(0) {}
+	ContextParams() : shareMode(share_auto), stats(0), shortMode(short_implicit), seed(1), hasConfig(0), cliConfig(0), cliId(0), cliMode(0) {}
 	SatPreParams satPre;        /*!< Preprocessing options.                    */
 	uint8        shareMode : 3; /*!< Physical sharing mode (one of ShareMode). */
 	uint8        stats     : 2; /*!< See SharedContext::enableStats().         */
 	uint8        shortMode : 1; /*!< One of ShortMode.                         */
 	uint8        seed      : 1; /*!< Apply new seed when adding solvers.       */
-	uint8        reserved  : 1; /*!< Reserved for future use.                  */
+	uint8        hasConfig : 1; /*!< Reserved for command-line interface.      */
 	uint8        cliConfig;     /*!< Reserved for command-line interface.      */
 	uint8        cliId;         /*!< Reserved for command-line interface.      */
 	uint8        cliMode;       /*!< Reserved for command-line interface.      */
@@ -411,22 +404,16 @@ public:
 	 */
 	virtual DecisionHeuristic* heuristic(uint32 i)  const = 0;
 	//! Adds post propagators to the given solver.
-	/*!
-	 * The function is called during initialization of s.
-	 * The default implementation adds a post propagator for unfounded set checking
-	 * if necessary. 
-	 */
-	virtual bool               addPost(Solver& s)   const;
+	virtual bool               addPost(Solver& s)   const = 0;
 };
 
 //! Base class for user-provided configurations.
 class UserConfiguration : public Configuration {
 public:
-	//! Adds post propagators to the given solver.
+	//! Adds a lookahead post propagator to the given solver if requested.
 	/*!
-	 * The function is called during initialization of s.
-	 * The default implementation calls Configuration::addPost(s)
-	 * and adds a lookahead post propagator if necessary.
+	 * The function adds a lookahead post propagator if indicated by 
+	 * the solver's SolverParams.
 	 */
 	virtual bool            addPost(Solver& s)   const;
 	//! Returns the (modifiable) solver options for the i'th solver.
@@ -460,7 +447,7 @@ private:
 //! Simple factory for decision heuristics.
 struct Heuristic_t {
 	enum Type { heu_default = 0, heu_berkmin = 1, heu_vsids = 2, heu_vmtf = 3, heu_domain = 4, heu_unit = 5, heu_none = 6  };
-	static inline bool        isLookback(uint32 type) { return type >= (uint32)heu_berkmin && type <= (uint32)heu_vmtf; }
+	static inline bool        isLookback(uint32 type) { return type >= (uint32)heu_berkmin && type < (uint32)heu_unit; }
 	static DecisionHeuristic* create(const SolverParams&);
 };
 

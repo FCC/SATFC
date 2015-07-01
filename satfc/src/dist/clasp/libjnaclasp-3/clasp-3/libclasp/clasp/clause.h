@@ -58,7 +58,8 @@ public:
 	 */
 	uint32 simplify(Solver& s);
 
-	void            release();
+	void            release() { release(1); }
+	void            release(uint32 numRefs);
   SharedLiterals* share();
 	bool            unique()   const { return refCount_ <= 1; }
 	uint32          refCount() const { return refCount_; }
@@ -160,8 +161,8 @@ public:
 	Result end(uint32 flags = clause_not_sat | clause_not_conflict);
 
 	/*!
-	 * \name factory functions
-	 * Functions for creating and integrating clauses
+	 * \name Factory functions
+	 * Functions for creating and integrating clauses.
 	 */
 	//@{
 	//! Flags controlling clause creation and integration.
@@ -179,7 +180,11 @@ public:
 		// PREPARE
 		clause_no_prepare    = 128,/**< Assume clause is already ordered w.r.t watches. */
 		clause_force_simplify= 256,/**< Call simplify() on create.                      */
-		clause_no_heuristic  = 512 /**< Do not notify heuristic about new clause.       */
+		clause_no_heuristic  = 512,/**< Do not notify heuristic about new clause.       */
+		// WATCH MODE - only for problem clauses
+		clause_watch_first   =1024,/**< Watch first free literals.                      */
+		clause_watch_rand    =2048,/**< Watch rand literals.                            */
+		clause_watch_least   =4096,/**< Watch least watched literals.                   */
 	};	
 	//! Returns the status of the given clause w.r.t s.
 	static Status    status(const Solver& s, const Literal* clause_begin, const Literal* clause_end);
@@ -197,9 +202,9 @@ public:
 	//! Prepares the clause given in lits.
 	/*!
 	 * A prepared clause [l1...ln] with n >= 2 is a clause that,
-	 *  - does not contain any duplicate or complementary literals and, 
-	 *  - does not contain any subsumed literals (i.e. literals assigned on decision level 0) and,
-	 *  - is partially ordered w.r.t watchOrder(), i.e., watchOrder(l1) >= watchOrder(l2) and there
+	 *  - does not contain any duplicate or complementary literals, and
+	 *  - does not contain any subsumed literals (i.e. literals assigned on decision level 0), and
+	 *  - is partially ordered w.r.t watchOrder(), i.e., watchOrder(l1) >= watchOrder(l2), and there
 	 *    is no lj, j > 2, s.th. watchOrder(lj) > watchOrder(l2)
 	 *  . 
 	 *
@@ -215,7 +220,7 @@ public:
 	/*!
 	 * \param s     The solver to which the clause should be added.
 	 * \param lits  The literals of the clause.
-	 * \param flags Flag set controlling creation (see CreateFlag).
+	 * \param flags Flag set controlling creation (see ClauseCreator::CreateFlag).
 	 * \param info  Initial information (e.g. type) for the new clause.
 	 *
 	 * \pre !s.hasConflict() and s.decisionLevel() == 0 or extra.learnt()
@@ -236,13 +241,18 @@ public:
 	 * \see prepare()
 	 */
 	static Result create(Solver& s, LitVec& lits, uint32 flags, const ClauseInfo& info = ClauseInfo());
+	
+	/*!
+	 * \overload
+	 */
 	static Result create(Solver& s, const ClauseRep& rep, uint32 flags);
+	
 	//! Integrates the given clause into the current search of s.
 	/*!
 	 * \pre the assignment in s is not conflicting
 	 * \param s      The solver in which the clause should be integrated.
 	 * \param clause The clause to be integrated.
-	 * \param flags  A set of flags controlling integration (see CreateFlag).
+	 * \param flags  A set of flags controlling integration (see ClauseCreator::CreateFlag).
 	 * \param t      Constraint type to use for the local representation.
 	 * 
 	 * \note 
@@ -269,8 +279,9 @@ public:
 	 *   \endcode
 	 */
 	static Result integrate(Solver& s, SharedLiterals* clause, uint32 flags, ConstraintType t);
+	
 	/*!
-	 * \overload Result ClauseCreator::integrate(Solver& s, SharedLiterals* clause, uint32 flags, ConstraintType t)
+	 * \overload
 	 */
 	static Result integrate(Solver& s, SharedLiterals* clause, uint32 flags);
 	//@}
@@ -394,18 +405,17 @@ private:
 //! Constraint for Loop-Formulas.
 /*!
  * \ingroup constraint
- * Special purpose constraint for loop formulas of the form: R -> ~a1, ~a2, ..., ~an
- * where R is a conjunction (B1,...,Bm) of bodies that are false and a1...an are the atoms of
- * an unfounded set.
- * I.e. such a loop formula is equivalent to the following n clauses:
- * ~a1 v B1 v ... v Bm
- * ...
- * ~an v B1 v ... v Bm
- * Representing loop formulas as n clauses is wasteful because each clause
- * contains the same set of bodies. 
- * 
- * The idea behind LoopFormula is to treat the conjunction of atoms as a special
- * "macro-literal" L with the following properties:
+ * Special purpose constraint for loop formulas of the form: L v B1 v ... v Bm, 
+ * where L is an unfounded set represented as a set of atom literals {~a1, ..., ~an}.
+ * Representing such a loop formula explicitly as n clauses
+ *   - (1) ~a1 v B1 v ... v Bm
+ *   - ...
+ *   - (n) ~an v B1 v ... v Bm
+ *   .
+ * is wasteful because each clause contains the same set of bodies.
+ *
+ * The idea behind LoopFormula is to treat L as a "macro-literal" 
+ * with the following properties:
  * - isTrue(L), iff for all ai isTrue(~ai) 
  * - isFalse(L), iff for some ai isFalse(~ai) 
  * - L is watchable, iff not isFalse(L)
@@ -414,36 +424,27 @@ private:
  * Using this convention the TWL-algo can be implemented as in a clause.
  * 
  * \par Implementation:
- * - The literal-array is divided into two parts, an "active clause" part and an atom part
- * - The "active clause" contains one atom and all bodies: [B1 ... Bj ~ai]
+ * - The literal-array is divided into two parts, an "active clause" part and an atom part.
+ * - The "active clause" contains one atom and all bodies: [~ai B1 ... Bj]
  * - The atom part contains all atoms: [~a1 ... ~an]
  * - Two of the literals of the "active clause" are watched (again: watching an atom means watching all atoms)
  * - If a watched atom becomes true, it is copied into the "active clause" and the TWL-algo starts.
  */
 class LoopFormula : public LearntConstraint {
 public:
+	//! Creates a new loop-constraint for the given atoms.
 	/*!
-	 * Creates a new loop-formula for numAtoms atoms sharing the literals contained in bodyLits.
-	 * 
-	 * \param s Solver in which the new loop-formula is to be used.
-	 * \param bodyLits Pointer to an array of numBodies body-literals.
-	 * \param numBodies Number of body-literals in bodyLits.
-	 * \param numAtoms Number of atoms in the loop-formula.
-	 *
-	 * \pre all body-literals are currently false.
-	 */ 
-	static LoopFormula* newLoopFormula(Solver& s, Literal* bodyLits, uint32 numBodies, uint32 bodyToWatch, uint32 numAtoms, const Activity& act);
-
-	//! Adds an atom to the loop-formula.
-	/*!
-	 * \pre the loop-formula currently contains fewer than numAtoms atoms
-	 */
-	void addAtom(Literal atom, Solver& s);
+	* \param s      Solver in which the new constraint is to be used.
+	* \param c1     First clause of the new constraint.
+	* \param atoms  Set of atoms in the loop.
+	* \param nAtoms Number of atoms in the loop.
+	*
+	* \pre The clause given in c1 is prepared and c1.size > 1 and c1.lits[0] is a literal in atoms.
+	* \see ClauseCreator::prepare()
+	*/
+	static LoopFormula* newLoopFormula(Solver& s, const ClauseRep& c1, const Literal* atoms, uint32 nAtoms, bool updateHeuristic = true);
 	
-	//! Notifies the installed heuristic about the new constraint.
-	void updateHeuristic(Solver& s);
-	
-	//! Returns the size of the loop-formula.
+	//! Returns the number of literals in the loop-formula.
 	uint32 size() const;
 	
 	// Constraint interface
@@ -472,14 +473,19 @@ public:
 	//! Returns Constraint_t::learnt_loop.
 	ConstraintType type() const { return Constraint_t::learnt_loop; }
 private:
-	LoopFormula(Solver& s, uint32 size, Literal* bodyLits, uint32 numBodies, uint32 bodyToWatch, const Activity& a);
-	bool watchable(const Solver& s, uint32 idx);
-	bool isTrue(const Solver& s, uint32 idx);
-	Activity act_;     // Activity of constraint 
+	LoopFormula(Solver& s, const ClauseRep& c1, const Literal* atoms, uint32 nAtoms, bool heu);
+	void detach(Solver& s);
+	bool otherIsSat(const Solver& s);
+	Literal* begin() { return lits_ + 1; }
+	Literal* xBegin(){ return lits_ + end_ + 1; }
+	Literal* xEnd()  { return lits_ + size_; }
+	Activity act_;     // activity of constraint 
 	uint32   end_;     // position of second sentinel
-	uint32   size_;    // size of lits_
+	uint32   size_:30; // size of lits_
+	uint32   str_ : 1; // removed literal(s) during simplify?
+	uint32   xPos_: 1; // position of ai in lits_ or 0 if no atom
 	uint32   other_;   // stores the position of a literal that was recently true
-	Literal  lits_[0]; // S B1...Bm ai S a1...an
+	Literal  lits_[0]; // S ai B1...Bm S a1...an
 };
 
 namespace mt {

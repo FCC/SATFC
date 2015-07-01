@@ -163,6 +163,10 @@
     <LibraryPath Condition="'$(Configuration)|$(Platform)'=='Release_MT_Static|Win32'">C:\Users\kaufmann\lib\tbb\tbb41_20120718oss\lib\static;C:\Users\kaufmann\lib\cppunit-1.12.1\lib;$(LibraryPath)</LibraryPath>
     <LibraryPath Condition="'$(Configuration)|$(Platform)'=='Release_MT_Static|x64'">C:\Users\kaufmann\lib\tbb\tbb41_20120718oss\lib\static;C:\Users\kaufmann\lib\cppunit-1.12.1\lib;$(LibraryPath)</LibraryPath>
     <IncludePath Condition="'$(Configuration)|$(Platform)'=='Release_MT_Static|x64'">C:\Users\kaufmann\lib\tbb\tbb41_20120718oss\include;$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;</IncludePath>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">clasp</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release_MT_Static|Win32'">clasp</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release_Static|Win32'">clasp</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">clasp</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -344,23 +348,15 @@
   <ItemGroup>
     <ClCompile Include="..\..\..\..\app\clasp_app.cpp" />
     <ClCompile Include="..\..\..\..\app\main.cpp" />
-    <ClCompile Include="..\..\..\..\libprogram_opts\src\alarm.cpp" />
-    <ClCompile Include="..\..\..\..\libprogram_opts\src\application.cpp" />
-    <ClCompile Include="..\..\..\..\libprogram_opts\src\program_options.cpp" />
-    <ClCompile Include="..\..\..\..\libprogram_opts\src\string_convert.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\app\clasp_app.h" />
-    <ClInclude Include="..\..\..\..\libprogram_opts\program_opts\detail\alarm.h" />
-    <ClInclude Include="..\..\..\..\libprogram_opts\program_opts\application.h" />
-    <ClInclude Include="..\..\..\..\libprogram_opts\program_opts\errors.h" />
-    <ClInclude Include="..\..\..\..\libprogram_opts\program_opts\mapped_value.h" />
-    <ClInclude Include="..\..\..\..\libprogram_opts\program_opts\program_options.h" />
-    <ClInclude Include="..\..\..\..\libprogram_opts\program_opts\string_convert.h" />
-    <ClInclude Include="..\..\..\..\libprogram_opts\program_opts\typed_value.h" />
-    <ClInclude Include="..\..\..\..\libprogram_opts\program_opts\value.h" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\libprogram_opts\libprogram_opts.vcxproj">
+      <Project>{488b1dcf-d41e-4416-a6d0-336cbc2871fe}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
     <ProjectReference Include="..\lib\lib.vcxproj">
       <Project>{a95999d0-c3a7-423f-84d1-d620674a136e}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>

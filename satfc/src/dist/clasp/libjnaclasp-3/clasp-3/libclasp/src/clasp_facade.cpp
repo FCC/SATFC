@@ -22,6 +22,7 @@
 #include <clasp/cb_enumerator.h>
 #include <clasp/dependency_graph.h>
 #include <clasp/minimize_constraint.h>
+#include <clasp/unfounded_check.h>
 #include <clasp/util/timer.h>
 #include <clasp/util/atomic.h>
 #include <cstdio>
@@ -36,57 +37,42 @@ namespace Clasp {
 // ClaspConfig
 /////////////////////////////////////////////////////////////////////////////////////////
 ClaspConfig::ClaspConfig() : tester_(0) { }
-ClaspConfig::~ClaspConfig() {
-	setSolvers(1);
-	delete tester_;
-}
+ClaspConfig::~ClaspConfig() { delete tester_; }
 void ClaspConfig::reset() {
-	BasicSatConfig::reset();
-	solve     = SolveOptions();
-	enumerate = EnumOptions();
-	asp       = AspOptions();
 	if (tester_) { tester_->reset(); }
-	setSolvers(1);
+	BasicSatConfig::reset();
+	solve = SolveOptions();
+	asp   = AspOptions();
 }
 BasicSatConfig* ClaspConfig::addTesterConfig() {
 	if (!tester_) { tester_ = new BasicSatConfig(); }
 	return tester_;
 }
-void ClaspConfig::setSolvers(uint32 num) {
-	if (!num) { num = 1; }
-#if WITH_THREADS
-	solve.algorithm.threads = num;
-#endif
-	if (num < numSolver()) { BasicSatConfig::resize(num, std::min(num, numSearch())); }
-	if (testerConfig() && num < testerConfig()->numSolver()) { testerConfig()->resize(num, std::min(num, testerConfig()->numSearch())); }
-}
 void ClaspConfig::prepare(SharedContext& ctx) {
+	BasicSatConfig::prepare(ctx);
 	uint32 numS = solve.numSolver();
-	if (numS > solve.recommendedSolvers()) {
-		ctx.report(warning(Event::subsystem_facade, clasp_format_error("Oversubscription: #Threads=%u exceeds logical CPUs=%u.", numS, solve.recommendedSolvers())));
-	}
 	if (numS > solve.supportedSolvers()) {
 		ctx.report(warning(Event::subsystem_facade, "Too many solvers."));
 		numS = solve.supportedSolvers();
 	}
-	if (numS > 1 && !solve.defaultPortfolio()) {
-		for (uint32 i = 0, sWarn = 0; i != numS; ++i) {
-			if (solver(i).optStrat >= SolverStrategies::opt_unsat) {
-				if (++sWarn == 1) { ctx.report(warning(Event::subsystem_facade, "Splitting: Disabling unsat-core based optimization!")); }
-				addSolver(i).optStrat = SolverStrategies::opt_dec;
-			}
-		}
+	if (numS > solve.recommendedSolvers()) {
+		ctx.report(warning(Event::subsystem_facade, clasp_format_error("Oversubscription: #Threads=%u exceeds logical CPUs=%u.", numS, solve.recommendedSolvers())));
 	}
-	if (std::abs(enumerate.numModels) != 1) { satPre.mode = SatPreParams::prepro_preserve_models; }
-	setSolvers(numS);
-	BasicSatConfig::prepare(ctx);
-	ctx.setConcurrency(solve.numSolver());
-	for (uint32 i = 1; i != ctx.concurrency(); ++i) {
-		if (!ctx.hasSolver(i)) { ctx.addSolver(); }
+	if (std::abs(solve.numModels) != 1) { satPre.mode = SatPreParams::prepro_preserve_models; }
+	solve.setSolvers(numS);
+	ctx.setConcurrency(solve.numSolver(), SharedContext::mode_resize);
+}
+bool ClaspConfig::addPost(Solver& s) const {
+	bool ok = true;
+	if (s.sharedContext() && s.sharedContext()->sccGraph.get()) {
+		DefaultUnfoundedCheck* pp = static_cast<DefaultUnfoundedCheck*>(s.getPost(PostPropagator::priority_reserved_ufs));
+		if (pp) { pp->setReasonStrategy(static_cast<DefaultUnfoundedCheck::ReasonStrategy>(solver(s.id()).loopRep)); }
+		else    { ok = s.addPost(new DefaultUnfoundedCheck(static_cast<DefaultUnfoundedCheck::ReasonStrategy>(solver(s.id()).loopRep))); }
 	}
+	return ok && BasicSatConfig::addPost(s);
 }
 /////////////////////////////////////////////////////////////////////////////////////////
-// ClaspFacade::SolveImpl/SolveStrategy/AsyncResult
+// ClaspFacade::SolveData/SolveStrategy/AsyncResult
 /////////////////////////////////////////////////////////////////////////////////////////
 struct ClaspFacade::SolveStrategy {
 public:
@@ -97,13 +83,14 @@ public:
 	bool running() const    { return (state & state_running) != 0; }
 	bool interrupt(int sig) {
 		if (!running()) { return false; }
-		if (!signal || sig < signal) { signal = sig; } 
+		if (!signal || sig < signal) { signal = sig; }
 		return cancel(sig);
 	}
 	void solve(ClaspFacade& f, SolveAlgorithm* algo, EventHandler* h) {
-		this->algo    = algo;
+		this->algo = algo;
 		this->handler = h;
-		state = signal= 0;
+		this->state = 0;
+		this->signal = f.result().signal;
 		doSolve(f);
 	}
 	virtual void release()  {}
@@ -113,69 +100,84 @@ public:
 	SolveAlgorithm*    algo;
 	EventHandler*      handler;
 protected:
-	void solveImpl(ClaspFacade& f, State end);
+	void runAlgo(ClaspFacade& f, State end);
 	virtual void doSolve(ClaspFacade& f) = 0;
 };
-struct ClaspFacade::SolveImpl {
+struct ClaspFacade::SolveData {
 	typedef SingleOwnerPtr<SolveAlgorithm> AlgoPtr;
 	typedef SingleOwnerPtr<Enumerator>     EnumPtr;
-	SolveImpl() : en(0), algo(0), active(0) { }
-	~SolveImpl() { reset(); }
+	SolveData() : en(0), algo(0), active(0), prepared(false), interruptible(false) { }
+	~SolveData() { reset(); }
 	void init(SolveAlgorithm* algo, Enumerator* en) {
-		this->en   = en;
+		this->en = en;
 		this->algo = algo;
 		this->algo->setEnumerator(*en);
+		if (interruptible) {
+			this->algo->enableInterrupts();
+		}
 	}
 	void reset() {
 		if (active)    { interrupt(SolveStrategy::SIGCANCEL); active->release(); active = 0; }
 		if (algo.get()){ algo->resetSolve(); }
 		if (en.get())  { en->reset(); }
+		prepared = false;
 	}
-	void prepare(SharedContext& ctx, SharedMinimizeData* min, int numM) {
+	void prepare(SharedContext& ctx, SharedMinimizeData* min, int numM, EnumMode mode) {
 		CLASP_FAIL_IF(active, "Solve operation still active");
-		int limit = en->init(ctx, min, numM);
-		algo->setEnumLimit(limit ? static_cast<uint64>(limit) : UINT64_MAX);
+		if (ctx.ok() && !ctx.frozen() && !prepared) {
+			if (min) { min = min->share(); }
+			int limit = en->init(ctx, min, numM);
+			algo->setEnumLimit(limit ? static_cast<uint64>(limit) : UINT64_MAX);
+			if (mode == enum_static) { ctx.addUnary(ctx.stepLiteral()); }
+			prepared = true;
+		}
 	}
 	bool update(const Solver& s, const Model& m) { return !active->handler || active->handler->onModel(s, m); }
 	bool interrupt(int sig)                      { return active && active->interrupt(sig); }
-	bool                      solving()   const  { return active && active->running();   }
+	bool                      solving()   const  { return active && active->running(); }
 	const Model*              lastModel() const  { return en.get() ? &en->lastModel() : 0; }
-	const SharedMinimizeData* minimizer() const  { return en.get() ? en->minimizer() : 0; } 
-	bool                      optimize()  const  { return en.get() && en->optimize(); }
+	const SharedMinimizeData* minimizer() const  { return en.get() ? en->minimizer() : 0; }
+	Enumerator*               enumerator()const  { return en.get(); }
 	int                       modelType() const  { return en.get() ? en->modelType() : 0; }
 	EnumPtr        en;
 	AlgoPtr        algo;
 	SolveStrategy* active;
+	bool           prepared;
+	bool           interruptible;
 };
-void ClaspFacade::SolveStrategy::solveImpl(ClaspFacade& f, State done) {
-	if (state != state_running){ state = state_running; }
-	if (f.result().flags)      { state = done; signal = f.result().signal; return; }
+void ClaspFacade::SolveStrategy::runAlgo(ClaspFacade& f, State done) {
 	struct OnExit {
 		OnExit(SolveStrategy* s, ClaspFacade* x, int st) : self(s), facade(x), endState(st), more(true) {}
-		~OnExit() { 
+		~OnExit() {
 			facade->stopStep(self->signal, !more);
 			if (self->handler) { self->handler->onEvent(StepReady(facade->summary())); }
-			self->state  = endState;
+			self->state = endState;
 		}
 		SolveStrategy* self;
 		ClaspFacade*   facade;
 		int            endState;
 		bool           more;
 	} scope(this, &f, done);
-	f.step_.solveTime = f.step_.unsatTime = RealTime::getTime();
-	scope.more = algo->solve(f.ctx, f.assume_, &f);
+	if (state != state_running){ state = state_running; }
+	if (!signal && f.ctx.ok()) {
+		f.step_.solveTime = f.step_.unsatTime = RealTime::getTime();
+		scope.more = algo->solve(f.ctx, f.assume_, &f);
+	}
+	else {
+		f.ctx.report(message<Event::verbosity_low>(Event::subsystem_solve, "Solving"));
+		scope.more = f.ctx.ok();
+	}
 }
 
 #if WITH_THREADS
-struct ClaspFacade::AsyncSolve : public SolveStrategy, public EventHandler {
+struct ClaspFacade::AsyncSolve : public SolveStrategy, public EventHandler{
 	static EventHandler* asyncModelHandler() { return reinterpret_cast<EventHandler*>(0x1); }
 	AsyncSolve() { refs = 1; }
 	virtual void doSolve(ClaspFacade& f) {
 		if (handler == AsyncSolve::asyncModelHandler()) { handler = this; }
 		algo->enableInterrupts();
-		state  = state_running;
+		state = state_running;
 		result = f.result();
-		if (result.flags) { signal = result.signal; state = state_done; return; }
 		// start solve in worker thread
 		Clasp::thread(std::mem_fun(&AsyncSolve::threadMain), this, &f).swap(task);
 	}
@@ -183,20 +185,20 @@ struct ClaspFacade::AsyncSolve : public SolveStrategy, public EventHandler {
 		return SolveStrategy::cancel(sig) && (sig != SIGCANCEL || wait());
 	}
 	void threadMain(ClaspFacade* f) {
-		try         { solveImpl(*f, state_running); }
+		try         { runAlgo(*f, state_running); }
 		catch (...) { result.flags |= Result::EXT_ERROR; }
 		{
 			unique_lock<Clasp::mutex> lock(this->mqMutex);
 			result = f->result();
-			state  = state_done;
+			state = state_done;
 		}
 		mqCond.notify_one();
 	}
 	virtual void release() {
-		if      (--refs == 1) { interrupt(SIGCANCEL); }
-		else if (refs   == 0) { join(); delete this; }
+		if (--refs == 1) { interrupt(SIGCANCEL); }
+		else if (refs == 0) { join(); delete this; }
 	}
-	bool hasResult()const { return (state & state_result)  != 0; }
+	bool hasResult()const { return (state & state_result) != 0; }
 	bool next() {
 		if (state != state_model) { return false; }
 		unique_lock<Clasp::mutex> lock(mqMutex);
@@ -207,10 +209,10 @@ struct ClaspFacade::AsyncSolve : public SolveStrategy, public EventHandler {
 	bool wait(double s = -1.0) {
 		if (state == state_start) { return false; }
 		if (signal != 0)          { next(); }
-		for (unique_lock<Clasp::mutex> lock(mqMutex); !hasResult(); ) {
+		for (unique_lock<Clasp::mutex> lock(mqMutex); !hasResult();) {
 			if (s < 0.0) { mqCond.wait(lock); }
 			else {
-				try { 
+				try {
 					mqCond.wait_for(lock, tbb::tick_count::interval_t(s));
 					if (!hasResult()) { return false; }
 				}
@@ -231,10 +233,10 @@ struct ClaspFacade::AsyncSolve : public SolveStrategy, public EventHandler {
 		return true;
 	}
 	bool onModel(const Solver&, const Model&) {
-		const Result sat = {Result::SAT, 0};
+		const Result sat = { Result::SAT, 0 };
 		unique_lock<Clasp::mutex> lock(mqMutex);
 		state = state_model;
-		result= sat;
+		result = sat;
 		mqCond.notify_one();
 		while (state == state_model && signal == 0) { mqCond.wait(lock); }
 		return signal == 0;
@@ -246,7 +248,7 @@ struct ClaspFacade::AsyncSolve : public SolveStrategy, public EventHandler {
 	Clasp::atomic<int>        refs;   // 1 + #AsyncResult objects
 	Result                    result; // result of async operation
 };
-ClaspFacade::AsyncResult::AsyncResult(SolveImpl& x) : state_(static_cast<AsyncSolve*>(x.active)) { ++state_->refs; }
+ClaspFacade::AsyncResult::AsyncResult(SolveData& x) : state_(static_cast<AsyncSolve*>(x.active)) { ++state_->refs; }
 ClaspFacade::AsyncResult::~AsyncResult() { state_->release(); }
 ClaspFacade::AsyncResult::AsyncResult(const AsyncResult& x) : state_(x.state_) { ++state_->refs; }
 int  ClaspFacade::AsyncResult::interrupted()        const { return state_->signal; }
@@ -263,12 +265,12 @@ ClaspFacade::Result ClaspFacade::AsyncResult::get() const {
 	if (!state_->result.error()) { return state_->result; }
 	throw std::runtime_error("Async operation failed!");
 }
-bool ClaspFacade::AsyncResult::end() const { 
+bool ClaspFacade::AsyncResult::end() const {
 	// first running() handles case where iterator is outdated (state was reset to start)
 	// second running() is used to distinguish models from final result (summary)
 	return !running() || !get().sat() || !running();
 }
-const Model& ClaspFacade::AsyncResult::model() const { 
+const Model& ClaspFacade::AsyncResult::model() const {
 	CLASP_FAIL_IF(state_->state != AsyncSolve::state_model, "Invalid iterator access!");
 	return const_cast<const SolveAlgorithm*>(state_->algo)->enumerator()->lastModel();
 }
@@ -276,14 +278,14 @@ const Model& ClaspFacade::AsyncResult::model() const {
 /////////////////////////////////////////////////////////////////////////////////////////
 // ClaspFacade
 /////////////////////////////////////////////////////////////////////////////////////////
-ClaspFacade::ClaspFacade() : config_(0) {}
+ClaspFacade::ClaspFacade() : config_(0) { step_.init(*this); }
 ClaspFacade::~ClaspFacade() { }
 void ClaspFacade::discardProblem() {
-	config_  = 0;
+	config_ = 0;
 	builder_ = 0;
 	lpStats_ = 0;
-	solve_   = 0;
-	accu_    = 0;
+	solve_ = 0;
+	accu_ = 0;
 	step_.init(*this);
 	if (ctx.numConstraints() || ctx.numVars()) { ctx.reset(); }
 }
@@ -291,11 +293,15 @@ void ClaspFacade::init(ClaspConfig& config, bool discard) {
 	if (discard) { discardProblem(); }
 	ctx.setConfiguration(0, false); // force reload of configuration once done
 	config_ = &config;
-	SolveImpl::EnumPtr e(config.enumerate.createEnumerator());
+	if (config_->solve.enumMode == EnumOptions::enum_dom_record && config_->solver(0).heuId != Heuristic_t::heu_domain) {
+		ctx.report(warning(Event::subsystem_facade, "Reasoning mode requires domain heuristic and is ignored!"));
+		config_->solve.enumMode = EnumOptions::enum_auto;
+	}
+	SolveData::EnumPtr e(config.solve.createEnumerator(config.solve));
 	if (e.get() == 0) { e = EnumOptions::nullEnumerator(); }
 	if (config.solve.numSolver() > 1 && !e->supportsParallel()) {
 		ctx.report(warning(Event::subsystem_facade, "Selected reasoning mode implies #Threads=1."));
-		config.setSolvers(1);
+		config.solve.setSolvers(1);
 	}
 	ctx.setConfiguration(&config, false); // prepare and apply config
 	if (program() && lpStats_.get()) {
@@ -303,127 +309,156 @@ void ClaspFacade::init(ClaspConfig& config, bool discard) {
 		p->setOptions(config.asp);
 		p->setNonHcfConfiguration(config.testerConfig());
 	}
-	if (!solve_.get()) { solve_ = new SolveImpl(); }
-	SolveImpl::AlgoPtr a(config.solve.createSolveObject());
+	if (!solve_.get()) { solve_ = new SolveData(); }
+	SolveData::AlgoPtr a(config.solve.createSolveObject());
 	solve_->init(a.release(), e.release());
 	if (discard) { startStep(0); }
 }
 
-void ClaspFacade::initBuilder(ProgramBuilder* in, bool incremental) {
+void ClaspFacade::initBuilder(ProgramBuilder* in) {
 	builder_ = in;
 	assume_.clear();
 	builder_->startProgram(ctx);
-	if (incremental) { 
-		ctx.requestStepVar();
+}
+
+ProgramBuilder& ClaspFacade::start(ClaspConfig& config, ProblemType t) {
+	if (t == Problem_t::SAT) { return startSat(config); }
+	else if (t == Problem_t::PB)  { return startPB(config); }
+	else if (t == Problem_t::ASP) { return startAsp(config); }
+	else                          { throw std::domain_error("Unknown problem type!"); }
+}
+
+SatBuilder& ClaspFacade::startSat(ClaspConfig& config) {
+	init(config, true);
+	initBuilder(new SatBuilder(config.solve.maxSat));
+	return static_cast<SatBuilder&>(*builder_.get());
+}
+
+PBBuilder& ClaspFacade::startPB(ClaspConfig& config) {
+	init(config, true);
+	initBuilder(new PBBuilder());
+	return static_cast<PBBuilder&>(*builder_.get());
+}
+
+Asp::LogicProgram& ClaspFacade::startAsp(ClaspConfig& config, bool enableUpdates) {
+	init(config, true);
+	Asp::LogicProgram* p = new Asp::LogicProgram();
+	lpStats_ = new Asp::LpStats;
+	p->accu = lpStats_.get();
+	initBuilder(p);
+	p->setOptions(config.asp);
+	p->setNonHcfConfiguration(config.testerConfig());
+	if (enableUpdates) { enableProgramUpdates(); }
+	return *p;
+}
+
+bool ClaspFacade::enableProgramUpdates() {
+	CLASP_ASSERT_CONTRACT_MSG(program(), "Program was already released!");
+	CLASP_ASSERT_CONTRACT(!solving() && !program()->frozen());
+	if (!accu_.get()) {
 		builder_->updateProgram();
-		solve_->algo->enableInterrupts();
+		ctx.requestStepVar();
+		if (!solve_->interruptible) {
+			solve_->interruptible = true;
+			solve_->algo->enableInterrupts();
+		}
 		accu_ = new Summary();
 		accu_->init(*this);
 		accu_->step = UINT32_MAX;
 	}
+	return lpStats_.get() != 0; // currently only ASP supports program updates
 }
 
-ProgramBuilder& ClaspFacade::start(ClaspConfig& config, ProblemType t, bool allowUpdate) {
-	if      (t == Problem_t::SAT) { return startSat(config, allowUpdate); }
-	else if (t == Problem_t::PB)  { return startPB(config, allowUpdate);  }
-	else if (t == Problem_t::ASP) { return startAsp(config, allowUpdate); }
-	else                          { throw std::domain_error("Unknown problem type!"); }
-}
-
-SatBuilder& ClaspFacade::startSat(ClaspConfig& config, bool allowUpdate) {
-	init(config, true);
-	initBuilder(new SatBuilder(config.enumerate.maxSat), allowUpdate);
-	return static_cast<SatBuilder&>(*builder_.get());
-}
-
-PBBuilder& ClaspFacade::startPB(ClaspConfig& config, bool allowUpdate) {
-	init(config, true);
-	initBuilder(new PBBuilder(), allowUpdate);
-	return static_cast<PBBuilder&>(*builder_.get());
-}
-
-Asp::LogicProgram& ClaspFacade::startAsp(ClaspConfig& config, bool allowUpdate) {
-	init(config, true);
-	Asp::LogicProgram* p = new Asp::LogicProgram();
-	lpStats_             = new Asp::LpStats;
-	p->accu              = lpStats_.get();
-	initBuilder(p, allowUpdate);
-	p->setOptions(config.asp);
-	p->setNonHcfConfiguration(config.testerConfig());
-	return *p;
-}
 ProgramBuilder& ClaspFacade::update(bool reloadConfig) {
-	CLASP_ASSERT_CONTRACT(builder_.get() && !solving());
+	CLASP_ASSERT_CONTRACT(config_ && program() && !solving());
 	CLASP_ASSERT_CONTRACT_MSG(step_.result.signal != SIGINT, "Interrupt not handled!");
-	solve_->reset();
-	if (reloadConfig) { init(*config_, false); }
-	if (builder_->frozen()) {
-		startStep(step()+1);
-		if (builder_->updateProgram()) { assume_.clear(); }
-		else                           { stopStep(0, true); }
+	if (reloadConfig) { 
+		init(*config_, false); 
 	}
-	return *builder_;
+	if (solved()) {
+		startStep(step() + 1);
+	}
+	if (builder_->frozen()) {
+		assume_.clear();
+		builder_->updateProgram();
+	}
+	if (ctx.frozen()) {
+		ctx.unfreeze();
+	}
+	step_.result.signal = 0;
+	solve_->reset();
+	return *program();
 }
+
 bool ClaspFacade::terminate(int signal) {
 	if (solve_.get() && solve_->interrupt(signal)) {
 		return true;
 	}
 	// solving not active or not interruptible
-	stopStep(signal, false);
+	if (!solved() && !step_.result.signal) {
+		step_.result.signal = static_cast<uint8>(signal);
+	}
 	return false;
 }
 
 bool ClaspFacade::prepare(EnumMode enumMode) {
-	CLASP_ASSERT_CONTRACT(config_ && !solving());
-	bool ok = this->ok();
+	CLASP_ASSERT_CONTRACT(solve_.get() && !solving() && !solved());
 	SharedMinimizeData* m = 0;
-	EnumOptions& en       = config_->enumerate;
-	if (builder_.get() && (ok = builder_->endProgram()) == true) {
-		builder_->getAssumptions(assume_);
-		if ((m  = en.opt != MinimizeMode_t::ignore ? builder_->getMinimizeConstraint(&en.bound) : 0) != 0) {
-			ok = m->setMode(en.opt, en.bound);
-			if (en.opt == MinimizeMode_t::enumerate && en.bound.empty()) {
-				ctx.report(warning(Event::subsystem_facade, "opt-mode=enum: no bound given, optimize statement ignored"));
+	ProgramBuilder*   prg = program();
+	EnumOptions& en = config_->solve;
+	if (prepared()) { return ok(); }
+	if (prg && prg->endProgram()) {
+		assume_.clear();
+		prg->getAssumptions(assume_);
+		if ((m = en.optMode != MinimizeMode_t::ignore ? prg->getMinimizeConstraint(&en.optBound) : 0) != 0) {
+			if (!m->setMode(en.optMode, en.optBound)) {
+				assume_.push_back(~ctx.stepLiteral());
+			}
+			if (en.optMode == MinimizeMode_t::enumerate && en.optBound.empty()) {
+				ctx.report(warning(Event::subsystem_facade, "opt-mode=enum: no bound given, optimize statement ignored."));
 			}
 		}
 	}
-	if (ok && (!ctx.frozen() || (ok = ctx.unfreeze()) == true)) {
-		// Step literal only needed for volatile enumeration
-		ok = (enumMode == enum_volatile || ctx.addUnary(ctx.stepLiteral()));
-		if (ok) { solve_->prepare(ctx, m ? m->share() : 0, en.numModels); }
-	}
-	if (!accu_.get()) { builder_ = 0; }
-	return (ok && ctx.endInit()) || (stopStep(0, true), false);
+	CLASP_ASSERT_CONTRACT(!ctx.ok() || !ctx.frozen());
+	solve_->prepare(ctx, m, en.numModels, enumMode);
+	if      (!accu_.get())  { builder_ = 0; }
+	else if (lpStats_.get()){ static_cast<Asp::LogicProgram*>(builder_.get())->dispose(false); }
+	return ctx.ok() && ctx.endInit();
 }
+
 void ClaspFacade::assume(Literal p) {
 	assume_.push_back(p);
 }
 void ClaspFacade::assume(const LitVec& ext) {
 	assume_.insert(assume_.end(), ext.begin(), ext.end());
 }
-bool ClaspFacade::solving() const { return solve_.get() && solve_->solving(); }
+bool ClaspFacade::prepared()    const { return solve_.get() && solve_->prepared; }
+bool ClaspFacade::solving()     const { return solve_.get() && solve_->solving(); }
+bool ClaspFacade::solved()      const { return step_.totalTime >= 0; }
+bool ClaspFacade::interrupted() const { return result().interrupted(); }
 
 const ClaspFacade::Summary& ClaspFacade::shutdown() {
-	if      (!config_) { step_.init(*this); }
-	else if (solving()){ terminate(SIGINT); }
-	else               { stopStep(0, false); }
+	if (solve_.get()) {
+		solve_->interrupt(SolveStrategy::SIGCANCEL);
+		stopStep(step_.result.signal, !ok());
+	}
 	return accu_.get() && accu_->step ? *accu_ : step_;
 }
 
 ClaspFacade::Result ClaspFacade::solve(EventHandler* handler) {
-	CLASP_ASSERT_CONTRACT(!solving());
+	prepare();
 	struct SyncSolve : public SolveStrategy {
-		SyncSolve(SolveImpl& s) : x(&s) { x->active = this; }
+		SyncSolve(SolveData& s) : x(&s) { x->active = this; }
 		~SyncSolve()                    { x->active = 0;    }
-		virtual void doSolve(ClaspFacade& f) { solveImpl(f, state_done); }
-		SolveImpl* x;
+		virtual void doSolve(ClaspFacade& f) { runAlgo(f, state_done); }
+		SolveData* x;
 	} syncSolve(*solve_);
 	syncSolve.solve(*this, solve_->algo.get(), handler);
 	return result();
 }
 #if WITH_THREADS
 ClaspFacade::AsyncResult ClaspFacade::solveAsync(EventHandler* handler) {
-	CLASP_ASSERT_CONTRACT(!solving());
+	prepare();
 	solve_->active = new AsyncSolve();
 	solve_->active->solve(*this, solve_->algo.get(), handler);
 	return AsyncResult(*solve_);
@@ -441,21 +476,21 @@ void ClaspFacade::startStep(uint32 n) {
 	ctx.report(StepStart(*this));
 }
 ClaspFacade::Result ClaspFacade::stopStep(int signal, bool complete) {
-	if (step_.totalTime < 0) {
+	if (!solved()) {
 		double t = RealTime::getTime();
 		step_.totalTime += t;
-		step_.cpuTime   += ProcessTime::getTime();
+		step_.cpuTime += ProcessTime::getTime();
 		if (step_.solveTime) {
 			step_.solveTime = t - step_.solveTime;
 			step_.unsatTime = complete ? t - step_.unsatTime : 0;
 		}
-		Result res = {uint8(0), uint8(signal)};
+		Result res = { uint8(0), uint8(signal) };
 		if (complete) { res.flags = uint8(step_.enumerated() ? Result::SAT : Result::UNSAT) | Result::EXT_EXHAUST; }
 		else          { res.flags = uint8(step_.enumerated() ? Result::SAT : Result::UNKNOWN); }
-		if (signal)   { res.flags|= uint8(Result::EXT_INTERRUPT); }
+		if (signal)   { res.flags |= uint8(Result::EXT_INTERRUPT); }
 		step_.result = res;
 		accuStep();
-		ctx.report(StepReady(step_)); 
+		ctx.report(StepReady(step_));
 	}
 	return result();
 }
@@ -463,14 +498,14 @@ void ClaspFacade::accuStep() {
 	if (accu_.get() && accu_->step != step_.step){
 		if (step_.stats()) { ctx.accuStats(); }
 		accu_->totalTime += step_.totalTime;
-		accu_->cpuTime   += step_.cpuTime;
+		accu_->cpuTime += step_.cpuTime;
 		accu_->solveTime += step_.solveTime;
 		accu_->unsatTime += step_.unsatTime;
-		accu_->numEnum   += step_.numEnum;
+		accu_->numEnum += step_.numEnum;
 		// no aggregation
 		if (step_.numEnum) { accu_->satTime = step_.satTime; }
-		accu_->step       = step_.step;
-		accu_->result     = step_.result;
+		accu_->step = step_.step;
+		accu_->result = step_.result;
 	}
 }
 bool ClaspFacade::onModel(const Solver& s, const Model& m) {
@@ -489,12 +524,12 @@ ExpectedQuantity::operator double() const { return valid() ? rep : std::numeric_
 ExpectedQuantity ClaspFacade::getStatImpl(const char* path, bool keys) const {
 #define GET_KEYS(o, path) ( ExpectedQuantity((o).keys(path)) )
 #define GET_OBJ(o, path)  ( ExpectedQuantity((o)[path]) )
-#define COMMON_KEYS "ctx.\0solvers.\0solver.\0costs.\0totalTime\0cpuTime\0solveTime\0unsatTime\0satTime\0numEnum\0optimal\0step\0result\0"
-	static const char* _keys[] = {"accu.\0hccs.\0hcc.\0lp.\0" COMMON_KEYS, 0, "accu.\0lp.\0" COMMON_KEYS, "accu.\0" COMMON_KEYS };
+#define COMMON_KEYS "ctx.\0solvers.\0solver.\0costs.\0time_total\0time_cpu\0time_solve\0time_unsat\0time_sat\0enumerated\0optimal\0step\0result\0"
+	static const char* _keys[] = { "accu.\0hccs.\0hcc.\0lp.\0" COMMON_KEYS, 0, "accu.\0lp.\0" COMMON_KEYS, "accu.\0" COMMON_KEYS };
 	enum ObjId { id_hccs, id_hcc, id_lp, id_ctx, id_solvers, id_solver, id_costs, id_total, id_cpu, id_solve, id_unsat, id_sat, id_num, id_opt, id_step, id_result };
 	if (!path)  path = "";
 	std::size_t kLen = 0;
-	int         oId  = lpStats_.get() ? ((ctx.sccGraph.get() && ctx.sccGraph->numNonHcfs() != 0) ? id_hccs : id_lp) : id_ctx;
+	int         oId = lpStats_.get() ? ((ctx.sccGraph.get() && ctx.sccGraph->numNonHcfs() != 0) ? id_hccs : id_lp) : id_ctx;
 	const char* keyL = _keys[oId];
 	bool        accu = matchStatPath(path, "accu");
 	if (!*path) { 
@@ -503,7 +538,7 @@ ExpectedQuantity ClaspFacade::getStatImpl(const char* path, bool keys) const {
 	}
 	accu = accu && step() != 0;
 	for (const char* k = keyL + 6; (kLen = std::strlen(k)) != 0; k += kLen + 1, ++oId) {
-		bool match = k[kLen-1] == '.' ? matchStatPath(path, k, kLen-1) : std::strcmp(path, k) == 0;
+		bool match = k[kLen - 1] == '.' ? matchStatPath(path, k, kLen - 1) : std::strcmp(path, k) == 0;
 		if (match) {
 			if (!*path && !keys){ return ExpectedQuantity::error_ambiguous_quantity; }
 			switch(oId) {
@@ -512,7 +547,7 @@ ExpectedQuantity ClaspFacade::getStatImpl(const char* path, bool keys) const {
 					if (oId == id_costs) {
 						char* x;
 						uint32 n = (uint32)std::strtoul(path, &x, 10);
-						uint32 N = stats->model() && stats->optimize() ? stats->costs()->numRules() : 0u;
+						uint32 N = stats->optimize() && stats->costs() ? (uint32)stats->costs()->size() : 0u;
 						if (x == path) {
 							if (!*path) { return keys ? ExpectedQuantity("__len\0") : ExpectedQuantity::error_ambiguous_quantity; }
 							if (!keys && std::strcmp(path, "__len") == 0) { return ExpectedQuantity(N); }
@@ -521,7 +556,7 @@ ExpectedQuantity ClaspFacade::getStatImpl(const char* path, bool keys) const {
 						if (*(path = x) == '.') { ++path; }
 						if (*path)  { return ExpectedQuantity::error_unknown_quantity; }
 						if (n >= N) { return ExpectedQuantity::error_not_available;    }
-						if (!keys)  { return ExpectedQuantity((double)stats->costs()->optimum(n)); }
+						if (!keys)  { return ExpectedQuantity((double)stats->costs()->at(n)); }
 					}
 					if (keys)            { return ExpectedQuantity(uint32(0)); }
 					if (oId <= id_sat)   { return *((&stats->totalTime) + (oId - id_total)); }
@@ -565,7 +600,7 @@ ExpectedQuantity ClaspFacade::getStatImpl(const char* path, bool keys) const {
 			}
 		}
 	}
-	return ExpectedQuantity::error_unknown_quantity; 
+	return ExpectedQuantity::error_unknown_quantity;
 #undef GET_KEYS
 #undef GET_OBJ
 #undef COMMON_KEYS
@@ -575,7 +610,7 @@ ExpectedQuantity ClaspFacade::getStat(const char* path)const {
 	return config_ && step_.totalTime >= 0.0 ? getStatImpl(path, false) : ExpectedQuantity::error_not_available;
 }
 const char*      ClaspFacade::getKeys(const char* path)const {
-	ExpectedQuantity x =  config_ && step_.totalTime >= 0.0 ? getStatImpl(path, true) : ExpectedQuantity::error_not_available;
+	ExpectedQuantity x = config_ && step_.totalTime >= 0.0 ? getStatImpl(path, true) : ExpectedQuantity::error_not_available;
 	if (x.valid()) { return (const char*)static_cast<uintp>(x.rep); }
 	return x.error() == ExpectedQuantity::error_unknown_quantity ? 0 : "\0";
 }
@@ -587,24 +622,28 @@ ExpectedQuantity ClaspFacade::getStat(const SharedContext& ctx, const char* key,
 		if (!x.valid()) { return x; }
 		res.rep += x.rep;
 	}
-	return res;	
+	return res;
 }
+Enumerator* ClaspFacade::enumerator() const { return solve_.get() ? solve_->enumerator() : 0; }
 /////////////////////////////////////////////////////////////////////////////////////////
 // ClaspFacade::Summary
 /////////////////////////////////////////////////////////////////////////////////////////
-void ClaspFacade::Summary::init(ClaspFacade& f)  { std::memset(this, 0, sizeof(Summary)); facade = &f;}
+void ClaspFacade::Summary::init(ClaspFacade& f)  { std::memset(this, 0, sizeof(Summary)); facade = &f; }
 int ClaspFacade::Summary::stats()          const { return ctx().master()->stats.level(); }
 const Model* ClaspFacade::Summary::model() const { return facade->solve_.get() ? facade->solve_->lastModel() : 0; }
-const SharedMinimizeData* ClaspFacade::Summary::costs()const { return facade->solve_.get() ? facade->solve_->minimizer() : 0;  }
+bool ClaspFacade::Summary::optimize()      const {
+	if (const Enumerator* e = facade->enumerator()){
+		return e->optimize() || e->lastModel().opt;
+	}
+	return false;
+}
 const char* ClaspFacade::Summary::consequences() const {
 	int mt = facade->solve_.get() ? facade->solve_->modelType() : 0;
-	if ( (mt & CBConsequences::brave_consequences)    == CBConsequences::brave_consequences)   { return "Brave"; }
-	if ( (mt & CBConsequences::cautious_consequences) == CBConsequences::cautious_consequences){ return "Cautious"; }
+	if ((mt & CBConsequences::brave_consequences) == CBConsequences::brave_consequences)   { return "Brave"; }
+	if ((mt & CBConsequences::cautious_consequences) == CBConsequences::cautious_consequences){ return "Cautious"; }
 	return 0;
 }
-bool ClaspFacade::Summary::optimize()  const { return (facade->solve_.get() && facade->solve_->optimize()) || (model() && model()->opt); }
-bool ClaspFacade::Summary::optimum()   const { return (model() && model()->opt) || (costs() && complete()); }
-uint64 ClaspFacade::Summary::optimal() const { 
+uint64 ClaspFacade::Summary::optimal() const {
 	const Model* m = model();
 	if (m && m->opt) {
 		return !m->consequences() ? std::max(m->num, uint64(1)) : uint64(complete());

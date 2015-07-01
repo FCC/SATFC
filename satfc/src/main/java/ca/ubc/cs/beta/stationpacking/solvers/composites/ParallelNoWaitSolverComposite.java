@@ -24,15 +24,14 @@ package ca.ubc.cs.beta.stationpacking.solvers.composites;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
@@ -97,7 +96,7 @@ public class ParallelNoWaitSolverComposite implements ISolver {
         final AtomicReference<SolverResult> resultReference = new AtomicReference<>();
         // We maintain a list of all the solvers current solving the problem so we know who to interrupt via the interrupt method
         final List<ISolver> solversSolvingCurrentProblem = Collections.synchronizedList(new ArrayList<>());
-        final List<Future> futures = new ArrayList<>();
+        final List<Future<Void>> futures = new ArrayList<>();
         try {
             // Submit one job per each solver in the portfolio
             listOfSolverQueues.forEach(solverQueue -> {
@@ -175,6 +174,7 @@ public class ParallelNoWaitSolverComposite implements ISolver {
      */
     private void checkForErrors() {
         if (error.get() != null) {
+            log.error("Error occured while executing a task", error.get());
             throw new RuntimeException("Error occurred while executing a task", error.get());
         }
     }

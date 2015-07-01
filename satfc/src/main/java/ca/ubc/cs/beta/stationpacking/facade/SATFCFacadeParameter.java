@@ -22,6 +22,7 @@
 package ca.ubc.cs.beta.stationpacking.facade;
 
 import lombok.Data;
+import ca.ubc.cs.beta.aeatk.logging.LogLevel;
 import ca.ubc.cs.beta.stationpacking.solvers.decorators.CNFSaverSolverDecorator;
 
 @Data
@@ -37,6 +38,7 @@ public class SATFCFacadeParameter {
     private final CNFSaverSolverDecorator.ICNFSaver CNFSaver;
     private final String serverURL;
     private final int numCores;
+    private final LogLevel logLevel;
 
 	public static enum SolverChoice
 	{

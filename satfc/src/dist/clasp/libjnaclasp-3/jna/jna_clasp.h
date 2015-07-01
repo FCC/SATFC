@@ -35,7 +35,6 @@ namespace JNA {
 			void setFacade(Clasp::ClaspFacade* facade);
 			void setAsyncResult(Clasp::ClaspFacade::AsyncResult* asyncResult);
 			void setConfig(Clasp::Cli::ClaspCliConfig* config);
-			void setConfigKey(Clasp::Cli::ConfigKey key);
 			void setResultState(Result_State state);
 			void setConfigState(Config_State configState);
 			void setConfigErrorMessage(std::string message);
@@ -47,13 +46,11 @@ namespace JNA {
 			bool onModel(const Clasp::Solver& s, const Clasp::Model& m);
 		private:
 			int* assignment_;
-			bool configAllocated_;
 			Result_State resultState_;
 			Config_State configState_;
 			Clasp::ClaspFacade* facade_;
-			Clasp::ClaspFacade::AsyncResult* asyncResult_;
+			Clasp::ClaspFacade::AsyncResult* asyncResult_; // note: asyncResult is not thread safe
 			Clasp::Cli::ClaspCliConfig* config_;
-			Clasp::Cli::ConfigKey configKey_;
 			std::string configErrorMessage_;
 	};
 

@@ -106,7 +106,7 @@ public class ParallelNoWaitSolverCompositeTest {
             throw new IllegalArgumentException();
         });
         final ParallelNoWaitSolverComposite parallelSolverComposite = new ParallelNoWaitSolverComposite(1, solvers);
-        final SolverResult solve = parallelSolverComposite.solve(StationPackingTestUtils.getSimpleInstance(), new CPUTimeTerminationCriterion(60), 1);
+        parallelSolverComposite.solve(StationPackingTestUtils.getSimpleInstance(), new CPUTimeTerminationCriterion(60), 1);
     }
 
 }

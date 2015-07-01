@@ -43,13 +43,14 @@ struct Model {
 	ValueRep value(Var v)      const { assert(values && v < values->size()); return (*values)[v]; }
 	//! True if p is true in model or part of current consequences.
 	bool     isTrue(Literal p) const { return (value(p.var()) & trueValue(p)) != 0; }
-	uint64                    num;    // running number of this model
-	const ValueVec*           values; // variable assignment or consequences
-	const SharedMinimizeData* costs;  // associated costs (or 0)
-	uint32                    sId :16;// id of solver that found the model
-	uint32                    type:14;// type of model
-	uint32                    opt : 1;// whether the model is optimal w.r.t costs (0: unknown)
-	uint32                    sym : 1;// whether symmetric models are possible
+	uint64            num;    // running number of this model
+	const Enumerator* ctx;    // ctx in which model was found
+	const ValueVec*   values; // variable assignment or consequences
+	const SumVec*     costs;  // associated costs (or 0)
+	uint32            sId :16;// id of solver that found the model
+	uint32            type:14;// type of model
+	uint32            opt : 1;// whether the model is optimal w.r.t costs (0: unknown)
+	uint32            sym : 1;// whether symmetric models are possible
 };
 
 /**
@@ -60,20 +61,20 @@ struct Model {
 //! Options for configuring enumeration.
 struct EnumOptions {  
 	typedef MinimizeMode OptMode;
-	enum EnumType { enum_auto = 0, enum_bt  = 1, enum_record  = 2, enum_consequences = 4, enum_brave = 5, enum_cautious = 6 };
-	EnumOptions() : numModels(-1), type(enum_auto), opt(MinimizeMode_t::optimize), project(0), maxSat(false) {}
+	enum EnumType { enum_auto = 0, enum_bt  = 1, enum_record  = 2, enum_dom_record = 3, enum_consequences = 4, enum_brave = 5, enum_cautious = 6, enum_user = 8 };
+	EnumOptions() : numModels(-1), enumMode(enum_auto), optMode(MinimizeMode_t::optimize), project(0), maxSat(false) {}
 	static Enumerator* createModelEnumerator(const EnumOptions& opts);
 	static Enumerator* createConsEnumerator(const EnumOptions& opts);
 	static Enumerator* nullEnumerator();
-	
-	Enumerator* createEnumerator() const;
-	bool        consequences()     const { return (type & enum_consequences) != 0; }
-	bool        optimize()         const { return ((opt  & MinimizeMode_t::optimize) != 0); }
+	static Enumerator* createEnumerator(const EnumOptions& opts);
+	bool     consequences() const { return (enumMode & enum_consequences) != 0; }
+	bool     models()       const { return (enumMode < enum_consequences); }
+	bool     optimize()     const { return ((optMode  & MinimizeMode_t::optimize) != 0); }
 	int      numModels; /*!< Number of models to compute. */
-	EnumType type;      /*!< Enumeration type to use.     */
-	OptMode  opt;       /*!< Optimization mode to use.    */
+	EnumType enumMode;  /*!< Enumeration type to use.     */
+	OptMode  optMode;   /*!< Optimization mode to use.    */
 	uint32   project;   /*!< Options for projection.      */
-	SumVec   bound;     /*!< Initial bound for optimize statements. */
+	SumVec   optBound;  /*!< Initial bound for optimize statements. */
 	bool     maxSat;    /*!< Treat DIMACS input as MaxSat */
 };
 
@@ -97,6 +98,7 @@ public:
 	typedef const EnumerationConstraint* ConPtrConst;
 	typedef const SharedMinimizeData*    Minimizer;
 	typedef EnumOptions::OptMode         OptMode;
+	class   ThreadQueue;
 	explicit Enumerator();
 	virtual ~Enumerator();
 
@@ -140,6 +142,14 @@ public:
 	 */
 	bool   update(Solver& s)  const;
 	
+	/*!
+	 * \name Commit functions
+	 * Functions for committing enumeration-related information to the enumerator.
+	 * \note The functions in this group are *not* concurrency-safe, i.e. in a parallel search
+	 *       at most one solver shall call a commit function at any one time.
+	 */
+	//@{
+
 	//! Commits the model stored in the given solver.
 	/*!
 	 * If the model is valid and unique, the function returns true and the 
@@ -149,9 +159,6 @@ public:
 	 * in order to continue search for further models. 
 	 *
 	 * \pre The solver's assignment is total.
-	 *
-	 * \note The function is *not* concurrency-safe, i.e. in a parallel search
-	 *       at most one solver shall call the function at any one time.
 	 */
 	bool   commitModel(Solver& s);
 	//! Expands the next symmetric model if any.
@@ -162,11 +169,10 @@ public:
 	 * If true is returned, the enumerator has relaxed an enumeration constraint
 	 * and search may continue after a call to Enumerator::update(s).
 	 * Otherwise, the search shall be stopped.
-	 *
-	 * \note The function is *not* concurrency-safe, i.e. in a parallel search
-	 *       at most one solver shall call the function at any one time.
 	 */
 	bool   commitUnsat(Solver& s);
+	//! Commits the given clause to this enumerator.
+	bool   commitClause(const LitVec& clause) const;
 	//! Marks current enumeration phase as completed.
 	/*!
 	 * If the enumerator was initialized with a minimization constraint and
@@ -185,6 +191,8 @@ public:
 	 * \see commitUnsat()
 	 */
 	uint8  commit(Solver& s);
+	//@}
+
 	//! Removes from s the path that was passed to start() and any active (minimization) bound.
 	void   end(Solver& s) const;
 	//! Returns the number of models enumerated so far.
@@ -198,31 +206,37 @@ public:
 	bool         optimize()         const { return mini_ && mini_->mode() != MinimizeMode_t::enumerate && model_.opt == 0; }
 	//! Returns whether computed models are still tentative.
 	bool         tentative()        const { return mini_ && mini_->mode() == MinimizeMode_t::enumOpt && model_.opt == 0; }
+	//! Returns the active minimization constraint if any.
+	Minimizer    minimizer()        const { return mini_; }
 	//! Returns the type of models this enumerator computes.
 	virtual int  modelType()        const { return Model::model_sat; }
 	//! Returns whether or not this enumerator supports full restarts once a model was found.
 	virtual bool supportsRestarts() const { return true; }
 	//! Returns whether or not this enumerator supports parallel search.
 	virtual bool supportsParallel() const { return true; }
+	//! Returns whether or not this enumerator supports splitting-based search.
+	virtual bool supportsSplitting(const SharedContext& problem) const;
 	//! Returns whether this enumerator requires exhaustive search to produce a definite answer.
 	virtual bool exhaustive()       const { return mini_ && mini_->mode() != MinimizeMode_t::enumerate; }
 	//! Sets whether the search path stored in s is disjoint from all others.
 	void         setDisjoint(Solver& s, bool b) const;
 	//! Sets whether symmetric should be ignored.
 	void         setIgnoreSymmetric(bool b);
-	Minimizer    minimizer()                    const { return mini_; }
+	ConPtr       constraint(const Solver& s) const;
 protected:
 	//! Shall prepare the enumerator and freeze any enumeration-related variable.
 	/*!
-	 * \return A prototypical enumeration constraint to be used in the master solver.
+	 * \return A prototypical enumeration constraint to be used in a solver.
 	 */
-	virtual ConPtr doInit(SharedContext& ctx, MinimizeConstraint* m, int numModels) = 0;
+	virtual ConPtr doInit(SharedContext& ctx, SharedMinimizeData* min, int numModels) = 0;
 	virtual void   doReset();
-	ConPtr         constraint(const Solver& s) const;
 private:
+	class SharedQueue;
 	Enumerator(const Enumerator&);
 	Enumerator& operator=(const Enumerator&);
 	SharedMinimizeData* mini_;
+	SharedQueue*        queue_;
+	SumVec              costs_;
 	Model               model_;
 };
 
@@ -233,26 +247,30 @@ private:
  */
 class EnumerationConstraint : public Constraint {
 public:
-	typedef EnumerationConstraint* ConPtr;
-	typedef MinimizeConstraint*    MinPtr;
+	typedef EnumerationConstraint*   ConPtr;
+	typedef MinimizeConstraint*      MinPtr;
+	typedef Enumerator::ThreadQueue* QueuePtr;
 	//! Returns true if search-path is disjoint from all others.
 	bool     disjointPath()const { return (flags_ & flag_path_disjoint) != 0u; }
 	ValueRep state()       const { return static_cast<ValueRep>(flags_ & 3u); }
 	//! Returns true if optimization is active.
 	bool     optimize()    const;
 	MinPtr   minimizer()   const { return mini_; }
-	
 	// Methods used by enumerator
+	void init(Solver& s, SharedMinimizeData* min, QueuePtr q);
 	bool start(Solver& s, const LitVec& path, bool disjoint);
 	void end(Solver& s);
 	bool update(Solver& s);
 	void setDisjoint(bool x);
-	bool integrateBound(Solver& s) const;
+	bool integrateBound(Solver& s);
+	bool integrateNogoods(Solver& s);
 	bool commitModel(Enumerator& ctx, Solver& s);
 	bool commitUnsat(Enumerator& ctx, Solver& s);
 	void setMinimizer(MinPtr min) { mini_ = min; }
+	void add(Constraint* c);
+	void modelHeuristic(Solver& s);
 protected:
-	EnumerationConstraint(Solver& s, MinimizeConstraint* min);
+	EnumerationConstraint();
 	virtual ~EnumerationConstraint();
 	// base interface
 	virtual void        destroy(Solver* s, bool detach);
@@ -260,14 +278,19 @@ protected:
 	virtual void        reason(Solver&, Literal, LitVec&)    {}
 	virtual bool        simplify(Solver& s, bool reinit);
 	virtual bool        valid(Solver& s);
+	virtual Constraint* cloneAttach(Solver& s);
 	// own interface
+	virtual ConPtr      clone() = 0;
 	virtual bool        doUpdate(Solver& s) = 0;
 	virtual void        doCommitModel(Enumerator&, Solver&) {}
-	MinimizeConstraint* cloneMinimizer(Solver& s) const;
 private:
-	enum Flag { flag_path_disjoint = 4u };
+	enum Flag { flag_path_disjoint = 4u, flag_model_heuristic = 8u };
 	enum { clear_state_mask = ~uint32(value_true|value_false) };
+	typedef PodVector<Constraint*>::type ConstraintDB;
+	typedef SingleOwnerPtr<Enumerator::ThreadQueue> QPtr;
 	MinimizeConstraint* mini_;
+	QPtr                queue_;
+	ConstraintDB        nogoods_;
 	LitVec              next_;
 	uint32              flags_ : 4;
 	uint32              root_  : 28;

@@ -19,26 +19,64 @@
 //
 #include <clasp/enumerator.h>
 #include <clasp/solver.h>
+#include <clasp/util/multi_queue.h>
+#include <clasp/clause.h>
 namespace Clasp { 
-
+/////////////////////////////////////////////////////////////////////////////////////////
+// Enumerator - Shared Queue / Thread Queue
+/////////////////////////////////////////////////////////////////////////////////////////
+class Enumerator::SharedQueue : public mt::MultiQueue<SharedLiterals*, void (*)(SharedLiterals*)> {
+public:
+	typedef mt::MultiQueue<SharedLiterals*, void (*)(SharedLiterals*)> BaseType;
+	explicit SharedQueue(uint32 m) : BaseType(m, releaseLits) { reserve(m + 1);  }
+	bool pushRelaxed(SharedLiterals* clause)  { unsafePublish(clause); return true; }
+	static void releaseLits(SharedLiterals* x){ x->release(); }
+};
+class Enumerator::ThreadQueue {
+public:
+	explicit ThreadQueue(SharedQueue& q) : queue_(&q) { tail_ = q.addThread(); }
+	bool         pop(SharedLiterals*& out){ return queue_->tryConsume(tail_, out); }
+	ThreadQueue* clone()                  { return new ThreadQueue(*queue_); }
+private:
+	Enumerator::SharedQueue*          queue_;
+	Enumerator::SharedQueue::ThreadId tail_;
+};
 /////////////////////////////////////////////////////////////////////////////////////////
 // EnumerationConstraint
 /////////////////////////////////////////////////////////////////////////////////////////
-EnumerationConstraint::EnumerationConstraint(Solver&, MinimizeConstraint* min) : mini_(min), flags_(0), root_(0) {
+EnumerationConstraint::EnumerationConstraint() : mini_(0), flags_(0), root_(0) {
 	setDisjoint(false);
 }
-MinimizeConstraint* EnumerationConstraint::cloneMinimizer(Solver& s) const {
-	return mini_ ? static_cast<MinimizeConstraint*>(mini_->cloneAttach(s)) : 0;
+EnumerationConstraint::~EnumerationConstraint() { }
+void EnumerationConstraint::init(Solver& s, SharedMinimizeData* m, QueuePtr p) {
+	mini_ = 0;
+	queue_= p;
+	if (m) {
+		const SolverParams* c = s.sharedContext()->configuration() ? &s.sharedContext()->configuration()->solver(s.id()) : 0; 
+		MinimizeMode_t::Strategy st = c ? static_cast<MinimizeMode_t::Strategy>(c->optStrat) : MinimizeMode_t::opt_bb;
+		mini_ = m->attach(s, st, c ? c->optParam : 0u);
+		if (c && (c->optHeu & MinimizeMode_t::heu_sign) != 0) {
+			for (const WeightLiteral* it = m->lits; !isSentinel(it->first); ++it) {
+				s.setPref(it->first.var(), ValueSet::pref_value, falseValue(it->first));
+			}
+		}
+		if (c && (c->optHeu & MinimizeMode_t::heu_model) != 0) { flags_ |= uint32(flag_model_heuristic); }
+		else                                                   { flags_ &= ~uint32(flag_model_heuristic);}
+	}
 }
-EnumerationConstraint::~EnumerationConstraint()             { }
-void EnumerationConstraint::destroy(Solver* s, bool x)      { if (mini_) { mini_->destroy(s, x); mini_ = 0; } Constraint::destroy(s, x); }
-bool EnumerationConstraint::simplify(Solver& s, bool reinit){ if (mini_) { mini_->simplify(s, reinit); } return false; }
-bool EnumerationConstraint::valid(Solver& s)                { return !optimize() || mini_->valid(s); }
-bool EnumerationConstraint::integrateBound(Solver& s) const { return !mini_ || mini_->integrate(s); }
-bool EnumerationConstraint::optimize() const                { return mini_ && mini_->shared()->optimize(); }
+bool EnumerationConstraint::valid(Solver& s)         { return !optimize() || mini_->valid(s); }
+void EnumerationConstraint::add(Constraint* c)       { if (c) { nogoods_.push_back(c); } }
+bool EnumerationConstraint::integrateBound(Solver& s){ return !mini_ || mini_->integrate(s); }
+bool EnumerationConstraint::optimize() const         { return mini_ && mini_->shared()->optimize(); }
 void EnumerationConstraint::setDisjoint(bool x) {
 	if (x) { flags_ |=  uint32(flag_path_disjoint); }
 	else   { flags_ &= ~uint32(flag_path_disjoint); }
+}
+Constraint* EnumerationConstraint::cloneAttach(Solver& s) {
+	EnumerationConstraint* c = clone();
+	CLASP_FAIL_IF(c == 0, "Clonging not supported by Enumerator");
+	c->init(s, mini_ ? const_cast<SharedMinimizeData*>(mini_->shared()) : 0, queue_.get() ? queue_->clone() : 0);
+	return c;
 }
 void EnumerationConstraint::end(Solver& s) {
 	if (mini_) { mini_->relax(s, disjointPath()); }
@@ -59,8 +97,8 @@ bool EnumerationConstraint::start(Solver& s, const LitVec& path, bool disjoint) 
 bool EnumerationConstraint::update(Solver& s) {
 	ValueRep st = state();
 	if (st == value_true) {
-		if (s.strategy.restartOnModel) { s.undoUntil(0); }
-		if (optimize())                { s.strengthenConditional(); }
+		if (s.restartOnModel()) { s.undoUntil(0); }
+		if (optimize())         { s.strengthenConditional(); }
 	}
 	else if (st == value_false && !s.pushRoot(next_)) {
 		if (!s.hasConflict()) { s.setStopConflict(); }
@@ -69,12 +107,33 @@ bool EnumerationConstraint::update(Solver& s) {
 	flags_ &= uint32(clear_state_mask);
 	next_.clear();
 	do {
-		if (!s.hasConflict() && doUpdate(s) && integrateBound(s)) {
-			if (st == value_true && optimize()) { mini_->shared()->heuristic(s, (s.strategy.optHeu & SolverStrategies::opt_model) != 0); }
+		if (!s.hasConflict() && doUpdate(s) && integrateBound(s) && integrateNogoods(s)) {
+			if (st == value_true) { modelHeuristic(s); }
 			return true;
 		}
 	} while (st != value_free && s.hasConflict() && s.resolveConflict());
 	return false;
+}
+bool EnumerationConstraint::integrateNogoods(Solver& s) {
+	if (!queue_.get() || s.hasConflict()) { return !s.hasConflict(); }
+	const uint32 f = ClauseCreator::clause_no_add | ClauseCreator::clause_no_release | ClauseCreator::clause_explicit;
+	for (SharedLiterals* clause; queue_->pop(clause); ) {
+		ClauseCreator::Result res = ClauseCreator::integrate(s, clause, f);	
+		if (res.local) { add(res.local);}
+		if (!res.ok()) { return false;  }
+	}
+	return true;
+}
+void EnumerationConstraint::destroy(Solver* s, bool x) { 
+	if (mini_) { mini_->destroy(s, x); mini_ = 0; }
+	queue_ = 0;
+	destroyDB(nogoods_, s, x);
+	Constraint::destroy(s, x); 
+}
+bool EnumerationConstraint::simplify(Solver& s, bool reinit) { 
+	if (mini_) { mini_->simplify(s, reinit); } 
+	simplifyDB(s, nogoods_, reinit);
+	return false; 
 }
 
 bool EnumerationConstraint::commitModel(Enumerator& ctx, Solver& s) {
@@ -90,17 +149,31 @@ bool EnumerationConstraint::commitUnsat(Enumerator&, Solver& s) {
 	flags_ |= value_false;
 	return mini_ && mini_->handleUnsat(s, !disjointPath(), next_);
 }
+void EnumerationConstraint::modelHeuristic(Solver& s) {
+	const bool full      = (flags_ & uint32(flag_model_heuristic)) != 0;
+	const bool heuristic = full || (s.queueSize() == 0 && s.decisionLevel() == s.rootLevel());
+	if (optimize() && heuristic && s.propagate()) {
+		for (const WeightLiteral* w = mini_->shared()->lits; !isSentinel(w->first); ++w) {
+			if (s.value(w->first.var()) == value_free) {
+				s.assume(~w->first);
+				if (!full || !s.propagate()) { break; }
+			}
+		}
+	}
+}
 /////////////////////////////////////////////////////////////////////////////////////////
 // Enumerator
 /////////////////////////////////////////////////////////////////////////////////////////
-Enumerator::Enumerator() : mini_(0) {}
-Enumerator::~Enumerator()                            { if (mini_) mini_->release(); }
+Enumerator::Enumerator() : mini_(0), queue_(0) {}
+Enumerator::~Enumerator()                            { delete queue_; if (mini_) mini_->release(); }
 void Enumerator::setDisjoint(Solver& s, bool b)const { constraint(s)->setDisjoint(b);    }
 void Enumerator::setIgnoreSymmetric(bool b)          { model_.sym = static_cast<uint32>(b == false); }
 void Enumerator::end(Solver& s)                const { constraint(s)->end(s); }
 void Enumerator::doReset()                           {}
 void Enumerator::reset() {
 	if (mini_) { mini_->release(); mini_ = 0; }
+	if (queue_){ delete queue_;   queue_ = 0; }
+	model_.ctx   = 0;
 	model_.values= 0;
 	model_.costs = 0;
 	model_.num   = 0;
@@ -111,23 +184,18 @@ void Enumerator::reset() {
 	doReset();
 }
 int  Enumerator::init(SharedContext& ctx, SharedMinimizeData* min, int limit)  { 
-	typedef MinimizeConstraint* MinPtr;
 	ctx.master()->setEnumerationConstraint(0);
 	reset();
 	if (min && min->mode() == MinimizeMode_t::ignore){ min->release(); min = 0; }
-	model_.costs = (mini_ = min);
-	MinPtr mc    = mini_ ? mini_->attach(*ctx.master()) : 0;
+	mini_        = min;
 	limit        = limit >= 0 ? limit : 1 - int(exhaustive());
 	if (limit   != 1) { ctx.setPreserveModels(true); }
-	ConPtr c     = doInit(ctx, mc, limit);
-	bool optEnum = tentative();
+	queue_       = new SharedQueue(ctx.concurrency());
+	ConPtr c     = doInit(ctx, min, limit);
 	bool cons    = model_.consequences();
-	if (limit) {
-		if (optimize() && !optEnum){ ctx.report(warning(Event::subsystem_prepare, "#models not 0: optimality of last model not guaranteed.")); }
-		if (cons)                  { ctx.report(warning(Event::subsystem_prepare, "#models not 0: last model may not cover consequences."));   }
-	}
-	if      (optEnum)            { model_.type = Model::model_sat; }
+	if      (tentative())        { model_.type = Model::model_sat; }
 	else if (cons && optimize()) { ctx.report(warning(Event::subsystem_prepare, "Optimization: Consequences may depend on enumeration order.")); }
+	c->init(*ctx.master(), mini_, new ThreadQueue(*queue_));
 	ctx.master()->setEnumerationConstraint(c);
 	return limit;
 }
@@ -147,7 +215,14 @@ bool Enumerator::commitModel(Solver& s) {
 	if (constraint(s)->commitModel(*this, s)) {
 		s.stats.addModel(s.decisionLevel());
 		++model_.num;
+		model_.ctx    = this;
 		model_.values = &s.model;
+		model_.costs  = 0;
+		if (minimizer()) {
+			costs_.resize(minimizer()->numRules());
+			std::transform(minimizer()->adjust(), minimizer()->adjust()+costs_.size(), minimizer()->sum(), costs_.begin(), std::plus<wsum_t>());
+			model_.costs = &costs_;
+		}
 		model_.sId    = s.id();
 		return true;
 	}
@@ -155,6 +230,9 @@ bool Enumerator::commitModel(Solver& s) {
 }
 bool Enumerator::commitSymmetric(Solver& s){ return model_.sym && !optimize() && commitModel(s); }
 bool Enumerator::commitUnsat(Solver& s)    { return constraint(s)->commitUnsat(*this, s); }
+bool Enumerator::commitClause(const LitVec& clause)  const { 
+	return queue_ && queue_->pushRelaxed(SharedLiterals::newShareable(clause, Constraint_t::learnt_other));
+}
 bool Enumerator::commitComplete() {
 	if (enumerated()) {
 		if (tentative()) {
@@ -171,27 +249,36 @@ bool Enumerator::commitComplete() {
 	}
 	return true;
 }
-
 bool Enumerator::update(Solver& s) const {
 	return constraint(s)->update(s);
+}
+bool Enumerator::supportsSplitting(const SharedContext& ctx) const {
+	if (!optimize()) { return true; }
+	const Configuration* config = ctx.configuration();
+	bool ok = true;
+	for (uint32 i = 0; i != ctx.concurrency() && ok; ++i) {
+		if      (ctx.hasSolver(i) && constraint(*ctx.solver(i))){ ok = constraint(*ctx.solver(i))->minimizer()->supportsSplitting(); }
+		else if (config && i < config->numSolver())             { ok = MinimizeMode_t::supportsSplitting(static_cast<MinimizeMode_t::Strategy>(config->solver(i).optStrat)); }
+	}
+	return ok;
 }
 /////////////////////////////////////////////////////////////////////////////////////////
 // EnumOptions
 /////////////////////////////////////////////////////////////////////////////////////////
-Enumerator* EnumOptions::createEnumerator() const {
-	if      (consequences())      { return createConsEnumerator(*this);  }
-	else if (type <= enum_record) { return createModelEnumerator(*this); }
-	else                          { return 0; }
+Enumerator* EnumOptions::createEnumerator(const EnumOptions& opts) {
+	if      (opts.models())      { return createModelEnumerator(opts);}
+	else if (opts.consequences()){ return createConsEnumerator(opts); }
+	else                         { return nullEnumerator(); }
 }
 Enumerator* EnumOptions::nullEnumerator() {
 	struct NullEnum : Enumerator {
-		ConPtr doInit(SharedContext& ctx, MinimizeConstraint* m, int) {
+		ConPtr doInit(SharedContext&, SharedMinimizeData*, int) {
 			struct Constraint : public EnumerationConstraint {
-				Constraint(Solver& s, MinimizeConstraint* min) : EnumerationConstraint(s, min) {}
-				bool        doUpdate(Solver& s)   { s.setStopConflict(); return false; }
-				Constraint* cloneAttach(Solver& s){ return new Constraint(s, cloneMinimizer(s)); }
+				Constraint() : EnumerationConstraint() {}
+				ConPtr      clone()          { return new Constraint(); }
+				bool        doUpdate(Solver&){ return true; }
 			};
-			return new Constraint(*ctx.master(), m);
+			return new Constraint();
 		}
 	};
 	return new NullEnum;

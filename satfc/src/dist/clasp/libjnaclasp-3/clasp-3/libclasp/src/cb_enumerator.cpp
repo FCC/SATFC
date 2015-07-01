@@ -53,14 +53,12 @@ public:
 	typedef CBConsequences::SharedConstraint  SharedCon;
 	typedef Solver::ConstraintDB              ConstraintDB;
 	typedef SharedLiterals                    SharedLits;
-	CBFinder(Solver& s, MinimizeConstraint* min, SharedCon* sh) 
-		: EnumerationConstraint(s, min), shared(sh), last(0) {}
-	
-	Constraint* cloneAttach(Solver& s) { return new CBFinder(s, cloneMinimizer(s), shared); } 
-	void doCommitModel(Enumerator& ctx, Solver& s) { static_cast<CBConsequences&>(ctx).addCurrent(s, current, s.model); }
-	void destroy(Solver* s, bool detach);
-	bool doUpdate(Solver& s);
-	void pushLocked(Solver& s, ClauseHead* h);
+	explicit CBFinder(SharedCon* sh) : EnumerationConstraint(), shared(sh), last(0) {}
+	ConPtr clone() { return new CBFinder(shared); }
+	void   doCommitModel(Enumerator& ctx, Solver& s) { static_cast<CBConsequences&>(ctx).addCurrent(s, current, s.model); }
+	void   destroy(Solver* s, bool detach);
+	bool   doUpdate(Solver& s);
+	void   pushLocked(Solver& s, ClauseHead* h);
 	LitVec       current;
 	SharedCon*   shared;
 	SharedLits*  last;
@@ -75,12 +73,12 @@ CBConsequences::CBConsequences(Consequences_t type)
 	, type_(type) {}
 
 Enumerator* EnumOptions::createConsEnumerator(const EnumOptions& opts) {
-	return new CBConsequences(opts.type == enum_brave ? CBConsequences::brave_consequences : CBConsequences::cautious_consequences);
+	return new CBConsequences(opts.enumMode == enum_brave ? CBConsequences::brave_consequences : CBConsequences::cautious_consequences);
 }
 CBConsequences::~CBConsequences() {
 	delete shared_;
 }
-EnumerationConstraint* CBConsequences::doInit(SharedContext& ctx, MinimizeConstraint* min, int) {
+EnumerationConstraint* CBConsequences::doInit(SharedContext& ctx, SharedMinimizeData*, int) {
 	cons_.clear();
 	const SymbolTable& index = ctx.symbolTable();
 	if (index.type() == SymbolTable::map_direct) {
@@ -108,7 +106,7 @@ EnumerationConstraint* CBConsequences::doInit(SharedContext& ctx, MinimizeConstr
 	delete shared_;
 	shared_ = ctx.concurrency() > 1 ? new SharedConstraint() : 0;
 	setIgnoreSymmetric(true);
-	return new CBFinder(*ctx.master(), min, shared_);
+	return new CBFinder(shared_);
 }
 void CBConsequences::addCurrent(Solver& s, LitVec& con, ValueVec& m) {
 	con.clear();
@@ -150,9 +148,9 @@ void CBConsequences::addCurrent(Solver& s, LitVec& con, ValueVec& m) {
 // CBConsequences::CBFinder implementation
 /////////////////////////////////////////////////////////////////////////////////////////
 void CBConsequences::CBFinder::destroy(Solver* s, bool detach) {
-	while (!locked.empty()) {
-		static_cast<ClauseHead*>(locked.back())->destroy(s, detach);
-		locked.pop_back();
+	destroyDB(locked, s, detach);
+	if (last) {
+		last->release();
 	}
 	EnumerationConstraint::destroy(s, detach);
 }
@@ -170,8 +168,9 @@ bool CBConsequences::CBFinder::doUpdate(Solver& s) {
 		ret  = !current.empty() ? ClauseCreator::create(s, current, flags, ClauseInfo(Constraint_t::learnt_other)) : ClauseCreator::Result();
 	}
 	else if (SharedLiterals* x = shared->fetch_if_neq(last)) {
+		if (last) { last->release(); }
 		last = x;
-		ret  = ClauseCreator::integrate(s, x, flags);
+		ret  = ClauseCreator::integrate(s, x, flags | ClauseCreator::clause_no_release);
 	}
 	if (ret.local) { pushLocked(s, ret.local); }
 	current.clear();

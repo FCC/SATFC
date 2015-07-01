@@ -24,19 +24,23 @@ package ca.ubc.cs.beta.stationpacking.execution.problemgenerators;
 import java.util.Map;
 import java.util.Set;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
 * Created by newmanne on 12/05/15.
 */
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class SATFCFacadeProblem {
 
-    private final Set<Integer> stationsToPack;
-    private final Set<Integer> channelsToPackOn;
-    private final Map<Integer, Set<Integer>> domains;
-    private final Map<Integer, Integer> previousAssignment;
-    private final String stationConfigFolder;
-    private final String instanceName;
+    private Set<Integer> stationsToPack;
+    private Set<Integer> channelsToPackOn;
+    private Map<Integer, Set<Integer>> domains;
+    private Map<Integer, Integer> previousAssignment;
+    private String stationConfigFolder;
+    private String instanceName;
 
 }

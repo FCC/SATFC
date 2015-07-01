@@ -12,8 +12,7 @@
 //  GNU General Public License for more details.
 //
 //  You should have received a copy of the GNU General Public License
-//  along with this file; if not, write to the Free Software
-//  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+//  along with this program. If not, see <http://www.gnu.org/licenses/>.
 //
 //
 // NOTE: ProgramOptions is inspired by Boost.Program_options
@@ -38,7 +37,7 @@ typedef std::vector<std::string> StringSeq;
 /////////////////////////////////////////////////////////////////////////////////////////
 // Application base class
 /////////////////////////////////////////////////////////////////////////////////////////
-#define WRITE_STDERR(type,sys,msg) ( fflush(stdout), fprintf(stderr, "*** %-5s: (%s): %s\n", (type),(sys),(msg)), fflush(stderr) )
+#define WRITE_STDERR(type,sys,msg) ( fprintf(stderr, "*** %-5s: (%s): %s\n", (type),(sys),(msg)), fflush(stderr) )
 class Application {
 public:
 	//! Description of and max value for help option.
@@ -123,8 +122,8 @@ private:
 	unsigned              timeout_;   // active time limit or 0 for no limit
 	unsigned              verbose_;   // active verbosity level
 	bool                  fastExit_;  // force fast exit?
-	volatile sig_atomic_t blocked_;   // temporarily block signals?
-	volatile sig_atomic_t pending_;   // pending signal or 0 if no pending signal
+	volatile long         blocked_;   // temporarily block signals?
+	volatile long         pending_;   // pending signal or 0 if no pending signal
 	static Application*   instance_s; // running instance (only valid during run()).
 	static void sigHandler(int sig);  // signal/timeout handler
 };

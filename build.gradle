@@ -20,7 +20,7 @@ allprojects {
     ext {
         springVersion = "4.1.5.RELEASE"
         jacksonVersion = "2.5.1"
-        SATFCVersion = "1.7"
+        SATFCVersion = "1.7.1"
     }
 
     repositories {
@@ -63,6 +63,16 @@ subprojects {
     task javadocJar(type: Jar, dependsOn: javadoc) {
         classifier = 'javadoc'
         from javadoc.destinationDir
+    }
+
+    distributions {
+        main {
+            contents {
+                from(sourcesJar) {
+                    into "lib"
+                }
+            }
+        }
     }
 
     test {

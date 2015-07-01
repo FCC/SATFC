@@ -34,7 +34,7 @@
 void example3() {
 	// See example2()
 	Clasp::ClaspConfig config;
-	config.enumerate.numModels = 0;
+	config.solve.numModels = 0;
 	
 	// The "interface" to the clasp library.
 	Clasp::ClaspFacade libclasp;

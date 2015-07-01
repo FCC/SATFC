@@ -21,13 +21,13 @@
  */
 package ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.factories;
 
+import lombok.RequiredArgsConstructor;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ClaspLibraryGenerator;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.CompressedSATBasedSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.Clasp3SATSolver;
-import lombok.RequiredArgsConstructor;
 
 /**
 * Created by newmanne on 03/06/15.

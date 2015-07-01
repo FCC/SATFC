@@ -240,26 +240,27 @@ protected:
 
 //! Base class for post propagators.
 /*!
- * Post propagators are called during propagation on each decision level and
+ * Post propagators are called after unit propagation on each decision level and
  * once after a total assignment is found.
  * 
  * They may extend a solver's unit-propagation with more elaborate propagation mechanisms.
  * The typical asp example is an unfounded set check.
  *
- * \note Currently, the solver distinguishes *two* classes of post propagators:
+ * \note Currently, the solver distinguishes \b two classes of post propagators:
  *       - class_simple: deterministic post propagators shall only extend
  *         the current decision level. That is, given DL, the decision level on which propagation started,
  *         these post propagators shall neither backtrack below DL nor permanently add new decision levels. 
  *         Deterministic post propagators are called in priority order. For this,
- *         the function PostPropagator::priority() is used and shall return a priority in the range: [priority_class_simple, priority_class_general)
+ *         the function PostPropagator::priority() is used and shall return a priority in the range: <tt>[priority_class_simple, priority_class_general)</tt>
  *       - class_general: post propagators that are non-deterministic or those that are not limited to extending
  *         the current decision level shall have a priority of priority_class_general. They are called in LIFO order but
- *         only after *all* simple post propagators have reached a fixpoint. 
+ *         only after \b all simple post propagators have reached a fixpoint. 
  *
  * \note There are currently three reserved priority values, namely
- *       priority_reserved_msg for message and termination handler (if any),
- *       priority_reserved_ufs for the default unfounded set checker (if any),
- *       and priority_reserved_look for the default lookahead operator (if any).
+ *  - priority_reserved_msg for message and termination handler (if any),
+ *  - priority_reserved_ufs for the default unfounded set checker (if any),
+ *  - and priority_reserved_look for the default lookahead operator (if any).
+ *  .      
  */
 class PostPropagator : public Constraint {
 public:

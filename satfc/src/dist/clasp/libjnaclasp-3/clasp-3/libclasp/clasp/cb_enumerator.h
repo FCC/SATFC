@@ -48,7 +48,7 @@ public:
 private:
 	class  CBFinder;
 	class  SharedConstraint;
-	ConPtr doInit(SharedContext& ctx, MinimizeConstraint* m, int numModels);
+	ConPtr doInit(SharedContext& ctx, SharedMinimizeData* m, int numModels);
 	void   addCurrent(Solver& s, LitVec& con, ValueVec& m);
 	LitVec            cons_;
 	SharedConstraint* shared_;

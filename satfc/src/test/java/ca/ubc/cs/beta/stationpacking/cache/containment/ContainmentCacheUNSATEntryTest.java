@@ -128,7 +128,7 @@ public class ContainmentCacheUNSATEntryTest {
      * this does not indicate less restrictive
      */
     @Test
-    public void Test(){
+    public void overlapDomainTest(){
         Map<Station, Set<Integer>> firstDomains = new HashMap<>();
         firstDomains.put(new Station(1), new HashSet<>(Arrays.asList(5,6)));
         firstDomains.put(new Station(2), new HashSet<>(Arrays.asList(7)));

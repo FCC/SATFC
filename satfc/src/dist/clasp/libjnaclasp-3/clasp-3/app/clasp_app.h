@@ -170,7 +170,11 @@ public:
 	ClaspApp();
 	const char* getName()       const { return "clasp"; }
 	const char* getVersion()    const { return CLASP_VERSION; }
-	const char* getUsage()      const { return "[number] [options] [file]"; }
+	const char* getUsage()      const { 
+		return 
+			"[number] [options] [file]\n"
+			"Compute at most <number> models (0=all) of the instance given in <file>"; 
+	}
 protected:
 	virtual ProblemType getProblemType();
 	virtual void        run(ClaspFacade& clasp);

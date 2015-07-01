@@ -151,7 +151,7 @@ public:
 			std::vector<LitVec::size_type> clSizes_;
 			std::vector<ConstraintType> clTypes_;
 		}*heu = new FakeHeu;
-		solver().heuristic().reset(heu);
+		solver().setHeuristic(heu);
 		CPPUNIT_ASSERT_EQUAL(true, (bool)creator.start().add(a).add(b).add(c).add(d).end());
 		ctx.endInit();
 		solver().assume(a);

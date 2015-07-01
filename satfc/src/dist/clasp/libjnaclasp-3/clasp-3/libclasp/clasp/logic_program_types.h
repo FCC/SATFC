@@ -72,20 +72,22 @@ inline RuleType& operator++(RuleType& x) {
 		default:             return x = BASICRULE;
 	}
 }
+inline bool hasWeights(RuleType t) { return t == WEIGHTRULE || t == OPTIMIZERULE; }
 
 //! Supported edge types.
 /*!
- * Currently, we distinguish three types of edges:
+ * Currently, we distinguish four types of edges:
  *  - a NORMAL_EDGE stipulates an implication between body and head,
  *    i.e. tableau-rules FTA and BFA for atoms.
  *  - a CHOICE_EDGE only stipulates a support.
  *  - a GAMMA_EDGE is like a NORMAL_EDGE that is only considered during
  *    nogood creation but ignored in the dependency graph.
+ *  - a GAMMA_CHOICE_EDGE is like a GAMMA_EDGE but only stipulates a support.
  * The head of a rule is either an atom or a disjunction.
  */
 struct PrgEdge {
 	//! Type of edge.
-	enum EdgeType{ NORMAL_EDGE = 0, GAMMA_EDGE = 1, CHOICE_EDGE = 2};
+	enum EdgeType{ NORMAL_EDGE = 0, GAMMA_EDGE = 1, CHOICE_EDGE = 2, GAMMA_CHOICE_EDGE = 3};
 	//! Type of adjacent node.
 	enum NodeType{ BODY_NODE   = 0, ATOM_NODE  = 1, DISJ_NODE   = 2};
 
@@ -293,9 +295,9 @@ public:
 	void  clearBody(Literal p)            { clear(p.var(), pos_flag+p.sign()); }
 	void  clearAll()                      { StateVec().swap(state_); }
 
-	bool  allMarked(const VarVec& vec, uint8 f) const {
-		for (VarVec::const_iterator it = vec.begin(), end = vec.end(); it != end; ++it) {
-			if (!isSet(*it, f)) return false;
+	bool  allMarked(EdgeIterator first, EdgeIterator last, uint8 f) const {
+		for (; first != last; ++first) {
+			if (!isSet(first->node(), f)) return false;
 		}
 		return true;
 	}
@@ -361,7 +363,7 @@ public:
 	void    setEq(uint32 eqId)      { id_      = eqId; eq_ = 1; seen_ = 1; }
 	void    setIgnoreScc(bool b)    { noScc_   = (uint32)b; }
 	void    markRemoved()           { if (!eq()) setEq(PrgNode::maxVertex); }
-	void    markSeen(bool b)        { seen_    = uint32(b); }
+	void    setSeen(bool b)         { seen_    = uint32(b); }
 	void    resetId(uint32 id, bool seen) { 
 		id_   = id; 
 		eq_   = 0; 
@@ -396,7 +398,6 @@ private:
 class PrgHead : public PrgNode {
 public:
 	enum Simplify { no_simplify = 0, force_simplify = 1 };
-	enum State    { state_normal= 0u, state_in_flux = 1u, state_freeze = 2u, state_freeze_true = 3u };
 	typedef EdgeIterator sup_iterator;
 	
 	//! Is the head part of the (simplified) program?
@@ -407,12 +408,12 @@ public:
 	uint32       supports()   const  { return supports_.size();  }
 	sup_iterator supps_begin()const  { return supports_.begin(); }
 	sup_iterator supps_end()  const  { return supports_.end();   }
-	//! Defined in a later incremental step?
-	bool         frozen()     const  { return (state_ & uint32(state_freeze)) != 0; }
-	//! Thawed in this step?
-	bool         inFlux()     const  { return state_ == state_in_flux; }
-	Literal      assumption() const  { return literal() ^ (state_ == state_freeze);}
-	State        state()      const  { return static_cast<State>(state_);          }
+	//! External atom (or defined in a later incremental step)?
+	bool         frozen()     const  { return freeze_ != uint32(freeze_no); }
+	//! If frozen(), value to assume during solving.
+	ValueRep     freezeValue()const  { return static_cast<ValueRep>(freeze_ - uint32(freeze_ != 0)); }
+	//! If frozen(), literal to assume during solving.
+	Literal      assumption() const  { return freeze_ > uint32(freeze_free) ? literal() ^ (freeze_ == freeze_false) : posLit(0); }
 	//! Adds r as support edge for this node.
 	void         addSupport(PrgEdge r){ addSupport(r, force_simplify); }
 	void         addSupport(PrgEdge r, Simplify s);
@@ -432,9 +433,10 @@ public:
 	//@{
 	void         setInUpper(bool b)   { upper_ = (uint32)b; }
 	void         markDirty()          { dirty_ = 1; }
-	void         assignVar(LogicProgram& prg, PrgEdge it);	
+	void         assignVar(LogicProgram& prg, PrgEdge it);
 	//@}
 protected:
+	enum FreezeState { freeze_no = 0u, freeze_free = 1u, freeze_true = 2u, freeze_false = 3u };
 	//! Creates a new node that corresponds to a literal that is false.
 	explicit PrgHead(uint32 id, NodeType t, uint32 data = 0, bool checkScc = true);
 	bool      backpropagate(LogicProgram& prg, ValueRep val, bool bpFull);
@@ -442,7 +444,7 @@ protected:
 	uint32 data_  : 27; // number of atoms in disjunction or scc of atom
 	uint32 upper_ :  1; // in (simplified) program?
 	uint32 dirty_ :  1; // is list of supports dirty?
-	uint32 state_ :  2; // current incremental state
+	uint32 freeze_:  2; // incremental freeze state
 	uint32 isAtom_:  1; // is this head an atom?
 };
 
@@ -464,7 +466,7 @@ public:
 	Literal      eqGoal(bool sign)              const;
 	//! Returns true if atom belongs to a disjunctive head.
 	bool         inDisj()                       const;
-	
+
 	/*!
 	 * \name forward dependencies (bodies containing this atom)
 	 */
@@ -487,7 +489,8 @@ public:
 	bool         propagateValue(LogicProgram& prg, bool backprop);
 	bool         addConstraints(const LogicProgram& prg, ClauseCreator& c);
 	void         setScc(uint32 scc) { data_ = scc; }
-	void         setState(State s)  { state_ = static_cast<uint32>(s); }
+	void         markFrozen(ValueRep v){ freeze_ = v + freeze_free; }
+	void         clearFrozen()         { freeze_ = freeze_no; markDirty(); }
 	//@}
 private:
 	LitVec deps_; // bodies depending on this atom
@@ -555,6 +558,7 @@ public:
 	bool     simplifyHeads(LogicProgram& prg, bool strong);
 	bool     mergeHeads(LogicProgram& prg, PrgBody& heads, bool strong, bool simplify = true);
 	void     removeHead(PrgHead* h, EdgeType t);
+	bool     hasHead(PrgHead* h, EdgeType t) const;
 	//! Simplifies the body, i.e. its predecessors-lists.
 	/*!
 	 * - removes true/false atoms from B+/B- resp.
@@ -660,18 +664,17 @@ private:
 	PrgEdge atoms_[0]; // atoms in disjunction
 };
 
+inline ValueRep getMergeValue(const PrgNode* lhs, const PrgNode* rhs) {
+	return static_cast<ValueRep>(std::min(static_cast<ValueRep>(lhs->value()-1), static_cast<ValueRep>(rhs->value()-1)) + 1);
+}
+
 template <class NT>
 bool mergeValue(NT* lhs, NT* rhs){
-	if (lhs->value() != rhs->value()) {
-		if (lhs->value() == value_false || lhs->value() == value_true) {
-			return rhs->assignValue(lhs->value());
-		}
-		return rhs->value() != value_free 
-			? lhs->assignValue(rhs->value())
-			: rhs->assignValue(lhs->value());
-	}
-	return true;
+	ValueRep mv = getMergeValue(lhs, rhs);
+	return (lhs->value() == mv || lhs->assignValue(mv))
+	  &&   (rhs->value() == mv || rhs->assignValue(mv));
 }
+
 class SccChecker {
 public:
 	SccChecker(LogicProgram& prg, AtomList& sccAtoms, uint32 startScc);

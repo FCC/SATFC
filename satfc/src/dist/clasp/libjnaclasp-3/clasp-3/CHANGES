@@ -1,5 +1,57 @@
-clasp 3.0.5:
+clasp 3.1.2: Tuesday, 5th May 2015
+  * fixed: Option "--heuristic" failed to accept decay factor for domain heuristic
+  * fixed: LogicProgram::getDisjFor() failed to handle hash collisions correctly
+  * fixed: facts in disjunctions not always correctly handled
+  * fixed: domain heuristic failed to distinguish atom names sharing a common prefix
+  * fixed: domain heuristic failed to handle atoms with complementary literals correctly
+  * fixed: LogicProgram::write() must not output gamma rules and/or atoms that are false
+  * fixed regression in handling of sign modifier in domain heuristic
+  * fixed regression in backpropagation during preprocessing
+
+clasp 3.1.1: Wednesday, 12th November 2014
+  * LparseReader now handles "external statement"
+  * fixed: low-level config interface failed to correctly handle successive changes of "opt-bound"
+  * fixed: wrong completition nogoods with option "--no-gamma"
+  * fixed regression in rule simplification (regression in 3.0.x)
+  * fixed regression in "--configuration=jumpy"
+  * fixed regression in handling of modifiers true/false in domain heuristic
+  
+clasp 3.1.0: Friday, 15th August 2014
+  * added new strategies for unsatisfiable-core based optimization
+  * added alternative distribution mode via thread-local queues (option " --dist-mode")
+  * generators now propagate top-level assignment to testers
+  * removed optimization options from default configurations
+  * CLI changes:
+    - option "--sat-prepro" now expects the algorithm followed by an optional list of limits
+    - option "--opt-strategy" now takes two arguments; the first mandatory argument selects the 
+      major strategy (i.e. branch and bound or unsat-core), while the optional second argument
+      controls fine tuning of said strategy
+    - combined options "--dom-mod" and "--dom-pref" and added enum mode "domRec" for 
+      enabling subset optimization via domain heuristic
+    - added "--forget-on-step=2" for discarding previously set variable phases and changed
+      value for discarding nogood activities and learnt nogoods to 4 and 8, respectively
+    - replaced option "--hparam" (and its aliases) with second argument for "--heuristic"
+    - replaced "--berk-once" with more general "--score-res"
+    - renamed option "--number" to "--models"
+  * Integration/clingo:
+    - added support for open (i.e. unassigned) externals
+	- added support for adding constraints via model callback
+	- added low-level interface for accessing a clasp configuration
+	- cleaned up some stats keys and replaced "camelCase" with "snake_case" in keys
+
+clasp 3.0.6: Monday, 21st July 2014
+  * fixed: parallel unsat-core based enumeration of optimal models could skip valid models
+  * fixed: possible race condition in signal handling
+  * fixed: ABA-problem in parallel cb-enumerator could lead to duplicate models  (regression in 3.0.x)
+  * fixed: "--share=auto" (default) failed to enable physical sharing in mt-mode (regression in 3.0.x)
+  * fixed: eq over complementary atoms not always correctly handled              (regression in 3.0.x)
+  * fixed: incremental domain heuristic failed to apply values to atoms from previous steps
+  * fixed: eq over bodies of size 1 not always correctly handled
+  * fixed: typo in description of "--quiet"
+  
+clasp 3.0.5: Monday, 19th May 2014
   * added support for ThreadTime::getTime() on MacOS X
+  * removed pointless "--del-init" option from config tweety
   * fixed: non-hcf components not always correctly added in incremental disjunctive programs (clingo)
   * fixed: empty soft clauses not correctly handled in MaxSAT frontend
   * fixed: unfounded sets from 2nd level test not always correctly handled 

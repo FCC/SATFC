@@ -12,8 +12,7 @@
 //  GNU General Public License for more details.
 //
 //  You should have received a copy of the GNU General Public License
-//  along with this file; if not, write to the Free Software
-//  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+//  along with this program. If not, see <http://www.gnu.org/licenses/>.
 //
 #ifndef BK_LIB_STRING_CONVERT_H_INCLUDED
 #define BK_LIB_STRING_CONVERT_H_INCLUDED
@@ -24,6 +23,8 @@
 #include <stdexcept>
 #include <typeinfo>
 #include <istream>
+#include <iterator>
+#include <climits>
 #if !defined(_MSC_VER)
 #include <strings.h>
 #else
@@ -109,10 +110,28 @@ int xconvert(const char* x, unsigned long& out, const char** errPos = 0, int = 0
 int xconvert(const char* x, double& out, const char** errPos = 0, int = 0);
 int xconvert(const char* x, const char*& out, const char** errPos = 0, int = 0);
 int xconvert(const char* x, std::string& out, const char** errPos = 0, int sep = 0);
+std::string& xconvert(std::string&, bool);
+std::string& xconvert(std::string&, char);
+std::string& xconvert(std::string&, int);
+std::string& xconvert(std::string&, unsigned int);
+std::string& xconvert(std::string&, long);
+std::string& xconvert(std::string&, unsigned long);
+std::string& xconvert(std::string&, double);
+inline std::string& xconvert(std::string& out, const std::string& s) { return out.append(s); }
+inline std::string& xconvert(std::string& out, const char* s)        { return out.append(s ? s : ""); }
+#if defined(LLONG_MAX)
+int xconvert(const char* x, long long& out, const char** errPos = 0, int = 0);
+int xconvert(const char* x, unsigned long long& out, const char** errPos = 0, int = 0);
+std::string& xconvert(std::string&, long long x);
+std::string& xconvert(std::string&, unsigned long long x);
+#endif
 ///////////////////////////////////////////////////////////////////////////////
 // composite parser
 ///////////////////////////////////////////////////////////////////////////////
 const int def_sep = int(',');
+template <class T>
+int xconvert(const char* x, std::vector<T>& out, const char** errPos = 0, int sep = def_sep);
+
 // parses T[,U] optionally enclosed in parentheses
 template <class T, class U>
 int xconvert(const char* x, std::pair<T, U>& out, const char** errPos = 0, int sep = def_sep) {
@@ -123,7 +142,7 @@ int xconvert(const char* x, std::pair<T, U>& out, const char** errPos = 0, int s
 	int ps = 0;
 	if (*n == '(') { ++ps; ++n; }
 	int tokT = xconvert(n, temp.first, &n, sep);
-	int tokU = tokT && *n == (char)sep ? xconvert(n+1, temp.second, &n, sep) : 0;
+	int tokU = tokT && *n == (char)sep && n[1] ? xconvert(n+1, temp.second, &n, sep) : 0;
 	int sum  = 0;
 	if (!ps || *n == ')') {
 		n += ps;
@@ -134,47 +153,56 @@ int xconvert(const char* x, std::pair<T, U>& out, const char** errPos = 0, int s
 	if (errPos) *errPos = n;
 	return sum;
 }
-
 // parses T1 [, ..., Tn] optionally enclosed in brackets
-template <class T>
-int xconvert(const char* x, std::vector<T>& out, const char** errPos = 0, int sep = def_sep) {
-	if (sep == 0) { sep = def_sep; }
-	if (!x)       { return 0; }
+template <class T, class OutIt>
+std::size_t convert_seq(const char* x, std::size_t maxLen, OutIt out, char sep, const char** errPos = 0) {
+	if (!x) { return 0; }
 	const char* n = x;
-	int sum = 0;
-	int ps  = 0;
-	if (*n == '[') { ++ps; ++n; }
-	for (;;) {
+	std::size_t t = 0;
+	std::size_t b = 0;
+	if (*n == '[') { ++b; ++n; }
+	while (t != maxLen) {
 		T temp;
-		int tok = xconvert(n, temp, &n, sep);
-		if (!tok) break;
-		++sum;
-		out.push_back(temp);
-		if (!*n || *n != (char)sep) break;
+		if (!xconvert(n, temp, &n, sep)) break;
+		*out++ = temp;
+		++t;
+		if (!*n || *n != (char)sep || !n[1]) break;
 		n = n+1;
 	}
-	if (!ps || *n == ']') { n += ps; }
-	else                  { while (sum) { out.pop_back(); --sum; } n = x; }
+	if (!b || *n == ']') { n += b; }
+	else                 { n  = x; }
 	if (errPos) *errPos = n;
-	return sum;
+	return t;
 }
-
-// parses a sequence of up to maxTok Ts
+// parses T1 [, ..., Tn] optionally enclosed in brackets
 template <class T>
-int xconvert(const char* x, T* out, const char** errPos, int maxTok) {
-	const char* n = x;
-	int    sumTok = 0;
-	while (maxTok) {
-		T temp;
-		int tok = xconvert(x, temp, &n, def_sep);
-		if (!tok) break;
-		++sumTok; --maxTok;
-		*out++ = temp;
-		if (!*n || *n != (char)def_sep) break;
-		x = n+1;
+int xconvert(const char* x, std::vector<T>& out, const char** errPos, int sep) {
+	if (sep == 0) { sep = def_sep; }
+	std::size_t sz = out.size();
+	std::size_t t  = convert_seq<T>(x, out.max_size() - sz, std::back_inserter(out), static_cast<char>(sep), errPos);
+	if (!t) { out.resize(sz); }
+	return static_cast<int>(t);
+}
+template <class T, int sz>
+int xconvert(const char* x, T(&out)[sz], const char** errPos = 0, int sep = 0) {
+	return static_cast<int>(bk_lib::convert_seq<T>(x, sz, out, static_cast<char>(sep ? sep : def_sep), errPos));
+}
+template <class T, class U>
+std::string& xconvert(std::string& out, const std::pair<T, U>& in, char sep = static_cast<char>(def_sep)) {
+	xconvert(out, in.first).append(1, sep);
+	return xconvert(out, in.second);
+}
+template <class IT>
+std::string& xconvert(std::string& accu, IT begin, IT end, char sep = static_cast<char>(def_sep)) {
+	for (bool first = true; begin != end; first = false) {
+		if (!first) { accu += sep; }
+		xconvert(accu, *begin++);
 	}
-	if (errPos) *errPos = n;
-	return sumTok;
+	return accu;
+}
+template <class T>
+std::string& xconvert(std::string& out, const std::vector<T>& in, char sep = static_cast<char>(def_sep)) {
+	return xconvert(out, in.begin(), in.end(), sep);
 }
 ///////////////////////////////////////////////////////////////////////////////
 // fall back parser
@@ -214,7 +242,39 @@ template <class T>
 T string_cast(const std::string& s) { return string_cast<T>(s.c_str()); }
 template <class T>
 bool string_cast(const std::string& from, T& to) { return string_cast<T>(from.c_str(), to); }
+
+template <class T> 
+bool stringTo(const char* str, T& x) { 
+	return string_cast(str, x);
+}
+///////////////////////////////////////////////////////////////////////////////
+// T -> string
+///////////////////////////////////////////////////////////////////////////////
+template <class U>
+std::string string_cast(const U& num) {
+	std::string out;
+	xconvert(out, num);
+	return out;
+}
+template <class T> 
+inline std::string toString(const T& x) { 
+	return string_cast(x);
+}
+template <class T, class U> 
+inline std::string toString(const T& x, const U& y) { 
+	std::string res;
+	xconvert(res, x).append(1, ',');
+	return xconvert(res, y);
+}
+template <class T, class U, class V>
+std::string toString(const T& x, const U& y, const V& z) { 
+	std::string res;
+	xconvert(res, x).append(1, ',');
+	xconvert(res, y).append(1, ',');
+	return xconvert(res, z);
+}
+
+
 }
 
 #endif
-

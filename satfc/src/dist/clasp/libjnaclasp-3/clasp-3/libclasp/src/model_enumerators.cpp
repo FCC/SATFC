@@ -17,19 +17,17 @@
 // along with Clasp; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
-
 #include <clasp/model_enumerators.h>
 #include <clasp/solver.h>
 #include <clasp/minimize_constraint.h>
-#include <clasp/util/multi_queue.h>
 #include <algorithm>
 #include <cstdlib>
 namespace Clasp {
 class ModelEnumerator::ModelFinder : public EnumerationConstraint {
 protected:
-	ModelFinder(Solver& s, MinimizeConstraint* min, VarVec* p) : EnumerationConstraint(s,min), project(p) {}
+	explicit ModelFinder(VarVec* p) : EnumerationConstraint(), project(p) {}
+	bool hasModel() const { return !solution.empty(); }
 	void destroy(Solver* s, bool detach) {
-		destroyNogoods(s, detach);
 		if (project && s && s->sharedContext()->master() == s) {
 			SharedContext& problem = const_cast<SharedContext&>(*s->sharedContext());
 			while (!project->empty()) {
@@ -40,80 +38,44 @@ protected:
 		delete project;
 		EnumerationConstraint::destroy(s, detach);
 	}
-	bool simplify(Solver& s, bool) { 
-		EnumerationConstraint::simplify(s, false);
-		simplifyNogoods(s);
-		return false; 
-	}
-	virtual void destroyNogoods(Solver*, bool)= 0;
-	virtual void simplifyNogoods(Solver& s)   = 0;
 	VarVec* project;
+	LitVec  solution;
 };
 /////////////////////////////////////////////////////////////////////////////////////////
 // strategy_record
 /////////////////////////////////////////////////////////////////////////////////////////
-class ModelEnumerator::SolutionQueue : public mt::MultiQueue<SharedLiterals*, void (*)(SharedLiterals*)> {
-public:
-	typedef SharedLiterals SL;
-	typedef mt::MultiQueue<SL*, void (*)(SL*)> base_type;
-	SolutionQueue(uint32 m) : base_type(m, releaseLits) {}
-	void addSolution(SL* solution, const ThreadId& id) {
-		publish(solution, id);
-	}
-	static void releaseLits(SL* x) { x->release(); }
-};
-
 class ModelEnumerator::RecordFinder : public ModelFinder {
 public:
-	typedef ModelEnumerator::QPtr   QPtr;
-	typedef SolutionQueue::ThreadId ThreadId;
-	typedef SolutionQueue::SL       SL;
-	typedef ClauseCreator::Result   Result;
-	RecordFinder(Solver& s, MinimizeConstraint* min, VarVec* project, SolutionQueue* q) : ModelFinder(s, min, project), queue(q) {
-		if (q) { id = q->addThread(); }
-	}
-	Constraint* cloneAttach(Solver& s) { return new RecordFinder(s, cloneMinimizer(s), 0, queue); }
-	void doCommitModel(Enumerator& ctx, Solver& s);
-	bool doUpdate(Solver& s);
-	void simplifyNogoods(Solver& s)       { simplifyDB(s, nogoods, false); }
-	void destroyNogoods(Solver* s, bool b){ 
-		while (!nogoods.empty()) {
-			nogoods.back()->destroy(s, b);
-			nogoods.pop_back();
-		}
-	}
-	typedef Solver::ConstraintDB ConstraintDB;
-	QPtr         queue;
-	ThreadId     id;
-	LitVec       solution;
-	ConstraintDB nogoods;
+	explicit RecordFinder(VarVec* project) : ModelFinder(project) { }
+	ConPtr clone() { return new RecordFinder(0); }
+	void   doCommitModel(Enumerator& ctx, Solver& s);
+	bool   doUpdate(Solver& s);
 };
 
 bool ModelEnumerator::RecordFinder::doUpdate(Solver& s) {
-	if (queue) {
-		uint32 f = ClauseCreator::clause_no_add | ClauseCreator::clause_no_release | ClauseCreator::clause_explicit;
-		for (SL* clause; queue->tryConsume(id, clause); ) {
-			ClauseCreator::Result res = ClauseCreator::integrate(s, clause, f);	
-			if (res.local) { nogoods.push_back(res.local); }
-			if (!res.ok()) { return false; }
-		}
-	}
-	else if (!solution.empty()) {
+	if (hasModel()) {
 		ClauseInfo e(Constraint_t::learnt_other);
 		ClauseCreator::Result ret = ClauseCreator::create(s, solution, ClauseCreator::clause_no_add, e);
 		solution.clear();
-		if (ret.local) { nogoods.push_back(ret.local); }
-		return ret.ok();
+		if (ret.local) { add(ret.local);}
+		if (!ret.ok()) { return false;  }
 	}
 	return true;
 }
 
 void ModelEnumerator::RecordFinder::doCommitModel(Enumerator& en, Solver& s) {
 	ModelEnumerator& ctx = static_cast<ModelEnumerator&>(en);
-	if (ctx.trivial()) { return; }
 	assert(solution.empty() && "Update not called!");
 	solution.clear();
-	if (!ctx.projectionEnabled()) {
+	const LitVec* dom = (ctx.projectOpts() & uint32(project_dom_lits)) != 0 ? &s.sharedContext()->symbolTable().domLits : 0;
+	if (dom && dom->empty()) {
+		if (en.lastModel().num == 0) { s.sharedContext()->report(warning(Event::subsystem_solve, "domRec ignored: no domain atoms found!")); }
+		dom = 0;
+	}
+	if (ctx.trivial() && !dom) { 
+		return; 
+	}
+	else if (!dom && !ctx.projectionEnabled()) { 
 		for (uint32 x = s.decisionLevel(); x != 0; --x) {
 			Literal d = s.decision(x);
 			if      (!s.auxVar(d.var()))  { solution.push_back(~d); }
@@ -127,20 +89,23 @@ void ModelEnumerator::RecordFinder::doCommitModel(Enumerator& en, Solver& s) {
 			}
 		}
 	}
-	else {
+	else if (!dom) {
 		for (uint32 i = 0, end = ctx.numProjectionVars(); i != end; ++i) {
 			solution.push_back(~s.trueLit(ctx.projectVar(i)));
 		}
 	}
-	if (queue) {
-		assert(!queue->hasItems(id));
-		// parallel solving active - share solution nogood with other solvers
-		SL* shared = SL::newShareable(solution, Constraint_t::learnt_other);
-		queue->addSolution(shared, id);
-		solution.clear();
+	else {
+		const bool project = ctx.projectionEnabled();
+		for (LitVec::const_iterator it = dom->begin(), end = dom->end(); it != end; ++it) {
+			if (s.isTrue(*it) && (!project || s.sharedContext()->varInfo(it->var()).project())) { solution.push_back(~*it); }
+		}
+		solution.push_back(~s.sharedContext()->stepLiteral());
 	}
-	else if (solution.empty()) { 
-		solution.push_back(negLit(0)); 
+	if (solution.empty()) { solution.push_back(negLit(0)); }
+	if (s.sharedContext()->concurrency() > 1) {
+		// parallel solving active - share solution nogood with other solvers
+		en.commitClause(solution);
+		solution.clear();
 	}
 }
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -148,55 +113,54 @@ void ModelEnumerator::RecordFinder::doCommitModel(Enumerator& en, Solver& s) {
 /////////////////////////////////////////////////////////////////////////////////////////
 class ModelEnumerator::BacktrackFinder : public ModelFinder {
 public:
-	BacktrackFinder(Solver& s, MinimizeConstraint* min, VarVec* project, uint32 projOpts) : ModelFinder(s, min, project), opts(projOpts) {}
-	bool hasModel() const { return !solution.empty(); }
-	// Base interface
-	void simplifyNogoods(Solver& s) {
-		for (ConstraintDB::iterator it = nogoods.begin(), end = nogoods.end(); it != end; ++it) {
-			if (it->second && it->second->simplify(s, false)) { 
-				s.removeWatch(it->first, this);
-				it->second->destroy(&s, false);
-				it->second = 0;
-			}
-		}
-		while (!nogoods.empty() && nogoods.back().second == 0) { nogoods.pop_back(); }
-	}
-	void destroyNogoods(Solver* s, bool b) {
-		while (!nogoods.empty()) {
-			NogoodPair x = nogoods.back();
-			if (x.second) {
-				if (s) { s->removeWatch(x.first, this); }
-				x.second->destroy(s, b);
-			}
-			nogoods.pop_back();
-		}
-	}
+	BacktrackFinder(VarVec* project, uint32 projOpts) : ModelFinder(project), opts(projOpts) {}
 	// EnumerationConstraint interface
-	void doCommitModel(Enumerator& ctx, Solver& s);
-	bool doUpdate(Solver& s);
+	ConPtr clone() { return new BacktrackFinder(0, opts); }
+	void   doCommitModel(Enumerator& ctx, Solver& s);
+	bool   doUpdate(Solver& s);
 	// Constraint interface
-	Constraint* cloneAttach(Solver& s){ return new BacktrackFinder(s, cloneMinimizer(s), 0, opts); }
 	PropResult  propagate(Solver&, Literal, uint32&);
 	void        reason(Solver& s, Literal p, LitVec& x){
 		for (uint32 i = 1, end = s.level(p.var()); i <= end; ++i) { 
 			x.push_back(s.decision(i)); 
 		}
 	}
+	bool simplify(Solver& s, bool reinit) {
+		for (ProjectDB::iterator it = projNogoods.begin(), end = projNogoods.end(); it != end; ++it) {
+			if (it->second && it->second->simplify(s, false)) { 
+				s.removeWatch(it->first, this);
+				it->second->destroy(&s, false);
+				it->second = 0;
+			}
+		}
+		while (!projNogoods.empty() && projNogoods.back().second == 0) { projNogoods.pop_back(); }
+		return ModelFinder::simplify(s, reinit);
+	}
+	void destroy(Solver* s, bool detach) {
+		while (!projNogoods.empty()) {
+			NogoodPair x = projNogoods.back();
+			if (x.second) {
+				if (s) { s->removeWatch(x.first, this); }
+				x.second->destroy(s, detach);
+			}
+			projNogoods.pop_back();
+		}
+		ModelFinder::destroy(s, detach);
+	}
 	typedef std::pair<Literal, Constraint*> NogoodPair;
-	typedef PodVector<NogoodPair>::type     ConstraintDB;
-	LitVec       solution;
-	ConstraintDB nogoods;
-	uint32 opts;
+	typedef PodVector<NogoodPair>::type     ProjectDB;
+	ProjectDB projNogoods;
+	uint32    opts;
 };
 
 Constraint::PropResult ModelEnumerator::BacktrackFinder::propagate(Solver& s, Literal, uint32& pos) {
-	assert(pos < nogoods.size() && nogoods[pos].second != 0);
-	ClauseHead* c = static_cast<ClauseHead*>(nogoods[pos].second);
+	assert(pos < projNogoods.size() && projNogoods[pos].second != 0);
+	ClauseHead* c = static_cast<ClauseHead*>(projNogoods[pos].second);
 	if (!c->locked(s)) {
 		c->destroy(&s, true);
-		nogoods[pos].second = (c = 0);
-		while (!nogoods.empty() && !nogoods.back().second) {
-			nogoods.pop_back();
+		projNogoods[pos].second = (c = 0);
+		while (!projNogoods.empty() && !projNogoods.back().second) {
+			projNogoods.pop_back();
 		}
 	}
 	return PropResult(true, c != 0);
@@ -204,10 +168,8 @@ Constraint::PropResult ModelEnumerator::BacktrackFinder::propagate(Solver& s, Li
 bool ModelEnumerator::BacktrackFinder::doUpdate(Solver& s) {
 	if (hasModel()) {
 		bool   ok = true;
-		uint32 sp = s.strategy.saveProgress;
-		if ((opts & ModelEnumerator::project_save_progress) != 0 ) { s.strategy.saveProgress = 1; }
-		s.undoUntil(s.backtrackLevel());
-		s.strategy.saveProgress = sp;
+		uint32 sp = (opts & ModelEnumerator::project_save_progress) != 0 ? Solver::undo_save_phases : 0;
+		s.undoUntil(s.backtrackLevel(), sp);
 		ClauseRep rep = ClauseCreator::prepare(s, solution, 0, Constraint_t::learnt_conflict);
 		if (rep.size == 0 || s.isFalse(rep.lits[0])) { // The decision stack is already ordered.
 			ok = s.backtrack();
@@ -227,8 +189,8 @@ bool ModelEnumerator::BacktrackFinder::doUpdate(Solver& s) {
 			// Attach nogood to the current decision literal. 
 			// Once we backtrack to x, the then obsolete nogood is destroyed 
 			// keeping the number of projection nogoods linear in the number of (projection) atoms.
-			s.addWatch(x, this, (uint32)nogoods.size());
-			nogoods.push_back(NogoodPair(x, c));
+			s.addWatch(x, this, (uint32)projNogoods.size());
+			projNogoods.push_back(NogoodPair(x, c));
 			ok = true;
 		}
 		solution.clear();
@@ -263,7 +225,6 @@ void ModelEnumerator::BacktrackFinder::doCommitModel(Enumerator& ctx, Solver& s)
 /////////////////////////////////////////////////////////////////////////////////////////
 ModelEnumerator::ModelEnumerator(Strategy st)
 	: Enumerator()
-	, queue_(0)
 	, project_(0)
 	, options_(st) {
 }
@@ -271,22 +232,20 @@ ModelEnumerator::ModelEnumerator(Strategy st)
 Enumerator* EnumOptions::createModelEnumerator(const EnumOptions& opts) {
 	ModelEnumerator*          e = new ModelEnumerator();
 	ModelEnumerator::Strategy s = ModelEnumerator::strategy_auto;
-	if (opts.type > (int)ModelEnumerator::strategy_auto && opts.type <= (int)ModelEnumerator::strategy_record) {
-		s = static_cast<ModelEnumerator::Strategy>(opts.type);
+	if (opts.enumMode && opts.models()) {
+		s = opts.enumMode == enum_bt ? ModelEnumerator::strategy_backtrack : ModelEnumerator::strategy_record;
 	}
-	e->setStrategy(s, opts.project);
+	e->setStrategy(s, opts.project | (opts.enumMode == enum_dom_record ? ModelEnumerator::project_dom_lits : 0));
 	return e;
 }
 
-ModelEnumerator::~ModelEnumerator() {
-	delete queue_;
-}
+ModelEnumerator::~ModelEnumerator() {}
 
 void ModelEnumerator::setStrategy(Strategy st, uint32 projection) {
-	options_ = st;
+	options_ = uint32(st) | ((projection & 15u) << 4u);
 	project_ = 0;
-	if (projection) { 
-		options_ |= (((projection|1u) & 7u) << 4u);
+	if ((projection & 7u) != 0) { 
+		options_ |= uint32(project_enable_simple) << 4u;
 		project_  = new VarVec();
 	}
 	if (st == strategy_auto) {
@@ -294,15 +253,13 @@ void ModelEnumerator::setStrategy(Strategy st, uint32 projection) {
 	}
 }
 
-EnumerationConstraint* ModelEnumerator::doInit(SharedContext& ctx, MinimizeConstraint* min, int numModels) {
-	delete queue_;
-	queue_ = 0;
+EnumerationConstraint* ModelEnumerator::doInit(SharedContext& ctx, SharedMinimizeData* opt, int numModels) {
 	initProjection(ctx); 
 	uint32 st = strategy();
 	if (detectStrategy() || (ctx.concurrency() > 1 && !ModelEnumerator::supportsParallel())) {
 		st = 0;
 	}
-	bool optOne  = minimizer() && minimizer()->mode() == MinimizeMode_t::optimize;
+	bool optOne  = opt && opt->mode() == MinimizeMode_t::optimize;
 	bool trivial = optOne || std::abs(numModels) == 1;
 	if (optOne && project_.get()) {
 		for (const WeightLiteral* it =  minimizer()->lits; !isSentinel(it->first) && trivial; ++it) {
@@ -312,16 +269,11 @@ EnumerationConstraint* ModelEnumerator::doInit(SharedContext& ctx, MinimizeConst
 	}
 	if (st == strategy_auto) { st  = trivial || (project_.get() && ctx.concurrency() > 1) ? strategy_record : strategy_backtrack; }
 	if (trivial)             { st |= trivial_flag; }
-	if (ctx.concurrency() > 1 && !trivial && st != strategy_backtrack) {
-		queue_ = new SolutionQueue(ctx.concurrency()); 
-		queue_->reserve(ctx.concurrency() + 1);
-	}
 	options_ &= ~uint32(strategy_opts_mask);
 	options_ |= st;
-	Solver& s = *ctx.master();
 	EnumerationConstraint* c = st == strategy_backtrack 
-	  ? static_cast<ConPtr>(new BacktrackFinder(s, min, project_.release(), projectOpts()))
-	  : static_cast<ConPtr>(new RecordFinder(s, min, project_.release(), queue_));
+	  ? static_cast<ConPtr>(new BacktrackFinder(project_.release(), projectOpts()))
+	  : static_cast<ConPtr>(new RecordFinder(project_.release()));
 	if (projectionEnabled()) { setIgnoreSymmetric(true); }
 	return c;
 }

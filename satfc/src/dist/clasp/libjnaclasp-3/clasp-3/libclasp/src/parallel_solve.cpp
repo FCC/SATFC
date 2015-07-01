@@ -251,7 +251,7 @@ ParallelSolve::ParallelSolve(Enumerator* e, const ParallelSolveOptions& opts)
 	, intGrace_(1024)
 	, intTopo_(opts.integrate.topo)
 	, intFlags_(ClauseCreator::clause_not_root_sat | ClauseCreator::clause_no_add)
-	, initialGp_(opts.algorithm.mode == ParallelSolveOptions::Algorithm::mode_split ? gp_split : gp_fixed) {
+	, modeSplit_(opts.algorithm.mode == ParallelSolveOptions::Algorithm::mode_split) {
 	setRestarts(opts.restarts.maxR, opts.restarts.sched);
 	setIntegrate(opts.integrate.grace, opts.integrate.filter);
 }
@@ -272,12 +272,24 @@ bool ParallelSolve::beginSolve(SharedContext& ctx) {
 	assert(ctx.concurrency() && "Illegal number of threads");
 	if (shared_->terminate()) { return false; }
 	shared_->reset(&ctx);
-	shared_->setControl(initialGp_ == gp_split ? SharedData::allow_split_flag : SharedData::forbid_restart_flag);
-	shared_->setControl(SharedData::sync_flag); // force initial sync with all threads
-	shared_->modCount = uint32(enumerator().optimize());
-	if (distribution_.types != 0 && ctx.distributor.get() == 0) {
-		ctx.distributor.reset(new mt::GlobalQueue(distribution_, ctx.concurrency(), intTopo_));
+	if (!enumerator().supportsParallel() && numThreads() > 1) {
+		ctx.report(warning(Event::subsystem_solve, "Selected reasoning mode implies #Threads=1."));
+		shared_->workSem.unsafe_init(1);
+		modeSplit_ = false;
+		ctx.setConcurrency(1, SharedContext::mode_reserve);
 	}
+	shared_->setControl(modeSplit_ ? SharedData::allow_split_flag : SharedData::forbid_restart_flag);
+	shared_->modCount = uint32(enumerator().optimize());
+	if (distribution_.types != 0 && ctx.distributor.get() == 0 && numThreads() > 1) {
+		if (distribution_.mode == ParallelSolveOptions::Distribution::mode_local) {
+			ctx.distributor.reset(new mt::LocalDistribution(distribution_, ctx.concurrency(), intTopo_));
+		}
+		else {
+			ctx.distributor.reset(new mt::GlobalDistribution(distribution_, ctx.concurrency(), intTopo_));
+		}
+	}
+	shared_->setControl(SharedData::sync_flag); // force initial sync with all threads
+	shared_->syncT.start();
 	reportProgress(MessageEvent(*ctx.master(), "SYNC", MessageEvent::sent));
 	for (uint32 i = 1; i != ctx.concurrency(); ++i) {
 		uint32 id = shared_->nextId++;
@@ -312,16 +324,15 @@ void ParallelSolve::allocThread(uint32 id, Solver& s, const SolveParams& p) {
 		thread_  = new ParallelHandler*[n];
 		std::fill(thread_, thread_+n, static_cast<ParallelHandler*>(0));
 	}
-	CLASP_PRAGMA_TODO("replace with CACHE_LINE_ALIGNED alloc")
-	uint32 b   = ((sizeof(ParallelHandler)+63) / 64) * 64;
-	thread_[id]= new (::operator new( b )) ParallelHandler(*this, s, p);
+	size_t sz   = ((sizeof(ParallelHandler)+63) / 64) * 64;
+	thread_[id] = new (alignedAlloc(sz, 64)) ParallelHandler(*this, s, p);
 }
 
 void ParallelSolve::destroyThread(uint32 id) {
 	if (thread_ && thread_[id]) {
 		assert(!thread_[id]->joinable() && "Shutdown not completed!");
 		thread_[id]->~ParallelHandler();
-		::operator delete(thread_[id]);
+		alignedFree(thread_[id]);
 		thread_[id] = 0;
 		if (id == masterId) {
 			delete [] thread_;
@@ -365,7 +376,6 @@ bool ParallelSolve::doSolve(SharedContext& ctx, const LitVec& path) {
 		assert(s.id() == masterId);
 		allocThread(masterId, s, ctx.configuration()->search(masterId));
 		shared_->path = &path;
-		shared_->syncT.start();
 		solveParallel(masterId);
 		reportProgress(message(Event::subsystem_solve, "Joining with other threads", &s));
 		joinThreads();
@@ -399,7 +409,7 @@ void ParallelSolve::solveParallel(uint32 id) {
 		for (GpType t; requestWork(s, a); solve.reset()) {
 			agg.accu(s.stats);
 			s.stats.reset();
-			thread_[id]->setGpType(t = a.is_owner() ? gp_split : initialGp_);
+			thread_[id]->setGpType(t = ((a.is_owner() || modeSplit_) ? gp_split : gp_fixed));
 			if (enumerator().start(s, *a, a.is_owner()) && thread_[id]->solveGP(solve, t, shared_->maxConflict) == value_free) {
 				terminate(s, false);
 			}
@@ -564,8 +574,16 @@ void ParallelSolve::initQueue() {
 	shared_->clearQueue();
 	uint64 init = UINT64_MAX;
 	if (shared_->allowSplit()) {
-		init = 0;
-		shared_->workQ.push(shared_->path);
+		if (modeSplit_ && !enumerator().supportsSplitting(*shared_->ctx)) {
+			shared_->ctx->report(warning(Event::subsystem_solve, "Selected strategies imply Mode=compete."));
+			shared_->clearControl(SharedData::allow_split_flag);
+			shared_->setControl(SharedData::forbid_restart_flag);
+			modeSplit_ = false;
+		}
+		else {
+			init = 0;
+			shared_->workQ.push(shared_->path);
+		}
 	}
 	shared_->initMask = init;
 	assert(shared_->allowSplit() || shared_->hasControl(SharedData::forbid_restart_flag));
@@ -619,7 +637,7 @@ bool ParallelSolve::commitModel(Solver& s) {
 			// we have a race condition with solvers that
 			// are currently blocking on the mutex and we could enumerate 
 			// more models than requested by the user
-			terminate(s, s.decisionLevel() == 0);
+			terminate(s, !moreModels(s));
 		}
 	}}
 	return !stop;
@@ -810,7 +828,7 @@ bool ParallelHandler::propagateFixpoint(Solver& s, PostPropagator* ctx) {
 	// Skip updates if called from other post propagator so that we do not
 	// disturb any active propagation.
 	if (int up = (ctx == 0 && up_ != 0)) {
-		up_ ^= s.strategy.upMode;
+		up_ ^= (uint32)s.updateMode();
 		up  += (act_ == 0 || (up_ && (s.stats.choices & 63) != 0));
 		if (s.stats.conflicts >= gp_.restart)  { ctrl_->requestRestart(); gp_.restart *= 2; }
 		for (uint32 cDL = s.decisionLevel();;) {
@@ -844,7 +862,7 @@ bool ParallelHandler::integrate(Solver& s) {
 	uint32 dl       = s.decisionLevel(), added = 0, i = 0;
 	uint32 intFlags = ctrl_->integrateFlags();
 	recEnd_         = 0;
-	if (s.strategy.updateLbd || params_->reduce.strategy.glue != 0) {
+	if (params_->reduce.strategy.glue != 0) {
 		intFlags |= ClauseCreator::clause_int_lbd;
 	}
 	do {
@@ -879,75 +897,77 @@ void ParallelHandler::add(ClauseHead* h) {
 	}
 }
 /////////////////////////////////////////////////////////////////////////////////////////
-// GlobalQueue
+// Distribution
 /////////////////////////////////////////////////////////////////////////////////////////
-GlobalQueue::GlobalQueue(const Policy& p, uint32 maxT, uint32 topo) : Distributor(p), queue_(0) {
-	assert(maxT <= ParallelSolveOptions::supportedSolvers());
-	queue_     = new Queue(maxT);
-	threadId_  = new ThreadInfo[maxT];
-	for (uint32 i = 0; i != maxT; ++i) {
-		threadId_[i].id       = queue_->addThread();
-		threadId_[i].peerMask = populatePeerMask(topo, maxT, i);
+uint64 ParallelSolveOptions::initPeerMask(uint32 id, Integration::Topology topo, uint32 maxT)  {
+	if (topo == Integration::topo_all) { return Distributor::initSet(maxT) ^ Distributor::mask(id); }
+	if (topo == Integration::topo_ring){
+		uint32 prev = id > 0 ? id - 1 : maxT - 1;
+		uint32 next = (id + 1) % maxT;
+		return Distributor::mask(prev) | Distributor::mask(next);
 	}
-}
-GlobalQueue::~GlobalQueue() {
-	release();
-}
-void GlobalQueue::release() {
-	if (queue_) {
-		for (uint32 i = 0; i != queue_->maxThreads(); ++i) {
-			Queue::ThreadId& id = getThreadId(i);
-			for (DistPair n; queue_->tryConsume(id, n); ) { 
-				if (n.sender != i) { n.lits->release(); }
-			}
-		}
-		delete queue_;
-		queue_ = 0;
-		delete [] threadId_;
-	}
-}
-uint64 GlobalQueue::populateFromCube(uint32 numThreads, uint32 myId, bool ext) const {
-	uint32 n = numThreads;
+	bool ext = topo == Integration::topo_cubex;
+	uint32 n = maxT;
 	uint32 k = 1;
 	for (uint32 i = n / 2; i > 0; i /= 2, k *= 2) { }
 	uint64 res = 0, x = 1;
 	for (uint32 m = 1; m <= k; m *= 2) {
-		uint32 i = m ^ myId;
+		uint32 i = m ^ id;
 		if      (i < n)         { res |= (x << i);     }
 		else if (ext && k != m) { res |= (x << (i^k)); }
 	}
 	if (ext) {
-		uint32 s = k ^ myId;
+		uint32 s = k ^ id;
 		for(uint32 m = 1; m < k && s >= n; m *= 2) {
 			uint32 i = m ^ s;
 			if (i < n) { res |= (x << i); }
 		}
 	}
-	assert( (res & (x<<myId)) == 0 );
+	assert( (res & (x<<id)) == 0 );
 	return res;
 }
-uint64 GlobalQueue::populatePeerMask(uint32 topo, uint32 maxT, uint32 id) const {
-	switch (topo) {
-		case ParallelSolveOptions::Integration::topo_ring: {
-			uint32 prev = id > 0 ? id - 1 : maxT - 1;
-			uint32 next = (id + 1) % maxT;
-			return Distributor::mask(prev) | Distributor::mask(next);
-		}
-		case ParallelSolveOptions::Integration::topo_cube:  return populateFromCube(maxT, id, false);
-		case ParallelSolveOptions::Integration::topo_cubex: return populateFromCube(maxT, id, true);
-		default:                                     return Distributor::initSet(maxT) ^ Distributor::mask(id);
+/////////////////////////////////////////////////////////////////////////////////////////
+// GlobalDistribution
+/////////////////////////////////////////////////////////////////////////////////////////
+GlobalDistribution::GlobalDistribution(const Policy& p, uint32 maxT, uint32 topo) : Distributor(p), queue_(0) {
+	typedef ParallelSolveOptions::Integration::Topology Topology;
+	assert(maxT <= ParallelSolveOptions::supportedSolvers());
+	Topology t = static_cast<Topology>(topo);
+	queue_     = new Queue(maxT);
+	threadId_  = (ThreadInfo*)alignedAlloc((maxT * sizeof(ThreadInfo)), 64);
+	for (uint32 i = 0; i != maxT; ++i) {
+		new (&threadId_[i]) ThreadInfo;
+		threadId_[i].id       = queue_->addThread();
+		threadId_[i].peerMask = ParallelSolveOptions::initPeerMask(i, t, maxT);
 	}
 }
-
-void GlobalQueue::publish(const Solver& s, SharedLiterals* n) {
-	assert(n->refCount() >= (queue_->maxThreads()-1));
-	queue_->publish(DistPair(s.id(), n), getThreadId(s.id()));
+GlobalDistribution::~GlobalDistribution() {
+	static_assert(sizeof(ThreadInfo) == 64, "Invalid size");
+	release();
 }
-uint32 GlobalQueue::receive(const Solver& in, SharedLiterals** out, uint32 maxn) {
+void GlobalDistribution::release() {
+	if (queue_) {
+		for (uint32 i = 0; i != queue_->maxThreads(); ++i) {
+			Queue::ThreadId& id = getThreadId(i);
+			for (ClausePair n; queue_->tryConsume(id, n); ) { 
+				if (n.sender != i) { n.lits->release(); }
+			}
+			threadId_[i].~ThreadInfo();
+		}
+		delete queue_;
+		queue_ = 0;
+		alignedFree(threadId_);
+	}
+}
+void GlobalDistribution::publish(const Solver& s, SharedLiterals* n) {
+	assert(n->refCount() >= (queue_->maxThreads()-1));
+	queue_->publish(ClausePair(s.id(), n), getThreadId(s.id()));
+}
+uint32 GlobalDistribution::receive(const Solver& in, SharedLiterals** out, uint32 maxn) {
 	uint32 r = 0;
 	Queue::ThreadId& id = getThreadId(in.id());
 	uint64 peers = getPeerMask(in.id());
-	for (DistPair n; r != maxn && queue_->tryConsume(id, n); ) {
+	for (ClausePair n; r != maxn && queue_->tryConsume(id, n); ) {
 		if (n.sender != in.id()) {
 			if (inSet(peers, n.sender))  { out[r++] = n.lits; }
 			else if (n.lits->size() == 1){ out[r++] = n.lits; }
@@ -956,6 +976,94 @@ uint32 GlobalQueue::receive(const Solver& in, SharedLiterals** out, uint32 maxn)
 	}
 	return r;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// LocalDistribution
+/////////////////////////////////////////////////////////////////////////////////////////
+LocalDistribution::LocalDistribution(const Policy& p, uint32 maxT, uint32 topo) : Distributor(p), thread_(0), numThread_(0) {
+	typedef ParallelSolveOptions::Integration::Topology Topology;
+	assert(maxT <= ParallelSolveOptions::supportedSolvers());
+	Topology t = static_cast<Topology>(topo);
+	thread_    = new ThreadData*[numThread_ = maxT];
+	size_t sz  = ((sizeof(ThreadData) + 63) / 64) * 64;
+	for (uint32 i = 0; i != maxT; ++i) {
+		ThreadData* ti = new (alignedAlloc(sz, 64)) ThreadData;
+		ti->received.init(&ti->sentinal);
+		ti->peers = ParallelSolveOptions::initPeerMask(i, t, maxT);
+		ti->free  = 0;
+		thread_[i]= ti;
+	}
+}
+LocalDistribution::~LocalDistribution() {
+	while (numThread_) {
+		ThreadData* ti      = thread_[--numThread_];
+		thread_[numThread_] = 0;
+		for (QNode* n; (n = ti->received.pop()) != 0; ) {
+			static_cast<SharedLiterals*>(n->data)->release();
+		}
+		ti->~ThreadData();
+		alignedFree(ti);
+	}
+	for (MPSCPtrQueue::RawNode* n; (n = blocks_.tryPop()) != 0; ) {
+		alignedFree(n);
+	}
+	delete [] thread_;
+}
+
+void LocalDistribution::freeNode(uint32 tId, QNode* n) const {
+	if (n != &thread_[tId]->sentinal) {
+		n->next = thread_[tId]->free;
+		thread_[tId]->free = n;
+	}
+}
+
+LocalDistribution::QNode* LocalDistribution::allocNode(uint32 tId, SharedLiterals* clause) {
+	for (ThreadData* td = thread_[tId];;) {
+		if (QNode* n = td->free) {
+			td->free = static_cast<QNode*>(static_cast<MPSCPtrQueue::RawNode*>(n->next));
+			n->data  = clause;
+			return n;
+		}
+		// alloc a new block of node;
+		const uint32 nNodes = 128;
+		QNode* raw = (QNode*)alignedAlloc(sizeof(QNode) * nNodes, 64);
+		// add nodes [1, nNodes) to free list
+		for (uint32 i = 1; i != nNodes-1; ++i) {
+			raw[i].next = &raw[i+1];
+		}
+		raw[nNodes-1].next = 0;
+		td->free = &raw[1];
+		// use first node to link to block list
+		blocks_.push(raw);
+	}
+}
+
+void LocalDistribution::publish(const Solver& s, SharedLiterals* n) {
+	assert(n->refCount() >= (numThread_-1));
+	uint32 sender = s.id();
+	uint32 size   = n->size();
+	uint32 decRef = 0;
+	for (uint32 i = 0; i != numThread_; ++i) {
+		if (i == sender) { continue; }
+		if (size > 1 && !inSet(thread_[i]->peers, sender)) { ++decRef; }
+		else {
+			QNode* node = allocNode(sender, n);
+			thread_[i]->received.push(node);
+		}
+	}
+	if (decRef) { n->release(decRef); }
+}
+uint32 LocalDistribution::receive(const Solver& in, SharedLiterals** out, uint32 maxn) {
+	MPSCPtrQueue& q = thread_[in.id()]->received;
+	QNode*        n = 0;
+	uint32        r = 0;
+	while (r != maxn && (n = q.pop()) != 0) {
+		out[r++] = static_cast<SharedLiterals*>(n->data);
+		freeNode(in.id(), n);
+	}
+	return r;
+}
+
 } } // namespace Clasp::mt
 
 #endif

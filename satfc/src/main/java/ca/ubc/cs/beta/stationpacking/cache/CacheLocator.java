@@ -21,26 +21,33 @@
  */
 package ca.ubc.cs.beta.stationpacking.cache;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import lombok.extern.slf4j.Slf4j;
 import net.jcip.annotations.ThreadSafe;
 
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 
+import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.cache.RedisCacher.ContainmentCacheInitData;
 import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheSATEntry;
 import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheUNSATEntry;
 import ca.ubc.cs.beta.stationpacking.cache.containment.containmentcache.ISatisfiabilityCache;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.data.DataManager;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.data.ManagerBundle;
 
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableSet;
 
 /**
@@ -50,51 +57,68 @@ import com.google.common.collect.ImmutableSet;
 @ThreadSafe
 public class CacheLocator implements ICacheLocator, ApplicationListener<ContextRefreshedEvent> {
 
-    private final RedisCacher cacher;
     private final Map<CacheCoordinate, ISatisfiabilityCache> caches;
-    private final ReadWriteLock readWriteLock;
     private final ISatisfiabilityCacheFactory cacheFactory;
 
-    public CacheLocator(RedisCacher cacher, ISatisfiabilityCacheFactory cacheFactory) {
-        this.cacher = cacher;
+    public CacheLocator(ISatisfiabilityCacheFactory cacheFactory) {
         this.cacheFactory = cacheFactory;
         caches = new HashMap<>();
-        readWriteLock = new ReentrantReadWriteLock();
     }
 
     @Override
-    public Optional<ISatisfiabilityCache> locate(CacheCoordinate coordinate) {
-        readWriteLock.readLock().lock();
-        try {
-            return Optional.ofNullable(caches.get(coordinate));
-        } finally {
-            readWriteLock.readLock().unlock();
+    public ISatisfiabilityCache locate(CacheCoordinate coordinate) {
+        ISatisfiabilityCache cache = caches.get(coordinate);
+        if (cache == null) {
+            throw new IllegalStateException("No cache was made for coordinate " + coordinate + ". Was the corresponding station configuration folder present at server start up?");
         }
-    }
-
-    @Override
-    public void addCache(CacheCoordinate coordinate) {
-        readWriteLock.writeLock().lock();
-        try {
-            // Perform this check to make sure that no one added a cache already when you were waiting to acquire the lock
-            if (caches.get(coordinate) == null) {
-                log.info("Adding a new empty containment cache for coordinate: " + coordinate);
-                caches.put(coordinate, cacheFactory.create(ImmutableList.of(), ImmutableList.of()));
-            }
-        } finally {
-            readWriteLock.writeLock().unlock();
-        }
+        return cache;
     }
 
     // We want this to happen after the context has been brought up (so the error messages aren't horrific)
+    // Uses the context to pull out beans / command line arguments
     @Override
     public void onApplicationEvent(ContextRefreshedEvent event) {
+        final ApplicationContext context = event.getApplicationContext();
+        final RedisCacher cacher = context.getBean(RedisCacher.class);
+        final DataManager dataManager = context.getBean(DataManager.class);
+
+        final BiMap<CacheCoordinate, ManagerBundle> coordinateToBundle = HashBiMap.create();
+
+        // Set up the data manager
+        final String constraintFolder = context.getEnvironment().getRequiredProperty("constraint.folder");
+        log.info("Looking in " + constraintFolder + " for station configuration folders");
+        final File[] stationConfigurationFolders = new File(constraintFolder).listFiles(File::isDirectory);
+        log.info("Found " + stationConfigurationFolders.length + " station configuration folders");
+        Arrays.stream(stationConfigurationFolders).forEach(folder -> {
+            try {
+                final String path = folder.getAbsolutePath();
+                log.info("Adding data for station configuration folder " + path);
+                dataManager.addData(folder.getAbsolutePath());
+                // add cache coordinate to map
+                final ManagerBundle bundle = dataManager.getData(folder.getAbsolutePath());
+                log.info("Folder " + folder.getAbsolutePath() + " corresponds to coordinate " + bundle.getCacheCoordinate());
+                coordinateToBundle.put(bundle.getCacheCoordinate(), bundle);
+            } catch (FileNotFoundException e) {
+                throw new IllegalStateException(folder.getAbsolutePath() + " is not a valid station configuration folder (missing Domain or Interference files?)", e);
+            }
+        });
+
         log.info("Beginning to init caches");
         final ContainmentCacheInitData containmentCacheInitData = cacher.getContainmentCacheInitData();
-        containmentCacheInitData.getCaches().forEach(cacheCoordinate -> {
-            final List<ContainmentCacheSATEntry> SATEntries = containmentCacheInitData.getSATResults().get(cacheCoordinate);
-            final List<ContainmentCacheUNSATEntry> UNSATEntries = containmentCacheInitData.getUNSATResults().get(cacheCoordinate);
-            ISatisfiabilityCache cache = cacheFactory.create(SATEntries, UNSATEntries);
+        coordinateToBundle.keySet().forEach(cacheCoordinate -> {
+            final List<ContainmentCacheSATEntry> SATEntries;
+            final List<ContainmentCacheUNSATEntry> UNSATEntries;
+            if (containmentCacheInitData.getCaches().contains(cacheCoordinate)) {
+                SATEntries = containmentCacheInitData.getSATResults().get(cacheCoordinate);
+                UNSATEntries = containmentCacheInitData.getUNSATResults().get(cacheCoordinate);
+            } else {
+                // empty cache
+                SATEntries = new ArrayList<>();
+                UNSATEntries = new ArrayList<>();
+            }
+            final Set<Station> universe = coordinateToBundle.get(cacheCoordinate).getStationManager().getStations();
+            ISatisfiabilityCache cache = cacheFactory.create(SATEntries, UNSATEntries, universe);
+            log.info("Cache created for coordinate " + cacheCoordinate);
             caches.put(cacheCoordinate, cache);
         });
     }

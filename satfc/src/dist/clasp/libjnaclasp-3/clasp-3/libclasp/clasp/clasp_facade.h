@@ -26,7 +26,7 @@
 #endif
 
 #if !defined(CLASP_VERSION)
-#define CLASP_VERSION "3.0.4-p8"
+#define CLASP_VERSION "3.1.2"
 #endif
 #if !defined(CLASP_LEGAL)
 #define CLASP_LEGAL \
@@ -36,22 +36,27 @@
 "There is NO WARRANTY, to the extent permitted by law."
 #endif
 
+#include <clasp/program_builder.h>
+#include <clasp/logic_program.h>
+#include <clasp/enumerator.h>
+
 #if !defined(WITH_THREADS)
 #error Invalid thread configuration - use WITH_THREADS=0 for single-threaded or WITH_THREADS=1 for multi-threaded version of libclasp!
 #endif
 
 #if WITH_THREADS
 #include <clasp/parallel_solve.h>
-namespace Clasp { typedef Clasp::mt::ParallelSolveOptions SolveOptions; }
+namespace Clasp { 
+	struct SolveOptions : Clasp::mt::ParallelSolveOptions, EnumOptions {};
+}
 #else
 #include <clasp/shared_context.h>
 #include <clasp/solve_algorithms.h>
-namespace Clasp { typedef Clasp::BasicSolveOptions SolveOptions; }
+namespace Clasp { 
+	struct SolveOptions : Clasp::BasicSolveOptions, EnumOptions {};
+}
 #endif
 
-#include <clasp/program_builder.h>
-#include <clasp/logic_program.h>
-#include <clasp/enumerator.h>
 /*!
  * \file 
  * This file provides a facade around the clasp library. 
@@ -73,14 +78,17 @@ public:
 	// Base interface
 	void         prepare(SharedContext&);
 	void         reset();
+	//! Adds an unfounded set checker to the given solver if necessary.
+	/*!
+	 * If asp.suppMod is false and the problem in s is a non-tight asp-problem, 
+	 * the function adds an unfounded set checker to s.
+	 */
+	bool         addPost(Solver& s) const;
 	// own interface
 	UserConfig*  testerConfig() const { return tester_; } 
 	UserConfig*  addTesterConfig();
-	void         setSolvers(uint32 n);
-	
-	SolveOptions solve;    /*!< Options for solve algorithm.        */
-	EnumOptions  enumerate;/*!< Options for enumerator.             */
-	AspOptions   asp;      /*!< Options for asp preprocessing.      */
+	SolveOptions solve; /*!< Options for solve algorithm and enumerator. */
+	AspOptions   asp;   /*!< Options for asp preprocessing.      */
 private:
 	ClaspConfig(const ClaspConfig&);
 	ClaspConfig& operator=(const ClaspConfig&);
@@ -105,7 +113,7 @@ struct ExpectedQuantity {
 
 //! Provides a simplified interface to the services of the clasp library.
 class ClaspFacade : public EventHandler {
-	struct SolveImpl;
+	struct SolveData;
 	struct SolveStrategy;
 public:
 	//! Result of a solving step.
@@ -142,13 +150,13 @@ public:
 		bool                 sat()          const { return result.sat();   }
 		bool                 unsat()        const { return result.unsat(); }
 		bool                 complete()     const { return result.exhausted(); }
-		bool                 optimum()      const;
-		uint64               optimal()      const; 
-		bool                 optimize()     const;
-		const SharedMinData* costs()        const;
 		const char*          consequences() const;
-		int                  stats()        const;
+		bool                 optimize()     const;
 		const Model*         model()        const;
+		const SumVec*        costs()        const { return model() ? model()->costs : 0; }
+		bool                 optimum()      const { return costs() && (complete() || model()->opt); }
+		uint64               optimal()      const;
+		int                  stats()        const;
 		const ClaspFacade* facade;    /**< Facade object of this run.          */
 		double             totalTime; /**< Total wall clock time.              */
 		double             cpuTime;   /**< Total cpu time.                     */
@@ -177,18 +185,22 @@ public:
 	 * \name Start functions
 	 * Functions for defining a problem. 
 	 * Calling one of the start functions discards any previous problem.
-	 * The allowUpdate parameter determines whether or not program updates
-	 * are allowed once the problem is initially defined.
 	 */
 	//@{
 	//! Starts definition of an ASP-problem.
-	Asp::LogicProgram& startAsp(ClaspConfig& config, bool allowUpdate = false);
+	Asp::LogicProgram& startAsp(ClaspConfig& config, bool enableUpdates = false);
 	//! Starts definition of a SAT-problem.
-	SatBuilder&        startSat(ClaspConfig& config, bool allowUpdate = false);
+	SatBuilder&        startSat(ClaspConfig& config);
 	//! Starts definition of a PB-problem.
-	PBBuilder&         startPB(ClaspConfig& config , bool allowUpdate = false);
+	PBBuilder&         startPB(ClaspConfig& config);
 	//! Starts definition of a problem of type t.
-	ProgramBuilder&    start(ClaspConfig& config, ProblemType t, bool allowUpdate = false);
+	ProgramBuilder&    start(ClaspConfig& config, ProblemType t);
+	//! Enables support for incremental program updates if supported by the program.
+	/*!
+	 * \pre program() != 0 and program was not yet prepared.
+	 * \return true if program updates are supported. Otherwise, false.
+	 */
+	bool               enableProgramUpdates();
 	
 	enum EnumMode { enum_volatile, enum_static };
 	//! Finishes the definition of a problem and prepares it for solving.
@@ -206,28 +218,28 @@ public:
 	void               assume(const LitVec& ext);
 	//! Starts update of the active problem.
 	/*!
-	 * \pre start() was called with allowUpdate and solving() is false.
+	 * \pre solving() is false and program updates are enabled.
 	 */
 	ProgramBuilder&    update(bool updateConfig = false);
 	//@}
 	
-	//! Solves the current prepared problem.
+	//! Solves the current problem.
 	/*!
-	 * \pre !solving()
-	 * \param handler An optional event handler that is notified on each model and
-	 *                once after the solve operation has completed.
-	 * \note If ok() is false or result().unsat() is true prior to
-	 *       calling solve(), i.e. the current step is already complete,
-	 *       the solve operation is not started and no events are generated.
+	 * If prepared() is false, the function first calls prepare() to prepare the problem for solving.
+	 * If interrupted() is true, the function returns without doing an actual search.
+	 * \pre !solving() && !solved()
+	 * \post solved()
+	 * \param eh An optional event handler that is notified on each model and
+	 *           once the solve operation has completed.
 	 */
-	Result             solve(Clasp::EventHandler* onModel = 0);
+	Result             solve(Clasp::EventHandler* eh = 0);
 #if WITH_THREADS
 	struct AsyncSolve;
 	//! A type for accessing the result(s) of an asynchronous solve operation.
 	class AsyncResult {
 	public:
 		typedef  StepReady Ready;
-		explicit AsyncResult(SolveImpl& x);
+		explicit AsyncResult(SolveData& x);
 		~AsyncResult();
 		AsyncResult(const AsyncResult&);
 		AsyncResult& operator=(AsyncResult temp)            { swap(*this, temp); return *this; }
@@ -268,21 +280,21 @@ public:
 	private:
 		AsyncSolve* state_;
 	};
-	//! Asynchronously solves the current prepared problem.
+	
+	//! Asynchronously solves the current problem.
 	/*!
-	 * \pre !solving()
-	 * \see solve(Clasp::EventHandler*)
+	 * \see solve(EventHandler* eh);
 	 * \note The optional event handler is notified in the context of the
 	 *       asynchronous operation.
 	 */
 	AsyncResult        solveAsync(Clasp::EventHandler* handler = 0);
 
-	//! Asynchronously solves the current prepared problem signaling models one by one.
+	//! Asynchronously solves the current problem signaling models one by one.
 	/*!
 	 * The function behaves similar to solveAsync() but yields models
 	 * one by one via the returned result object.
 	 * \pre !solving()
-	 * \note It is the caller's responsibility to finish the solve operation, 
+	 * \note It is the caller's responsibility to finish the solve operation,
 	 * either by extracting models until AsyncResult::end() returns true, or
 	 * by calling AsyncResult::cancel().
 	 */
@@ -290,8 +302,20 @@ public:
 #endif
 	//! Returns whether the problem is still valid.
 	bool               ok()                  const { return program() ? program()->ok() : ctx.ok(); }
-	//! Tries to terminate an active solve operation.
-	bool               terminate(int signal);
+	//! Tries to interrupt the current solving step.
+	/*!
+	* The function tries to interrupt an active solve operation.
+	* If solving() is false or solve interrupts are not enabled,
+	* the function remembers the signal and returns false.
+	* \param sig The signal to raise.
+	*/
+	bool               terminate(int sig);
+
+	//! Forces termination of the current solving step.
+	/*!
+	* \post solved()
+	* \return accumulated summary
+	*/
 	const Summary&     shutdown();
 	//! Returns whether a solve operation is currently active.
 	bool               solving()             const;
@@ -305,18 +329,23 @@ public:
 	Result             result()              const { return step_.result; }
 	//! Returns the active program or 0 if it was already released.
 	ProgramBuilder*    program()             const { return builder_.get(); }
+	Enumerator*        enumerator()          const;
+
+	bool prepared()    const;
+	bool interrupted() const;
+	bool solved()      const;
 	
 	ExpectedQuantity   getStat(const char* path)const;
 	const char*        getKeys(const char* path)const;
 private:
 	typedef SingleOwnerPtr<ProgramBuilder> BuilderPtr;
 	typedef SingleOwnerPtr<Asp::LpStats>   LpStatsPtr;
-	typedef SingleOwnerPtr<SolveImpl>      SolvePtr;
+	typedef SingleOwnerPtr<SolveData>      SolvePtr;
 	typedef SingleOwnerPtr<Summary>        SummaryPtr;
 	ExpectedQuantity getStatImpl(const char* path, bool keys)const;
 	ExpectedQuantity getStat(const SharedContext& ctx, const char* key, bool accu, const Range<uint32>& r) const;
 	void   init(ClaspConfig& cfg, bool discardProblem);
-	void   initBuilder(ProgramBuilder* in, bool incremental);
+	void   initBuilder(ProgramBuilder* in);
 	void   discardProblem();
 	void   startStep(uint32 num);
 	Result stopStep(int signal, bool complete);

@@ -158,6 +158,17 @@ private:
 };
 inline Literal operator^(Literal lhs, bool sign) { return Literal::fromIndex( lhs.index() ^ uint32(sign) ); }
 inline Literal operator^(bool sign, Literal rhs) { return rhs ^ sign; }
+
+inline unsigned hashId(unsigned key) {  
+	key = ~key + (key << 15);
+	key ^= (key >> 11);
+	key += (key << 3);
+	key ^= (key >> 5);
+	key += (key << 10);
+	key ^= (key >> 16);
+	return key;
+}
+inline uint32 hashLit(Literal p) { return hashId(p.index()); }
 /////////////////////////////////////////////////////////////////////////////////////////
 // Common interface
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -270,7 +281,7 @@ public:
 	enum MapType { map_direct, map_indirect };
 
 	//! Creates an empty symbol table.
-	SymbolTable() : lastSort_(0), lastStart_(0), end_(varMax), type_(map_indirect) { }
+	SymbolTable() : lastSort_(0), lastStart_(0), end_(0), type_(map_indirect), inc_(false) { }
 	~SymbolTable() { clear();  }
 	void   copyTo(SymbolTable& o) {
 		o.clear();
@@ -280,6 +291,10 @@ public:
 		}
 		o.lastSort_ = lastSort_;
 		o.lastStart_= lastStart_;
+		o.end_      = end_;
+		o.type_     = type_;
+		o.inc_      = inc_;
+		o.domLits   = domLits;
 	}
 	//! Type of symbol mapping.
 	/*!
@@ -304,6 +319,8 @@ public:
 	const_iterator lower_bound(const_iterator start, key_type i) const {
 		return std::lower_bound(start, end(), i, LessKey());
 	}
+	bool incremental() const { return inc_; }
+	void incremental(bool b) { inc_ = b;    }
 	//! Returns the symbol with the given id.
 	/*!
 	 * \pre find(id) != 0
@@ -314,14 +331,22 @@ public:
 		for (const_iterator it = map_.begin(), end = map_.end(); it != end; ++it) {
 			freeName(it->second.name.c_str());
 		}
-		map_.clear(); 
+		map_.clear();
+		domLits.clear();
 		lastSort_ = 0; 
 		lastStart_= 0; 
+		end_      = 0;
+		inc_      = false;
 	}
 	//! Prepares the symbol table so that new symbols can be added.
-	void startInit() {
+	/*!
+	 * \param type Type of mapping.
+	 */
+	void startInit(MapType type) {
 		lastStart_ = map_.size();
 		lastSort_  = lastStart_;
+		type_      = type;
+		inc_       = inc_ || size() != 0;
 	}
 	//! Adds the symbol with the given id to the symbol table.
 	/*!
@@ -334,20 +359,17 @@ public:
 		map_.push_back(value_type(id, symbol_type(negLit(0), dupName(name))));
 		return map_.back().second;
 	}
+	//! Adds end of mapped range in direct mapping (i.e. [0, end)).
+	void add(Var end) {
+		end_ = end;
+	}
 	//! Freezes the symbol table and prepares it so that lookup operations become valid.
-	/*
-	 * \param type Type of mapping.
-	 * \param end  Only for direct mapping: end of mapped range (i.e. [0, end)).
-	 */
-	void endInit(MapType type = map_indirect, Var end = varMax) {
+	void endInit() {
 		std::sort(map_.begin()+lastSort_, map_.end(), LessKey());
 		assert(unique() && "Symbol table: Duplicate atoms are not allowed\n");
 		lastSort_ = map_.size();
-		end_      = varMax;
-		if ((type_=type) == map_direct) {
-			end_    = end;
-		}
 	}
+	LitVec domLits;
 private:
 	SymbolTable(const SymbolTable&);
 	SymbolTable& operator=(const SymbolTable&);
@@ -375,6 +397,7 @@ private:
 	map_type::size_type lastStart_;
 	uint32              end_;
 	MapType             type_;
+	bool                inc_;
 };
 
 class ClaspError : public std::runtime_error {

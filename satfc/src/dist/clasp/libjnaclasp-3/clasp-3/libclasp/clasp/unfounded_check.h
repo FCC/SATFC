@@ -35,6 +35,7 @@ class LoopFormula;
 /*!
  * \ingroup constraint
  * Searches for unfounded atoms by checking the positive dependency graph (PDG)
+ *
  * Basic Idea:
  *  - For each (non-false) atom a, let source(a) be a body B in body(a) that provides an external support for a
  *    - If no such B exists, a must be false
@@ -60,10 +61,11 @@ public:
 		no_reason,        /*!< do no compute reasons for unfounded sets (only valid if learning is disabled!) */
 	};
 	
-	DefaultUnfoundedCheck();
+	explicit DefaultUnfoundedCheck(ReasonStrategy st = common_reason);
 	~DefaultUnfoundedCheck();
 
 	ReasonStrategy reasonStrategy() const { return strategy_; }
+	void           setReasonStrategy(ReasonStrategy rs);
 	
 	DependencyGraph* graph() const { return graph_; }
 	uint32           nodes() const { return static_cast<uint32>(atoms_.size() + bodies_.size()); }
@@ -75,6 +77,8 @@ public:
 	bool   propagateFixpoint(Solver& s, PostPropagator* ctx);
 	bool   isModel(Solver& s);
 	bool   valid(Solver& s);
+	bool   simplify(Solver& s, bool);
+	void   destroy(Solver* s, bool detach);
 private:
 	DefaultUnfoundedCheck(const DefaultUnfoundedCheck&);
 	DefaultUnfoundedCheck& operator=(const DefaultUnfoundedCheck&);
@@ -165,6 +169,7 @@ private:
 		uint32   high;
 		uint32   low;
 		uint32   next;
+		uint32   scc;
 	};
 	// -------------------------------------------------------------------------------------------  
 	// constraint interface
@@ -195,6 +200,11 @@ private:
 		DefaultUnfoundedCheck* self;
 		const BodyPtr*         B;
 		ExtData*               extra;
+	};
+	struct RemExtWatches {
+		void operator()(Literal p, uint32, bool) const { s->removeWatch(~p, self); }
+		Constraint* self;
+		Solver*     s;
 	};
 	// -------------------------------------------------------------------------------------------  
 	// propagating source pointers

@@ -39,6 +39,7 @@ class EnumeratorTest : public CppUnit::TestFixture {
 	CPPUNIT_TEST(testIgnoreTagLiteralInPath);
 	CPPUNIT_TEST(testSplittable);
 	CPPUNIT_TEST(testLearnStepLiteral);
+	CPPUNIT_TEST(testAssignStepLiteral);
 	CPPUNIT_TEST_SUITE_END();	
 public:
 	void testMiniProject() {
@@ -141,7 +142,7 @@ public:
 		solver.propagate();
 		solver.assume(index[3].lit);
 		solver.propagate();
-		solver.strategy.restartOnModel = 1;
+		solver.strategies().restartOnModel = true;
 		CPPUNIT_ASSERT(solver.numVars() == solver.numAssignedVars());
 		CPPUNIT_ASSERT_EQUAL(true, e.commitModel(solver));
 		CPPUNIT_ASSERT_EQUAL(true, e.update(solver));
@@ -267,8 +268,8 @@ public:
 	void testTagLiteral() {
 		ModelEnumerator e;
 		SharedContext ctx;
-		Var a = ctx.addVar(Var_t::atom_var);
-		Var b = ctx.addVar(Var_t::atom_var);
+		ctx.addVar(Var_t::atom_var);
+		ctx.addVar(Var_t::atom_var);
 		ctx.startAddConstraints();
 		e.init(ctx);
 		ctx.endInit();
@@ -282,7 +283,7 @@ public:
 	void testIgnoreTagLiteralInPath() {
 		SharedContext ctx;
 		Var a = ctx.addVar(Var_t::atom_var);
-		Var b = ctx.addVar(Var_t::atom_var);
+		ctx.addVar(Var_t::atom_var);
 		Solver& s1 = ctx.startAddConstraints();
 		Solver& s2 = ctx.addSolver();
 		ctx.endInit();
@@ -318,9 +319,9 @@ public:
 		SharedContext ctx;
 		ctx.requestStepVar();
 		Var a = ctx.addVar(Var_t::atom_var);
-		Var b = ctx.addVar(Var_t::atom_var);
+		ctx.addVar(Var_t::atom_var);
 		Solver& s1 = ctx.startAddConstraints();
-		Solver& s2 = ctx.addSolver();
+		ctx.addSolver();
 		ctx.endInit(true);
 		ClauseCreator cc(&s1);
 		cc.start(Constraint_t::learnt_conflict).add(posLit(a)).add(~ctx.stepLiteral()).end();
@@ -328,6 +329,21 @@ public:
 		ctx.endInit(true);
 		s1.pushRoot(negLit(a));
 		CPPUNIT_ASSERT(s1.value(ctx.stepLiteral().var()) == value_free);
+	}
+
+	void testAssignStepLiteral() {
+		SharedContext ctx;
+		ctx.requestStepVar();
+		Var a = ctx.addVar(Var_t::atom_var);
+		ctx.addVar(Var_t::atom_var);
+		Solver& s = ctx.startAddConstraints();
+		CPPUNIT_ASSERT(s.value(ctx.stepLiteral().var()) == value_free);
+		ctx.addUnary(ctx.stepLiteral());
+		ctx.endInit();
+		CPPUNIT_ASSERT(s.value(ctx.stepLiteral().var()) != value_free);
+		ctx.unfreeze();
+		ctx.endInit();
+		CPPUNIT_ASSERT(s.value(ctx.stepLiteral().var()) == value_free);
 	}
 private:
 	LogicProgram builder;

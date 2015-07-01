@@ -68,6 +68,7 @@ class LogicProgramTest : public CppUnit::TestFixture {
 	CPPUNIT_TEST(testDontAddOnePredsThatAreNotHeads);
 	CPPUNIT_TEST(testDontAddDuplicateBodies);
 	CPPUNIT_TEST(testDontAddDuplicateSumBodies);
+	CPPUNIT_TEST(testDontAddDuplicateSimpBodies);
 	CPPUNIT_TEST(testDontAddUnsupported);
 	CPPUNIT_TEST(testDontAddUnsupportedNoEq);
 	CPPUNIT_TEST(testDontAddUnsupportedExtNoEq);
@@ -75,6 +76,7 @@ class LogicProgramTest : public CppUnit::TestFixture {
 
 	CPPUNIT_TEST(testRegressionR1);
 	CPPUNIT_TEST(testRegressionR2);
+	CPPUNIT_TEST(testFuzzBug);
 	
 	CPPUNIT_TEST(testCloneShare);
 	CPPUNIT_TEST(testCloneShareSymbols);
@@ -125,11 +127,15 @@ class LogicProgramTest : public CppUnit::TestFixture {
 	CPPUNIT_TEST(writeIntegrityConstraint);
 	CPPUNIT_TEST(testComputeTrueBug);
 	CPPUNIT_TEST(testBackprop);
+	CPPUNIT_TEST(testBackpropTrueCon);
+	CPPUNIT_TEST(testBackpropWrite);
 
 	CPPUNIT_TEST(testSimpleIncremental);
 	CPPUNIT_TEST(testIncrementalFreeze);
 	CPPUNIT_TEST(testIncrementalFreezeValue);
+	CPPUNIT_TEST(testIncrementalFreezeOpen);
 	CPPUNIT_TEST(testIncrementalKeepFrozen);
+	CPPUNIT_TEST(testIncrementalFreezeCompute);
 	CPPUNIT_TEST(testIncrementalUnfreezeUnsupp);
 	CPPUNIT_TEST(testIncrementalUnfreezeCompute);
 	CPPUNIT_TEST(testIncrementalCompute);
@@ -155,8 +161,14 @@ class LogicProgramTest : public CppUnit::TestFixture {
 	CPPUNIT_TEST(testIncrementalGetAssumptions);
 	CPPUNIT_TEST(testIncrementalSimplifyCard);
 	CPPUNIT_TEST(testIncrementalSimplifyMinimize);
+	CPPUNIT_TEST(testIncrementalEqOverNeg);
 
 	CPPUNIT_TEST(testIncrementalKeepExternalValue);
+
+	CPPUNIT_TEST(testFreezeIsExternal);
+	CPPUNIT_TEST(testUnfreezeIsNotExternal);
+	CPPUNIT_TEST(testFreezeStaysExternal);
+	CPPUNIT_TEST(testDefinedIsNotExternal);
 	CPPUNIT_TEST_SUITE_END();	
 public:
 	void tearDown(){
@@ -499,6 +511,19 @@ public:
 		CPPUNIT_ASSERT_EQUAL(true, builder.endProgram());
 		CPPUNIT_ASSERT(builder.stats.bodies == 2);	
 	}
+	void testDontAddDuplicateSimpBodies() {
+		// {a, b, c, d}.
+		// a :- b, c, d.
+		// a :- 8 [c=2, b=3, d=4].
+		builder.start(ctx)
+			.setAtomName(1, "a").setAtomName(2, "b").setAtomName(3, "c").setAtomName(4, "d")
+			.startRule(CHOICERULE).addHead(1).addHead(2).addHead(3).addHead(4).endRule()
+			.startRule().addHead(1).addToBody(2, true).addToBody(3, true).addToBody(4, true).endRule()
+			.startRule(WEIGHTRULE, 8).addHead(1).addToBody(3, true, 2).addToBody(2, true, 3).addToBody(4, true, 4).endRule()
+		;
+		CPPUNIT_ASSERT_EQUAL(true, builder.endProgram());
+		CPPUNIT_ASSERT(builder.stats.bodies == 2);
+	}
 
 	void testDontAddUnsupported() {
 		// a :- c, b.
@@ -595,7 +620,15 @@ public:
 		CPPUNIT_ASSERT(builder.getAtom(4)->literal() == negLit(0));
 		CPPUNIT_ASSERT(ctx.numVars() == 0);
 	}
-
+	void testFuzzBug() {
+		builder.start(ctx)
+			.startRule().addHead(1)
+			.addToBody(1, false).addToBody(2, false).addToBody(3,false)
+			.addToBody(2,false).addToBody(1,false).addToBody(4,false)
+			.endRule()
+		;
+		CPPUNIT_ASSERT_EQUAL(false, builder.endProgram() && ctx.endInit());
+	}
 	void testCloneShare() {
 		// {a, b, c}.
 		// d :- a, b, c. 
@@ -774,7 +807,7 @@ public:
 
 	void testAddClauses() {
 		ClauseObserver* o = new ClauseObserver;
-		ctx.master()->heuristic().reset(o);
+		ctx.master()->setHeuristic(o);
 		builder.start(ctx)
 			.setAtomName(1, "a").setAtomName(2, "b").setAtomName(3, "c")
 			.startRule().addHead(1).addToBody(2, false).endRule()								// a :- not b.
@@ -1408,6 +1441,48 @@ public:
 		CPPUNIT_ASSERT(ctx.numVars() == 0);
 	}
 
+	void testBackpropTrueCon() {
+		Var r, s, x, y, a, t;
+		builder.start(ctx, LogicProgram::AspOptions().backpropagate())
+			.setAtomName(r = 2, "r").setAtomName(s = 3, "s").setAtomName(x=4, "x").setAtomName(a=5, "a").setAtomName(y=6, "y").setAtomName(t=7, "t")
+			.startRule().addHead(t).endRule() // t.
+			.startRule(CHOICERULE).addHead(r).addHead(s).endRule() // {r,s}.
+			.startRule().addHead(x).addToBody(y, false).endRule()  // x :- not y.
+			.startRule().addHead(1).addToBody(a, false).endRule()  // :- not a.
+			.startRule(CONSTRAINTRULE, 1).addHead(a).addToBody(r, false).addToBody(s, false).endRule() // a :- 1 {not r, not s}.
+			.setCompute(1, false)
+		;
+		CPPUNIT_ASSERT_EQUAL(true, builder.endProgram() && ctx.endInit());
+		ctx.master()->assume(builder.getLiteral(r)) && ctx.master()->propagate();
+		CPPUNIT_ASSERT(ctx.master()->isFalse(builder.getLiteral(s)));
+		ctx.master()->undoUntil(0);
+		ctx.master()->assume(builder.getLiteral(s)) && ctx.master()->propagate();
+		CPPUNIT_ASSERT(ctx.master()->isFalse(builder.getLiteral(r)));
+	}
+	void testBackpropWrite() {
+		builder.start(ctx, LogicProgram::AspOptions().backpropagate())
+			.setAtomName(1, "a").setAtomName(2, "b").setAtomName(3, "c").setAtomName(4, "d").setAtomName(5, "_FAIL")
+			.startRule(DISJUNCTIVERULE).addHead(1).addHead(2).endRule()       // a | b.
+			.startRule().addHead(3).addToBody(1, true).endRule() // c :- a.
+			.startRule().addHead(1).addToBody(3, true).endRule() // a :- c.
+			.startRule().addHead(4).addToBody(3, false).endRule() // d :- not c.
+			.startRule().addHead(5).addToBody(1, true).addToBody(3, true).endRule() // _FAIL :- a,c.
+			.setCompute(5, false)
+			;
+		CPPUNIT_ASSERT_EQUAL(true, builder.endProgram() && ctx.endInit());
+		CPPUNIT_ASSERT(ctx.numVars() == 0);
+		CPPUNIT_ASSERT(ctx.master()->isFalse(builder.getLiteral(1)));
+		CPPUNIT_ASSERT(ctx.master()->isFalse(builder.getLiteral(3)));
+		CPPUNIT_ASSERT(ctx.master()->isTrue(builder.getLiteral(2)));
+		CPPUNIT_ASSERT(ctx.master()->isTrue(builder.getLiteral(4)));
+		builder.write(str);
+		std::string x = str.str();
+		CPPUNIT_ASSERT(x.find("1 2 0 0") != std::string::npos || x.find("1 2 1 0 4"));
+		CPPUNIT_ASSERT(x.find("1 4 0 0") != std::string::npos || x.find("1 4 1 0 2"));
+		CPPUNIT_ASSERT(x.find("1 1") == std::string::npos);
+		CPPUNIT_ASSERT(x.find("1 3") == std::string::npos);
+	}
+
 	void testSimpleIncremental() {
 		builder.start(ctx);
 		// I1: 
@@ -1517,6 +1592,36 @@ public:
 		CPPUNIT_ASSERT(solver.isFalse(ctx.symbolTable()[2].lit));
 		CPPUNIT_ASSERT(solver.isTrue(ctx.symbolTable()[3].lit));
 	}
+
+	void testIncrementalFreezeOpen() {
+		builder.start(ctx, LogicProgram::AspOptions().noEq());
+		// I1:
+		// freeze(x, value_free)
+		builder.updateProgram();
+		builder.setAtomName(1, "x").freeze(1, value_free);
+		CPPUNIT_ASSERT_EQUAL(true, builder.endProgram() && ctx.endInit());
+		LitVec assume;
+		builder.getAssumptions(assume);
+		Solver& solver = *ctx.master();
+		CPPUNIT_ASSERT(assume.empty());
+		CPPUNIT_ASSERT(solver.value(ctx.symbolTable()[1].lit.var()) == value_free);
+		
+		// I2: 
+		builder.updateProgram();
+		CPPUNIT_ASSERT_EQUAL(true, builder.endProgram() && ctx.endInit());
+		assume.clear();
+		builder.getAssumptions(assume);
+		CPPUNIT_ASSERT(assume.empty());
+		CPPUNIT_ASSERT(solver.value(ctx.symbolTable()[1].lit.var()) == value_free);
+
+		// I3:
+		builder.updateProgram();
+		builder.freeze(1, value_true);
+		CPPUNIT_ASSERT_EQUAL(true, builder.endProgram() && ctx.endInit());
+		assume.clear();
+		builder.getAssumptions(assume);
+		CPPUNIT_ASSERT(assume.size() == 1 && assume[0] == ctx.symbolTable()[1].lit);
+	}
 	void testIncrementalKeepFrozen() {
 		builder.start(ctx);
 		// I0:
@@ -1533,6 +1638,29 @@ public:
 		CPPUNIT_ASSERT_EQUAL(true, builder.endProgram());
 		CPPUNIT_ASSERT(x->literal() == xLit);
 		CPPUNIT_ASSERT(x->frozen());
+	}
+	void testIncrementalFreezeCompute() {
+		builder.start(ctx);
+		// I0:
+		// freeze{x}.
+		builder.updateProgram();
+		builder.setAtomName(1, "x").setAtomName(2, "y").setAtomName(3, "z").setAtomName(4, "z2")
+			.freeze(1).freeze(2).freeze(3).freeze(4)
+			.setCompute(1, true).setCompute(2, true).setCompute(3, false).setCompute(4, false)
+		;
+		CPPUNIT_ASSERT_EQUAL(true, builder.endProgram());
+		PrgAtom* x = builder.getAtom(1);
+		PrgAtom* y = builder.getAtom(2);
+		CPPUNIT_ASSERT(x->frozen() && y->frozen());
+		CPPUNIT_ASSERT(x->literal() != y->literal());
+		PrgAtom* z  = builder.getAtom(3);
+		PrgAtom* z2 = builder.getAtom(4);
+		CPPUNIT_ASSERT(z->frozen() && z2->frozen());
+		CPPUNIT_ASSERT(z->literal() == z2->literal());
+		// I1:
+		builder.updateProgram();
+		builder.setCompute(1, false);
+		CPPUNIT_ASSERT_EQUAL(false, builder.endProgram());
 	}
 	void testIncrementalUnfreezeUnsupp() {
 		builder.start(ctx, LogicProgram::AspOptions().noEq());
@@ -2158,6 +2286,39 @@ public:
 		CPPUNIT_ASSERT(builder.getMinimizeConstraint()->adjust(0) == 1);
 		CPPUNIT_ASSERT_EQUAL(true, builder.endProgram());
 	}
+	
+	void testIncrementalEqOverNeg() {
+		builder.start(ctx);
+		// I0: {a(1)}.
+		builder.updateProgram();
+		builder.setAtomName(1, "a(1)")
+			.startRule(CHOICERULE).addHead(1).endRule() // {a(1)}.
+		;
+		CPPUNIT_ASSERT_EQUAL(true, builder.endProgram());
+		
+		// I1:
+		// a(2) :- not a(1).
+		// a(3) :- a(2).
+		// a(3) :- a(6).
+		// a(4) :- a(3).
+		// a(5) :- a(4).
+		// a(7) :- a(3).
+		// a(8) :- not a(6), a(3).
+		// compute a(5),a(8).
+		builder.updateProgram();
+		builder.setAtomName(2, "a(2)").setAtomName(3, "a(3)").setAtomName(4, "a(4)").setAtomName(5, "a(5)").setAtomName(6, "a(6)").setAtomName(7, "a(7)").setAtomName(8, "a(8)");
+		builder.startRule().addHead(2).addToBody(1, false).endRule(); // a(2) :- not a(1).
+		builder.startRule().addHead(3).addToBody(2, true).endRule();  // a(3) :- a(2).
+		builder.startRule().addHead(3).addToBody(6, true).endRule();  // a(3) :- a(6).
+		builder.startRule().addHead(4).addToBody(3, true).endRule();  // a(4) :- a(3).
+		builder.startRule().addHead(5).addToBody(4, true).endRule();  // a(5) :- a(4).
+		builder.startRule().addHead(7).addToBody(3, true).endRule();  // a(7) :- a(3).
+		builder.startRule().addHead(8).addToBody(6, false).addToBody(3,true).endRule();  // a(8) :- not a(6), a(3).
+		builder.setCompute(5, true);
+		builder.setCompute(8, true);
+		CPPUNIT_ASSERT_EQUAL(true, builder.endProgram());
+		CPPUNIT_ASSERT(ctx.numVars() == 1 && ctx.master()->isFalse(builder.getLiteral(1)));
+	}
 
 	void testIncrementalKeepExternalValue() {
 		builder.start(ctx);
@@ -2183,6 +2344,54 @@ public:
 		CPPUNIT_ASSERT_EQUAL(true, builder.update());
 		builder.startRule().addHead(3).endRule();
 		CPPUNIT_ASSERT_EQUAL(false, builder.endProgram());
+	}
+
+	void testFreezeIsExternal() {
+		builder.start(ctx);
+		builder.updateProgram();
+		builder.startRule(Asp::CHOICERULE).addHead(2).endRule();
+		builder.freeze(1);
+		CPPUNIT_ASSERT_EQUAL(true , builder.isExternal(1));
+		CPPUNIT_ASSERT_EQUAL(false, builder.isExternal(2));
+		builder.endProgram();
+		CPPUNIT_ASSERT_EQUAL(true , builder.isExternal(1));
+		CPPUNIT_ASSERT_EQUAL(false, builder.isExternal(2));
+	}
+	void testUnfreezeIsNotExternal() {
+		builder.start(ctx);
+		builder.updateProgram();
+		builder.freeze(1);
+		builder.unfreeze(2);
+		builder.unfreeze(1);
+		builder.freeze(2);
+		CPPUNIT_ASSERT_EQUAL(false, builder.isExternal(1));
+		CPPUNIT_ASSERT_EQUAL(false, builder.isExternal(2));
+		builder.endProgram();
+		CPPUNIT_ASSERT_EQUAL(false, builder.isExternal(1));
+		CPPUNIT_ASSERT_EQUAL(false, builder.isExternal(2));
+	}
+	void testFreezeStaysExternal() {
+		builder.start(ctx);
+		builder.updateProgram();
+		builder.freeze(1);
+		CPPUNIT_ASSERT_EQUAL(true, builder.isExternal(1));
+		builder.endProgram();
+		CPPUNIT_ASSERT_EQUAL(true, builder.isExternal(1));
+		builder.updateProgram();
+		CPPUNIT_ASSERT_EQUAL(true, builder.isExternal(1));
+		builder.endProgram();
+		CPPUNIT_ASSERT_EQUAL(true, builder.isExternal(1));
+	}
+	void testDefinedIsNotExternal() {
+		builder.start(ctx);
+		builder.updateProgram();
+		builder.freeze(1);
+		builder.endProgram();
+		builder.updateProgram();
+		builder.startRule().addHead(1).addToBody(2, true).endRule();
+		CPPUNIT_ASSERT_EQUAL(false, builder.isExternal(1));
+		builder.endProgram();
+		CPPUNIT_ASSERT_EQUAL(false, builder.isExternal(1));
 	}
 private:
 	typedef SharedDependencyGraph DG;

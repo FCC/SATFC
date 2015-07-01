@@ -6,13 +6,7 @@
 #include "jna_clasp.h"
 #include <clasp/solver.h>
 #include <clasp/enumerator.h>
-
-/*
- * At the time of writing, we are using clasp 3.0.5, and the most recent version is 3.1.2.
- * There is a bug in the clasp 3.0.5 source code that is fixed in 3.1.2 that I had to backport
- * The bug is in clasp_facade.cpp in the wait() method, right before the return, where join() is called.
- * I'm just writing this here to document that the clasp source code is not an exact 3.0.5 match
- */
+#include <signal.h>
 
 namespace JNA {
 
@@ -22,31 +16,16 @@ namespace JNA {
 		assignment_ = NULL;
 		facade_ = NULL;
 		config_ = NULL;
-		configAllocated_ = false;
 		asyncResult_ = NULL;
 	}
 
 	JNAProblem::~JNAProblem() {
 		delete[] assignment_;
 		assignment_ = NULL;
-		if (asyncResult_ != NULL && asyncResult_->running()) {
-			asyncResult_->cancel();
-		}
-		delete asyncResult_;
-		asyncResult_ = NULL;
 		delete facade_;
 		facade_ = NULL;
-		if (config_ != NULL && configAllocated_) {
-			config_->releaseConfig(configKey_);	
-			configAllocated_ = false;
-		}
 		delete config_;
 		config_ = NULL;
-	}
-
-	void JNAProblem::setConfigKey(Clasp::Cli::ConfigKey configKey) {
-		configKey_ = configKey;
-		configAllocated_ = true;
 	}
 
 	void JNAProblem::setConfig(Clasp::Cli::ClaspCliConfig* config) {
@@ -85,7 +64,6 @@ namespace JNA {
 		return asyncResult_;
 	}
 
-
 	int* JNAProblem::getAssignment() {
 		return assignment_;
 	}
@@ -103,7 +81,7 @@ namespace JNA {
 	}
 
 	bool JNAProblem::interrupt() {
-		return asyncResult_->cancel(); 
+		return facade_->terminate(SIGINT); 
 	}
 
 	bool JNAProblem::onModel(const Clasp::Solver& s, const Clasp::Model& m) {
@@ -131,11 +109,9 @@ void* initConfig(const char* params) {
 	// Init the configuration
 	Clasp::Cli::ClaspCliConfig* config = new Clasp::Cli::ClaspCliConfig();
 	jnaProblem->setConfig(config);
-	Clasp::Cli::ConfigKey key = config->allocConfig();
-	jnaProblem->setConfigKey(key);
 	try {
-		config->appendConfig(key, "SATFC-Config", params);	
-		config->init(0, key);	
+		const char** it = &params;
+		config->setConfig(it, it + 1, Problem_t::SAT);
 		jnaProblem->setConfigState(c_CONFIGURED);
 	} catch (std::exception& e) {
 		jnaProblem->setConfigState(c_ERROR);
@@ -146,7 +122,6 @@ void* initConfig(const char* params) {
 
 void initProblem(void* jnaProblemPointer, const char* problem) {
 	JNAProblem* jnaProblem = reinterpret_cast<JNA::JNAProblem*>(jnaProblemPointer);
-
 	// Init the facade
 	Clasp::ClaspFacade* facade = new Clasp::ClaspFacade();
 	jnaProblem->setFacade(facade);
@@ -172,9 +147,10 @@ void solveProblem(void* jnaProblemPointer, double timeoutTime) {
 		} else if (result.interrupted()) {
 			jnaProblem->setResultState(r_INTERRUPTED);
 		}
-	} else if (asyncResult->cancel()) { // times up - try to shut down the problem
+	} else { // times up
 		jnaProblem->setResultState(r_TIMEOUT);
 	} 
+	asyncResult->cancel();
 }
 
 void destroyProblem(void* jnaProblemPointer) {

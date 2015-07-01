@@ -140,6 +140,7 @@ class SolverTest : public CppUnit::TestFixture {
 
 	CPPUNIT_TEST(testClearAssumptions);
 	CPPUNIT_TEST(testStopConflict);
+	CPPUNIT_TEST(testClearStopConflictResetsBtLevel);
 
 	CPPUNIT_TEST(testSearchKeepsAssumptions);
 	CPPUNIT_TEST(testSearchAddsLearntFacts);
@@ -244,7 +245,7 @@ public:
 	}
 	void testDefaults() {
 		Solver& s = *ctx.master();
-		const SolverParams& x = s.configuration();
+		const SolverParams& x = ctx.configuration()->solver(s.id());
 		CPPUNIT_ASSERT(x.heuId == 0);
 		CPPUNIT_ASSERT(x.ccMinRec == false);
 		CPPUNIT_ASSERT(x.ccMinAntes == SolverStrategies::all_antes);
@@ -386,11 +387,13 @@ public:
 		CPPUNIT_ASSERT_EQUAL( false, ctx.varInfo(v2).preferredSign() );
 		CPPUNIT_ASSERT_EQUAL( true, ctx.varInfo(v3).preferredSign() );   
 		CPPUNIT_ASSERT_EQUAL( false, ctx.varInfo(v4).preferredSign() );
+		BasicSatConfig config;
+		config.addSolver(0).signDef = SolverStrategies::sign_disj;
+		ctx.setConfiguration(&config, false);
 		Solver& s = ctx.startAddConstraints();
 		CPPUNIT_ASSERT_EQUAL( negLit(v1), DecisionHeuristic::selectLiteral(s, v1, 0) );
 		CPPUNIT_ASSERT_EQUAL( posLit(v2), DecisionHeuristic::selectLiteral(s, v2, 0) );
 		ctx.setInDisj(v1, true);
-		ctx.master()->strategy.signDef = SolverStrategies::sign_disj;
 		CPPUNIT_ASSERT_EQUAL( posLit(v1), DecisionHeuristic::selectLiteral(s, v1, 0) );
 	}
 
@@ -410,7 +413,6 @@ public:
 	}
 
 	void testReset() {
-		ctx.master()->strategy.initWatches = SolverStrategies::watch_rand;
 		ctx.addVar(Var_t::atom_var); ctx.addVar(Var_t::body_var);
 		Solver& s = ctx.startAddConstraints();
 		s.add( new TestingConstraint(0) );
@@ -682,9 +684,9 @@ public:
 		Literal x = posLit(ctx.addVar(Var_t::atom_var));
 		Literal z = posLit(ctx.addVar(Var_t::atom_var));
 		Solver& s = ctx.startAddConstraints();
-		s.strategy.initWatches = SolverStrategies::watch_first;
 		
 		ClauseCreator cl(&s);
+		cl.addDefaultFlags(ClauseCreator::clause_watch_first);
 		cl.start().add(~z).add(d).end();
 		cl.start().add(a).add(b).end();
 		cl.start().add(a).add(~b).add(z).end();
@@ -722,8 +724,8 @@ public:
 		Literal y = posLit(ctx.addVar(Var_t::atom_var));
 		Literal z = posLit(ctx.addVar(Var_t::atom_var));
 		Solver& s = ctx.startAddConstraints();
-		s.strategy.initWatches = SolverStrategies::watch_least;
 		ClauseCreator cl(&s);
+		cl.addDefaultFlags(ClauseCreator::clause_watch_least);
 		cl.start().add(a).add(x).add(y).add(p).end();   // c1
 		cl.start().add(a).add(x).add(y).add(z).end();   // c2
 		cl.start().add(a).add(p).end();                 // c3
@@ -1167,7 +1169,7 @@ public:
 			}
 			Literal lit_[2];
 		}*h = new Dummy(negLit(c),negLit(a));
-		ctx.master()->heuristic().reset(h);
+		ctx.master()->setHeuristic(h);
 		Solver& s = ctx.startAddConstraints();
 		ClauseCreator cl(&s);
 		ctx.addBinary(posLit(a), posLit(b));
@@ -1243,6 +1245,29 @@ public:
 		CPPUNIT_ASSERT(s.rootLevel() == 2);
 		s.clearStopConflict();
 		CPPUNIT_ASSERT(s.rootLevel() == 1 && s.queueSize() == 1);
+	}
+	
+	void testClearStopConflictResetsBtLevel() {
+		Var a = ctx.addVar( Var_t::atom_var );
+		Var b = ctx.addVar( Var_t::atom_var );
+		Var c = ctx.addVar( Var_t::atom_var );
+		Var d = ctx.addVar( Var_t::atom_var );
+		Solver& s = ctx.startAddConstraints();
+		ctx.addBinary(negLit(c), posLit(d));
+		ctx.endInit();
+		s.assume(posLit(a)) && s.propagate();
+		s.assume(posLit(b)) && s.propagate();
+		s.assume(posLit(c)) && s.propagate();
+		CPPUNIT_ASSERT(s.numFreeVars() == 0);
+		s.setBacktrackLevel(s.decisionLevel());
+		s.backtrack();
+		uint32 bt = s.backtrackLevel();
+		s.assume(posLit(d)) && s.propagate();
+		CPPUNIT_ASSERT(bt != s.decisionLevel());
+		s.setStopConflict();
+		CPPUNIT_ASSERT(s.backtrackLevel() == s.decisionLevel());
+		s.clearStopConflict();
+		CPPUNIT_ASSERT(s.backtrackLevel() == bt);
 	}
 
 	void testStats() {
@@ -1388,7 +1413,6 @@ public:
 		Literal a = posLit(ctx.addVar( Var_t::atom_var ));
 		Literal b = posLit(ctx.addVar( Var_t::atom_var ));
 		Literal c = posLit(ctx.addVar( Var_t::atom_var ));
-		Literal d = posLit(ctx.addVar( Var_t::atom_var ));
 		struct Dummy : public Distributor {		
 			Dummy() : Distributor(Policy(UINT32_MAX, UINT32_MAX, UINT32_MAX)) {}
 			void publish(const Solver&, SharedLiterals* lits) {
@@ -1761,7 +1785,6 @@ public:
 	void testPopAuxMaintainsQueue() {
 		Literal a = posLit(ctx.addVar(Var_t::atom_var));
 		Literal b = posLit(ctx.addVar(Var_t::atom_var));
-		Literal c = posLit(ctx.addVar(Var_t::atom_var));
 		Solver& s = ctx.startAddConstraints();
 		ctx.endInit();
 		Var aux = s.pushAuxVar();
@@ -1774,8 +1797,6 @@ public:
 
 	void testIncrementalAux() {
 		Literal a = posLit(ctx.addVar(Var_t::atom_var));
-		Literal b = posLit(ctx.addVar(Var_t::atom_var));
-		Literal c = posLit(ctx.addVar(Var_t::atom_var));
 		Solver& s = ctx.startAddConstraints();
 		Solver& s2= ctx.addSolver();
 		ctx.endInit(true);
@@ -1808,8 +1829,6 @@ public:
 		CPPUNIT_ASSERT(s.isTrue(b));
 	}
 	void testRemoveConstraint() {
-		Literal a = posLit(ctx.addVar(Var_t::atom_var));
-		Literal b = posLit(ctx.addVar(Var_t::atom_var));
 		ctx.requestStepVar();
 		Solver& s = ctx.startAddConstraints();
 		Solver& s2= ctx.addSolver();

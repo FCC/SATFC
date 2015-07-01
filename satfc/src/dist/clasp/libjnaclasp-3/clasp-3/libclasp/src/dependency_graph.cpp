@@ -36,6 +36,7 @@ SharedDependencyGraph::SharedDependencyGraph(Configuration* cfg) : config_(cfg) 
 	createAtom(negLit(0), PrgNode::noScc);
 	VarVec adj;	adj.push_back(idMax);
 	initAtom(sentinel_atom, 0, adj, 0);
+	seenComponents_ = 0;
 }
 
 SharedDependencyGraph::~SharedDependencyGraph() {
@@ -143,9 +144,10 @@ void SharedDependencyGraph::addSccs(LogicProgram& prg, const AtomList& sccAtoms,
 		it->second->update(ctx);
 	}
 	// add new non-hcf components
-	for (NonHcfSet::const_iterator it = nonHcfs.begin() + components_.size(), end = nonHcfs.end(); it != end; ++it) {
+	for (NonHcfSet::const_iterator it = nonHcfs.begin() + seenComponents_, end = nonHcfs.end(); it != end; ++it) {
 		addNonHcf(ctx, *it);
 	}
+	seenComponents_ = nonHcfs.size();
 }
 
 uint32 SharedDependencyGraph::createAtom(Literal lit, uint32 aScc) {
@@ -336,6 +338,14 @@ void SharedDependencyGraph::accuStats() const {
 		it->second->prg_->accuStats();
 	}
 }
+void SharedDependencyGraph::simplify(const Solver& s) {
+	ComponentMap::iterator j = components_.begin();
+	for (ComponentMap::iterator it = components_.begin(), end = components_.end(); it != end; ++it) {
+		if (it->second->simplify(it->first, s)) { *j++ = *it; }
+		else                                    { delete it->second; }
+	}
+	components_.erase(j, components_.end());
+}
 /////////////////////////////////////////////////////////////////////////////////////////
 // class SharedDependencyGraph::NonHcfComponent::ComponentMap
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -365,6 +375,7 @@ public:
 	void     addBodyConstraints(const Solver& generator, const SccGraph& dep, uint32 scc, SharedContext& out);
 	void     mapGeneratorAssignment(const Solver& generator, const SccGraph& dep, LitVec& out) const;
 	void     mapTesterModel(const Solver& tester, VarVec& out) const;
+	bool     simplify(const Solver& generator, Solver& tester);
 	MapRange atoms() const { return MapRange(mapping.begin(), mapping.begin() + numAtoms); }
 	MapRange bodies()const { return MapRange(mapping.begin() + numAtoms, mapping.end()); }
 	MapIt_c  findAtom(NodeId nodeId) const { return std::lower_bound(mapping.begin(), mapping.begin()+numAtoms, Mapping(nodeId)); }
@@ -510,24 +521,20 @@ void SharedDependencyGraph::NonHcfComponent::ComponentMap::addBodyConstraints(co
 }
 
 // Maps the generator assignment given in s to a list of tester assumptions.
-void SharedDependencyGraph::NonHcfComponent::ComponentMap::mapGeneratorAssignment(const Solver& s, const SccGraph& dep, LitVec& out) const {
+void SharedDependencyGraph::NonHcfComponent::ComponentMap::mapGeneratorAssignment(const Solver& s, const SccGraph& dep, LitVec& assume) const {
 	Literal  gen;
-	out.clear(); out.reserve(mapping.size());
+	assume.clear(); assume.reserve(mapping.size());
 	for (MapRange r = atoms(); r.first != r.second; ++r.first) {
 		const Mapping& at = *r.first;
 		assert(at.varUsed || at.atPos() == posLit(0));
-		if (at.varUsed) {
-			gen = dep.getAtom(at.node).lit;
-			out.push_back(at.atPos());
-			if (!s.isTrue(gen)) {
-				out.back() = ~at.atPos();
-				if (s.isFalse(gen)) { out.push_back(~at.atUnf()); }
-			}
-		}
+		if (!at.varUsed) { continue; }
+		gen = dep.getAtom(at.node).lit;
+		assume.push_back(at.atPos() ^ (!s.isTrue(gen)));
+		if (s.isFalse(gen)) { assume.push_back(~at.atUnf()); }
 	}
 	for (MapRange r = bodies(); r.first != r.second; ++r.first) {
 		gen = dep.getBody(r.first->node).lit;
-		out.push_back(!s.isFalse(gen) ? r.first->bodyAux() : ~r.first->bodyAux());
+		assume.push_back(r.first->bodyAux() ^ s.isFalse(gen));
 	}
 }
 // Maps the tester model given in s back to a list of unfounded atoms in the generator.
@@ -539,6 +546,33 @@ void SharedDependencyGraph::NonHcfComponent::ComponentMap::mapTesterModel(const 
 			out.push_back(r.first->node);
 		}
 	}
+}
+bool SharedDependencyGraph::NonHcfComponent::ComponentMap::simplify(const Solver& generator, Solver& tester) {
+	if (!tester.popRootLevel(UINT32_MAX)) { return false; }
+	const SharedDependencyGraph& dep = *generator.sharedContext()->sccGraph;
+	const bool rem = !tester.sharedContext()->isShared();
+	MapIt j        = rem ? mapping.begin() : mapping.end();
+	for (MapIt_c it = mapping.begin(), aEnd = it + numAtoms, end = mapping.end(); it != end; ++it) {
+		const Mapping& m = *it;
+		const bool  atom = it < aEnd;
+		Literal        g = atom ? dep.getAtom(m.node).lit : dep.getBody(m.node).lit;
+		if (!m.varUsed || generator.topValue(g.var()) == value_free) {
+			if (rem) { *j++ = m; }
+			continue;
+		}
+		bool isFalse = generator.isFalse(g);
+		bool ok      = atom || tester.force(m.bodyAux() ^ isFalse);
+		if (atom) {
+			if   (!isFalse) { ok = tester.force(m.atPos()); if (ok && rem) { *j++ = m; } }
+			else            { ok = tester.force(~m.atPos()) && tester.force(~m.atUnf()); numAtoms -= (ok && rem); }
+		}
+		if (!ok) {
+			if (rem) { j = std::copy(it, end, j); }
+			break;
+		}
+	}
+	mapping.erase(j, mapping.end());
+	return tester.simplify();
 }
 /////////////////////////////////////////////////////////////////////////////////////////
 // class SharedDependencyGraph::NonHcfComponent
@@ -561,7 +595,7 @@ SharedDependencyGraph::NonHcfComponent::NonHcfComponent(const SharedDependencyGr
 	: prg_(new SharedContext())
 	, comp_(new ComponentMap()){
 	Solver& generator = *genCtx.master();
-	prg_->setConcurrency(genCtx.concurrency());
+	prg_->setConcurrency(genCtx.concurrency(), SharedContext::mode_reserve);
 	prg_->setConfiguration(dep.nonHcfConfig(), false);
 	comp_->addVars(generator, dep, atoms, bodies, *prg_);
 	prg_->startAddConstraints();
@@ -617,5 +651,9 @@ bool SharedDependencyGraph::NonHcfComponent::test(uint32 scc, const Solver& gene
 	tester.solver->stats.addCpuTime(ev.time);
 	generator.sharedContext()->report(ev);
 	return ev.result != 0;
+}
+bool SharedDependencyGraph::NonHcfComponent::simplify(uint32, const Solver& s) const {
+	assert(s.sharedContext()->sccGraph.get() != 0);
+	return comp_->simplify(s, *prg_->solver(s.id()));
 }
 }

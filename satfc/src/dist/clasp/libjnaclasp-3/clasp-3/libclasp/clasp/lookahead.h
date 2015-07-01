@@ -145,13 +145,15 @@ public:
 		hybrid_lookahead, /**< Test atoms and bodies but only their preferred decision literal */
 	};
 	struct Params {
-		Params(Type t = atom_lookahead) : type(t), topLevelImps(true), restrictNant(false) {}
+		Params(Type t = atom_lookahead) : type(t), lim(0), topLevelImps(true), restrictNant(false) {}
 		Params& lookahead(Type t){ type         = t; return *this; }
 		Params& addImps(bool b)  { topLevelImps = b; return *this; }
 		Params& nant(bool b)     { restrictNant = b; return *this; }
-		Type type;
-		bool topLevelImps;
-		bool restrictNant;
+		Params& limit(uint32 x)  { lim = x;          return *this; }
+		Type   type;
+		uint32 lim;
+		bool   topLevelImps;
+		bool   restrictNant; 
 	};
 	static bool isType(uint32 t) { return t != 0 && t <= hybrid_lookahead; }
 	/*!
@@ -176,8 +178,8 @@ public:
 	ScoreLook score;
 	//! Returns "best" literal w.r.t scoring of last lookahead or posLit(0) if no such literal exists.
 	Literal heuristic(Solver& s);
-
-	void    setLimit(UnitHeuristic* n);
+	void    detach(Solver& s);
+	bool    hasLimit() const { return limit_ != 0; }
 protected:
 	bool propagateLevel(Solver& s); // called by propagate
 	void undoLevel(Solver& s);
@@ -205,13 +207,12 @@ private:
 	NodeId     last_;  // last candidate in list; invariant: node(last_)->next == head_id;
 	NodeId     pos_;   // current lookahead start position
 	uint32     top_;   // size of top-level
-	HeuPtr     limit_; // 
+	uint32     limit_; // stop lookahead after this number of applications
 };
 
 //! Heuristic that uses the results of lookahead.
 /*!
- * The heuristic creates and installs a Lookahead post propagator.
- * It then selects the literal with the highest score, 
+ * The heuristic uses a Lookahead post propagator to select a literal with the highest score,
  * where the score is determined by counting assignments made during
  * failed-literal detection. hybrid_lookahead simply selects the literal that
  * derived the most literals. uniform_lookahead behaves similar to the smodels
@@ -221,25 +222,17 @@ private:
  * 
  * \note The heuristic might itself apply some lookahead but only on variables that 
  *       did not fail in a previous call to Lookahead::propagateFixpoint(). I.e. if
- *       priorities are correct for all post propagators in s, the lookahead operations can't fail. 
+ *       priorities are correct for all post propagators in s, the lookahead operations can't fail.
+ *
+ * \note If no Lookahead post propagator exists in the solver, the heuristic simply selects the first free variable!
  */
-class UnitHeuristic : public DecisionHeuristic {
+class UnitHeuristic : public SelectFirst {
 public:
-	/*!
-	 * \param p Lookahead parameters to apply during lookahead.
-	 */
-	explicit UnitHeuristic(const Lookahead::Params& p);
-	~UnitHeuristic();
-	//! Decorates the heuristic given in other with temporary lookahead of type t.
-	static UnitHeuristic* restricted(const Lookahead::Params& p, uint32 numOps, DecisionHeuristic* other);
-	void endInit(Solver& s);
-	void updateVar(const Solver& s, Var v, uint32 n);
+	UnitHeuristic();
+	//! Decorates the heuristic given in other with temporary lookahead.
+	static UnitHeuristic* restricted(DecisionHeuristic* other);
+	void    endInit(Solver& /* s */);
 	Literal doSelect(Solver& s);
-	virtual bool notify(Solver&) { return true; }
-protected:
-	typedef SingleOwnerPtr<Lookahead> LookPtr;
-	LookPtr look_; // lookahead propagator
-	Solver* solver_;
 };
 
 }

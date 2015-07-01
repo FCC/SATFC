@@ -72,7 +72,6 @@ public:
 	void testPropRandomClauses() {
 		for (int i = 0; i != 100; ++i) {
 			SharedContext cc;
-			cc.master()->strategy.initWatches = SolverStrategies::watch_rand;
 			for (int j = 0; j < 12; ++j) { cc.addVar(Var_t::atom_var); }
 			cc.startAddConstraints(1);
 			
@@ -169,7 +168,6 @@ public:
 	void testCloneShared() {
 		makeLits(3, 2);
 		ClauseHead* c = createShared(ctx, clLits, ClauseInfo());
-		ctx.setConcurrency(2);
 		Solver& solver2 = ctx.addSolver();
 		ctx.endInit(true);
 		ClauseHead* clone = (ClauseHead*)c->cloneAttach(solver2);

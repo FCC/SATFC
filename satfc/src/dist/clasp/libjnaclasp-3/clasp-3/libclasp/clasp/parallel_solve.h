@@ -38,13 +38,20 @@
  * Defines classes controlling multi-threaded parallel solving.
  * 
  */
-namespace Clasp { namespace mt {
+namespace Clasp { 
+//! Namespace for types and functions needed for implementing multi-threaded parallel solving.
+namespace mt {
 
 class ParallelHandler;
 class ParallelSolve;
 
 struct ParallelSolveOptions : BasicSolveOptions {
-	typedef Distributor::Policy Distribution;
+	struct Distribution : Distributor::Policy {
+		enum Mode { mode_global = 0, mode_local = 1 };
+		Distribution(Mode m = mode_global) : Distributor::Policy(), mode(m) {}
+		Distributor::Policy& policy() { return *this; }
+		uint32 mode;
+	};
 	ParallelSolveOptions() {}
 	struct Algorithm {
 		enum SearchMode { mode_split = 0, mode_compete  = 1 };
@@ -76,7 +83,10 @@ struct ParallelSolveOptions : BasicSolveOptions {
 	static uint32   recommendedSolvers()     { return Clasp::thread::hardware_concurrency(); }
 	//! Returns number of maximal number of supported threads.
 	static uint32   supportedSolvers()       { return 64; }
+	//! Returns the peers of the solver with the given id assuming the given topology.
+	static uint64   initPeerMask(uint32 sId, Integration::Topology topo, uint32 numThreads);
 	uint32          numSolver()        const { return algorithm.threads; }
+	void            setSolvers(uint32 i)     { algorithm.threads = std::max(uint32(1), i); }
 	bool            defaultPortfolio() const { return algorithm.mode == Algorithm::mode_compete; }
 };
 
@@ -149,7 +159,7 @@ private:
 	uint32            intGrace_ : 30;// grace period for clauses to integrate
 	uint32            intTopo_  :  2;// integration topology
 	uint32            intFlags_;     // bitset controlling clause integration
-	GpType            initialGp_;
+	bool              modeSplit_;
 };
 
 struct MessageEvent : SolveEvent<MessageEvent> {
@@ -282,36 +292,59 @@ private:
 	} gp_;
 };
 
-class GlobalQueue : public Distributor {
+class GlobalDistribution : public Distributor {
 public:
-	explicit GlobalQueue(const Policy& p, uint32 maxShare, uint32 topo);
-	~GlobalQueue();
+	explicit GlobalDistribution(const Policy& p, uint32 maxShare, uint32 topo);
+	~GlobalDistribution();
 	uint32  receive(const Solver& in, SharedLiterals** out, uint32 maxOut);
 	void    publish(const Solver& source, SharedLiterals* n);
 private:
 	void release();
-	struct DistPair {
-		DistPair(uint32 sId = UINT32_MAX, SharedLiterals* x = 0) : sender(sId), lits(x) {}
+	struct ClausePair {
+		ClausePair(uint32 sId = UINT32_MAX, SharedLiterals* x = 0) : sender(sId), lits(x) {}
 		uint32          sender;
 		SharedLiterals* lits;
 	};
-	class Queue : public MultiQueue<DistPair> {
+	class Queue : public MultiQueue<ClausePair> {
 	public:
-		typedef MultiQueue<DistPair> base_type;
+		typedef MultiQueue<ClausePair> base_type;
 		using base_type::publish;
 		Queue(uint32 m) : base_type(m) {}
 	};
 	struct ThreadInfo {
-		Queue::ThreadId id;
 		uint64          peerMask;
-		char pad[64 - sizeof(Queue::ThreadId)];
+		union {
+			Queue::ThreadId id;
+			uint64          rep;
+		};
+		char            pad[64 - (sizeof(uint64)*2)];
 	};
 	Queue::ThreadId& getThreadId(uint32 sId) const { return threadId_[sId].id; }
 	uint64           getPeerMask(uint32 sId) const { return threadId_[sId].peerMask; }
-	uint64           populatePeerMask(uint32 topo, uint32 maxT, uint32 id) const;
-	uint64           populateFromCube(uint32 maxT, uint32 id, bool ext) const;
 	Queue*           queue_;
 	ThreadInfo*      threadId_;
+};
+
+class LocalDistribution : public Distributor {
+public:
+	explicit LocalDistribution(const Policy& p, uint32 maxShare, uint32 topo);
+	~LocalDistribution();
+	uint32  receive(const Solver& in, SharedLiterals** out, uint32 maxOut);
+	void    publish(const Solver& source, SharedLiterals* n);
+private:
+	typedef Detail::RawStack   RawStack;
+	typedef MPSCPtrQueue::Node QNode;
+	enum { BLOCK_CAP = 128 };
+	QNode* allocNode(uint32 tId, SharedLiterals* clause);
+	void   freeNode(uint32  tId, QNode* n) const;
+	struct ThreadData {
+		MPSCPtrQueue received; // queue holding received clauses
+		uint64       peers;    // set of peers from which this thread receives clauses
+		QNode        sentinal; // sentinal node for simplifying queue impl
+		QNode*       free;     // local free list - only accessed by this thread
+	}**            thread_;    // one entry for each thread
+	RawStack       blocks_;    // allocated node blocks
+	uint32         numThread_; // number of threads, i.e. size of array thread_
 };
 
 } }

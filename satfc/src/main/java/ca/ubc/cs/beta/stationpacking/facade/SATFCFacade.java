@@ -84,7 +84,7 @@ public class SATFCFacade implements AutoCloseable {
     SATFCFacade(final SATFCFacadeParameter aSATFCParameters) {
         //Initialize logging.
         if (!logInitialized && aSATFCParameters.isInitializeLogging()) {
-            initializeLogging(LogLevel.INFO);
+            initializeLogging(aSATFCParameters.getLogLevel());
             log = LoggerFactory.getLogger(getClass());
             log.warn("Logging initialized by default to INFO.");
 
@@ -123,7 +123,7 @@ public class SATFCFacade implements AutoCloseable {
             throw new IllegalArgumentException("Could not load JNA library.");
         }
 
-        log.debug("Using library {}.", aSATFCParameters.getClaspLibrary());
+        log.info("Using library {}.", aSATFCParameters.getClaspLibrary());
         log.info("Using bundle {}", aSATFCParameters.getSolverChoice());
         fSolverManager = new SolverManager(
                 new ISolverBundleFactory() {

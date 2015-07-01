@@ -350,58 +350,6 @@
 				>
 			</File>
 		</Filter>
-		<Filter
-			Name="program_opts"
-			>
-			<File
-				RelativePath="..\..\..\..\libprogram_opts\src\alarm.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\libprogram_opts\program_opts\detail\alarm.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\libprogram_opts\src\application.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\libprogram_opts\program_opts\application.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\libprogram_opts\program_opts\errors.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\libprogram_opts\program_opts\mapped_value.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\libprogram_opts\src\program_options.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\libprogram_opts\program_opts\program_options.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\libprogram_opts\src\string_convert.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\libprogram_opts\program_opts\string_convert.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\libprogram_opts\program_opts\typed_value.h"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\libprogram_opts\program_opts\value.h"
-				>
-			</File>
-		</Filter>
 	</Files>
 	<Globals>
 	</Globals>

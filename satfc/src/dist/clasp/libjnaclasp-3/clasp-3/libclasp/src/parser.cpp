@@ -194,6 +194,7 @@ bool LparseParser::doParse() {
 	return parseRules()
 		&& parseSymbolTable()
 		&& parseComputeStatement()
+		&& parseExtStatement()
 		&& parseModels()
 		&& endParse();
 }
@@ -233,7 +234,7 @@ bool LparseParser::parseRule(int rt) {
 	else if (rt >= 90 && rt < 93) {
 		if (rt == 90) { return input()->parseInt(0, 0, "0 expected") == 0; }
 		int a = input()->parseInt(1, INT_MAX, "atom id expected");
-		if (rt == 91) { builder_->freeze(a, input()->parseInt(0, 1, "0 or 1 expected") ? value_true:value_false); }
+		if (rt == 91) { builder_->freeze(a, static_cast<ValueRep>( (input()->parseInt(0, 2, "0..2 expected") ^ 3) - 1) ); }
 		else          { builder_->unfreeze(a); }
 		return true;
 	}
@@ -276,6 +277,16 @@ bool LparseParser::parseComputeStatement() {
 			builder_->setCompute(static_cast<Var>(id), B[i][1] == '+');
 		}
 		check(id == 0, "Compute Statement: Atom id or 0 expected!");
+	}
+	return true;
+}
+
+bool LparseParser::parseExtStatement() {
+	input()->skipWhite();
+	if (match(*input(), 'E', false)) {
+		for (int id; input()->skipWhite() && input()->parseInt(id) && id != 0;) {
+			builder_->freeze(id, value_free);
+		}
 	}
 	return true;
 }

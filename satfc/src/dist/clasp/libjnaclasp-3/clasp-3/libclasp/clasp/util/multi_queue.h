@@ -24,18 +24,32 @@
 #include <clasp/util/atomic.h>
 
 namespace Clasp { namespace mt { namespace Detail {
-struct NodeBase {
-	typedef Clasp::atomic<NodeBase*> AtomicPtr;
-	typedef Clasp::atomic<int>       AtomicInt;
-	explicit NodeBase(uint32 rc) { next = 0; refs = rc; }
-	AtomicPtr next;
-	AtomicInt refs;
-};
 
-template <class T>
-struct Node : public NodeBase {
-	Node(uint32 rc, const T& d) : NodeBase(rc), data(d) {}
-	T data;
+struct RawNode {
+	Clasp::atomic<RawNode*> next;
+};
+// Lock-free stack that is NOT ABA-safe by itself
+struct RawStack {
+	RawStack() { top = 0; }
+	RawNode* tryPop() {
+		RawNode* n = 0, *next = 0;
+		do {
+			if ((n = top) == 0) { return 0; }
+			// NOTE: 
+			// it is the caller's job to guarantee that n is safe
+			// and n->next is ABA-safe at this point.
+			next = n->next;
+		} while (top.compare_and_swap(next, n) != n);
+		return n;
+	}
+	void     push(RawNode* n) {
+		RawNode* assumedTop;
+		do {
+			assumedTop = top;
+			n->next    = assumedTop;
+		} while (top.compare_and_swap(n, assumedTop) != assumedTop);
+	}
+	Clasp::atomic<RawNode*> top;
 };
 struct DefaultDeleter { 
 	template <class T> 
@@ -56,28 +70,36 @@ struct DefaultDeleter {
 template <class T, class Deleter = Detail::DefaultDeleter>
 class MultiQueue {
 protected:
-	typedef Detail::Node<T>   Node;
-	typedef Detail::NodeBase  NodeBase;
+	typedef Detail::RawNode RawNode;
+	struct Node : Detail::RawNode {
+		explicit Node(uint32 rc, const T& d) : data(d) { next = 0; refs = rc; }
+		Clasp::atomic<int> refs;
+		T                  data;
+	};
 public:
-	typedef Detail::NodeBase* ThreadId;
+	typedef Detail::RawNode* ThreadId;
 	//! creates a new object for at most m threads
-	explicit MultiQueue(uint32 m, const Deleter& d = Deleter()) : head_(m+1), maxQ_(m), deleter_(d) {
-		tail_         = &head_;
+	explicit MultiQueue(uint32 m, const Deleter& d = Deleter()) : maxQ_(m), deleter_(d) {
+		head_.next = 0;
+		tail_      = &head_;
 	}
 	uint32 maxThreads() const { return maxQ_; }
 	void reserve(uint32 c) {
+		struct NodeHead : RawNode { Clasp::atomic<int> refs; };
 		for (uint32 i = 0; i != c; ++i) {
-			void* m = ::operator new(sizeof(Node));
-			freeList_.push(new (m) NodeBase(0));
+			free_.push(new (::operator new(sizeof(Node))) NodeHead());
 		}
 	}
 	//! destroys the object and all unconsumed items
 	~MultiQueue() {
-		for (NodeBase* x = head_.next; x ; ) {
-			Node* n = static_cast<Node*>(x);
+		for (Detail::RawNode* x = head_.next; x ; ) {
+			Node* n = toNode(x);
 			x = x->next;
 			deleter_(n->data);
-			freeList_.push(n);
+			::operator delete(n);
+		}
+		for (Detail::RawNode* x; (x = free_.tryPop()) != 0; ) {
+			::operator delete(toNode(x));
 		}
 	}
 	//! adds a new thread to the object 
@@ -86,8 +108,6 @@ public:
 	 * \return A handle identifying the new thread
 	 */
 	ThreadId addThread() {
-		--head_.refs;
-		assert(head_.refs > 0);
 		return &head_;
 	}
 	bool hasItems(ThreadId& cId) const { return cId != tail_; }
@@ -99,11 +119,11 @@ public:
 	 */
 	bool tryConsume(ThreadId& cId, T& out) {
 		if (cId != tail_) {
-			NodeBase* n = cId;
-			cId         = cId->next;
+			RawNode* n = cId;
+			cId        = cId->next;
 			assert(cId != 0 && "MultiQueue is corrupted!");
 			release(n);
-			out = static_cast<Node*>(cId)->data;
+			out = toNode(cId)->data;
 			return true;
 		}
 		return false;
@@ -114,8 +134,8 @@ public:
 	 */
 	void pop(ThreadId& cId) {
 		assert(hasItems(cId) && "Cannot pop from empty queue!");
-		NodeBase* n = cId;
-		cId         = cId->next;
+		RawNode* n = cId;
+		cId        = cId->next;
 		release(n);
 	}
 protected:
@@ -124,15 +144,13 @@ protected:
 	 * \note the function is *not* thread-safe, i.e.
 	 * it must not be called concurrently
 	 */
-	void unsafePublish(const T& in, const ThreadId&) {
-		Node* n     = freeList_.allocate(in, maxQ_);
-		publishRelaxed(n);
-	}
+	void unsafePublish(const T& in, const ThreadId&) { unsafePublish(in); }
+	void unsafePublish(const T& in) { publishRelaxed(allocate(maxQ_, in)); }
 
 	//! concurrency-safe version of unsafePublish
 	void publish(const T& in, const ThreadId&) {
-		Node* newNode = freeList_.allocate(in, maxQ_);
-		NodeBase* assumedTail, *assumedNext;
+		Node* newNode = allocate(maxQ_, in);
+		RawNode* assumedTail, *assumedNext;
 		do {
 			assumedTail = tail_;
 			assumedNext = assumedTail->next;
@@ -154,76 +172,80 @@ protected:
 	}
 
 	//! Non-atomically adds n to the global queue
-	void publishRelaxed(NodeBase* n) {
+	void publishRelaxed(Node* n) {
 		tail_->next = n;
 		tail_       = n;
 	}
 	uint32 maxQ() const { return maxQ_; }
 	Node*  allocate(uint32 maxR, const T& in) {
-		return freeList_.allocate(in, maxR);
+		// If the queue is used correctly, the raw stack is ABA-safe at this point.
+		// The ref-counting in the queue makes sure that a node cannot be added back
+		// to the stack while another thread is still in tryPop() - that thread had
+		// not yet the chance to decrease the node's ref count.
+		if (Node* n = toNode(free_.tryPop())) {
+			n->next = 0;
+			n->refs = maxR;
+			new (&n->data)T(in);
+			return n;
+		}
+		return new (::operator new(sizeof(Node))) Node(maxR, in);
 	}
 private:
 	MultiQueue(const MultiQueue&);
 	MultiQueue& operator=(const MultiQueue&);
-	// Stack of free nodes
-	struct FreeList {
-		FreeList() { top = 0; }
-		~FreeList(){
-			for (NodeBase* n = top; n != 0; ) {
-				NodeBase* t = n;
-				n = n->next;
-				::operator delete(t);
-			}
-		}
-		void push(NodeBase* n) {
-			NodeBase* assumedTop;
-			do {
-				assumedTop = top;
-				n->next    = assumedTop;
-			} while (top.compare_and_swap(n, assumedTop) != assumedTop);
-		}
-		NodeBase* tryPop() {
-			NodeBase* n = 0, *next = 0;
-			do {
-				n = top;
-				if (!n) return 0;
-				// NOTE: 
-				// If the queue is used correctly, n is
-				// safe and n->next is ABA-safe at this point.
-				// The ref-counting in the queue makes sure
-				// that a node (here n) cannot be added back
-				// to the free list while another thread 
-				// is still in tryPop() - that thread had
-				// not yet the chance to decrease the node's
-				// ref count.
-				next = n->next;
-			} while (top.compare_and_swap(next, n) != n);
-			return n;
-		}
-		Node* allocate(const T& in, uint32 maxRef) {
-			if (NodeBase* n = tryPop()) {
-				return new (n) Node(maxRef, in);
-			}
-			else { 
-				void* mem = ::operator new(sizeof(Node));
-				return new (mem) Node(maxRef, in);
-			}
-		}
-		NodeBase::AtomicPtr top;
-	};
-	
-	void release(NodeBase* n) {
-		if (n != &head_ && --n->refs == 0) {
+	Node*toNode(Detail::RawNode* x) const { return static_cast<Node*>(x); }
+	void release(Detail::RawNode* n) {
+		if (n != &head_ && --toNode(n)->refs == 0) {
 			head_.next = n->next;
-			deleter_(static_cast<Node*>(n)->data);
-			freeList_.push(n);
+			deleter_(toNode(n)->data);
+			free_.push(n);
 		}
 	}
-	NodeBase            head_;
-	NodeBase::AtomicPtr tail_;
-	FreeList            freeList_;
-	const uint32        maxQ_;
-	Deleter             deleter_;
+	RawNode                 head_;
+	Clasp::atomic<RawNode*> tail_;
+	Detail::RawStack        free_;
+	const uint32            maxQ_;
+	Deleter                 deleter_;
+};
+
+//! Unbounded non-intrusive lock-free multi-producer single consumer queue.
+/*!
+ * Based on Dmitriy Vyukov's MPSC queue:
+ * http://www.1024cores.net/home/lock-free-algorithms/queues/non-intrusive-mpsc-node-based-queue
+ */
+class MPSCPtrQueue {
+public:
+	typedef Detail::RawNode RawNode;
+	struct Node : RawNode { void* data; };
+	Node* toNode(RawNode* n) const { return static_cast<Node*>(n); }
+	MPSCPtrQueue() {}
+	void init(Node* sent) {
+		sent->next = 0;
+		sent->data = 0;
+		head_      = sent;
+		tail_      = sent;
+	}
+	bool empty() const { return !tail_->next; }
+	void push(Node* n) {
+		n->next = 0;
+		Node* p = head_.fetch_and_store(n);
+		p->next = n;
+	}
+	Node* pop() {
+		Node* t = tail_;
+		Node* n = toNode(t->next);
+		if (!n) { return 0; }
+		tail_   = n;
+		t->data = n->data;
+		n->data = 0;
+		return t;
+	}
+private:
+	MPSCPtrQueue(const MPSCPtrQueue&);
+	MPSCPtrQueue& operator=(const MPSCPtrQueue&);
+	Clasp::atomic<Node*> head_; // producers
+	char                 pad_[64 - sizeof(Node*)];
+	Node*                tail_; // consumer
 };
 
 } } // end namespace Clasp::mt

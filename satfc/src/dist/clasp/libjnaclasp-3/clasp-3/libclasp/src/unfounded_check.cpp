@@ -69,12 +69,12 @@ namespace Clasp {
 //   until the source condition holds again.
 // - If the condition cannot be restored, the body is marked as invalid source.
 
-DefaultUnfoundedCheck::DefaultUnfoundedCheck()
+DefaultUnfoundedCheck::DefaultUnfoundedCheck(ReasonStrategy st)
 	: solver_(0) 
 	, graph_(0)
 	, mini_(0)
 	, reasons_(0)
-	, strategy_(common_reason) {
+	, strategy_(st) {
 	mini_.release();
 }
 DefaultUnfoundedCheck::~DefaultUnfoundedCheck() { 
@@ -91,6 +91,9 @@ void DefaultUnfoundedCheck::addWatch(Literal p, uint32 data, WatchType type) {
 	solver_->addWatch(p, this, static_cast<uint32>((data << 2) | type));
 }
 
+void DefaultUnfoundedCheck::setReasonStrategy(ReasonStrategy rs) {
+	strategy_ = rs;
+}
 // inits unfounded set checker with graph, i.e.
 // - creates data objects for bodies and atoms
 // - adds necessary watches to the solver
@@ -103,7 +106,7 @@ bool DefaultUnfoundedCheck::init(Solver& s) {
 	}
 	solver_      = &s;
 	graph_       = s.sharedContext()->sccGraph.get();
-	strategy_    = s.strategy.search != SolverStrategies::no_learning ? static_cast<ReasonStrategy>(s.configuration().loopRep) : no_reason;
+	strategy_    = s.searchMode() != SolverStrategies::no_learning ? strategy_ : no_reason;
 	if (strategy_ == only_reason) {
 		delete [] reasons_;
 		reasons_ = new LitVec[solver_->numVars()];
@@ -240,6 +243,34 @@ bool DefaultUnfoundedCheck::valid(Solver& s) {
 }
 bool DefaultUnfoundedCheck::isModel(Solver& s) {
 	return DefaultUnfoundedCheck::valid(s);
+}
+bool DefaultUnfoundedCheck::simplify(Solver& s, bool) {
+	if      (!s.sharedContext()->isShared()) { graph_->simplify(s); }
+	else if (graph_->numNonHcfs()) {
+		for (SharedDependencyGraph::NonHcfIter hcc = graph_->nonHcfBegin(), hccEnd = graph_->nonHcfEnd(); hcc != hccEnd; ++hcc) {
+			hcc->second->simplify(hcc->first, s);
+		}
+	}
+	if (mini_.get()) { mini_->scc = 0; }
+	return false;
+}
+void DefaultUnfoundedCheck::destroy(Solver* s, bool detach) {
+	if (s && detach) {
+		s->removePost(this);
+		for (uint32 i = 0; i != (uint32)bodies_.size(); ++i) {
+			BodyPtr n(getBody(i));
+			s->removeWatch(~n.node->lit, this);
+			if (n.node->extended()) {
+				RemExtWatches remW = { static_cast<Constraint*>(this), s };
+				graph_->visitBodyLiterals(*n.node, remW);
+			}
+		}
+		for (AtomVec::size_type i = 0, end = atoms_.size(); i != end; ++i) {
+			const AtomNode& a = graph_->getAtom(NodeId(i));
+			if (a.inChoice()) { s->removeWatch(~a.lit, this); }
+		}
+	}
+	PostPropagator::destroy(s, detach);
 }
 /////////////////////////////////////////////////////////////////////////////////////////
 // DefaultUnfoundedCheck - source pointer propagation
@@ -555,25 +586,23 @@ bool DefaultUnfoundedCheck::assertAtom(Literal a, UfsType t) {
 	}
 }
 void DefaultUnfoundedCheck::createLoopFormula() {
-	assert(activeClause_.size() > 3);
+	assert(activeClause_.size() > 3 && !loopAtoms_.empty());
+	Antecedent ante;
+	activeClause_[0] = loopAtoms_[0];
 	if (loopAtoms_.size() == 1) {
-		activeClause_[0] = loopAtoms_[0];
-		Constraint* ante = ClauseCreator::create(*solver_, activeClause_, ClauseCreator::clause_no_prepare, info_).local;
-		assert(ante != 0 && solver_->isTrue(loopAtoms_[0]) && solver_->reason(loopAtoms_[0]) == this);
-		solver_->setReason(loopAtoms_[0], ante);
+		ante = ClauseCreator::create(*solver_, activeClause_, ClauseCreator::clause_no_prepare, info_).local;
 	}
 	else {
-		Activity act(info_.activity(), info_.lbd());
-		LoopFormula* lf = LoopFormula::newLoopFormula(*solver_, &activeClause_[1], (uint32)activeClause_.size() - 1, (uint32)0, (uint32)loopAtoms_.size(), act); 
-		solver_->addLearnt(lf, lf->size(), Constraint_t::learnt_loop);
-		for (VarVec::size_type i = 0; i < loopAtoms_.size(); ++i) {
-			assert(solver_->isTrue(loopAtoms_[i]) && solver_->reason(loopAtoms_[i]) == this);
-			solver_->setReason(loopAtoms_[i], lf);
-			lf->addAtom(loopAtoms_[i], *solver_);
-		}
-		lf->updateHeuristic(*solver_);
+		ante = LoopFormula::newLoopFormula(*solver_
+			, ClauseRep::prepared(&activeClause_[0], (uint32)activeClause_.size(), info_)
+			, &loopAtoms_[0], (uint32)loopAtoms_.size());
+		solver_->addLearnt(static_cast<LearntConstraint*>(ante.constraint()), uint32(loopAtoms_.size() + activeClause_.size()), Constraint_t::learnt_loop);
 	}
-	loopAtoms_.clear();
+	do {
+		assert(solver_->isTrue(loopAtoms_.back()) && solver_->reason(loopAtoms_.back()) == this);
+		solver_->setReason(loopAtoms_.back(), ante);
+		loopAtoms_.pop_back();
+	} while (!loopAtoms_.empty());
 }
 
 // computes the reason why a set of atoms is unfounded
@@ -598,7 +627,7 @@ void DefaultUnfoundedCheck::computeReason(UfsType t) {
 	uint32 dl = solver_->finalizeConflictClause(activeClause_, info_, rc);
 	uint32 cDL= solver_->decisionLevel();
 	assert((t == ufs_non_poly || dl == cDL) && "Loop nogood must contain a literal from current DL!");
-	if (dl < cDL && (dl = solver_->undoUntil(dl, false)) < cDL) {
+	if (dl < cDL && (dl = solver_->undoUntil(dl)) < cDL) {
 		// cancel any active propagation on cDL
 		invalidQ_.clear();
 		for (PostPropagator* n = this->next; n; n = n->next) { n->reset(); }
@@ -706,10 +735,13 @@ void DefaultUnfoundedCheck::addReasonLit(Literal p) {
 /////////////////////////////////////////////////////////////////////////////////////////
 DefaultUnfoundedCheck::UfsType DefaultUnfoundedCheck::findNonHcfUfs(Solver& s) {
 	assert(invalidQ_.empty() && loopAtoms_.empty());
-	for (SharedDependencyGraph::NonHcfIter hcc = graph_->nonHcfBegin(), hccEnd = graph_->nonHcfEnd(); hcc != hccEnd; ++hcc) {
+	typedef SharedDependencyGraph::NonHcfIter HccIter;
+	HccIter hIt  = graph_->nonHcfBegin() + mini_->scc;
+	HccIter hEnd = graph_->nonHcfEnd();
+	for (uint32 checks = graph_->numNonHcfs(); checks--;) {
 		s.stats.addTest(s.numFreeVars() != 0);
-		hcc->second->assumptionsFromAssignment(s, loopAtoms_);
-		if (!hcc->second->test(hcc->first, s, loopAtoms_, invalidQ_) || s.hasConflict()) {
+		hIt->second->assumptionsFromAssignment(s, loopAtoms_);
+		if (!hIt->second->test(hIt->first, s, loopAtoms_, invalidQ_) || s.hasConflict()) {
 			uint32 pos = 0, minDL = UINT32_MAX;
 			for (VarVec::const_iterator it = invalidQ_.begin(), end = invalidQ_.end(); it != end; ++it) {
 				if (s.isTrue(graph_->getAtom(*it).lit) && s.level(graph_->getAtom(*it).lit.var()) < minDL) {
@@ -723,15 +755,17 @@ DefaultUnfoundedCheck::UfsType DefaultUnfoundedCheck::findNonHcfUfs(Solver& s) {
 			}
 			invalidQ_.clear();
 			loopAtoms_.clear();
+			mini_->scc = hIt - graph_->nonHcfBegin();
 			return ufs_non_poly;
 		}
+		if (++hIt == hEnd) { hIt = graph_->nonHcfBegin(); }
 		loopAtoms_.clear();
 	}
 	mini_->schedNext(s.decisionLevel(), true);
 	return ufs_none;
 }
 
-DefaultUnfoundedCheck::MinimalityCheck::MinimalityCheck(const FwdCheck& afwd) : fwd(afwd), high(UINT32_MAX), low(0), next(0) {	
+DefaultUnfoundedCheck::MinimalityCheck::MinimalityCheck(const FwdCheck& afwd) : fwd(afwd), high(UINT32_MAX), low(0), next(0), scc(0) {	
 	if (fwd.highPct > 100) { fwd.highPct = 100; }
 	if (fwd.initHigh != 0) { high        = fwd.initHigh; }
 }

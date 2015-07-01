@@ -29,3 +29,4 @@ void example2();
 #if WITH_THREADS
 void example3();
 #endif
+void example4();

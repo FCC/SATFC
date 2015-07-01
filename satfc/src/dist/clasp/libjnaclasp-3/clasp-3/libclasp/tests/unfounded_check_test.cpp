@@ -48,6 +48,8 @@ namespace Clasp { namespace Test {
 	CPPUNIT_TEST(testInitialStopConflict);
 	CPPUNIT_TEST(testIncrementalLearnFact);
 
+	CPPUNIT_TEST(testDetachRemovesWatches);
+
 	CPPUNIT_TEST(testApproxUfs);
 	CPPUNIT_TEST_SUITE_END(); 
 public:
@@ -470,6 +472,32 @@ public:
 		CPPUNIT_ASSERT(solver().isFalse(builder.getAtom(1)->literal()) && solver().isFalse(builder.getAtom(2)->literal()));
 	}
 
+	void testDetachRemovesWatches() {
+		builder.start(ctx, LogicProgram::AspOptions().noEq())
+			.setAtomName(1, "x").setAtomName(2, "y").setAtomName(3, "z").setAtomName(4, "q").setAtomName(5, "r")
+			.startRule(CHOICERULE).addHead(3).addHead(4).addHead(5).endRule()
+			.startRule().addHead(1).addToBody(4,false).endRule()
+			.startRule(CONSTRAINTRULE, 2).addHead(1).addToBody(1, true).addToBody(2, true).addToBody(3, true).endRule()
+			.startRule().addHead(1).addToBody(2,true).addToBody(3, true).endRule()
+			.startRule().addHead(2).addToBody(1,true).addToBody(5, true).endRule()
+		;
+		CPPUNIT_ASSERT_EQUAL(true, builder.endProgram());
+		ctx.endInit();
+		uint32 numW = 0;
+		for (uint32 i = 1; i <= solver().numVars(); ++i) {
+			numW += solver().numWatches(posLit(i));
+			numW += solver().numWatches(negLit(i));
+		}
+		solver().addPost(ufs.release());
+		ufs->destroy(&solver(), true);
+		CPPUNIT_ASSERT(!solver().getPost(PostPropagator::priority_reserved_ufs));
+		for (uint32 i = 1; i <= solver().numVars(); ++i) {
+			numW -= solver().numWatches(posLit(i));
+			numW -= solver().numWatches(negLit(i));
+		}
+		CPPUNIT_ASSERT(numW == 0);
+	}
+	
 	void testApproxUfs() {
 		builder.start(ctx)
 			.setAtomName(1, "a").setAtomName(2, "b").setAtomName(3, "c").setAtomName(4, "d").setAtomName(5,"e")

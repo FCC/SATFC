@@ -12,8 +12,7 @@
 //  GNU General Public License for more details.
 //
 //  You should have received a copy of the GNU General Public License
-//  along with this file; if not, write to the Free Software
-//  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+//  along with this program. If not, see <http://www.gnu.org/licenses/>.
 //
 //
 // NOTE: ProgramOptions is inspired by Boost.Program_options
@@ -32,8 +31,23 @@
 #include <stdlib.h>
 #if !defined(_WIN32)
 #include <unistd.h> // for _exit
+static long fetch_and_inc(volatile long& x) {
+	return __sync_fetch_and_add(&x, 1);
+}
+static long fetch_and_dec(volatile long& x) {
+	return __sync_fetch_and_sub(&x, 1);
+}
+#else
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+static long fetch_and_inc(volatile long& x) {
+	return InterlockedIncrement(&x) - 1;
+}
+static long fetch_and_dec(volatile long& x) {
+	return InterlockedDecrement(&x) + 1;
+}
 #endif
-
 using namespace ProgramOptions;
 using namespace std;
 namespace ProgramOptions {
@@ -94,7 +108,7 @@ int Application::getExitCode() const {
 // Called on application shutdown
 void Application::shutdown(bool hasError) {
 	// ignore signals/alarms during shutdown
-	++blocked_;
+	fetch_and_inc(blocked_);
 	killAlarm();
 	if (hasError) { onUnhandledException(); }
 	shutdown();
@@ -112,15 +126,14 @@ void Application::exit(int status) const {
 // Temporarily disable delivery of signals.
 int Application::blockSignals() {
 	lockAlarm();
-	int x = blocked_++;
+	int x = fetch_and_inc(blocked_);
+	unlockAlarm();
 	return x;
 }
 
 // Re-enable signal handling and deliver any pending signal.
 void Application::unblockSignals(bool deliverPending) {
-	int x = --blocked_;
-	unlockAlarm();
-	if (x == 0) {
+	if (fetch_and_dec(blocked_) == 1) {
 		int pend = pending_;
 		pending_ = 0;
 		// directly deliver any pending signal to our sig handler
@@ -144,15 +157,14 @@ void Application::sigHandler(int sig) {
 
 // Called on timeout or signal.
 void Application::processSignal(int sig) {
-	int block = blocked_++;
-	if (block == 0) {
-		blocked_ += (onSignal(sig) == false);
+	if (fetch_and_inc(blocked_) == 0) {
+		if (!onSignal(sig)) { return; } // block further signals
 	}
 	else if (pending_ == 0) { // signals are currently blocked because output is active
 		info("Queueing signal...");
 		pending_ = sig;
 	}
-	--blocked_;
+	fetch_and_dec(blocked_);
 }
 
 bool Application::onSignal(int x) {

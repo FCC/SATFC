@@ -55,7 +55,7 @@ void example2() {
 	Clasp::ClaspConfig config;
 	// We want to compute all models but
 	// otherwise we use the default configuration.
-	config.enumerate.numModels = 0;
+	config.solve.numModels = 0;
 	
 	// The "interface" to the clasp library.
 	Clasp::ClaspFacade libclasp;

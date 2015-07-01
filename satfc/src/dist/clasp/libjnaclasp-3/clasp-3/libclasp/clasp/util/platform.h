@@ -36,6 +36,7 @@
 #endif
 typedef UINT8     uint8;
 typedef UINT16    uint16;
+typedef INT16     int16;
 typedef INT32     int32;
 typedef UINT32    uint32;
 typedef UINT64    uint64;
@@ -56,14 +57,14 @@ template <> struct Uint_t<sizeof(uint64)> { typedef uint64 type; };
 #define __STDC_FORMAT_MACROS
 #endif
 #include <inttypes.h>
-typedef uint8_t	    uint8;
-typedef uint16_t    uint16;
-typedef int16_t     int16;
-typedef int32_t	    int32;
-typedef uint32_t    uint32;
-typedef uint64_t    uint64;
-typedef int64_t     int64;
-typedef uintptr_t   uintp;
+typedef uint8_t   uint8;
+typedef uint16_t  uint16;
+typedef int16_t   int16;
+typedef int32_t   int32;
+typedef uint32_t  uint32;
+typedef uint64_t  uint64;
+typedef int64_t   int64;
+typedef uintptr_t uintp;
 #define BIT_MASK(x,n) ( static_cast<__typeof((x))>(1)<<(n) )
 #define APPLY_PRAGMA(x) _Pragma (#x)
 #define CLASP_PRAGMA_TODO(x) APPLY_PRAGMA(message ("TODO: " #x))
@@ -120,10 +121,21 @@ bool aligned(void* mem) {
 #endif
 }
 
+#if !defined(CLASP_HAS_STATIC_ASSERT)
+#	if defined(__cplusplus) && __cplusplus >= 201103L 
+#		define CLASP_HAS_STATIC_ASSERT 1
+#	elif defined(static_assert)
+#		define CLASP_HAS_STATIC_ASSERT 1
+#	elif defined(_MSC_VER) && _MSC_VER >= 1600
+#		define CLASP_HAS_STATIC_ASSERT 1
+#	else
+#		define CLASP_HAS_STATIC_ASSERT 0
+#	endif
+#endif
+
+#if !defined(CLASP_HAS_STATIC_ASSERT) || CLASP_HAS_STATIC_ASSERT == 0
 template <bool> struct static_assertion;
 template <>     struct static_assertion<true> {};
-
-#if !defined(__cplusplus) || (__cplusplus < 201103L && !defined(static_assert))
 #define static_assert(x, message) (void)sizeof(static_assertion< (x) >)
 #endif
 
@@ -148,6 +160,20 @@ extern const char* clasp_format(char* buf, unsigned size, const char* m, ...);
 #if !defined(CLASP_ENABLE_PRAGMA_TODO) || CLASP_ENABLE_PRAGMA_TODO==0
 #undef CLASP_PRAGMA_TODO
 #define CLASP_PRAGMA_TODO(X)
+#endif
+
+#include <stdlib.h>
+#if _WIN32||_WIN64
+#include <malloc.h>
+inline void* alignedAlloc(size_t size, size_t align) { return _aligned_malloc(size, align); }
+inline void  alignedFree(void* p)                    { _aligned_free(p); }
+#else
+inline void* alignedAlloc(size_t size, size_t align) {
+	void* result = 0;
+	posix_memalign(&result, align, size);
+	return result;
+}
+inline void alignedFree(void* p) { free(p); }
 #endif
 
 #endif

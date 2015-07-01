@@ -185,6 +185,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\..\..\libclasp\example\example4.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\..\..\libclasp\example\main.cpp"
 				>
 			</File>

@@ -61,7 +61,7 @@ void ClaspAppOptions::initOptions(ProgramOptions::OptionContext& root) {
 	basic.addOptions()
 		("quiet,q"    , notify(this, &ClaspAppOptions::mappedOpts)->implicit("2,2,2")->arg("<levels>"), 
 		 "Configure printing of models, costs, and calls\n"
-		 "      %A: <mod>[,<opt>][,<call>]\n"
+		 "      %A: <mod>[,<cost>][,<call>]\n"
 		 "        <mod> : print {0=all|1=last|2=no} models\n"
 		 "        <cost>: print {0=all|1=last|2=no} optimize values [<m>]\n"
 		 "        <call>: print {0=all|1=last|2=no} call steps      [2]")
@@ -85,7 +85,7 @@ bool ClaspAppOptions::mappedOpts(ClaspAppOptions* this_, const std::string& name
 	if (name == "quiet") {
 		const char* err = 0;
 		uint32      q[3]= {uint32(UCHAR_MAX),uint32(UCHAR_MAX),uint32(UCHAR_MAX)};
-		int      parsed = bk_lib::xconvert(value.c_str(), q, &err, 3);
+		int      parsed = bk_lib::xconvert(value.c_str(), q, &err);
 		for (int i = 0; i != parsed; ++i) { this_->quiet[i] = static_cast<uint8>(q[i]); }
 		return parsed && *err == 0;
 	}
@@ -421,7 +421,7 @@ Output* ClaspAppBase::createOutput(ProblemType f) {
 			outFormat = TextOutput::format_aspcomp;
 		}
 		out.reset(new TextOutput(verbose(), outFormat, claspAppOpts_.outAtom.c_str(), claspAppOpts_.ifs));
-		if (claspConfig_.enumerate.maxSat && f == Problem_t::SAT) {
+		if (claspConfig_.solve.maxSat && f == Problem_t::SAT) {
 			static_cast<TextOutput*>(out.get())->result[TextOutput::res_sat] = "UNKNOWN";
 		}
 	}
@@ -462,7 +462,9 @@ void ClaspAppBase::run(ClaspFacade& clasp) {
 	ProblemType     pt    = getProblemType();
 	StreamSource    input(getStream());
 	bool            inc   = pt == Problem_t::ASP && *input == '9';
-	ProgramBuilder& prg   = clasp.start(claspConfig_, pt, inc);
+	ProgramBuilder& prg   = clasp.start(claspConfig_, pt);
+	if (inc) { inc = clasp.enableProgramUpdates(); }
+	else     { claspConfig_.releaseOptions(); }
 	while (prg.parseProgram(input) && handlePostGroundOptions(prg)) {
 		if (clasp.prepare() && handlePreSolveOptions(clasp)) {
 			clasp.solve();

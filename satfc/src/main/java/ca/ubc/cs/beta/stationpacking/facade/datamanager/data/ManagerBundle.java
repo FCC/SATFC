@@ -21,6 +21,7 @@
  */
 package ca.ubc.cs.beta.stationpacking.facade.datamanager.data;
 
+import ca.ubc.cs.beta.stationpacking.cache.CacheCoordinate;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 
@@ -59,5 +60,9 @@ public class ManagerBundle {
 	{
 		return fConstraintManager;
 	}
+
+    public CacheCoordinate getCacheCoordinate() {
+        return new CacheCoordinate(fStationManager.getHashCode(), fConstraintManager.getHashCode());
+    }
 	
 }

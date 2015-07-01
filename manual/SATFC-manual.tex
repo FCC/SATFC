@@ -37,8 +37,11 @@ needspace, % space reservation
 \newcommand{\SATFCServer}{\textsc{SATFC-Server}~}
 \newcommand{\clasp}{\textsc{clasp}~}
 \newcommand{\AEATK}{\textsc{AEATK}}
+\newcommand{\SATFCVersion}{v1.7.1~}
 
 \usepackage{minted}
+\usepackage{dirtree}
+\usepackage{microtype}
 %----------------------------------------------------------------------------------------
 %	TITLE AND AUTHOR(S)
 %----------------------------------------------------------------------------------------
@@ -104,7 +107,7 @@ needspace, % space reservation
 
 \paragraph{Authors \& Collaborators}  \SATFC is the product of the ideas and hard work of \href{http://www.auctionomics.com/}{Auctionomics}, notably \href{http://www.cs.ubc.ca/~afrechet/}{Alexandre Fr\'echette}, \href{http://www.cs.ubc.ca/~newmanne/}{Neil Newman}, Paul Cernek, Emily Chenn, \href{http://www.cs.mcgill.ca/~gsauln/}{Guillaume Saulnier-Comte}, \href{http://web.stanford.edu/~narnosti/}{Nick Arnosti}, and \href{http://www.cs.ubc.ca/~kevinlb/}{Kevin Leyton-Brown}.
 
-\paragraph{Contact} Questions, bug reports and feature suggestions should be directed to \href{mailto:afrechet@cs.ubc.ca}{Alexandre Fr\'echette} -- afrechet@cs.ubc.ca.
+\paragraph{Contact} Questions, bug reports and feature suggestions should be directed to \href{mailto:newmanne@cs.ubc.ca}{Neil Newman} -- newmanne@cs.ubc.ca.
 
 \subsection{Licenses}
 
@@ -112,10 +115,10 @@ needspace, % space reservation
 
 \subsection{System Requirements}
 
-\SATFC is primarily intended to run on Unix-like platforms. It requires Java 8 to run and \href{http://www.gradle.org/}{Gradle} for building. One also needs our modified version of the SAT solver \clasp v2.2.3 compiled for JNA library usage, which in turn necessitates \textsc{gcc} v4.8.1 or higher as well as the standard Unix C libraries (see Section \ref{sec:usage} to learn how to compile \clasp). 
+\SATFC is primarily intended to run on Unix-like platforms. It requires Java 8 to run. One also needs our modified version of the SAT solver \clasp  compiled for JNA library usage, which in turn necessitates \textsc{gcc} v4.8.1 or higher as well as the standard Unix C libraries and \href{https://www.threadingbuildingblocks.org/}{libtbb}. See Section \ref{sec:usage} to learn how to compile \clasp. 
 
 \subsection{Version}
-This manual is for \SATFC v1.2.
+This manual is for \SATFC \SATFCVersion
 
 \section{Description}
 
@@ -130,38 +133,80 @@ To take advantage of the specific distribution of encountered feasibility checki
 
 \section{Usage}\label{sec:usage}
 
-\subsection{Setting Up \& Building \SATFC}
+\subsection{Setting Up \SATFC}
 
-The releases folder in root of \SATFC's repository should contain a compiled, ready-to-go compressed version of \SATFC. Packaged with \SATFC are its source code, necessary libraries as well as a copy of \clasp. 
+Compiled, ready-to-go releases of \SATFC are available from the \href{https://github.com/FCC/SATFC/releases}{SATFC  repository}. Packaged with \SATFC is a source jar, necessary libraries as well as a copy of \clasp. 
 
-\SATFC uses the Gradle build system for dependency resolution. To compile from source and build your own command-line executable version of \SATFC, execute the following:
-\begin{lstlisting}[style=Bash]
-> cd <SATFC repository>
-> ./gradlew :satfc:installDist
-\end{lstlisting}
-This builds and packages \SATFC in \texttt{<SATFC repository>satfc/build/install/}, and may be a lengthy process as it (possibly) installs Gradle, downloads all of \SATFC's dependencies (from external repositories) and builds the project. Note that it can sometimes fail while trying to download dependencies - restarting the process fixes this. Note that \SATFC's versioning is based on branch and sha1 hash of the latest commit of its git repository. 
-
-Build tasks other than \texttt{installDist} are also available. A list can be obtained by doing
-\begin{lstlisting}[style=Bash]
-> ./gradlew tasks
-\end{lstlisting}
-
-In any case, \clasp may need to be compiled for your machine. To compile the \clasp packaged with a \SATFC release, do the following:
+\clasp will need to be compiled for your machine. To compile the \clasp packaged with a \SATFC release, do the following:
 \begin{lstlisting}[style=Bash]
 > cd <SATFC release directory>
 > cd clasp/
 > bash compile.sh
 \end{lstlisting}
-To compile the source's \clasp (so that your custom built \SATFC has an already compiled \clasp), instead execute:
-\begin{lstlisting}[style=Bash]
-> cd <SATFC repository>
-> cd src/dist/clasp
-> bash compile.sh
-\end{lstlisting}
-Note that this version of \clasp requires a version of libtbb (\url{https://www.threadingbuildingblocks.org/}) that may not be part of your linux distribution by default - keep an eye on the output of the compile script.
+This will put a compiled \clasp library, \texttt{libclaspjna.so}, in the clasp/jna folder.
+Note that this version of \clasp requires a recent version of libtbb (\url{https://www.threadingbuildingblocks.org/}) that may not be part of your distribution by default - keep an eye on the output of the compile script and check your package manager for the library. If the compile script fails, it may require some command line arguments depending on where you have libtbb on your machine. These two arguments are absolute paths to your TBB\_INCLUDE directory and TBB\_LIB directory, respectively. You may also have to update your LD\_LIBRARY\_PATH environment variable to include the TBB\_LIB folder.
 
+\subsubsection{Data}\label{sec:data}
 
-\subsection{Standalone}\label{sec:standalone}
+The broadcast interference constraint data (as specified by the FCC) consists of two files, one specifying station domains, and one specifying pairwise interference between stations. As one of its required arguments, \SATFC expects a path to a folder containing both of these files, named \texttt{Domain.csv} and \texttt{Interference\_Paired.csv}, respectively.
+
+\paragraph{Domains} The domains file consists of a CSV with no header where each row encodes a station's domain (the list of channels on which a station can broadcast). The first entry of a row is always the \texttt{DOMAIN} keyword, the second entry is the station ID, and all subsequent entries are domain channels. Note that \SATFC uses this file to define the set of available stations (so it should contain all the station IDs that will be used in defining problems).
+
+\paragraph{Interferences} The interferences file consists of a CSV with no header where each row is a representation of many pairwise interference constraints between a single subject station on a single subject channels with possibly many target stations. Specifically, the entries of a row are, in order, a key indicating the type of constraint, a subject and target channel on which the constraint applies, the subject station of the constraint, and then a list of target stations to which the constraint applies. Here it is in more compact format:
+\begin{center}
+	\texttt{<key>,<subject channel>,<target channel>,<subject station>,<target station 1>,\ldots}
+\end{center}
+There are three possible constraint keys: \texttt{CO}, \texttt{ADJ+1} and \texttt{ADJ-1}. The former indicates a \emph{co-channel constraint}, stating that the subject station and any target station cannot be on the same target/subject channel. The second describes an \emph{adjacent plus one constraint} which implies that the subject station cannot be on its subject channel $c$ together with any target station on the target channel $c+1$. The third one is an \emph{adjacent minus one constraint}, which is just an adjacent plus one constraint with subject station and channels interchanged with target station and channel, respectively.
+
+Here are two examples of interference constraints:
+\begin{center}
+	\texttt{CO,4,4,1,2,3}
+\end{center}
+This constraint means that neither stations 1 and 2 nor stations 1 and 3 can be jointly assigned to channel 4
+\begin{center}
+	\texttt{ADJ+1,8,9,1,2,3}
+\end{center}
+This constraint implies that neither stations 1 and 2 nor stations 1 and 3 can be on channels 8 and 9 respectively.
+\begin{center}
+	\texttt{ADJ-1,8,7,1,2,3}
+\end{center}
+This constraint implies that neither stations 1 and 2 nor stations 1 and 3 can be on channels 8 and 7 respectively.
+
+\subsection{Understanding Output}
+When \SATFC solves a problem, it returns a run result, runtime, and a witness assignment. The run result can be one of \texttt{SAT}isfiable, \texttt{UNSAT}isfiable or \texttt{TIMEOUT} (or the rarer \texttt{CRASHED}, \texttt{INTERRUPTED}) and corresponds to the repackability of the given problem. The runtime is the CPU time, in seconds, that \SATFC has taken to solve the given problem. Finally, the witness assignment is present only if the given problem is repackable (\emph{i.e.} \texttt{SAT}) and consists of a new valid channel assignment for the given stations.
+
+\subsection{Using \SATFC As a Library}
+
+The most efficient way of using \SATFC is as a Java library. This source code is packaged with \SATFC's release. The code is well documented; the simplest entry point is the \texttt{SATFCFacade} object, and its corresponding builder \texttt{SATFCFacadeBuilder}. The \texttt{SATFCFacade} is meant to be reused and should not be recreated for each problem (this will incur a performance penalty). Remember to call \texttt{close} on the \texttt{SATFCFacade} when you are finished using it. As a simple example, the problem of packing stations 1 and 2 into channels 14,15,16,17,18,19,20 and station 3 into channels 14,15,16 would be specified by the following:
+
+\begin{minted}{java}
+final SATFCFacadeBuilder satfcFacadeBuilder = new SATFCFacadeBuilder();
+// set any options on the builder here, such as specifying the path to the clasp library
+try (SATFCFacade facade = satfcFacadeBuilder.build()) { // SATFCFacade implements AutoCloseable
+	final Map<Integer, Set<Integer>> domains = new HashMap<>();
+	domains.put(1, new HashSet<>(Arrays.asList(14,15,16,17,18,19,20)));
+	domains.put(2, new HashSet<>(Arrays.asList(14,15,16,17,18,19,20)));
+	domains.put(3, new HashSet<>(Arrays.asList(14,15,16)));
+	final Map<Integer, Integer> previousAssignment = new HashMap<>();
+	// Fill in previous assignment here, or leave blank for no previous assignment
+	double cutoff = 60; // solve for 60 seconds
+	long seed = 1; // random seed
+	String stationConfigurationFolder = "interference-data/fcc-interference-data/";
+	SATFCResult result = facade.solve(
+		domains,
+		previousAssignment,
+		cutoff,
+		seed,
+		stationConfigurationFolder
+	);
+	System.out.println(result.getResult());
+	System.out.println(result.getWitnessAssignment());
+}
+\end{minted}
+
+The reader may find it helpful to consult Section \ref{sec:data} to understand the components at play.
+
+\subsection{Using \SATFC from the Command Line}\label{sec:standalone}
 
 \begin{fwarning}
 Every time \SATFC is launched from the command line, it will have to load the Java Virtual Machine, necessary libraries as well as any constraint data corresponding to the specified problem. This is a significant overhead compared to the time required to solve easy instances. If it is necessary to solve large numbers of instances, many of which are easy, we suggest using \SATFC as a Java library.
@@ -169,7 +214,7 @@ Every time \SATFC is launched from the command line, it will have to load the Ja
 
 To use \SATFC from the command line to solve feasibility checking problems, go in the \SATFC directory and execute the following:
 \begin{lstlisting}[style=Bash]
-> bash bin/SATFC -DATA-FOLDERNAME <data folder> -DOMAINS <station domains>
+> ./bin/SATFC -DATA-FOLDERNAME <data folder> -DOMAINS <station domains>
 \end{lstlisting}
 where 
 \begin{itemize}
@@ -185,7 +230,7 @@ It is recommended to surround the argument values given to \SATFC by double-quot
 
 One can also run
 \begin{lstlisting}[style=Bash]
-> bash satfc --help
+> ./bin/SATFC --help
 \end{lstlisting}
 to get a list of the \SATFC options and parameters.
 
@@ -203,34 +248,7 @@ SAT
 07:27:52.580 [main] INFO  SATFCFacade - Shutting down...
 07:27:52.580 [main] INFO  SATFCFacade - Goodbye!
 \end{lstlisting}
-Most of the informative logging starts with a times stamp, the thread generating the logging, the log level and the class generating the logging. It can be useful to understand a buggy scenario or to monitor a \SATFC run. The three main lines of interest are the \texttt{SAT}, \texttt{0.017} and \texttt{\{13933=16\}} lines, which correspond to the run result, run time and witness assignment, respectively. The run result can be one of \texttt{SAT}isfiable, \texttt{UNSAT}isfiable or \texttt{TIMEOUT} (or the rarer \texttt{CRASHED}, \texttt{INTERRUPTED}) and corresponds to the repackability of the given problem. The runtime is the CPU time, in seconds, that \SATFC has taken to solve the given problem. Finally, the witness assignment is present only if the given problem is repackable (\emph{i.e.} \texttt{SAT}) and consists of a new valid channel assignment for the given stations.
-
-
-\subsubsection{Data}\label{sec:data}
-
-The broadcast interference constraint data (as specified by the FCC) consists of two files, one specifying station domains, and one specifying pairwise interference between stations. As one of its required arguments, command-line \SATFC expects a path to a folder containing both of these files, named \texttt{Domain.csv} and \texttt{Interference\_Paired.csv}, respectively.
-
-\paragraph{Domains} The domains file consists of a CSV with no header where each row encodes a station's domain (the list of channels on which a station can broadcast). The first entry of a row is always the \texttt{DOMAIN} keyword, the second entry is the station ID, and all subsequent entries are domain channels. Note that \SATFC uses this file to define the set of available stations (so it should contain all the station IDs that will be used in defining problems).
-
-\paragraph{Interferences} The interferences file consists of a CSV with no header where each row is a representation of many pairwise interference constraints between a single subject station on a single subject channels with possibly many target stations. Specifically, the entries of a row are, in order, a key indicating the type of constraint, a subject and target channel on which the constraint applies, the subject station of the constraint, and then a list of target stations to which the constraint applies. Here it is in more compact format:
-\begin{center}
-\texttt{<key>,<subject channel>,<target channel>,<subject station>,<target station 1>,\ldots}
-\end{center}
-There are three possible constraint keys: \texttt{CO}, \texttt{ADJ+1} and \texttt{ADJ-1}. The former indicates a \emph{co-channel constraint}, stating that the subject station and any target station cannot be on the same target/subject channel. The second describes an \emph{adjacent plus one constraint} which implies that the subject station cannot be on its subject channel $c$ together with any target station on the target channel $c+1$. The third one is an \emph{adjacent minus one constraint}, which is just an adjacent plus one constraint with subject station and channels interchanged with target station and channel, respectively.
-
-Here are two examples of interference constraints:
-\begin{center}
-\texttt{CO,4,4,1,2,3}
-\end{center}
-This constraint means that neither stations 1 and 2 nor stations 1 and 3 can be jointly assigned to channel 4
-\begin{center}
-\texttt{ADJ+1,8,9,1,2,3}
-\end{center}
-This constraint implies that neither stations 1 and 2 nor stations 1 and 3 can be on channels 8 and 9 respectively.
-\begin{center}
-\texttt{ADJ-1,8,7,1,2,3}
-\end{center}
-This constraint implies that neither stations 1 and 2 nor stations 1 and 3 can be on channels 8 and 7 respectively.
+Most of the informative logging starts with a times stamp, the thread generating the logging, the log level and the class generating the logging. It can be useful to understand a buggy scenario or to monitor a \SATFC run. The three main lines of interest are the \texttt{SAT}, \texttt{0.017} and \texttt{\{13933=16\}} lines, which correspond to the run result, run time and witness assignment, respectively. 
 
 \subsubsection{Parameters \& Options}
 In addition to the required arguments discussed above, command-line \SATFC also exposes the following optional parameters:
@@ -247,52 +265,52 @@ In addition to the required arguments discussed above, command-line \SATFC also 
 \item \texttt{---log-level} -- \SATFC's logging level. Can be one of \texttt{ERROR}, \texttt{WARN}, \texttt{INFO}, \texttt{DEBUG}, \texttt{TRACE} (listed in increasing order of verbosity).
 \end{itemize}
 
-\subsection{As a Library}
+\section{\SATFCServer}
 
-The most efficient way of using \SATFC is as a Java library. This source code is packaged with \SATFC's release. The code is well documented; the simplest entry point is the \texttt{SATFCFacade} object, and its corresponding builder \texttt{SATFCFacadeBuilder}. The reader may find it helpful to consult Sections \ref{sec:standalone} and \ref{sec:data} to understand the components at play.
+\begin{fwarning}
+	\SATFCServer is an efficient in-memory representation of a constantly expanding cache. As such, it has \emph{very large} memory requirements. While the particular memory requirement will depend on exact usage, as a ballpark estimate we typically run the \SATFCServer on a machine with 32 GB of RAM available.
+\end{fwarning}
 
-Even though \SATFC is built using gradle, native components such as \clasp are not yet packaged in \SATFC's maven repository. Hence, to build a project that uses \SATFC, one must strictly depend on it at a project level for it to find a copy of \clasp, for example. 
+There is an entirely optional addition to \SATFC called \SATFCServer. \SATFCServer provides a way to store results from problems that \SATFC solves and use them to solve future problems. It is intended for long term, heavy users of \SATFC. \SATFCServer is web app which uses the \href{http://projects.spring.io/spring-boot/}{Spring Boot} framework. In order to run this component, you need to have a \href{http://redis.io/}{Redis} server running. We recommend using a dedicated Redis server for this purpose.
 
-\SATFC uses \href{http://projectlombok.org/}{Lombok} annotations to streamline its source code. We suggest you install the \href{http://projectlombok.org/download.html}{Lombok plugin} for your favorite IDE. Otherwise, it possible to ``\href{http://projectlombok.org/features/delombok.html}{delombok}'' the source code, but that will make your code completely incompatible with \SATFC's pipeline.
-
-
-%\section{Frequently Asked Questions}
-%
-%A (short) list of frequently asked questions:
-%\begin{enumerate}
-% \item Missing double quotes
-% \item I want to know what caused UNSAT.
-% \item Support for windows.
-%\end{enumerate}
-
-
-
-\subsection{\SATFCServer}
-
-There is an entirely optional addition to \SATFC called \SATFCServer. \SATFCServer provides a way to store results from problems that \SATFC solves and use them to solve future problems. It is intended for long term, heavy users of \SATFC.\SATFCServer is web app which uses the \href{http://projects.spring.io/spring-boot/}{Spring Boot} framework. In order to run this component, you need to have a \href{http://redis.io/}{Redis} server running. We recommend using a dedicated Redis server for this purpose.
-
-A ready-to-go \SATFC server can be found in the releases folder of \SATFC's root directory. You can start it by running
+Ready-to-go releases of \SATFCServer are available from the \href{https://github.com/FCC/SATFC/releases}{SATFC  repository}. It is packaged similarly to \SATFC. You can start the server by running
 \begin{lstlisting}[style=Bash]
-> ./SATFCServer --redis.host=<redishost> --redis.port=<redisport>
+> ./SATFCServer --redis.host=<redishost> --redis.port=<redisport> --constraint.folder=<constraintfolderpath>
 \end{lstlisting}
-The server has started and is ready for use when you can hit \texttt{<host>:<port>/satfcserver/health} or when you observe a log line similar to 
+The server needs to parse the redis database before it can be used, and this may take a while. It is ready for use when you can hit \texttt{<host>:<port>/satfcserver/health} or when you observe a log line similar to 
 \begin{lstlisting}[style=Bash]
 INFO [ca.ubc.cs.beta.stationpacking.webapp.Application] Started Application in 3.878 seconds (JVM running for 4.309)
 \end{lstlisting}
+
+\subsection{Parameters \& Options}
+
 The command line parameters are summarized below:
 \begin{itemize}
 \item \texttt{---redis.host} The port that the server runs on. Defaults to localhost
 \item \texttt{---redis.port} The port that the server runs on. Defaults to 6379
+\item \texttt{---constraint.folder} A path to a folder which contains station configuration folders. See Section \ref{subsubsec:ConstraintFolder} for more info.
 \item \texttt{---server.port} The port that the server runs on. Defaults to 8080
-\item \texttt{---logging.level.ca.ubc.cs.beta.stationpacking} The logging level for SATFC classes. Defaults to INFO
+\item \texttt{---logging.level.ca.ubc.cs.beta.stationpacking} The logging level for \SATFC classes. Defaults to INFO
 \end{itemize}
-To build \SATFCServer from source, you can run 
-\begin{lstlisting}[style=Bash]
-> ./gradlew :satfcserver:installDist
-\end{lstlisting}
-which will create a runnable script in \texttt{<SATFC repository>satfcserver/build/install/SATFCServer/bin}
+Some additional parameters related to server configuration and logging are exposed through Spring Boot. A larger list of parameters is available \href{http://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html}{in the Spring Boot docs}. Note that many of them are not applicable to \SATFCServer. 
 
-\paragraph{Modifications to running \SATFC}
+\subsubsection{Constraint Folder}\label{subsubsec:ConstraintFolder}
+You can use a single \SATFCServer instance even if your problems come from different data folders (see Section \ref{sec:data} for more information on data folders). To make this work, \SATFCServer expects your data folders to be organized in a particular way. \SATFCServer takes as input a path to a folder that contains all of your data folders (and nothing else!). For example, if you have two data folders, named \textit{Data\_Folder\_1} and \textit{Data\_Folder\_2}, then your directory structure might look like:
+
+\dirtree{%
+	.1 constraint\_sets.
+	.2 Data\_Folder\_1.
+	.3 Domain.csv.
+	.3 Interference\_Paired.csv.
+	.2 Data\_Folder\_2.
+	.3 Domain.csv.
+	.3 Interference\_Paired.csv.
+} 
+
+and you would pass in the path to the \textit{constraint\_sets} folder as your argument to \texttt{----constraint.folder}.
+
+
+\subsection{Modifications to running \SATFC}
 Once the server is up and running, you can run \SATFC as before with the following changes. If you are running from the command line, you need to add the following parameters: \texttt{---usecache ---serverURL <serverhost>:<serverport>/satfcserver}. If you run \SATFC using the facade, then you need to add the following lines to when you instantiate the facade:
 
 \begin{minted}{java}
@@ -305,6 +323,26 @@ satfcFacadeBuilder.setServerURL(<serverURL>)
 // finish like normal
 SATFCFacade satfc = satfcFacadeBuilder.build();
 \end{minted}
+
+\section{Working from Source: Building \SATFC}
+
+This section is for anyone that wishes to develop \SATFC. It can be skipped otherwise. \SATFC uses the \href{http://www.gradle.org/}{Gradle} build system for dependency resolution. To compile from source and build your own command-line executable version of \SATFC, check out the source code from \href{https://github.com/FCC/SATFC} and execute the following:
+\begin{lstlisting}[style=Bash]
+> cd <SATFC repository>
+> ./gradlew installDist
+\end{lstlisting}
+This builds and packages \SATFC in \texttt{<SATFC repository>satfc/build/install/}, and may be a lengthy process as it (possibly) installs Gradle, downloads all of \SATFC's dependencies (from external repositories) and builds the project. Note that it can sometimes fail while trying to download dependencies - restarting the process fixes this. 
+
+\SATFC uses \href{http://projectlombok.org/}{Lombok} annotations to streamline its source code. We suggest you install the \href{http://projectlombok.org/download.html}{Lombok plugin} for your favorite IDE. Otherwise, it possible to ``\href{http://projectlombok.org/features/delombok.html}{delombok}'' the source code, but that will make your code completely incompatible with \SATFC's pipeline.
+
+%\section{Frequently Asked Questions}
+%
+%A (short) list of frequently asked questions:
+%\begin{enumerate}
+% \item Missing double quotes
+% \item I want to know what caused UNSAT.
+% \item Support for windows.
+%\end{enumerate}
 
 \section{Acknowledgments} 
 

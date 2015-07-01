@@ -153,7 +153,7 @@ private:
 //@}
 
 /**
- * \defgroup shared classes to be shared between solvers
+ * \defgroup shared Types shared between solvers.
  */
 //@{
 
@@ -408,6 +408,7 @@ public:
 	typedef EventHandler*                  LogPtr;
 	typedef SingleOwnerPtr<SatPreprocessor>SatPrePtr;
 	enum InitMode   { init_share_symbols, init_copy_symbols };
+	enum ResizeMode { mode_reserve = 0u, mode_add = 1u, mode_remove = 2u, mode_resize = 3u};
 	/*!
 	 * \name Configuration
 	 */
@@ -418,13 +419,13 @@ public:
 	//! Resets this object to the state after default construction.
 	void       reset();
 	//! Enables event reporting via the given event handler.
-	void       setEventHandler(EventHandler* r) { progress_ = r; }
+	void       setEventHandler(LogPtr r) { progress_ = r; }
 	//! Sets how to handle physical sharing of constraints.
 	void       setShareMode(ContextParams::ShareMode m);
 	//! Sets whether the short implication graph should be used for storing short learnt constraints.
 	void       setShortMode(ContextParams::ShortMode m);
 	//! Sets maximal number of solvers sharing this object.
-	void       setConcurrency(uint32 numSolver);
+	void       setConcurrency(uint32 numSolver, ResizeMode m = mode_remove);
 	//! Adds an additional solver to this object and returns it.
 	Solver&    addSolver();
 	//! Configures the statistic object of attached solvers.

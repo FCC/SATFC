@@ -20,6 +20,7 @@
 #ifndef CLASP_CLASP_FWD_H_INCLUDED
 #define CLASP_CLASP_FWD_H_INCLUDED
 
+//! Root namespace for all types and functions of libclasp.
 namespace Clasp { 
 class SharedContext;
 class MinimizeBuilder;
@@ -37,6 +38,7 @@ class ProgramBuilder;
 class SatBuilder;
 class PBBuilder;
 class StreamSource;
+//! Namespace for types and functions used to define ASP programs.
 namespace Asp {
 class  LogicProgram;
 class  Preprocessor;

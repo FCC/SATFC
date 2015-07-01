@@ -206,7 +206,6 @@ public:
 		for (int i = 0; i != 100; ++i) {
 			SharedContext cc;
 			solver = cc.master();
-			solver->strategy.initWatches = SolverStrategies::watch_rand;
 			for (int j = 0; j < 12; ++j) { cc.addVar(Var_t::atom_var); }
 			cc.startAddConstraints(1);
 			Clause* c;
@@ -377,7 +376,6 @@ public:
 	}
 
 	void testStrengthenContracted() {
-		solver->strategy.compress = 4;
 		ctx.endInit();
 		LitVec lits;
 		lits.push_back(a1);
@@ -385,6 +383,7 @@ public:
 			solver->assume(negLit(i));
 			lits.push_back(posLit(i));
 		}
+		solver->strategies().compress = 4;
 		ClauseHead* c = ClauseCreator::create(*solver, lits, 0, Constraint_t::learnt_conflict).local;
 		uint32 si = c->size();
 		c->strengthen(*solver, posLit(12));
@@ -412,7 +411,6 @@ public:
 	}
 
 	void testStrengthenBug() {
-		solver->strategy.compress = 6;
 		ctx.endInit();
 		LitVec clause;
 		clause.push_back(a1);
@@ -434,7 +432,6 @@ public:
 	}
 
 	void testStrengthenContractedNoExtend() {
-		solver->strategy.compress = 4;
 		ctx.endInit();
 		LitVec clause;
 		clause.push_back(a1);
@@ -553,13 +550,13 @@ public:
 	}
 	
 	void testContraction() {
-		solver->strategy.compress = 6;
 		ctx.endInit();
 		LitVec lits(1, a1);
 		for (uint32 i = 2; i <= 12; ++i) {
 			solver->assume(negLit(i));
 			lits.push_back(posLit(i));
 		}
+		solver->strategies().compress = 6;
 		ClauseHead* cl = ClauseCreator::create(*solver, lits, 0, Constraint_t::learnt_conflict).local;
 		uint32  s1 = cl->size();
 		CPPUNIT_ASSERT(s1 < lits.size());
@@ -622,7 +619,6 @@ public:
 	}
 
 	void testClone() {
-		ctx.setConcurrency(2);
 		Solver& solver2 = ctx.addSolver();
 		ctx.endInit(true);
 		ClauseHead* c      = createClause(3, 3);
@@ -673,10 +669,15 @@ public:
 		solver->force( ~a2, 0 );
 		solver->propagate();
 		CPPUNIT_ASSERT_EQUAL(false, lf->simplify(*solver));
-		solver->force( ~a3, 0 );
+		solver->assume(a3);
+		solver->propagate();
+		solver->backtrack();
 		solver->propagate();
 		CPPUNIT_ASSERT_EQUAL(true, lf->simplify(*solver));
 		CPPUNIT_ASSERT_EQUAL(false, solver->hasWatch(~b3, lf));
+		CPPUNIT_ASSERT_EQUAL(false, solver->hasWatch(a1, lf));
+		CPPUNIT_ASSERT_EQUAL(false, solver->hasWatch(a2, lf));
+		CPPUNIT_ASSERT_EQUAL(false, solver->hasWatch(a3, lf));
 		solver->reduceLearnts(1.0f);
 	}
 
@@ -713,17 +714,9 @@ public:
 		solver->undoUntil(0);
 		solver->force( a1,0 );
 		solver->propagate();
-		CPPUNIT_ASSERT_EQUAL(false, lf->simplify(*solver));
-		CPPUNIT_ASSERT(5 == lf->size());
-
-		solver->force( a3,0 );
-		solver->propagate();
-		CPPUNIT_ASSERT_EQUAL(false, lf->simplify(*solver));
-		CPPUNIT_ASSERT(4 == lf->size());
-
-		solver->force( a2,0 );
-		solver->propagate();
 		CPPUNIT_ASSERT_EQUAL(true, lf->simplify(*solver));
+		
+		CPPUNIT_ASSERT(1u == solver->sharedContext()->numLearntShort());
 	}
 
 	void testLoopFormulaPropagateBody() {
@@ -782,6 +775,10 @@ public:
 		solver->propagate();
 		solver->assume( ~b1 );
 		solver->propagate();
+		
+		solver->assume( ~a1 );
+		solver->propagate();
+		
 		solver->assume( ~b2 );
 		solver->propagate();
 
@@ -789,9 +786,9 @@ public:
 		CPPUNIT_ASSERT_EQUAL( true, solver->isTrue(~a2) );
 		CPPUNIT_ASSERT_EQUAL( true, solver->isTrue(~a3) );
 		
-		CPPUNIT_ASSERT_EQUAL( Antecedent::generic_constraint, solver->reason(~a1).type() );
+		CPPUNIT_ASSERT_EQUAL( Antecedent::generic_constraint, solver->reason(~a2).type() );
 		LitVec r;
-		solver->reason(~a1, r);
+		solver->reason(~a2, r);
 		CPPUNIT_ASSERT_EQUAL( LitVec::size_type(3), r.size() );
 		CPPUNIT_ASSERT(std::find(r.begin(), r.end(), ~b1) != r.end());
 		CPPUNIT_ASSERT(std::find(r.begin(), r.end(), ~b2) != r.end());
@@ -928,11 +925,11 @@ public:
 		solver->assume(~body2);
 		solver->assume(~body3);
 		solver->propagate();
-		Literal bodies[3] = {body1, body2, body3 };
-		LoopFormula* lf = LoopFormula::newLoopFormula(*solver, &bodies[0], 3, 2, 1, Activity(0,10));
+		Literal lits[4] = { ~a1, body3, body2, body1 };
+		
+		LoopFormula* lf = LoopFormula::newLoopFormula(*solver, ClauseRep::prepared(lits, 4), lits, 1);
 		solver->addLearnt(lf, lf->size());
 		solver->force(~a1, lf);
-		lf->addAtom(~a1, *solver);
 		solver->propagate();
 		solver->undoUntil(solver->decisionLevel()-2);
 		CPPUNIT_ASSERT_EQUAL(true, solver->assume(~body3) && solver->propagate());
@@ -1028,15 +1025,12 @@ private:
 		solver->assume(~b2);
 		solver->assume(~b3);
 		solver->propagate();
-		Literal bodies[3] = {b1, b2, b3 };
-		LoopFormula* lf = LoopFormula::newLoopFormula(*solver, &bodies[0], 3, 2, 3, Activity(0,10));
+		Literal lits[] = { ~a1, b3, b2, b1, ~a1, ~a2, ~a3 };
+		LoopFormula* lf = LoopFormula::newLoopFormula(*solver, ClauseRep::prepared(lits, 4), lits+4, 3);
 		solver->addLearnt(lf, lf->size());
 		solver->force(~a1, lf);
 		solver->force(~a2, lf);
 		solver->force(~a3, lf);
-		lf->addAtom(~a1, *solver);
-		lf->addAtom(~a2, *solver);
-		lf->addAtom(~a3, *solver);
 		solver->propagate();
 		return lf;
 	}

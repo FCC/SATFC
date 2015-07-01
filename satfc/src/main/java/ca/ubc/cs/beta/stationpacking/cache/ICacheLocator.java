@@ -33,8 +33,7 @@ import ca.ubc.cs.beta.stationpacking.cache.containment.containmentcache.ISatisfi
 @ThreadSafe
 public interface ICacheLocator {
 
-    Optional<ISatisfiabilityCache> locate(CacheCoordinate coordinate);
-    void addCache(CacheCoordinate coordinate);
+    ISatisfiabilityCache locate(CacheCoordinate coordinate);
     Set<CacheCoordinate> getCoordinates();
 
 }

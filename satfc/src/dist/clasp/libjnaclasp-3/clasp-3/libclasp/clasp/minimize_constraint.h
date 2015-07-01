@@ -48,6 +48,29 @@ struct MinimizeMode_t {
 		enumerate = 2, /**< Enumerate models with cost less or equal to a fixed bound. */
 		enumOpt   = 3, /**< Enumerate models with cost equal to optimum. */
 	};
+	//! Strategy to use when optimization is active.
+	enum Strategy {
+		opt_bb = 0, /*!< branch and bound based optimization.   */
+		opt_usc= 1, /*!< unsatisfiable-core based optimization. */
+	};
+	//! Options for branch and bound based optimization.
+	enum BBOption {
+		bb_step_def  = 0u, /*!< branch and bound with fixed step of size 1. */
+		bb_step_hier = 1u, /*!< hierarchical branch and bound. */
+		bb_step_inc  = 2u, /*!< hierarchical branch and bound with increasing steps. */
+		bb_step_dec  = 3u, /*!< hierarchical branch and bound with decreasing steps. */
+	};
+	//! Options for unsatisfiable-core based optimization.
+	enum UscOption {
+		usc_preprocess = 1u, /*!< enable (disjoint) preprocessing. */
+		usc_imp_only   = 2u, /*!< only add constraints for one direction (instead of eq). */
+		usc_clauses    = 4u, /*!< only add clauses (instead of cardinality constraints).  */
+	};
+	enum Heuristic {
+		heu_sign  = 1,  /*!< Use optimize statements in sign heuristic. */ 
+		heu_model = 2,  /*!< Apply model heuristic when optimizing.     */
+	};
+	static bool supportsSplitting(Strategy s) { return s != opt_usc; }
 };
 typedef MinimizeMode_t::Mode MinimizeMode;
 
@@ -90,11 +113,15 @@ public:
 	const wsum_t*  lower()          const{ return &lower_[0]; }
 	//! Returns the upper bound of level x.
 	wsum_t         upper(uint32 x)  const{ return upper()[x]; }
-	const wsum_t*  upper()          const{ return &(opt_ + (gCount_ & 1u))->front(); }
+	const wsum_t*  upper()          const{ return &(up_ + (gCount_ & 1u))->front(); }
+	//! Returns the sum of level x in the most recent model.
+	wsum_t         sum(uint32 x)    const{ return sum()[x]; }
+	const wsum_t*  sum()            const{ return (mode_ != MinimizeMode_t::enumerate) ? upper() : &up_[1][0]; }
 	//! Returns the adjustment for level x.
 	wsum_t         adjust(uint32 x) const{ return adjust_[x]; }
+	const wsum_t*  adjust()         const{ return &adjust_[0]; }
 	//! Returns the current (ajusted and possibly tentative) optimum for level x.
-	wsum_t         optimum(uint32 x)const{ return adjust(x) + (mode_ != MinimizeMode_t::enumerate ? upper(x) : opt_[1][x]); }
+	wsum_t         optimum(uint32 x)const{ return adjust(x) + sum(x); }
 	//! Returns the highest level of the literal with the given index i.
 	uint32         level(uint32 i)  const{ return numRules() == 1 ? 0 : weights[lits[i].second].level; }
 	//! Returns the most important weight of the literal with the given index i.
@@ -102,8 +129,6 @@ public:
 	uint32         generation()     const{ return gCount_; }
 	//! Returns whether minimization should search for solutions with current or next smaller upper bound.
 	bool           checkNext()      const{ return mode() != MinimizeMode_t::enumerate && generation() != optGen_; }
-	//! Assumes literals from last model to false until either a conflict is reached or all literals are assigned.
-	bool heuristic(Solver& s, bool full) const;
 	/*!
 	 * \name interface for optimization
 	 * The following functions shall not be called concurrently.
@@ -121,12 +146,12 @@ public:
 	
 	//! Attaches a new minimize constraint to this data object.
 	/*!
-	 * \param strat  The optimization strategy to use (see SolverStrategies::OptStrategy).
-	 *               If UINT32_MAX, the strategy is read from the solver's configuration.
+	 * \param strat  The optimization strategy to use (see MinimizeMode_t::Strategy).
+	 * \param param  Parameter to pass to the optimization strategy.
 	 * \param addRef If true, the ref count of the shared object is increased. 
 	 *               Otherwise, the new minimize constraint inherits the reference to the shared object.
 	 */
-	MinimizeConstraint* attach(Solver& s, uint32 strat = UINT32_MAX, bool addRef = true);
+	MinimizeConstraint* attach(Solver& s, MinimizeMode_t::Strategy strat, uint32 param = 0, bool addRef = true);
 	
 	//! Makes opt the new (tentative) optimum.
 	/*!
@@ -170,7 +195,7 @@ private:
 	typedef Clasp::atomic<uint32> Atomic;
 	SumVec       adjust_;  // initial bound adjustments
 	SumVec       lower_;   // (unadjusted) lower bound of constraint
-	SumVec       opt_[2];  // buffers for update via "double buffering"
+	SumVec       up_[2];   // buffers for update via "double buffering"
 	MinimizeMode mode_;    // how to compare assignments?
 	Atomic       count_;   // number of refs to this object
 	Atomic       gCount_;  // generation count - used when updating optimum
@@ -292,9 +317,10 @@ public:
 	virtual bool handleModel(Solver& s) = 0;
 	//! Shall handle the unsatisfiable path in s.
 	virtual bool handleUnsat(Solver& s, bool upShared, LitVec& restore) = 0;
-
+	virtual bool supportsSplitting() const { return true; }
+	// base interface
 	void         destroy(Solver*, bool);
-	Constraint*  cloneAttach(Solver& other);
+	Constraint*  cloneAttach(Solver&) { return 0; }
 protected:
 	MinimizeConstraint(SharedData* s);
 	~MinimizeConstraint();
@@ -415,7 +441,7 @@ private:
 	struct Step {          // how to reduce next tentative bound
 	uint32 size;           //   size of step
 	uint32 lev : 30;       //   level on which step is applied
-	uint32 type:  2;       //   type of step (one of SolverStrategies::OptStrategy)
+	uint32 type:  2;       //   type of step (one of MinimizeMode_t::BBOption)
 	}            step_;
 };
 
@@ -434,13 +460,9 @@ public:
 	bool       valid(Solver& s);
 	bool       handleModel(Solver& s);
 	bool       handleUnsat(Solver& s, bool up, LitVec& out);
+	bool       supportsSplitting() const { return false; }
 private:
 	friend class SharedMinimizeData;
-	enum StratOption {
-		strategy_preprocess = 1u, // use (disjoint) preprocessing
-		strategy_imp_only   = 2u, // only add constraints for one direction (instead of eq)
-		strategy_clauses    = 8u, // only add clauses (instead of cardinality constraints)
-	};
 	explicit UncoreMinimize(SharedData* d, uint32 options = 0u);
 	typedef DefaultMinimize* EnumPtr;
 	struct LitData {

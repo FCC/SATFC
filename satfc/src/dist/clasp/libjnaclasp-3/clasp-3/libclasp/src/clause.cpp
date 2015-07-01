@@ -86,8 +86,8 @@ uint32 SharedLiterals::simplify(Solver& s) {
 	return newSize;
 }
 
-void SharedLiterals::release() {
-	if (--refCount_ == 0) {
+void SharedLiterals::release(uint32 n) {
+	if ((refCount_ -= n) == 0) {
 		this->~SharedLiterals();
 		Detail::free(this);
 	}
@@ -207,13 +207,17 @@ ClauseCreator::Result ClauseCreator::end(uint32 flags) {
 
 ClauseHead* ClauseCreator::newProblemClause(Solver& s, const ClauseRep& clause, uint32 flags) {
 	ClauseHead* ret;
-	if (clause.size > 2 && s.strategy.initWatches != SolverStrategies::watch_first) {
+	Solver::WatchInitMode wMode = s.watchInitMode();	
+	if      (flags&clause_watch_first){ wMode = SolverStrategies::watch_first;}
+	else if (flags&clause_watch_rand) { wMode = SolverStrategies::watch_rand; }
+	else if (flags&clause_watch_least){ wMode = SolverStrategies::watch_least;}
+	if (clause.size > 2 && wMode != SolverStrategies::watch_first) {
 		uint32 fw = 0, sw = 1;
-		if (s.strategy.initWatches == SolverStrategies::watch_rand) {
+		if (wMode == SolverStrategies::watch_rand) {
 			fw = s.rng.irand(clause.size);
 			do { sw = s.rng.irand(clause.size); } while (sw == fw); 
 		}
-		else if (s.strategy.initWatches == SolverStrategies::watch_least) {
+		else if (wMode == SolverStrategies::watch_least) {
 			uint32 cw1 = s.numWatches(~clause.lits[0]);
 			uint32 cw2 = s.numWatches(~clause.lits[1]);
 			if (cw1 > cw2) { std::swap(fw, sw); std::swap(cw1, cw2); }
@@ -245,7 +249,7 @@ ClauseHead* ClauseCreator::newLearntClause(Solver& s, const ClauseRep& clause, u
 	Detail::Sink sharedPtr(0);
 	sharedPtr.clause = s.distribute(clause.lits, clause.size, clause.info);
 	if (clause.size <= Clause::MAX_SHORT_LEN || sharedPtr.clause == 0) {
-		if (!s.isFalse(clause.lits[1]) || !s.strategy.compress || clause.size < s.strategy.compress) {
+		if (!s.isFalse(clause.lits[1]) || clause.size < s.compressLimit()) {
 			ret = Clause::newClause(s, clause);
 		}
 		else {
@@ -862,305 +866,203 @@ uint32 SharedLitsClause::size() const { return data_.shared->size(); }
 /////////////////////////////////////////////////////////////////////////////////////////
 // LoopFormula
 /////////////////////////////////////////////////////////////////////////////////////////
-LoopFormula* LoopFormula::newLoopFormula(Solver& s, Literal* bodyLits, uint32 numBodies, uint32 bodyToWatch, uint32 numAtoms, const Activity& act) {
-	uint32 bytes = sizeof(LoopFormula) + (numBodies+numAtoms+3) * sizeof(Literal);
-	void* mem    = Detail::alloc( bytes );
+LoopFormula* LoopFormula::newLoopFormula(Solver& s, const ClauseRep& c1, const Literal* atoms, uint32 nAtoms, bool heu) {
+	uint32 bytes = sizeof(LoopFormula) + (c1.size + nAtoms + 2) * sizeof(Literal);
+	void* mem = Detail::alloc(bytes);
 	s.addLearntBytes(bytes);
-	return new (mem) LoopFormula(s, numBodies+numAtoms, bodyLits, numBodies, bodyToWatch, act);
+	return new (mem)LoopFormula(s, c1, atoms, nAtoms, heu);
 }
-LoopFormula::LoopFormula(Solver& s, uint32 size, Literal* bodyLits, uint32 numBodies, uint32 bodyToWatch, const Activity& act)
-	: act_(act) {
-	end_          = numBodies + 2;
-	size_         = end_+1;
-	other_        = end_-1;
-	lits_[0]      = Literal();  // Starting sentinel
-	lits_[end_-1] = Literal();  // Position of active atom
-	lits_[end_]   = Literal();  // Ending sentinel - active part
-	for (uint32 i = size_; i != size+3; ++i) {
-		lits_[i] = Literal();
+LoopFormula::LoopFormula(Solver& s, const ClauseRep& c1, const Literal* atoms, uint32 nAtoms, bool heu)
+	: act_(c1.info.activity(), c1.info.lbd()) {
+	lits_[0] = posLit(0); // Starting sentinel
+	std::memcpy(lits_ + 1, c1.lits, c1.size * sizeof(Literal));
+	lits_[end_ = c1.size + 1] = posLit(0); // Ending sentinel
+	s.addWatch(~lits_[2], this, (2 << 1) + 1);
+	lits_[2].watch();
+	size_  = c1.size + nAtoms + 2;
+	str_   = 0;
+	xPos_  = 1;
+	other_ = 1;
+	for (uint32 i = 0, x = end_ + 1; i != nAtoms; ++i, ++x) {
+		act_.bumpAct();
+		s.addWatch(~(lits_[x] = atoms[i]), this, (1 << 1) + 1);
+		if (heu) {
+			lits_[1] = atoms[i];
+			s.heuristic()->newConstraint(s, lits_ + 1, c1.size, Constraint_t::learnt_loop);
+		}
 	}
-	// copy bodies: S B1...Bn, watch one
-	std::memcpy(lits_+1, bodyLits, numBodies * sizeof(Literal));
-	s.addWatch(~lits_[1+bodyToWatch], this, ((1+bodyToWatch)<<1)+1);
-	lits_[1+bodyToWatch].watch();
+	(lits_[1] = c1.lits[0]).watch();
 }
-
 void LoopFormula::destroy(Solver* s, bool detach) {
 	if (s) {
-		if (detach) {
-			for (uint32 x = 1; x != end_-1; ++x) {
-				if (lits_[x].watched()) {
-					s->removeWatch(~lits_[x], this);
-					lits_[x].clearWatch();
-				}
-			}
-			if (lits_[end_-1].watched()) {
-				lits_[end_-1].clearWatch();
-				for (uint32 x = end_+1; x != size_; ++x) {
-					s->removeWatch(~lits_[x], this);
-					lits_[x].clearWatch();
-				}
-			}
-		}
-		if (lits_[0].watched()) {
-			while (lits_[size_++].asUint() != 3u) { ; }
-		}
+		if (detach) { this->detach(*s); }
+		if (str_)   { while (lits_[size_++].asUint() != 3u) { ; } }	
 		s->freeLearntBytes(sizeof(LoopFormula) + (size_ * sizeof(Literal)));
 	}
 	void* mem = static_cast<Constraint*>(this);
 	this->~LoopFormula();
 	Detail::free(mem);
 }
-
-
-void LoopFormula::addAtom(Literal atom, Solver& s) {
-	act_.bumpAct();
-	uint32 pos = size_++;
-	assert(isSentinel(lits_[pos]));
-	lits_[pos] = atom;
-	lits_[pos].watch();
-	s.addWatch( ~lits_[pos], this, (pos<<1)+0 );
-	if (isSentinel(lits_[end_-1])) {
-		lits_[end_-1] = lits_[pos];
+void LoopFormula::detach(Solver& s) {
+	for (Literal* it = begin() + xPos_; !isSentinel(*it); ++it) {
+		if (it->watched()) { s.removeWatch(~*it, this); it->clearWatch(); }
+	}
+	for (Literal* it = xBegin(), *end = xEnd(); it != end; ++it) {
+		s.removeWatch(~*it, this);
 	}
 }
-
-void LoopFormula::updateHeuristic(Solver& s) {
-	Literal saved = lits_[end_-1];
-	for (uint32 x = end_+1; x != size_; ++x) {
-		lits_[end_-1] = lits_[x];
-		s.heuristic()->newConstraint(s, lits_+1, end_-1, Constraint_t::learnt_loop);
-	}
-	lits_[end_-1] = saved;
-}
-
-bool LoopFormula::watchable(const Solver& s, uint32 idx) {
-	assert(!lits_[idx].watched());
-	if (idx == end_-1) {
-		for (uint32 x = end_+1; x != size_; ++x) {
-			if (s.isFalse(lits_[x])) {
-				lits_[idx] = lits_[x];
-				return false;
-			}
-		}
-	}
-	return true;
-}
-
-bool LoopFormula::isTrue(const Solver& s, uint32 idx) {
-	if (idx != end_-1) return s.isTrue(lits_[idx]);
-	for (uint32 x = end_+1; x != size_; ++x) {
-		if (!s.isTrue(lits_[x])) {
-			lits_[end_-1] = lits_[x];
+bool LoopFormula::otherIsSat(const Solver& s) {
+	if (other_ != xPos_)          { return s.isTrue(lits_[other_]); }
+	if (!s.isTrue(lits_[other_])) { return false; }
+	for (Literal* it = xBegin(), *end = xEnd(); it != end; ++it) {
+		if (!s.isTrue(*it)) {
+			if (lits_[xPos_].watched()){ (lits_[xPos_] = *it).watch(); }
+			else                       { lits_[xPos_] = *it; }
 			return false;
 		}
 	}
 	return true;
 }
-
-Constraint::PropResult LoopFormula::propagate(Solver& s, Literal, uint32& data) {
-	if (isTrue(s, other_)) {          // ignore clause, as it is 
-		return PropResult(true, true);  // already satisfied
+Constraint::PropResult LoopFormula::propagate(Solver& s, Literal p, uint32& data) {
+	if (otherIsSat(s)) { // already satisfied?
+		return PropResult(true, true); 
 	}
-	uint32  pos   = data >> 1;
-	uint32  idx   = pos;
-	if (pos > end_) {
-		// p is one of the atoms - move to active part
-		lits_[end_-1] = lits_[pos];
-		idx           = end_-1;
+	uint32 idx = data >> 1;
+	Literal* w = lits_ + idx;
+	bool  head = idx == xPos_;
+	if (head) { // p is one of the atoms - move to active part
+		p = ~p;
+		if (*w != p && s.isFalse(*w)) { return PropResult(true, true); }
+		if (!w->watched())            { *w = p; return PropResult(true, true); }
+		(*w = p).watch();
 	}
-	int     dir   = ((data & 1) << 1) - 1;
-	int     bounds= 0;
-	for (;;) {
-		for (idx+=dir;s.isFalse(lits_[idx]);idx+=dir) {;} // search non-false literal - sentinels guarantee termination
-		if (isSentinel(lits_[idx])) {             // Hit a bound,
-			if (++bounds == 2) {                    // both ends seen, clause is unit, false, or sat
-				if (other_ == end_-1) {
-					uint32 x = end_+1;
-					for (; x != size_ && s.force(lits_[x], this);  ++x) { ; }
-					return Constraint::PropResult(x == size_, true);  
-				}
-				else {
-					return Constraint::PropResult(s.force(lits_[other_], this), true);  
-				}
-			}
-			idx   = std::min(pos, end_-1);          // halfway through, restart search, but
-			dir   *= -1;                            // this time walk in the opposite direction.
-			data  ^= 1;                             // Save new direction of watch
+	for (int bounds = 0, dir = ((data & 1) << 1) - 1;;) {
+		// search non-false literal - sentinels guarantee termination
+		for (w += dir; s.isFalse(*w); w += dir) {;} 
+		if (!isSentinel(*w)) {
+			uint32 nIdx = static_cast<uint32>(w - lits_);
+			// other watched literal?
+			if (w->watched()) { other_ = nIdx; continue; }
+			// replace watch
+			lits_[idx].clearWatch();
+			w->watch();
+			// add new watch only w is not one of the atoms
+			// and keep previous watch if p is one of the atoms
+			if (nIdx != xPos_) { s.addWatch(~*w, this, (nIdx << 1) + (dir==1)); }
+			return PropResult(true, head);
 		}
-		else if (!lits_[idx].watched() && watchable(s, idx)) { // found a new watchable literal
-			if (pos > end_) {     // stop watching atoms
-				lits_[end_-1].clearWatch();
-				for (uint32 x = end_+1; x != size_; ++x) {
-					if (x != pos) {
-						s.removeWatch(~lits_[x], this);
-						lits_[x].clearWatch();
-					}
-				}
+		else if (++bounds == 1) {
+			w     = lits_ + idx; // Halfway through, restart search, but
+			dir  *= -1;          // this time walk in the opposite direction.
+			data ^= 1;           // Save new direction of watch
+		}
+		else { // clause is unit
+			bool ok = s.force(lits_[other_], this);
+			if (other_ == xPos_ && ok) { // all lits in inactive part are implied
+				for (Literal* it = xBegin(), *end = xEnd(); it != end && (ok = s.force(*it, this)) == true; ++it) { ; }
 			}
-			lits_[pos].clearWatch();
-			lits_[idx].watch();
-			if (idx == end_-1) {  // start watching atoms
-				for (uint32 x = end_+1; x != size_; ++x) {
-					s.addWatch(~lits_[x], this, static_cast<uint32>(x << 1) + 0);
-					lits_[x].watch();
-				}
-			}
-			else {
-				s.addWatch(~lits_[idx], this, static_cast<uint32>(idx << 1) + (dir==1));
-			}
-			return Constraint::PropResult(true, false);
-		} 
-		else if (lits_[idx].watched()) {          // Hit the other watched literal
-			other_  = idx;                          // Store it in other_
+			return PropResult(ok, true);
 		}
 	}
 }
-
-// Body: all other bodies + active atom
-// Atom: all bodies
 void LoopFormula::reason(Solver& s, Literal p, LitVec& lits) {
 	uint32 os = lits.size();
-	// all relevant bodies
-	for (uint32 x = 1; x != end_-1; ++x) {
-		if (lits_[x] != p) {
-			lits.push_back(~lits_[x]);
-		}
-	}
-	// if p is a body, add active atom
-	if (other_ != end_-1) {
-		lits.push_back(~lits_[end_-1]);
+	// p = body: all literals in active clause
+	// p = atom: only bodies
+	for (Literal* it = begin() + (other_ == xPos_); !isSentinel(*it); ++it) {
+		if (*it != p) { lits.push_back(~*it); }
 	}
 	act_.setLbd(s.updateLearnt(p, &lits[0]+os, &lits[0]+lits.size(), act_.lbd()));
 	act_.bumpAct();
 }
-
 bool LoopFormula::minimize(Solver& s, Literal p, CCMinRecursive* rec) {
 	act_.bumpAct();
-	for (uint32 x = 1; x != end_-1; ++x) {
-		if (lits_[x] != p && !s.ccMinimize(~lits_[x], rec)) {
-			return false;
-		}
+	for (Literal* it = begin() + (other_ == xPos_); !isSentinel(*it); ++it) {
+		if (*it != p && !s.ccMinimize(~*it, rec)) { return false; }
 	}
-	return other_ == end_-1
-		|| s.ccMinimize(~lits_[end_-1], rec);
+	return true;
 }
-
 uint32 LoopFormula::size() const {
-	return size_ - 3;
+	return size_ - (2 + xPos_);
 }
-
 bool LoopFormula::locked(const Solver& s) const {
-	if (other_ != end_-1) {
+	if (other_ != xPos_ || !s.isTrue(lits_[other_])) {
 		return s.isTrue(lits_[other_]) && s.reason(lits_[other_]) == this;
 	}
-	for (uint32 x = end_+1; x != size_; ++x) {
-		if (s.isTrue(lits_[x]) && s.reason(lits_[x]) == this) {
-			return true;
-		}
+	LoopFormula& self = const_cast<LoopFormula&>(*this);
+	for (const Literal* it = self.xBegin(), *end = self.xEnd(); it != end; ++it) {
+		if (s.isTrue(*it) && s.reason(*it) == this) { return true; }
 	}
 	return false;
 }
-
 uint32 LoopFormula::isOpen(const Solver& s, const TypeSet& xs, LitVec& freeLits) {
-	if (!xs.inSet(Constraint_t::learnt_loop) || (other_ != end_-1 && s.isTrue(lits_[other_]))) {
+	if (!xs.inSet(Constraint_t::learnt_loop) || otherIsSat(s)) {
 		return 0;
 	}
-	for (uint32 x = 1; x != end_-1; ++x) {
-		if (s.isTrue(lits_[x])) {
-			other_ = x;
-			return 0;
-		}
-		else if (!s.isFalse(lits_[x])) { freeLits.push_back(lits_[x]); }
+	for (Literal* it = begin() + xPos_; !isSentinel(*it); ++it) {
+		if      (s.value(it->var()) == value_free) { freeLits.push_back(*it); }
+		else if (s.isTrue(*it))                    { other_ = static_cast<uint32>(it-lits_); return 0; }
 	}
-	for (uint32 x = end_+1; x != size_; ++x) {
-		if      (s.value(lits_[x].var()) == value_free) { freeLits.push_back(lits_[x]); }
-		else if (s.isTrue(lits_[x]))                    { return 0; }
+	for (Literal* it = xBegin(), *end = xEnd(); it != end; ++it) {
+		if (s.value(it->var()) == value_free) { freeLits.push_back(*it); }
 	}
 	return Constraint_t::learnt_loop;
 }
-
 bool LoopFormula::simplify(Solver& s, bool) {
-	assert(s.decisionLevel() == 0);
-	typedef std::pair<uint32, uint32> WatchPos;
-	bool      sat = false;          // is the constraint SAT?
-	WatchPos  bodyWatches[2];       // old/new position of watched bodies
-	uint32    bw  = 0;              // how many bodies are watched?
-	uint32    j   = 1, i;
-	// 1. simplify the set of bodies:
-	// - search for a body that is true -> constraint is SAT
-	// - remove all false bodies
-	// - find the watched bodies
-	for (i = 1; i != end_-1; ++i) {
-		assert( !s.isFalse(lits_[i]) || !lits_[i].watched() || s.isTrue(lits_[other_]) );
-		if (!s.isFalse(lits_[i])) {
-			sat |= s.isTrue(lits_[i]);
-			if (i != j) { lits_[j] = lits_[i]; }
-			if (lits_[j].watched()) { bodyWatches[bw++] = WatchPos(i, j); }
-			++j;
-		}
-	}
-	uint32 newEnd = j + 1;
-	j += 2;
-	// 2. simplify the set of atoms:
-	// - remove all determined atoms
-	// - remove/update watches if necessary
-	for (i = end_ + 1; i != size_; ++i) {
-		if (s.value(lits_[i].var()) == value_free) {
-			if (i != j) { lits_[j] = lits_[i]; }
-			if (lits_[j].watched()) {
-				if (sat) {
-					s.removeWatch(~lits_[j], this);
-					lits_[j].clearWatch();
-				}
-				else if (i != j) {
-					GenericWatch* w = s.getWatch(~lits_[j], this);
-					assert(w);
-					w->data = (j << 1) + 0;
-				}
-			}
-			++j;
-		}
-		else if (lits_[i].watched()) {
-			s.removeWatch(~lits_[i], this);
-			lits_[i].clearWatch();
-		}
-	}
-	if (j != size_ && !lits_[0].watched()) {
-		lits_[size_-1].asUint() = 3u;
-		lits_[0].watch();
-	}
-	size_         = j;
-	end_          = newEnd;
-	lits_[end_]   = Literal();
-	lits_[end_-1] = lits_[end_+1];
-	ClauseRep act = ClauseRep::create(lits_+1, end_-1, Constraint_t::learnt_loop);
-	if (sat || size_ == end_ + 1 || (act.isImp() && s.allowImplicit(act))) {
-		for (i = 0; i != bw; ++i) {
-			s.removeWatch(~lits_[bodyWatches[i].second], this);
-			lits_[bodyWatches[i].second].clearWatch();
-		}
-		if (sat || size_ == end_+1) { return true; }
-		// replace constraint with short clauses
-		for (i = end_+1; i != size_; ++i) {
-			if (lits_[i].watched()) {
-				s.removeWatch(~lits_[i], this);
-				lits_[i].clearWatch();
-			}
-			lits_[end_-1] = lits_[i];
-			ClauseCreator::Result res = ClauseCreator::create(s, act, ClauseCreator::clause_no_add);
-			CLASP_FAIL_IF(!res.ok() || res.local, "LOOP MUST NOT CONTAIN AUX VARS!");
-		}
+	if (otherIsSat(s) || (other_ != xPos_ && (other_ = xPos_) != 0 && otherIsSat(s))) {
+		detach(s);
 		return true;
 	}
-	other_ = 1;
-	for (i = 0; i != bw; ++i) {
-		if (bodyWatches[i].first != bodyWatches[i].second) {
-			GenericWatch* w  = s.getWatch(~lits_[bodyWatches[i].second], this);
-			assert(w);
-			w->data = (bodyWatches[i].second << 1) + (w->data&1);
+	Literal* it = begin(), *j, *end = xEnd();
+	while (s.value(it->var()) == value_free) { ++it; }
+	if (!isSentinel(*(j=it))) {
+		// simplify active clause
+		if (*it == lits_[xPos_]){ xPos_ = 0; }
+		for (GenericWatch* w; !isSentinel(*it); ++it) {
+			if (s.value(it->var()) == value_free) {
+				if (it->watched() && (w = s.getWatch(~*it, this)) != 0) {
+					w->data = (static_cast<uint32>(j - lits_) << 1) + (w->data&1);
+				}
+				*j++ = *it;
+			}
+			else if (s.isTrue(*it)) { detach(s); return true; }
+			else                    { assert(!it->watched() && "Constraint not propagated!"); }
 		}
+		*j   = posLit(0);
+		end_ = static_cast<uint32>(j - lits_);
+	}
+	// simplify extra part
+	for (++it, ++j; it != end; ++it) {
+		if (s.value(it->var()) == value_free && xPos_) { *j++ = *it; }
+		else { s.removeWatch(~*it, this); }
+	}
+	bool isClause = static_cast<uint32>(j - xBegin()) == 1;
+	if (isClause) { --j; }
+	if (j != end) { // size changed?
+		if (!str_)   { (end-1)->asUint() = 3u; str_ = 1u; }
+		if (isClause){
+			assert(xPos_ && *j == lits_[xPos_]);
+			if (!lits_[xPos_].watched()) { s.removeWatch(~*j, this); }
+			xPos_ = 0;
+		}
+		size_ = static_cast<uint32>((end = j) - lits_);
+	}
+	assert(!isClause || xPos_ == 0);
+	other_ = xPos_ + 1;
+	ClauseRep act = ClauseRep::create(begin(), end_ - 1, Constraint_t::learnt_loop);
+	if (act.isImp() && s.allowImplicit(act)) {
+		detach(s);
+		ClauseCreator::Result res;
+		for (it = xBegin(); it != end && res.ok() && !res.local; ++it) {
+			lits_[xPos_] = *it;
+			res = ClauseCreator::create(s, act, ClauseCreator::clause_no_add);
+			CLASP_FAIL_IF(lits_[xPos_] != *it, "LOOP MUST NOT CONTAIN ASSIGNED VARS!");
+		}
+		if (!xPos_) { res = ClauseCreator::create(s, act, ClauseCreator::clause_no_add); }
+		CLASP_FAIL_IF(!res.ok() || res.local, "LOOP MUST NOT CONTAIN AUX VARS!");
+		return true;
 	}
 	return false;
 }
+
 }

@@ -1,5 +1,5 @@
 // 
-// Copyright (c) 2006-2010, Benjamin Kaufmann
+// Copyright (c) 2006-2014, Benjamin Kaufmann
 // 
 // This file is part of Clasp. See http://www.cs.uni-potsdam.de/clasp/ 
 // 
@@ -56,7 +56,7 @@ uint32 momsScore(const Solver& s, Var v) {
 #define BERK_MAX_DECAY 65534
 
 ClaspBerkmin::ClaspBerkmin(uint32 maxB, const HeuParams& params, bool berkHuang) 
-	: order_(berkHuang, params.resScore != 0)
+	: order_(berkHuang, params.resScore ? params.resScore : 3u)
 	, topConflict_(UINT32_MAX)
 	, topOther_(UINT32_MAX)
 	, front_(1) 
@@ -125,10 +125,6 @@ Var ClaspBerkmin::getTopMoms(const Solver& s) {
 }
 
 void ClaspBerkmin::startInit(const Solver& s) {
-	if (s.configuration().heuReinit) {
-		order_.score.clear();
-		order_.decay = 0;
-	}
 	if (order_.score.empty()) {
 		rng_.srand(s.rng.seed());
 	}
@@ -179,6 +175,9 @@ void ClaspBerkmin::updateVar(const Solver& s, Var v, uint32 n) {
 void ClaspBerkmin::newConstraint(const Solver&, const Literal* first, LitVec::size_type size, ConstraintType t) {
 	if (t == Constraint_t::learnt_conflict) {
 		hasActivities(true);
+		if (order_.resScore == 1u) {
+			for (const Literal* x = first, *end = first+size; x != end; ++x) { order_.inc(*x); }
+		}
 	}
 	if (order_.huang == (t == Constraint_t::static_constraint)) {
 		for (const Literal* x = first, *end = first+size; x != end; ++x) {
@@ -188,13 +187,15 @@ void ClaspBerkmin::newConstraint(const Solver&, const Literal* first, LitVec::si
 }
 
 void ClaspBerkmin::updateReason(const Solver& s, const LitVec& lits, Literal r) {
-	const bool ms = !order_.once;
-	for (LitVec::size_type i = 0, e = lits.size(); i != e; ++i) {
-		if (ms || !s.seen(lits[i])) {
-			order_.inc(~lits[i]);
+	if (order_.resScore > 1) {
+		const bool ms = order_.resScore == 3u;
+		for (LitVec::size_type i = 0, e = lits.size(); i != e; ++i) {
+			if (ms || !s.seen(lits[i])) { order_.inc(~lits[i]); }
 		}
 	}
-	if (!isSentinel(r)) { order_.inc(r); }
+	if ((order_.resScore & 1u) != 0 && !isSentinel(r)) {
+		order_.inc(r);
+	}
 }
 
 bool ClaspBerkmin::bump(const Solver&, const WeightLitVec& lits, double adj) {
@@ -329,16 +330,15 @@ void ClaspBerkmin::Order::resetDecay() {
 // ClaspVmtf selection strategy
 /////////////////////////////////////////////////////////////////////////////////////////
 ClaspVmtf::ClaspVmtf(LitVec::size_type mtf, const HeuParams& params) : decay_(0), MOVE_TO_FRONT(mtf >= 2 ? mtf : 2) {
-	types_.addSet(Constraint_t::learnt_conflict);
+	scType_  = params.resScore ? params.resScore : 1u;
 	uint32 x = params.otherScore + 1;
 	if (x & Constraint_t::learnt_loop) { types_.addSet(Constraint_t::learnt_loop); }
 	if (x & Constraint_t::learnt_other){ types_.addSet(Constraint_t::learnt_other);}
+	if (scType_ == 1u)                 { types_.addSet(Constraint_t::learnt_conflict); }
 	if (params.initScore)              { types_.addSet(Constraint_t::static_constraint); }
 }
 
-
 void ClaspVmtf::startInit(const Solver& s) {
-	if (s.configuration().heuReinit) { score_.clear(); vars_.clear(); decay_ = 0; }
 	score_.resize(s.numVars()+1, VarInfo(vars_.end()));
 }
 
@@ -398,14 +398,14 @@ void ClaspVmtf::simplify(const Solver& s, LitVec::size_type i) {
 void ClaspVmtf::newConstraint(const Solver& s, const Literal* first, LitVec::size_type size, ConstraintType t) {
 	if (t != Constraint_t::static_constraint) {
 		LessLevel comp(s, score_);
-		VarVec::size_type maxMove = t == Constraint_t::learnt_conflict ? MOVE_TO_FRONT : MOVE_TO_FRONT/2;
 		const bool upAct = types_.inSet(t);
+		const VarVec::size_type mtf = t == Constraint_t::learnt_conflict ? MOVE_TO_FRONT : (MOVE_TO_FRONT*int(upAct))/2;
 		for (LitVec::size_type i = 0; i < size; ++i, ++first) {
 			Var v = first->var(); 
 			score_[v].occ_ += 1 - (((int)first->sign())<<1);
-			if (upAct) {
-				++score_[v].activity(decay_);
-				if (mtf_.size() < maxMove) {
+			if (upAct) { ++score_[v].activity(decay_); }
+			if (mtf)   {
+				if (mtf_.size() < mtf) {
 					mtf_.push_back(v);
 					std::push_heap(mtf_.begin(), mtf_.end(), comp);
 				}
@@ -432,8 +432,15 @@ void ClaspVmtf::undoUntil(const Solver&, LitVec::size_type) {
 	front_ = vars_.begin();
 }
 
-void ClaspVmtf::updateReason(const Solver&, const LitVec&, Literal r) {
-	++score_[r.var()].activity(decay_);
+void ClaspVmtf::updateReason(const Solver& s, const LitVec& lits, Literal r) {
+	if (scType_ > 1u) {
+		const bool  ms = scType_ == 3u;
+		const uint32 D = decay_;
+		for (LitVec::size_type i = 0, e = lits.size(); i != e; ++i) {
+			if (ms || !s.seen(lits[i])) { ++score_[lits[i].var()].activity(D); }
+		}
+	}
+	if (scType_ & 1u) { ++score_[r.var()].activity(decay_); }
 }
 
 bool ClaspVmtf::bump(const Solver&, const WeightLitVec& lits, double adj) {
@@ -482,16 +489,16 @@ ClaspVsids_t<ScoreType>::ClaspVsids_t(double decay, const HeuParams& params)
 	: vars_(CmpScore(score_)) 
 	, decay_(1.0 / std::max(0.01, std::min(1.0, decay)))
 	, inc_(1.0) {
-	types_.addSet(Constraint_t::learnt_conflict);
+	scType_  = params.resScore ? params.resScore : 1u;
 	uint32 x = params.otherScore + 1;
 	if (x & Constraint_t::learnt_loop) { types_.addSet(Constraint_t::learnt_loop); }
 	if (x & Constraint_t::learnt_other){ types_.addSet(Constraint_t::learnt_other);}
+	if (scType_ == 1u)                 { types_.addSet(Constraint_t::learnt_conflict); }
 	if (params.initScore)              { types_.addSet(Constraint_t::static_constraint); }
 }
 
 template <class ScoreType>
 void ClaspVsids_t<ScoreType>::startInit(const Solver& s) {
-	if (s.configuration().heuReinit) { score_.clear(); occ_.clear(); vars_.clear(); inc_ = 1.0; }
 	score_.resize(s.numVars()+1);
 	occ_.resize(s.numVars()+1);
 	vars_.reserve(s.numVars() + 1);
@@ -576,8 +583,14 @@ void ClaspVsids_t<ScoreType>::newConstraint(const Solver&, const Literal* first,
 	}
 }
 template <class ScoreType>
-void ClaspVsids_t<ScoreType>::updateReason(const Solver&, const LitVec&, Literal r) {
-	if (r.var() != 0) updateVarActivity(r.var());
+void ClaspVsids_t<ScoreType>::updateReason(const Solver& s, const LitVec& lits, Literal r) {
+	if (scType_ > 1u) {
+		const bool ms = scType_ == 3u;
+		for (LitVec::size_type i = 0, end = lits.size(); i != end; ++i) {
+			if (ms || !s.seen(lits[i])) { updateVarActivity(lits[i].var()); }
+		}
+	}
+	if ((scType_ & 1u) != 0 && r.var() != 0) { updateVarActivity(r.var()); }
 }
 template <class ScoreType>
 bool ClaspVsids_t<ScoreType>::bump(const Solver&, const WeightLitVec& lits, double adj) {
@@ -617,180 +630,165 @@ template class ClaspVsids_t<VsidsScore>;
 /////////////////////////////////////////////////////////////////////////////////////////
 // DomainHeuristic selection strategy
 /////////////////////////////////////////////////////////////////////////////////////////
-class DomainHeuristic::DomMinimize : public MinimizeConstraint {
-public:
-	explicit DomMinimize(const LitVec& lits) : MinimizeConstraint(createDataFrom(lits)){ }
-	// constraint interface
-	PropResult  propagate(Solver&, Literal, uint32&) { return PropResult(true, true); }
-	void        reason(Solver&, Literal, LitVec&)    { }
-	bool        simplify(Solver& s, bool)            { simplifyDB(s, nogoods_, false); return false; }
-	Constraint* cloneAttach(Solver&)                 { return 0; }
-	void        destroy(Solver*, bool);
-	// base interface
-	bool        attach(Solver&)                      { return true; }
-	bool        relax(Solver&, bool)                 { return true; }
-	bool        handleUnsat(Solver&, bool, LitVec&)  { return false;}
-	bool        integrate(Solver& s);
-	bool        handleModel(Solver& s);
-private:
-	static SharedMinimizeData* createDataFrom(const LitVec& lits) {
-		SumVec adjust(1, 0);
-		SharedMinimizeData* min = new (::operator new(sizeof(SharedMinimizeData) + ((1+lits.size())*sizeof(WeightLiteral)))) SharedMinimizeData(adjust, MinimizeMode_t::enumerate);
-		WeightLiteral* x = min->lits;
-		for (LitVec::const_iterator it = lits.begin(), end = lits.end(); it != end; ++it) {
-			*x++ = WeightLiteral(*it, 1);
-		}
-		*x++ = WeightLiteral(posLit(0), 1);
-		return min;
-	}
-	typedef PodVector<Constraint*>::type ConstraintDB;
-	ConstraintDB nogoods_;
-	LitVec       clause_;
-};
-struct DomainHeuristic::CmpSymbol {
-	bool operator()(const SymbolType& lhs, const SymbolType& rhs) const { return std::strcmp(lhs.name.c_str(), rhs.name.c_str()) < 0; }
-	bool operator()(const SymbolType& lhs, const char* rhs)       const { return std::strcmp(lhs.name.c_str(), rhs) < 0; }
-	bool operator()(const char* lhs, const SymbolType& rhs)       const { return std::strcmp(lhs, rhs.name.c_str()) < 0; }
-};
-const char* const DomainHeuristic::domKey_s = "_heuristic(";
-const char* const DomainHeuristic::domEnd_s = "_heuristic)";
-bool DomainHeuristic::match(const char*& in, const char* what) {
-	if (!in || !what) { return what == in; }
-	const char* t = in;
-	while (*t && *what && *what == *t) { ++what, ++t; }
-	return *what == 0 && (in = t) == t;
+const char* const domSym_s = "_heuristic(";
+const std::size_t domLen_s = std::strlen(domSym_s);
+bool DomEntry::isDomEntry(const SymbolType& sym) { return !sym.name.empty() && std::strncmp(sym.name.c_str(), domSym_s, domLen_s) == 0; }
+bool DomEntry::isHeadOf(const char* head, const SymbolType& domSym) {
+	assert(isDomEntry(domSym));
+	std::size_t len = std::strlen(head);
+	const char* dom = domSym.name.c_str() + domLen_s;
+	return std::strncmp(head, dom, len) == 0 && dom[len] == ',';
 }
-bool DomainHeuristic::matchDom(const char*& key, std::string& out) {
-	if (!match(key, domKey_s)) { return false; }
-	out.clear();
-	for (int p = 0; (*key != ',' || p); ++key) {
-		if      (!*key)      { throw std::runtime_error("Invalid domain atom!"); }
-		else if (*key == '('){ ++p; }
-		else if (*key == ')'){ --p; }
-		out += *key;
-	}
-	return true;
+bool DomEntry::Cmp::operator()(const SymbolType& lhs, const SymbolType& rhs) const {
+	assert(DomEntry::isDomEntry(lhs) && DomEntry::isDomEntry(rhs));
+	return std::strcmp(lhs.name.c_str() + domLen_s, rhs.name.c_str() + domLen_s) < 0;
 }
-bool DomainHeuristic::matchInt(const char*& key, int& out) {
-	char* n; out = std::strtol(key, &n, 10);
-	return key != n && (key = n) != 0;
+bool DomEntry::Lookup::operator()(const char* head, const SymbolType& domSym) const {
+	assert(DomEntry::isDomEntry(domSym));
+	return std::strncmp(head, domSym.name.c_str() + domLen_s, std::strlen(head)) < 0;
 }
-bool DomainHeuristic::DomEntry::parse(const char*& key) {
-	if      (match(key, "init"))  { mod = mod_init; }
-	else if (match(key, "factor")){ mod = mod_factor; }
-	else if (match(key, "level")) { mod = mod_level; }
-	else if (match(key, "sign"))  { mod = mod_sign; }
-	else if (match(key, "true"))  { mod = mod_tf; sign = sym->lit.sign();  }
-	else if (match(key, "false")) { mod = mod_tf; sign = !sym->lit.sign(); }
-	else                          { return false; }
-	int temp;
-	if (!match(key, ",") || !matchInt(key, temp)) {
-		return false;
-	}
-	temp  = Range<int>(INT16_MIN, INT16_MAX).clamp(temp);
-	if (mod == mod_sign && temp) {
-		temp = value_true + (uint8(temp < 0) ^ uint8(sym->lit.sign()));
-	}
-	val   = (int16)temp;
-	if (match(key, ",") && (!matchInt(key, temp) || temp < 0)) {
-		return false;
-	}
-	prio = (uint16)Range<int>(0, INT16_MAX).clamp(std::abs(temp));
-	return true;
+bool DomEntry::Lookup::operator()(const SymbolType& domSym, const char* head) const {
+	assert(DomEntry::isDomEntry(domSym));
+	return std::strncmp(domSym.name.c_str() + domLen_s, head, std::strlen(head)) < 0;
 }
-DomainHeuristic::DomainHeuristic(double d, const HeuParams& params) : ClaspVsids_t<DomScore>(d, params), solver_(0) {
+void DomEntry::init(Literal lit, const SymbolType& domSym) {
+	CLASP_ASSERT_CONTRACT(isDomEntry(domSym));
+	std::memset(this, 0, sizeof(*this));
+	this->lit = lit;
+	this->cond= domSym.lit;
+	const char* rule = domSym.name.c_str() + domLen_s;
+	// skip head
+	for (int p = 0; *rule && (*rule != ',' || p); ++rule) {
+		if      (*rule == '('){ ++p; }
+		else if (*rule == ')'){ --p; }
+	}
+	CLASP_FAIL_IF(!*rule++, "Invalid atom name in heuristic predicate!");
+	// extract modifier
+	if      (std::strncmp(rule, "sign"  , 4) == 0) { this->mod = mod_sign;   rule += 4; }
+	else if (std::strncmp(rule, "true"  , 4) == 0) { this->mod = mod_tf;     rule += 4; this->pref = trueValue(lit); }
+	else if (std::strncmp(rule, "init"  , 4) == 0) { this->mod = mod_init;   rule += 4; }
+	else if (std::strncmp(rule, "level" , 5) == 0) { this->mod = mod_level;  rule += 5; }
+	else if (std::strncmp(rule, "false" , 5) == 0) { this->mod = mod_tf;     rule += 5; this->pref = falseValue(lit); }
+	else if (std::strncmp(rule, "factor", 6) == 0) { this->mod = mod_factor; rule += 6; }
+	CLASP_FAIL_IF(*rule++ != ',', "Invalid modifier in heuristic predicate!");
+	// extract value
+	char* next;
+	this->value = Range<int>(INT16_MIN, INT16_MAX).clamp(std::strtol(rule, &next, 10));
+	CLASP_FAIL_IF(rule == next || *(rule = next) == 0, "Invalid value in heuristic predicate!");
+	this->prio = value > 0 ? value : -value;
+	if (mod == mod_sign) {
+		pref  = value_free + ValueRep(value != 0) + ValueRep(value < 0);
+		if (lit.sign() && pref) { pref ^= 3u; }
+		value = pref;
+	}
+	// extract optional priority
+	if (*rule == ',') { // _heuristic/4
+		prio = Range<int>(0, INT16_MAX).clamp(std::strtol(++rule, &next, 10));
+		CLASP_FAIL_IF(rule == next || *(rule = next) == 0, "Invalid priority in heuristic predicate!");
+	}
+	CLASP_FAIL_IF(*rule++ != ')' || *rule != 0, "Invalid extra argument in heuristic predicate!");
+}
+DomainHeuristic::DomainHeuristic(double d, const HeuParams& params) : ClaspVsids_t<DomScore>(d, params), domMin_(0), symSize_(0), defMod_(0), defPref_(0) {
 	frames_.push_back(Frame(0,UINT32_MAX));
 }
 DomainHeuristic::~DomainHeuristic() {
-	if (solver_) { detach(); }
+	delete domMin_;
 }
-void DomainHeuristic::detach() {
-	if (solver_) {
-		for (SymbolTable::const_iterator it = solver_->symbolTable().begin(), end = solver_->symbolTable().end(); it != end; ++it) {
-			if (it->second.lit.var() && !it->second.name.empty() && *it->second.name.c_str() == '_') {
-				solver_->removeWatch(it->second.lit, this);
+void DomainHeuristic::setDefaultMod(GlobalModifier mod, uint32 prefSet) {
+	defMod_ = (uint16)mod;
+	defPref_= prefSet;
+}
+void DomainHeuristic::detach(Solver& s) {
+	if (!actions_.empty()) {
+		for (SymbolTable::const_iterator it = s.symbolTable().begin(), end = s.symbolTable().end(); it != end; ++it) {
+			if (it->second.lit.var() && DomEntry::isDomEntry(it->second)) {
+				s.removeWatch(it->second.lit, this);
 			}
 		}
-		while (frames_.back().dl != 0) {
-			solver_->removeUndoWatch(frames_.back().dl, this);
-			frames_.pop_back();
-		}
+	}
+	while (frames_.back().dl != 0) {
+		s.removeUndoWatch(frames_.back().dl, this);
+		frames_.pop_back();
 	}
 	actions_.clear();
-	frames_.clear();
-	dPrios_.clear();
-	solver_ = 0;
+	prios_.clear();
+	symSize_ = 0;
 }
 void DomainHeuristic::startInit(const Solver& s) {
 	BaseType::startInit(s);
-	if (solver_ && (s.configuration().heuReinit || solver_ != &s)) {
-		detach();
+	if (symSize_ > s.symbolTable().size()) {
+		symSize_ = 0;
 	}
 }
 void DomainHeuristic::initScores(Solver& s, bool moms) {
-	if (moms) { BaseType::initScores(s, moms); }
+	if (moms)  { BaseType::initScores(s, moms); }
 	if (s.symbolTable().type() != SymbolTable::map_indirect) { return; }
-	typedef std::pair<SymbolMap::iterator, SymbolMap::iterator> SymbolRange;
-	SymbolMap symbols;
-	for (SymbolTable::const_iterator it = s.configuration().heuReinit ? s.symbolTable().begin() : s.symbolTable().curBegin(), end = s.symbolTable().end(); it != end; ++it) {
-		if (!it->second.name.empty()) { symbols.push_back(it->second); }
+	typedef PodVector<SymbolTable::symbol_type>::type DomTable;
+	DomTable domTab;
+	// get domain entries from symbol table
+	for (SymbolTable::const_iterator sIt = s.symbolTable().begin() + symSize_, end = s.symbolTable().end(); sIt != end; ++sIt) {
+		if (DomEntry::isDomEntry(sIt->second)){ domTab.push_back(sIt->second); }
 	}
-	std::stable_sort(symbols.begin(), symbols.end(), CmpSymbol());
-	SymbolRange domRange(std::lower_bound(symbols.begin(), symbols.end(), domKey_s, CmpSymbol()), std::lower_bound(symbols.begin(), symbols.end(), domEnd_s, CmpSymbol()));
-	std::string name; SymbolType noSym(negLit(0), "");
-	DomEntry    last(&noSym, DomEntry::mod_init);
-	Literal     dyn;
-	DomPrio     prio;
-	LitVec      domMin;
-	EnumerationConstraint*    c = static_cast<EnumerationConstraint*>(s.enumerationConstraint());
-	const MinimizeConstraint* m = c ? c->minimizer() : 0;
-	const uint32 gPref          = s.configuration().domPref;
-	minLits_                    = s.configuration().domMod >= uint32(gmod_max_value) && !m ? &domMin : 0;
-	for (SymbolMap::iterator it = domRange.first; it != domRange.second; ++it) {
-		const char* key = it->name.c_str();
-		if (!matchDom(key, name)) { continue; }
-		DomEntry e(last.sym);
-		if (name != e.sym->name.c_str()) {
-			SymbolMap::const_iterator heuAtom = std::lower_bound(symbols.begin(), symbols.end(), name.c_str(), CmpSymbol());
-			if (heuAtom == symbols.end() || name != heuAtom->name.c_str()) { continue; }
-			endInit(last, prio);
-			e.sym   = &(*heuAtom);
-			last.sym= e.sym;
-			last.val= last.prio = 0;
-			prio.clear();
-			if (!score_[e.sym->lit.var()].isDom()) {
-				score_[e.sym->lit.var()].setDom((uint32)dPrios_.size());
+	// prepare table for fast name-based lookup
+	std::sort(domTab.begin(), domTab.end(), DomEntry::Cmp());
+	// apply modifications to relevant atoms
+	Literal dyn;
+	uint32 nKey   = (uint32)prios_.size(), uKey = nKey;
+	uint32 nRules = (uint32)domTab.size();
+	if (&s == s.sharedContext()->master()) { domMin_ = &s.sharedContext()->symbolTable().domLits; }
+	for (SymbolTable::const_iterator sIt = s.symbolTable().begin(), end = s.symbolTable().end(); sIt != end && nRules; ++sIt) {
+		if (sIt->second.name.empty() || DomEntry::isDomEntry(sIt->second) || s.topValue(sIt->second.lit.var()) != value_free) { continue; }
+		const char* head = sIt->second.name.c_str();
+		Var         ev   = 0;
+		int16       init = 0;
+		for (DomTable::const_iterator rIt = std::lower_bound(domTab.begin(), domTab.end(), head, DomEntry::Lookup()); rIt != domTab.end() && DomEntry::isHeadOf(head, *rIt); ++rIt, --nRules) {
+			DomEntry e;
+			e.init(sIt->second.lit, *rIt);
+			if (e.mod == DomEntry::mod_init && !s.isTrue(e.cond))   { continue; }
+			ev = e.lit.var();
+			if (score_[ev].domKey >= nKey){
+				score_[ev].setDom(nKey++);
+				prios_.push_back(DomPrio());
+				prios_.back().clear();
+			}
+			int mods = 1;
+			if (e.mod == DomEntry::mod_tf) { e.mod = DomEntry::mod_level; ++mods; }
+			for (;;) {
+				if (e.prio >= prio(ev, e.mod)){
+					if      (s.isTrue(e.cond)) { prio(ev, e.mod) = e.prio; }
+					else if (e.cond != dyn)    { s.addWatch(dyn = e.cond, this, (uint32)actions_.size()); }
+					else                       { actions_.back().comp = 1; }
+					if (addAction(s, e, init) && score_[ev].domKey >= uKey) {
+						uKey = score_[ev].domKey + 1;
+					}
+				}
+				if (--mods == 0) { break; }
+				e.mod   = DomEntry::mod_sign;
+				e.value = (int16)e.pref;
 			}
 		}
-		if (!match(key, ",") || !e.parse(key) || !match(key, ")") || *key) { 
-			throw std::runtime_error(std::string("Unknown domain entry: '").append(it->name.c_str()).append(1, '\''));
-		}
-		if (e.mod == DomEntry::mod_init) {
-			if (e.prio >= last.prio && s.isTrue(it->lit)) { last = e; }
-			continue;
-		}
-		for (int numAct = 1;;) {
-			if (e.mod == DomEntry::mod_tf){ e.mod = DomEntry::mod_level; ++numAct; }
-			if (e.prio >= prio[e.mod]) {
-				if      (s.isTrue(it->lit)) { prio[e.mod] = e.prio; }
-				else if (it->lit != dyn)    { (solver_=&s)->addWatch(it->lit, this, (uint32)actions_.size()); dyn = it->lit; }
-				else                        { actions_.back().comp = 1; }
-				addAction(s, *it, e);
-			}
-			if (--numAct == 0) { break; }
-			e.mod = DomEntry::mod_sign;
-			e.val = value_true + e.sign;
+		if (ev && init) {
+			score_[ev].value += init;  
 		}
 	}
-	endInit(last, prio);
-	// apply global preferences
-	if (gPref) {
-		uint32 gModf = s.configuration().domMod;
-		uint32 graph = gpref_scc | gpref_hcc | gpref_disj;
-		if (gModf >= uint32(gmod_max_value)) {
-			gModf = gModf == 6 ? gmod_false : gmod_true;
+	DomTable().swap(domTab);
+	if (s.symbolTable().incremental()) { uKey = nKey; }
+	if (uKey != nKey) {
+		PrioVec(prios_.begin(), prios_.begin()+uKey).swap(prios_);
+	}
+	// apply default modification
+	if (defMod_) {
+		MinimizeConstraint* m = s.enumerationConstraint() ? static_cast<EnumerationConstraint*>(s.enumerationConstraint())->minimizer() : 0;
+		const uint32 prefSet  = defPref_, graphSet = gpref_scc | gpref_hcc | gpref_disj;
+		const uint32 userKey  = prios_.size(), graphKey = userKey + 1, minKey = userKey + 2, showKey = userKey + 3;
+		if ((prefSet & gpref_show) != 0) {
+			for (SymbolTable::const_iterator it = s.symbolTable().begin() + symSize_, end = s.symbolTable().end(); it != end; ++it) {
+				if (!it->second.name.empty() && *it->second.name.c_str() != '_') {
+					addDefAction(s, it->second.lit, gpref_show, showKey);
+				}
+			}
 		}
-		if ((gPref & gpref_min) != 0 && m) {
+		if ((prefSet & gpref_min) != 0 && m) {
 			weight_t w = -1; 
 			int16    x = gpref_show;
 			for (const WeightLiteral* it = m->shared()->lits; !isSentinel(it->first); ++it) {
@@ -798,75 +796,71 @@ void DomainHeuristic::initScores(Solver& s, bool moms) {
 					--x;
 					w = it->second;
 				}
-				addAction(s, it->first, gModf, x);
+				addDefAction(s, it->first, x, minKey);
 			}
 		}
-		if ((gPref & graph) != 0 && s.sharedContext()->sccGraph.get()) {
+		if ((prefSet & graphSet) != 0 && s.sharedContext()->sccGraph.get()) {
 			for (uint32 i = 0; i !=  s.sharedContext()->sccGraph->numAtoms(); ++i) {
 				const SharedDependencyGraph::AtomNode& a = s.sharedContext()->sccGraph->getAtom(i);
 				int16 lev = 0;
-				if      ((gPref & gpref_disj) != 0 && a.inDisjunctive()){ lev = 4; }
-				else if ((gPref & gpref_hcc) != 0 && a.inNonHcf())      { lev = 3; }
-				else if ((gPref & gpref_scc) != 0)                      { lev = 2; }
-				addAction(s, a.lit, gModf, lev);
+				if      ((prefSet & gpref_disj) != 0 && a.inDisjunctive()){ lev = 3; }
+				else if ((prefSet & gpref_hcc) != 0 && a.inNonHcf())      { lev = 2; }
+				else if ((prefSet & gpref_scc) != 0)                      { lev = 1; }
+				addDefAction(s, a.lit, lev, graphKey);
 			}
 		}
-		if ((gPref & gpref_atom) != 0) {
-			for (Var v = 1; v <= s.numVars(); ++v) {
-				if ((s.varInfo(v).type() & Var_t::atom_var) != 0) { addAction(s, posLit(v), gModf, 1); }
+		for (Var v = 1, end = s.numVars() + 1; v != end; ++v) {
+			if      (!prefSet && (s.varInfo(v).type() & Var_t::atom_var) != 0)    { addDefAction(s, posLit(v), 1, userKey); }
+			else if (score_[v].domKey != UINT32_MAX && score_[v].domKey > userKey){ score_[v].setDom(userKey); }
+		}
+	}
+	if (domMin_) {
+		LitVec::iterator j = domMin_->begin();
+		for (LitVec::const_iterator it = domMin_->begin(), end = domMin_->end(); it != end; ++it) {
+			if (s.value(it->var()) == value_free && score_[it->var()].level > 0 && !s.seen(*it)) {
+				s.markSeen(*it);
+				*j++ = *it;
 			}
 		}
-		if ((gPref & gpref_show) != 0) {
-			for (SymbolTable::const_iterator it = s.configuration().heuReinit ? s.symbolTable().begin() : s.symbolTable().curBegin(), end = s.symbolTable().end(); it != end; ++it) {
-				if (!it->second.name.empty() && *it->second.name.c_str() != '_' && s.value(it->second.lit.var()) == value_free) {
-					addAction(s, it->second.lit, gModf, gpref_show);
-				}
-			}
-		}
+		domMin_->erase(j, domMin_->end());
+		for (LitVec::const_iterator it = domMin_->begin(), end = domMin_->end(); it != end; ++it) { s.clearSeen(it->var()); }
+		domMin_ = 0;
 	}
-	LitVec::iterator j = domMin.begin();
-	for (LitVec::const_iterator it = domMin.begin(), end = domMin.end(); it != end; ++it) {
-		if (s.value(it->var()) == value_free && score_[it->var()].level > 0 && !s.seen(*it)) {
-			s.markSeen(*it);
-			*j++ = *it;
-		}
-	}
-	domMin.erase(j, domMin.end());
-	for (LitVec::const_iterator it = domMin.begin(), end = domMin.end(); it != end; ++it) { s.clearSeen(it->var()); }
-	if (c && !domMin.empty()) {
-		c->setMinimizer(new DomMinimize(domMin));
-	}
+	symSize_ = s.symbolTable().size();
 }
-void DomainHeuristic::addAction(Solver& s, const SymbolType& pre, const DomEntry& e) {
-	assert(e.mod < DomEntry::mod_init);
-	Var domVar = e.sym->lit.var();
-	if (s.isTrue(pre.lit)) {
-		if      (e.mod == DomEntry::mod_level) { score_[domVar].level = e.val; }
-		else if (e.mod == DomEntry::mod_factor){ score_[domVar].factor= e.val; }
+bool DomainHeuristic::addAction(Solver& s, const DomEntry& e, int16& init) {
+	assert(e.mod < DomEntry::mod_tf);
+	Var domVar = e.lit.var();
+	if (s.isTrue(e.cond)) {
+		if      (e.mod == DomEntry::mod_factor){ score_[domVar].factor= e.value; }
+		else if (e.mod == DomEntry::mod_level) { score_[domVar].level = e.value; }
+		else if (e.mod == DomEntry::mod_init)  { init = e.value; }
 		else if (e.mod == DomEntry::mod_sign)  { 
-			s.setPref(domVar, ValueSet::user_value, e.signValue());
-			if (minLits_) { minLits_->push_back(e.signValue() == falseValue(e.sym->lit) ? e.sym->lit : ~e.sym->lit); }
+			s.setPref(domVar, ValueSet::user_value, e.pref);
+			if (domMin_ && e.pref) { domMin_->push_back(e.pref == falseValue(e.lit) ? e.lit : ~e.lit); }
 		}
+		return false;
 	}
 	else {
-		if (score_[domVar].domKey == dPrios_.size()) { dPrios_.push_back(DomPrio()); }
-		DomAction a = { domVar, (uint32)e.mod, uint32(0), UINT32_MAX, e.val, e.prio };
+		DomAction a = { domVar, (uint32)e.mod, uint32(0), UINT32_MAX, e.value, e.prio };
+		if (e.mod == DomEntry::mod_sign) { a.val = (int16)e.pref; }
 		actions_.push_back(a);
+		return true;
 	}
 }
-void DomainHeuristic::addAction(Solver& s, Literal x, uint32 m, int16 lev) {
-	if (x.var() && lev && !score_[x.var()].isDom()) {
-		if ((m & gmod_level) != 0) {
-			score_[x.var()].level = lev;
-		}
-		score_[x.var()].setDom((uint32)dPrios_.size());
+void DomainHeuristic::addDefAction(Solver& s, Literal x, int16 lev, uint32 domKey) {
+	if (s.value(x.var()) != value_free || score_[x.var()].domKey < domKey) { return; }
+	const uint16 signMod = gmod_spos|gmod_sneg;
+	if (score_[x.var()].domKey > domKey && (defMod_ & gmod_level) != 0){
+		score_[x.var()].level += lev;
 	}
-	if (x.var() && (m & (gmod_spos|gmod_sneg)) != 0) {
+	if ((defMod_ & signMod) != 0) {
 		if (!s.pref(x.var()).has(ValueSet::user_value)) {
-			s.setPref(x.var(), ValueSet::user_value, (m & gmod_spos) != 0 ? trueValue(x) : falseValue(x));
+			s.setPref(x.var(), ValueSet::user_value, (defMod_ & gmod_spos) != 0 ? trueValue(x) : falseValue(x));
 		}
-		if (minLits_) { minLits_->push_back((m & gmod_spos) != 0 ? ~x : x); }
-	}	
+		if (domMin_) { domMin_->push_back((defMod_ & gmod_spos) != 0 ? ~x : x); }
+	}
+	score_[x.var()].setDom(domKey);
 }
 
 Literal DomainHeuristic::doSelect(Solver& s) {
@@ -879,7 +873,7 @@ Constraint::PropResult DomainHeuristic::propagate(Solver& s, Literal, uint32& aI
 	uint32 n = aId;
 	do {
 		DomAction& a = actions_[n];
-		uint16& prio = dPrios_[score_[a.var].domKey][a.mod];
+		uint16& prio = this->prio(a.var, a.mod);
 		if (s.value(a.var) == value_free && a.prio >= prio) {
 			applyAction(s, a, prio);
 			pushUndo(s, n);
@@ -918,35 +912,10 @@ void DomainHeuristic::undoLevel(Solver& s) {
 		for (uint32 n = frames_.back().head; n != UINT32_MAX;) {
 			DomAction& a = actions_[n];
 			n            = a.undo;
-			applyAction(s, a, dPrios_[score_[a.var].domKey][a.mod]);
+			applyAction(s, a, prio(a.var, a.mod));
 		}
 		frames_.pop_back();
 	}
 }
-
-void DomainHeuristic::DomMinimize::destroy(Solver* s, bool b) {
-	while (!nogoods_.empty()) {
-		nogoods_.back()->destroy(s, b);
-		nogoods_.pop_back();
-	}
-	MinimizeConstraint::destroy(s, b);
-}
-bool DomainHeuristic::DomMinimize::handleModel(Solver& s) {
-	clause_.push_back(~s.sharedContext()->stepLiteral());
-	for (const WeightLiteral* lits = shared_->lits; !isSentinel(lits->first); ++lits) {
-		if (s.isTrue(lits->first)) { clause_.push_back(~lits->first); }
-	}
-	return true;
-}
-bool DomainHeuristic::DomMinimize::integrate(Solver& s) {
-	if (clause_.empty()) { return true; }
-	// at least one of the true literal must be false
-	ClauseInfo e(Constraint_t::learnt_other);
-	ClauseCreator::Result ret = ClauseCreator::create(s, clause_, ClauseCreator::clause_no_add, e);
-	clause_.clear();
-	if (ret.local) { nogoods_.push_back(ret.local); }
-	return ret.ok();
-}
-
 template class ClaspVsids_t<DomScore>;
 }

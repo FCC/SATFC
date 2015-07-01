@@ -43,16 +43,17 @@ void SharedMinimizeData::resetBounds() {
 	gCount_  = 0;
 	optGen_  = 0;
 	lower_.assign(numRules(), 0);
-	opt_[0].assign(numRules(), maxBound());
-	opt_[1] = opt_[0];
+	up_[0].assign(numRules(), maxBound());
+	up_[1].assign(numRules(), maxBound());
 	const WeightLiteral* lit = lits;
 	for (weight_t wPos = 0, end = (weight_t)weights.size(), x; wPos != end; wPos = x+1) {
-		for (x = wPos; weights[x].next; ++x) { ; }
-		if (weights[x].weight < 0) {
-			while (lit->second != wPos) { ++lit; }
-			while (lit->second == wPos) {
-				lower_[weights[x].level] += weights[x].weight;
-				++lit;
+		assert(weights[wPos].weight >= 0);
+		for (x = wPos; weights[x].next; ) { // compound weight - check for negative
+			if (weights[++x].weight < 0) {
+				while (lit->second != wPos) { ++lit; }
+				for (const WeightLiteral* t = lit; t->second == wPos; ++t) {
+					lower_[weights[x].level] += weights[x].weight;
+				}
 			}
 		}
 	}
@@ -61,7 +62,7 @@ void SharedMinimizeData::resetBounds() {
 bool SharedMinimizeData::setMode(MinimizeMode m, const wsum_t* bound, uint32 boundSize)  {
 	mode_ = m;
 	if (boundSize && bound) {
-		SumVec& opt = opt_[0];
+		SumVec& opt = up_[0];
 		bool    ok  = false;
 		gCount_     = 0;
 		optGen_     = 0;
@@ -79,58 +80,37 @@ bool SharedMinimizeData::setMode(MinimizeMode m, const wsum_t* bound, uint32 bou
 	return true;
 }
 
-MinimizeConstraint* SharedMinimizeData::attach(Solver& s, uint32 strat, bool addRef) {
+MinimizeConstraint* SharedMinimizeData::attach(Solver& s, MinimizeMode_t::Strategy strat, uint32 param, bool addRef) {
 	if (addRef) this->share();
-	const SolverParams& c = s.configuration();
-	if (strat == UINT32_MAX) {
-		strat = c.optStrat;
-	}
-	if ((c.optHeu & SolverStrategies::opt_sign) != 0) {
-		for (const WeightLiteral* it = lits; !isSentinel(it->first); ++it) {
-			s.setPref(it->first.var(), ValueSet::pref_value, falseValue(it->first));
-		}
-	}
 	MinimizeConstraint* ret;
-	if (strat < SolverStrategies::opt_unsat || mode() == MinimizeMode_t::enumerate) {
-		ret = new DefaultMinimize(this, strat);
+	if (strat == MinimizeMode_t::opt_bb || mode() == MinimizeMode_t::enumerate) {
+		ret = new DefaultMinimize(this, param);
 	}
 	else {
-		ret = new UncoreMinimize(this, strat);
+		ret = new UncoreMinimize(this, param);
 	}
 	ret->attach(s);
 	return ret;
 }
 
 const SumVec* SharedMinimizeData::setOptimum(const wsum_t* newOpt) {
-	if (mode() == MinimizeMode_t::enumerate) {
-		opt_[1].assign(newOpt, newOpt+numRules());
-		return opt_ + 1;
+	if (optGen_) { return up_ + (optGen_&1u); }
+	uint32  g = gCount_;
+	uint32  n = 1u - (g & 1u);
+	SumVec& U = up_[n];
+	U.assign(newOpt, newOpt + numRules());
+	assert(mode() != MinimizeMode_t::enumerate || n == 1);
+	if (mode() != MinimizeMode_t::enumerate) {
+		if (++g == 0) { g = 2; }
+		gCount_  = g;
 	}
-	if (optGen_) { return opt_ + (optGen_&1u); }
-	uint32 g = gCount_;
-	uint32 n = 1u - (g & 1u);
-	opt_[n].assign(newOpt, newOpt+numRules());
-	if (++g == 0) { g = 2; }
-	gCount_  = g;
-	return opt_ + n;
+	return &U;
 }
 void SharedMinimizeData::setLower(uint32 lev, wsum_t low) {
 	lower_[lev] = low;
 }
 void SharedMinimizeData::markOptimal() {
 	optGen_ = generation();
-}
-bool SharedMinimizeData::heuristic(Solver& s, bool full) const {
-	const bool heuristic = full || (s.queueSize() == 0 && s.decisionLevel() == s.rootLevel());
-	if (heuristic && s.propagate()) {
-		for (const WeightLiteral* w = lits; !isSentinel(w->first); ++w) {
-			if (s.value(w->first.var()) == value_free) {
-				s.assume(~w->first);
-				if (!full || !s.propagate()) { break; }
-			}
-		}
-	}
-	return !s.hasConflict();
 }
 void SharedMinimizeData::sub(wsum_t* lhs, const LevelWeight* w, uint32& aLev) const {
 	if (w->level < aLev) { aLev = w->level; }
@@ -165,9 +145,6 @@ void MinimizeConstraint::destroy(Solver* s, bool d) {
 	shared_ = 0;
 	Constraint::destroy(s, d);
 }
-Constraint* MinimizeConstraint::cloneAttach(Solver& s) {
-	return shared_->attach(s);
-}
 /////////////////////////////////////////////////////////////////////////////////////////
 // DefaultMinimize
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -189,9 +166,9 @@ DefaultMinimize::DefaultMinimize(SharedData* d, uint32 strat)
 	, undo_(0)
 	, undoTop_(0)
 	, size_(d->numRules()) {
-	step_.type = strat;
-	if (step_.type == SolverStrategies::opt_hier && d->numRules() == 1) {
-		step_.type = SolverStrategies::opt_def;
+	step_.type = strat & 3u;
+	if (step_.type == MinimizeMode_t::bb_step_hier && d->numRules() == 1) {
+		step_.type = 0;
 	}
 }
 
@@ -346,7 +323,7 @@ bool DefaultMinimize::propagateImpl(Solver& s, PropMode m) {
 		assert(active());
 		// force implied literals
 		if (!s.isFalse(it->first) || (impLevel < DL && s.level(it->first.var()) > impLevel)) {
-			if (impLevel != DL) { DL = s.undoUntil(impLevel, true); }
+			if (impLevel != DL) { DL = s.undoUntil(impLevel, Solver::undo_pop_bt_level); }
 			ok = s.force(~it->first, impLevel, this, undoPos);
 		}
 	}
@@ -409,7 +386,7 @@ bool DefaultMinimize::minimize(Solver& s, Literal p, CCMinRecursive* rec) {
 // Stores the current sum as the shared optimum.
 void DefaultMinimize::commitUpperBound(const Solver&)  {
 	shared_->setOptimum(sum());
-	if (step_.type == SolverStrategies::opt_inc) { step_.size *= 2; }
+	if (step_.type == MinimizeMode_t::bb_step_inc) { step_.size *= 2; }
 }
 bool DefaultMinimize::commitLowerBound(const Solver&, bool upShared) {
 	bool act   = active() && shared_->checkNext();
@@ -418,8 +395,8 @@ bool DefaultMinimize::commitLowerBound(const Solver&, bool upShared) {
 		uint32 x = step_.lev;
 		wsum_t L = opt()[x] + 1;
 		stepLow()= L;
-		while (upShared && shared_->lower(x) < L)   { shared_->setLower(x, L); }
-		if (step_.type == SolverStrategies::opt_inc){ step_.size = 1; }
+		while (upShared && shared_->lower(x) < L) { shared_->setLower(x, L); }
+		if (step_.type == MinimizeMode_t::bb_step_inc){ step_.size = 1; }
 	}
 	return more;
 }
@@ -444,7 +421,7 @@ bool DefaultMinimize::relaxBound(bool full) {
 }
 
 void DefaultMinimize::stepInit(uint32 n) {
-	step_.size = uint32(step_.type != SolverStrategies::opt_dec);
+	step_.size = uint32(step_.type != MinimizeMode_t::bb_step_dec);
 	if (step_.type) { step_.lev = n; if (n != size_) stepLow() = 0-shared_->maxBound(); }
 	else            { step_.lev = shared_->maxLevel(); }
 }
@@ -464,8 +441,8 @@ bool DefaultMinimize::integrateBound(Solver& s) {
 		uint32 dl= s.decisionLevel() + 1;
 		if (!STRATEGY(imp(sum(), min, opt(), actLev_)) || (dl = computeImplicationSet(s, min, x)) > s.rootLevel()) {
 			for (--dl; !s.hasConflict() || s.resolveConflict(); ) {
-				if      (s.undoUntil(dl, true) > dl)         { s.backtrack(); }
-				else if (propagateImpl(s, propagate_new_opt)){ return true;   }
+				if      (s.undoUntil(dl, Solver::undo_pop_bt_level) > dl){ s.backtrack(); }
+				else if (propagateImpl(s, propagate_new_opt))            { return true;   }
 			}
 		}
 		if (!shared_->checkNext()) {
@@ -524,10 +501,10 @@ bool DefaultMinimize::updateBounds(bool applyStep) {
 				assert(U > L && B > L);
 				wsum_t diff = U - L;
 				uint32 half = static_cast<uint32>( (diff>>1) | (diff&1) );
-				if (step_.type == SolverStrategies::opt_inc) {
+				if (step_.type == MinimizeMode_t::bb_step_inc) {
 					step_.size = std::min(step_.size, half);
 				}
-				else if (step_.type == SolverStrategies::opt_dec) {
+				else if (step_.type == MinimizeMode_t::bb_step_dec) {
 					if (!step_.size) { step_.size = static_cast<uint32>(diff); }
 					else             { step_.size = half; }
 				}
@@ -812,8 +789,7 @@ UncoreMinimize::UncoreMinimize(SharedMinimizeData* d, uint32 strat)
 	, auxAdd_(0)
 	, freeOpen_(0)
 	, options_(0) {
-	strat   &= ~uint32(SolverStrategies::opt_unsat);
-	options_ = strat & uint32(strategy_preprocess|strategy_imp_only|strategy_clauses);
+	options_ = strat & 7u;
 }
 void UncoreMinimize::init() {
 	releaseLits();
@@ -847,10 +823,7 @@ bool UncoreMinimize::attach(Solver& s) {
 // any introduced aux vars.
 void UncoreMinimize::detach(Solver* s, bool b) {
 	releaseLits();
-	for (ConTable::iterator it = closed_.begin(), end = closed_.end(); it != end; ++it) {
-		(*it)->destroy(s, b);
-	}
-	closed_.clear();
+	destroyDB(closed_, s, b);
 	if (s && s->numAuxVars() == (auxInit_ + auxAdd_)) {
 		s->popAuxVar(auxAdd_);
 		auxAdd_ = 0;
@@ -899,31 +872,37 @@ bool UncoreMinimize::integrate(Solver& s) {
 
 // Initializes the next optimization level to look at.
 bool UncoreMinimize::initLevel(Solver& s) {
-	assert(shared_->optimize() || !next_);
 	initRoot(s);
 	sat_   = 0;
 	pre_   = 0;
 	path_  = 1;
 	init_  = 0;
 	sum_[0]= -1;
+	if (!fixLevel(s)) {
+		return false;
+	}
 	for (LitVec::const_iterator it = fix_.begin(), end = fix_.end(); it != end; ++it) {
 		if (!s.force(*it, eRoot_, this)) { return false; }
 	}
-	if (!shared_->optimize() || !assume_.empty()) {
-		return !s.hasConflict(); 
+	if (!shared_->optimize()) {
+		next_  = 0;
+		level_ = shared_->maxLevel();
+		lower_ = shared_->lower(level_);
+		upper_ = shared_->upper(level_);
+		return true;
 	}
-	releaseLits();
 	bool hasWeights = false;
 	for (uint32 level = (level_ + next_), n = 1; level <= shared_->maxLevel() && assume_.empty(); ++level) {
 		level_ = level;
-		lower_ = std::min(shared_->lower(level), wsum_t(0));
+		lower_ = 0;
 		upper_ = shared_->upper(level_);
 		for (const WeightLiteral* it = shared_->lits; !isSentinel(it->first); ++it) {
 			if (weight_t w = shared_->weight(*it, level_)){
 				Literal x = it->first;
 				if (w < 0) {
-					w = -w;
-					x = ~x;
+					lower_ += w;
+					w       = -w;
+					x       = ~x;
 				}
 				if (s.value(x.var()) == value_free || s.level(x.var()) > eRoot_) {
 					addLit(x, w);
@@ -949,7 +928,7 @@ bool UncoreMinimize::initLevel(Solver& s) {
 			}
 		}
 	}
-	pre_  = (options_ & strategy_preprocess) != 0u;
+	pre_  = (options_ & MinimizeMode_t::usc_preprocess) != 0u;
 	valid_= (pre_ == 0 && !hasWeights);
 	if (next_ && !s.hasConflict()) {
 		s.force(~tag_, Antecedent(0));
@@ -1034,9 +1013,12 @@ bool UncoreMinimize::relax(Solver& s, bool reset) {
 		LitVec ignore;
 		handleUnsat(s, false, ignore);
 	}
-	if ((reset && shared_->optimize()) || !assume_.empty() || level_ != shared_->maxLevel() || s.sharedContext()->concurrency() > 1) {
+	if ((reset && shared_->optimize()) || !assume_.empty() || level_ != shared_->maxLevel() || next_) {
 		detach(&s, true);
 		init();
+	}
+	else {
+		releaseLits();
 	}
 	if (!shared_->optimize()) {
 		gen_  = shared_->generation();
@@ -1115,7 +1097,7 @@ bool UncoreMinimize::handleUnsat(Solver& s, bool up, LitVec& out) {
 		if (sat_ == 0) {
 			if (s.hasStopConflict()) { return false; }
 			conflict_ = s.conflict();
-			if (s.strategy.search == SolverStrategies::no_learning) {
+			if (s.searchMode() == SolverStrategies::no_learning) {
 				conflict_.clear();
 				for (uint32 i = 1, end = s.decisionLevel(); i <= end; ++i) { conflict_.push_back(s.decision(i)); }
 			}
@@ -1258,7 +1240,7 @@ bool UncoreMinimize::addCore(Solver& s, const LitPair* lits, uint32 cs, weight_t
 		}
 	}
 	// add new core
-	if ((options_ & strategy_clauses) == 0u) {
+	if ((options_ & MinimizeMode_t::usc_clauses) == 0u) {
 		temp_.start(2);
 		for (uint32 i = 0; i != cs; ++i) { temp_.add(s, lits[i].lit); }
 		if (!temp_.unsat()) { 
@@ -1297,7 +1279,7 @@ bool UncoreMinimize::add(CompType c, Solver& s, Literal head, Literal body1, Lit
 	const uint32 flags = ClauseCreator::clause_explicit | ClauseCreator::clause_not_root_sat | ClauseCreator::clause_no_add;
 	const bool    sign = c == comp_conj;
 	uint32       first = 0, last = 3;
-	if ((options_ & strategy_imp_only) != 0u) {
+	if ((options_ & MinimizeMode_t::usc_imp_only) != 0u) {
 		first = c == comp_disj;
 		last  = first + (1 + (c == comp_disj));
 	}
@@ -1334,7 +1316,7 @@ bool UncoreMinimize::addCore(Solver& s, const WCTemp& wc, weight_t weight) {
 	LitData& x = addLit(negLit(newAux), weight);
 	WeightLitsRep rep = {&const_cast<WCTemp&>(wc).lits[0], (uint32)wc.lits.size(), B, (weight_t)wc.lits.size()};
 	uint32       fset = WeightConstraint::create_explicit | WeightConstraint::create_no_add | WeightConstraint::create_no_freeze | WeightConstraint::create_no_share;
-	if ((options_ & strategy_imp_only) != 0u) { fset |= WeightConstraint::create_only_bfb; }
+	if ((options_ & MinimizeMode_t::usc_imp_only) != 0u) { fset |= WeightConstraint::create_only_bfb; }
 	ResPair       res = WeightConstraint::create(s, negLit(newAux), rep, fset);
 	if (res.ok() && res.first()) {
 		x.coreId = allocCore(res.first(), B, weight, rep.bound != rep.reach);

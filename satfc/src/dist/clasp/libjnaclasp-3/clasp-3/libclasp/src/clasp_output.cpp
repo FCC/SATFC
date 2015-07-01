@@ -32,7 +32,7 @@
 #include <float.h>
 #define isnan _isnan
 #else
-#include <cmath>
+#include <math.h>
 #endif
 #if !defined(_WIN32)
 #include <signal.h>
@@ -113,9 +113,10 @@ void Output::setCallQuiet(PrintLevel call)  { quiet_[2] = static_cast<uint8>(cal
 void Output::setHide(char c)                { hidePref_ = c; }
 
 void Output::saveModel(const Model& m) {
-	vals_         = *m.values;
-	saved_        = m;
-	saved_.values = &vals_;
+	Model temp(m);
+	temp.values = &(vals_ = *m.values);
+	temp.costs  = m.costs ? &(costs_=*m.costs) : 0;
+	saved_      = temp;
 }
 
 void Output::onEvent(const Event& ev) {
@@ -440,6 +441,9 @@ void JsonOutput::printKeyValue(const char* k, uint64 v) {
 }
 void JsonOutput::printKeyValue(const char* k, uint32 v) { return printKeyValue(k, uint64(v)); }
 void JsonOutput::printKeyValue(const char* k, double v) {
+#if defined(__cplusplus) && __cplusplus >= 201103L
+	using std::isnan;
+#endif
 	if (!isnan(v)) { printf("%s%-*s\"%s\": %.3f", open_, indent(), " ", k, v); } 
 	else           { printf("%s%-*s\"%s\": %s", open_, indent(), " ", k, "null"); }
 	open_ = ",\n";
@@ -502,12 +506,12 @@ void JsonOutput::printModel(const SymbolTable& index, const Model& m, PrintLevel
 	}
 	if (hasModel) { popObject(); }
 }
-void JsonOutput::printCosts(const SharedMinimizeData& opt) { 
+void JsonOutput::printCosts(const SumVec& opt) { 
 	pushObject("Costs", type_array);
 	printf("%-*s", indent(), " ");
 	const char* sep = "";
-	for (uint32 i = 0, end = opt.numRules(); i != end; ++i) {
-		printf("%s%" PRId64, sep, opt.optimum(i));
+	for (SumVec::const_iterator it = opt.begin(), end = opt.end(); it != end; ++it) {
+		printf("%s%" PRId64, sep, *it);
 		sep = ", ";
 	}
 	popObject();
@@ -813,11 +817,11 @@ void TextOutput::printNames(const Clasp::SymbolTable& sym, const Clasp::Model& m
 	}
 }
 
-void TextOutput::printCosts(const SharedMinimizeData& costs) const {
-	printf("%" PRId64, costs.optimum(0));
-	for (uint32 i = 1, end = costs.numRules(); i != end; ++i) {
+void TextOutput::printCosts(const SumVec& costs) const {
+	printf("%" PRId64, costs[0]);
+	for (uint32 i = 1, end = (uint32)costs.size(); i != end; ++i) {
 		printSep(cat_objective);
-		printf("%" PRId64, costs.optimum(i));
+		printf("%" PRId64, costs[i]);
 	}
 }
 void TextOutput::startSection(const char* n) const {

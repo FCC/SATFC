@@ -22,7 +22,9 @@
 package ca.ubc.cs.beta.stationpacking.cache;
 
 import java.util.Collection;
+import java.util.Set;
 
+import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheSATEntry;
 import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheUNSATEntry;
 import ca.ubc.cs.beta.stationpacking.cache.containment.containmentcache.ISatisfiabilityCache;
@@ -31,5 +33,5 @@ import ca.ubc.cs.beta.stationpacking.cache.containment.containmentcache.ISatisfi
 * Created by newmanne on 22/04/15.
 */
 public interface ISatisfiabilityCacheFactory {
-    ISatisfiabilityCache create(Collection<ContainmentCacheSATEntry> SATEntries, Collection<ContainmentCacheUNSATEntry> UNSATEntries);
+    ISatisfiabilityCache create(Collection<ContainmentCacheSATEntry> SATEntries, Collection<ContainmentCacheUNSATEntry> UNSATEntries, Set<Station> universe);
 }

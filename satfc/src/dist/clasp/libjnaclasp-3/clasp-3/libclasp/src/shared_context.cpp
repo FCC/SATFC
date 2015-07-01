@@ -527,14 +527,17 @@ void SharedContext::reset() {
 	new (this) SharedContext();	
 }
 
-void SharedContext::setConcurrency(uint32 n) {
-	if (n <= 1) { share_.count = 1; share_.shareM = ContextParams::share_auto; }
+void SharedContext::setConcurrency(uint32 n, ResizeMode mode) {
+	if (n <= 1) { share_.count = 1; }
 	else        { share_.count = n; solvers_.reserve(n); }
-	while (solvers_.size() > share_.count) {
+	while (solvers_.size() < share_.count && (mode & mode_add) != 0u) {
+		addSolver();
+	}
+	while (solvers_.size() > share_.count && (mode & mode_remove) != 0u) {
 		delete solvers_.back(); 
 		solvers_.pop_back();
 	}
-	if (share_.shareM == ContextParams::share_auto) {
+	if ((share_.shareM & ContextParams::share_auto) != 0) {
 		setShareMode(ContextParams::share_auto);
 	}
 }
@@ -563,8 +566,8 @@ void SharedContext::setConfiguration(Configuration* c, bool own) {
 		if (!own) config_.release();
 		config_->prepare(*this);
 		const ContextParams& opts = config_->context();
-		share_.shareM = opts.shareMode;
-		share_.shortM = opts.shortMode;
+		setShareMode(static_cast<ContextParams::ShareMode>(opts.shareMode));
+		setShortMode(static_cast<ContextParams::ShortMode>(opts.shortMode));
 		share_.seed   = opts.seed;
 		share_.satPreM= opts.satPre.mode;
 		if (satPrepro.get() == 0 && opts.satPre.type != SatPreParams::sat_pre_no) {
@@ -573,7 +576,7 @@ void SharedContext::setConfiguration(Configuration* c, bool own) {
 		enableStats(opts.stats);
 		// force update on next call to Solver::startInit()
 		for (uint32 i = 0; i != solvers_.size(); ++i) {
-			solvers_[i]->strategy.loadCfg = 1;
+			solvers_[i]->resetConfig();
 		}
 	}
 	else if (own != config_.is_owner()) {
@@ -597,24 +600,13 @@ bool SharedContext::unfreeze() {
 bool SharedContext::unfreezeStep() {
 	for (SolverVec::size_type i = solvers_.size(); i-- ; ) {
 		Solver& s = *solvers_[i];
-		s.popRootLevel(s.rootLevel());
-		s.popAuxVar();
-		uint32 tp = std::min(lastTopLevel_, (uint32)s.lastSimp_);
-		if (s.value(step_.var()) == value_free){ s.force(~step_, posLit(0));}
-		s.post_.disable();
-		if (s.simplify()) {
-			while (tp < (uint32)s.assign_.trail.size()) {
-				Var v = s.assign_.trail[tp].var();
-				if (v != step_.var()) { master()->force(s.assign_.trail[tp++]); }
-				else                  { std::swap(s.assign_.trail[tp], s.assign_.trail.back()); s.assign_.undoLast(); }
-			}
-			s.assign_.qReset();
-			s.assign_.setUnits(s.lastSimp_ = (uint32)s.assign_.trail.size()); 
-		}
-		s.post_.enable();
-		if (s.configuration().heuReinit) {
-			s.heuristic_.reset(0);
-		}
+		if (!s.validVar(step_.var())) { continue; }
+		s.endStep(lastTopLevel_);
+		const SolverParams& params = configuration()->solver(s.id());
+		if (params.forgetLearnts())   { s.reduceLearnts(1.0f); }
+		if (params.forgetHeuristic()) { s.setHeuristic(0); }
+		if (params.forgetSigns())     { s.resetPrefs(); }
+		if (params.forgetActivities()){ s.resetLearntActivities(); }
 	}
 	return !master()->hasConflict();
 }
@@ -661,7 +653,7 @@ Solver& SharedContext::startAddConstraints(uint32 constraintGuess) {
 	if (!unfreeze())              { return *master(); }
 	if (master()->isFalse(step_)) { step_= addAuxLit(); }
 	btig_.resize((numVars()+1)<<1);
-	master()->startInit(constraintGuess);
+	master()->startInit(constraintGuess, configuration()->solver(0));
 	return *master();
 }
 bool SharedContext::addUnary(Literal x) {
@@ -726,7 +718,7 @@ bool SharedContext::attach(Solver& other) {
 	initStats(other);
 	// 1. clone vars & assignment
 	Var lastVar = other.numVars();
-	other.startInit(static_cast<uint32>(master()->constraints_.size()));
+	other.startInit(static_cast<uint32>(master()->constraints_.size()), configuration()->solver(other.id()));
 	other.assign_.requestData(master()->assign_.numData());
 	Antecedent null;
 	for (LitVec::size_type i = 0, end = master()->trail().size(); i != end; ++i) {
