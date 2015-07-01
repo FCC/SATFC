@@ -10,7 +10,7 @@ Questions, bug reports and feature suggestions should be directed to Alexandre F
 ## Installation
 Clone the repository.
 
-A stand-alone, ready-to-go release can be found in `satfc/releases/`.
+Stand-alone, ready-to-go releases of SATFC and SATFCServer can be found on the [SATFC GitHub](https://github.com/FCC/SATFC/releases) page.
 
 ## Usage
 Please consult the manual `SATFC-manual.pdf` located in `satfc/manual/` or packaged with any stand-alone release.
