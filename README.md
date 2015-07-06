@@ -5,25 +5,15 @@
 **SATFC** (_SAT-based Feasibility Checker_) solves radio-spectrum repacking feasibility problems arising in the reverse auction of the FCC's upcoming broadcast incentive auction. It combines a formulation of feasibility checking based on propositional satisfiability with a heuristic pre-solver and a SAT solver tuned for the types of instances observed in auction simulations.
 authors & collaborators SATFC is the product of the ideas and hard work of Auctionomics, notably Alexandre Fréchette, Neil Newman, Paul Cernek, Emily Chenn, Guillaume Saulnier-Comte, Nick Arnosti, and Kevin Leyton-Brown.
 
-Questions, bug reports and feature suggestions should be directed to Alexandre Fréchette - afrechet at cs dot ubc dot ca
+Questions, bug reports and feature suggestions should be directed to Neil Newman - newmanne at cs dot ubc dot ca
 
 ## Installation
-Clone the repository.
 
 Stand-alone, ready-to-go releases of SATFC and SATFCServer can be found on the [SATFC GitHub](https://github.com/FCC/SATFC/releases) page.
 
 ## Usage
-Please consult the manual `SATFC-manual.pdf` located in `satfc/manual/` or packaged with any stand-alone release.
 
-Command line usage, starting from a stand-alone SATFC directory:
-```
-./bin/SATFC -DATA-FOLDERNAME <interference constraints folder> -DOMAINS <station domains map>
-```
-
-To build SATFC from source, starting from the root SATFC project directory:
-```
-./gradlew installDist
-```
+Please consult the manual [SATFC-manual](satfc/src/dist/SATFC-manual.pdf). The manual is also packaged with any stand-alone SATFC release.
 
 ## Release Notes
 
@@ -52,4 +42,3 @@ Rough information about the evolution of **SATFC** through releases.
 ### SATFC 1.3 [30/10/2014]
 
 * First official release of **SATFC** by the FCC.
-
