@@ -30,6 +30,7 @@ import java.util.Set;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult.SolvedBy;
 
 public class SolverHelper {
 
@@ -103,7 +104,7 @@ public class SolverHelper {
 			}
 		}
 		
-		return new SolverResult(SATresult,runtime,assignment);
+		return new SolverResult(SATresult,runtime,assignment, SolvedBy.UNKNOWN);
 		
 	}
 	
@@ -178,7 +179,7 @@ public class SolverHelper {
 		}
 		
 				
-		return new SolverResult(aSATResult,runtime,aAssignment);
+		return new SolverResult(aSATResult,runtime,aAssignment, SolvedBy.UNKNOWN);
 	}
 	
 }

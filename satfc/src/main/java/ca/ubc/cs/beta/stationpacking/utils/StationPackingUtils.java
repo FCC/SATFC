@@ -22,7 +22,12 @@
 package ca.ubc.cs.beta.stationpacking.utils;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
+import ca.ubc.cs.beta.stationpacking.base.Station;
 
 public class StationPackingUtils {
 
@@ -36,4 +41,13 @@ public class StationPackingUtils {
 	public static final HashSet<Integer> HVHF_CHANNELS = new HashSet<Integer>(Arrays.asList(7,8,9,10,11,12,13));
 	public static final HashSet<Integer> UHF_CHANNELS = new HashSet<Integer>(Arrays.asList(14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,38,39,40,41,42,43,44,45,46,47,48,49,50,51));
 
+    public static Map<Station, Integer> stationToChannelFromChannelToStation(Map<Integer, Set<Station>> channelToStation) {
+        final Map<Station, Integer> stationToChannel = new HashMap<>();
+        channelToStation.entrySet().forEach(entry -> {
+            entry.getValue().forEach(station -> {
+                stationToChannel.put(station, entry.getKey());
+            });
+        });
+        return stationToChannel;
+    }
 }

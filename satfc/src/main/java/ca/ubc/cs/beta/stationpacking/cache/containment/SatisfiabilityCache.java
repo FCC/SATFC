@@ -23,10 +23,12 @@ package ca.ubc.cs.beta.stationpacking.cache.containment;
 
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import lombok.extern.slf4j.Slf4j;
@@ -35,8 +37,13 @@ import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.cache.containment.containmentcache.ISatisfiabilityCache;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
-import ca.ubc.cs.beta.stationpacking.utils.CacheUtils;
+
+import com.google.common.collect.BiMap;
+import com.google.common.collect.ImmutableBiMap;
+import com.google.common.collect.ImmutableMap;
+
 import containmentcache.ILockableContainmentCache;
+import containmentcache.SimpleCacheSet;
 
 /**
  * Created by newmanne on 19/04/15.
@@ -46,20 +53,23 @@ public class SatisfiabilityCache implements ISatisfiabilityCache {
 
     final ILockableContainmentCache<Station, ContainmentCacheSATEntry> SATCache;
     final ILockableContainmentCache<Station, ContainmentCacheUNSATEntry> UNSATCache;
+    final ImmutableBiMap<Station, Integer> permutation;
 
-    public SatisfiabilityCache(ILockableContainmentCache<Station, ContainmentCacheSATEntry> aSATCache,ILockableContainmentCache<Station, ContainmentCacheUNSATEntry> aUNSATCache) {
-        SATCache = aSATCache;
-        UNSATCache = aUNSATCache;
+    public SatisfiabilityCache(
+            BiMap<Station, Integer> permutation,
+            ILockableContainmentCache<Station, ContainmentCacheSATEntry> SATCache,
+            ILockableContainmentCache<Station, ContainmentCacheUNSATEntry> UNSATCache) {
+        this.permutation = ImmutableBiMap.copyOf(permutation);
+        this.SATCache = SATCache;
+        this.UNSATCache = UNSATCache;
     }
 
     @Override
     public ContainmentCacheSATResult proveSATBySuperset(final StationPackingInstance aInstance) {
-        // convert instance to bit set representation
-        final BitSet bitSet = CacheUtils.toBitSet(aInstance);
         // try to narrow down the entries we have to search by only looking at supersets
         try {
             SATCache.getReadLock().lock();
-            final Iterable<ContainmentCacheSATEntry> iterable = SATCache.getSupersets(new ContainmentCacheSATEntry(bitSet));
+            final Iterable<ContainmentCacheSATEntry> iterable = SATCache.getSupersets(new SimpleCacheSet<Station>(aInstance.getStations(), permutation));
             return StreamSupport.stream(iterable.spliterator(), false)
                     /**
                      * The entry must contain at least every station in the query in order to provide a solution (hence superset)
@@ -76,12 +86,10 @@ public class SatisfiabilityCache implements ISatisfiabilityCache {
 
     @Override
     public ContainmentCacheUNSATResult proveUNSATBySubset(final StationPackingInstance aInstance) {
-        // convert instance to bit set representation
-        final BitSet bitSet = CacheUtils.toBitSet(aInstance);
         // try to narrow down the entries we have to search by only looking at subsets
         try {
             UNSATCache.getReadLock().lock();
-            final Iterable<ContainmentCacheUNSATEntry> iterable = UNSATCache.getSubsets(new ContainmentCacheUNSATEntry(bitSet));
+            final Iterable<ContainmentCacheUNSATEntry> iterable = UNSATCache.getSubsets(new SimpleCacheSet<Station>(aInstance.getStations(), permutation));
             return StreamSupport.stream(iterable.spliterator(), false)
                 /*
                  * The entry's stations should be a subset of the query's stations (so as to be less constrained)
@@ -99,18 +107,29 @@ public class SatisfiabilityCache implements ISatisfiabilityCache {
     @Override
     public void add(StationPackingInstance aInstance, SolverResult result, String key) {
         if (result.getResult().equals(SATResult.SAT)) {
-            SATCache.add(new ContainmentCacheSATEntry(result.getAssignment(), key));
+            add(new ContainmentCacheSATEntry(result.getAssignment(), key, permutation));
         } else if (result.getResult().equals(SATResult.UNSAT)) {
-            UNSATCache.add(new ContainmentCacheUNSATEntry(aInstance.getDomains(), key));
+            add(new ContainmentCacheUNSATEntry(aInstance.getDomains(), key, permutation));
         } else {
             throw new IllegalStateException("Tried adding a result that was neither SAT or UNSAT");
         }
+    }
+
+    @Override
+    public void add(ContainmentCacheSATEntry SATEntry) {
+        SATCache.add(SATEntry);
+    }
+
+    @Override
+    public void add(ContainmentCacheUNSATEntry UNSATEntry) {
+        UNSATCache.add(UNSATEntry);
     }
 
     /**
      * Domain a has less stations than domain b because of previous method call getSubsets();
      * If each station domain in domain a has same or more channels than the matching station in domain b,
      * then a is superset of b
+     *
      * @param a superset domain
      * @param b subset domain
      * @return true if a's domain is a superset of b's domain
@@ -124,42 +143,45 @@ public class SatisfiabilityCache implements ISatisfiabilityCache {
 
     /**
      * removes redundant SAT entries from this SATCache
+     *
      * @return list of cache entries to be removed
      */
     @Override
-    public List<ContainmentCacheSATEntry> filterSAT(){
-        List<ContainmentCacheSATEntry> prunableEntries = new ArrayList<>();
+    public List<ContainmentCacheSATEntry> filterSAT() {
+        List<ContainmentCacheSATEntry> prunableEntries = Collections.synchronizedList(new ArrayList<>());
         Iterable<ContainmentCacheSATEntry> satEntries = SATCache.getSets();
 
         SATCache.getReadLock().lock();
-        try{
-            satEntries.forEach(cacheEntry -> {
-                Iterable<ContainmentCacheSATEntry> supersets = SATCache.getSupersets(cacheEntry);
-                Optional<ContainmentCacheSATEntry> foundSuperset =
-                        StreamSupport.stream(supersets.spliterator(), false)
-                                .filter(entry -> entry.hasMoreSolvingPower(cacheEntry))
-                                .findAny();
-                if (foundSuperset.isPresent()) {
-                    prunableEntries.add(cacheEntry);
-                    if (prunableEntries.size() % 2000 == 0) {
-                        log.info("Found " + prunableEntries.size() + " prunables");
-                    }
-                }
-            });
+        try {
+            StreamSupport.stream(satEntries.spliterator(), true)
+                    .forEach(cacheEntry -> {
+                        Iterable<ContainmentCacheSATEntry> supersets = SATCache.getSupersets(cacheEntry);
+                        Optional<ContainmentCacheSATEntry> foundSuperset =
+                                StreamSupport.stream(supersets.spliterator(), false)
+                                        .filter(entry -> entry.hasMoreSolvingPower(cacheEntry))
+                                        .findAny();
+                        if (foundSuperset.isPresent()) {
+                            prunableEntries.add(cacheEntry);
+                            if (prunableEntries.size() % 2000 == 0) {
+                                log.info("Found " + prunableEntries.size() + " prunables");
+                            }
+                        }
+                    });
         } finally {
             SATCache.getReadLock().unlock();
         }
 
-        prunableEntries.forEach(entry -> SATCache.remove(entry));
+        prunableEntries.forEach(SATCache::remove);
         return prunableEntries;
     }
 
     /**
      * removes redundant UNSAT entries from this UNSATCache
+     *
      * @return list of cache entries to be removed
      */
     @Override
-    public List<ContainmentCacheUNSATEntry> filterUNSAT(){
+    public List<ContainmentCacheUNSATEntry> filterUNSAT() {
         List<ContainmentCacheUNSATEntry> prunableEntries = new ArrayList<>();
         Iterable<ContainmentCacheUNSATEntry> unsatEntries = UNSATCache.getSets();
 
@@ -181,8 +203,41 @@ public class SatisfiabilityCache implements ISatisfiabilityCache {
             UNSATCache.getReadLock().unlock();
         }
 
-        prunableEntries.forEach(entry -> UNSATCache.remove(entry));
+        prunableEntries.forEach(UNSATCache::remove);
         return prunableEntries;
+    }
+
+    @Override
+    public List<ContainmentCacheSATEntry> findMaxIntersections(StationPackingInstance instance, int k) {
+        BitSet bitSet = new SimpleCacheSet<>(instance.getStations(), permutation).getBitSet();
+        ImmutableMap<Station, Set<Integer>> domains = instance.getDomains();
+        SATCache.getReadLock().lock();
+        try {
+            return StreamSupport.stream(SATCache.getSets().spliterator(), false)
+                    .sorted((a, b) -> {
+                        final BitSet aCopy = (BitSet) a.getBitSet().clone();
+                        final BitSet bCopy = (BitSet) b.getBitSet().clone();
+                        aCopy.and(bitSet);
+                        bCopy.and(bitSet);
+                        aCopy.stream().forEach(i -> {
+                            Station station = permutation.inverse().get(i);
+                            if (!domains.get(station).contains(a.getAssignment().get(station.getID()))) {
+                                aCopy.clear(i);
+                            }
+                        });
+                        bCopy.stream().forEach(i -> {
+                            Station station = permutation.inverse().get(i);
+                            if (!domains.get(station).contains(b.getAssignment().get(station.getID()))) {
+                                bCopy.clear(i);
+                            }
+                        });
+                        return Integer.compare(aCopy.cardinality(), bCopy.cardinality());
+                    })
+                    .limit(k)
+                    .collect(Collectors.toList());
+        } finally {
+            SATCache.getReadLock().unlock();
+        }
     }
 
 }

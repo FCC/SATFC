@@ -62,7 +62,7 @@ public class ManagerBundle {
 	}
 
     public CacheCoordinate getCacheCoordinate() {
-        return new CacheCoordinate(fStationManager.getHashCode(), fConstraintManager.getHashCode());
+        return new CacheCoordinate(fStationManager.getDomainHash(), fConstraintManager.getConstraintHash());
     }
 	
 }

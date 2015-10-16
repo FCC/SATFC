@@ -21,15 +21,26 @@
  */
 package ca.ubc.cs.beta.stationpacking.facade;
 
+import static ca.ubc.cs.beta.stationpacking.facade.SATFCFacadeParameter.SolverChoice.SATFC_PARALLEL;
+import static ca.ubc.cs.beta.stationpacking.facade.SATFCFacadeParameter.SolverChoice.SATFC_SEQUENTIAL;
+
 import java.io.File;
 import java.net.URISyntaxException;
 import java.net.URL;
 
+import com.google.common.io.Resources;
+import lombok.Data;
 import lombok.NonNull;
-import ca.ubc.cs.beta.aeatk.logging.LogLevel;
+import lombok.experimental.Builder;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.SATFCFacadeParameters;
+import ca.ubc.cs.beta.stationpacking.execution.parameters.smac.SATFCHydraParams;
 import ca.ubc.cs.beta.stationpacking.facade.SATFCFacadeParameter.SolverChoice;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.data.DataManager;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.SATFCParallelSolverBundle;
 import ca.ubc.cs.beta.stationpacking.solvers.decorators.CNFSaverSolverDecorator;
+import ch.qos.logback.classic.Level;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Builder in charge of creating a SATFC facade, feeding it the necessary options.
@@ -40,32 +51,46 @@ import ca.ubc.cs.beta.stationpacking.solvers.decorators.CNFSaverSolverDecorator;
 public class SATFCFacadeBuilder {
 
     public static final String SATFC_CLASP_LIBRARY_ENV_VAR = "SATFC_CLASP_LIBRARY";
-    private boolean fPresolve;
-    private boolean fUnderconstrained;
-    private boolean fDecompose;
-    private boolean fInitializeLogging;
+    private volatile static boolean logInitialized = false;
+
+    // public params
+    private boolean initializeLogging;
     private String fLibrary;
     private String fResultFile;
-    private SATFCFacadeParameter.SolverChoice fSolverChoice;
+    private SolverChoice fSolverChoice;
     private String serverURL;
-    private CNFSaverSolverDecorator.ICNFSaver CNFSaver;
     private int parallelismLevel;
-    private LogLevel logLevel;
+    private Level logLevel;
+    private String logFileName;
+    private boolean cacheResults;
+    private DeveloperOptions developerOptions;
+
+    // developer params
+    @Builder
+    @Data
+    public static class DeveloperOptions {
+    	private CNFSaverSolverDecorator.ICNFSaver CNFSaver = null;
+        private boolean presolve = true;
+        private boolean underconstrained = true;
+        private boolean decompose = true;
+        private SATFCHydraParams hydraParams = null;
+        private DataManager dataManager;
+    }
 
     /**
      * Create a SATFCFacadeBuilder with the default parameters - no logging initialized, autodetected clasp library, no saving of CNFs and results.
      */
     public SATFCFacadeBuilder() {
-        fInitializeLogging = false;
+        // public params
         fLibrary = findSATFCLibrary();
         fResultFile = null;
-        parallelismLevel = Runtime.getRuntime().availableProcessors();
-        fSolverChoice = parallelismLevel >= 4 ? SolverChoice.SATFC_PARALLEL : SolverChoice.SATFC_SEQUENTIAL;
-        fPresolve = true;
-        fUnderconstrained = true;
-        fDecompose = true;
+        parallelismLevel = Math.min(SATFCParallelSolverBundle.PORTFOLIO_SIZE, Runtime.getRuntime().availableProcessors());
+        fSolverChoice = parallelismLevel >= SATFCParallelSolverBundle.PORTFOLIO_SIZE ? SolverChoice.SATFC_PARALLEL : SolverChoice.SATFC_SEQUENTIAL;
         serverURL = null;
-        logLevel = LogLevel.INFO;
+        logLevel = Level.INFO;
+        logFileName = "SATFC.log";
+        cacheResults = true;
+        developerOptions = DeveloperOptions.builder().build();
     }
 
     /**
@@ -128,35 +153,30 @@ public class SATFCFacadeBuilder {
         if (fLibrary == null) {
             throw new IllegalArgumentException("Facade builder did not auto-detect default library, and no other library was provided.");
         }
-        if (fSolverChoice.equals(SolverChoice.SATFC_PARALLEL)) {
+        if (fSolverChoice.equals(SATFC_PARALLEL)) {
             if (parallelismLevel < 4) {
-                throw new IllegalArgumentException("Trying to initialize the parallel solver with too few cores! Use the " + SolverChoice.SATFC_SEQUENTIAL + " solver instead. We recommend the " + SolverChoice.SATFC_PARALLEL + " solver with >= than 4 threads");
+                throw new IllegalArgumentException("Trying to initialize the parallel solver with too few cores! Use the " + SATFC_SEQUENTIAL + " solver instead. We recommend the " + SATFC_PARALLEL + " solver with >= than 4 threads");
             }
         }
-        return new SATFCFacade(new SATFCFacadeParameter(
-                fLibrary,
-                fInitializeLogging,
-                fResultFile,
-                fSolverChoice,
-                fPresolve,
-                fUnderconstrained,
-                fDecompose,
-                CNFSaver,
-                serverURL,
-                parallelismLevel,
-                logLevel
-        ));
-    }
-
-    /**
-     * Set whether SATFC should initialize the logging on construction.
-     *
-     * @param aInitializeLogging
-     * @return this {@code Builder} object
-     */
-    public SATFCFacadeBuilder setInitializeLogging(boolean aInitializeLogging) {
-        fInitializeLogging = aInitializeLogging;
-        return this;
+        if (initializeLogging) {
+            initializeLogging(logLevel, logFileName);
+        }
+        return new SATFCFacade(
+                SATFCFacadeParameter.builder()
+                        .claspLibrary(fLibrary)
+                        .resultFile(fResultFile)
+                        .solverChoice(fSolverChoice)
+                        .serverURL(serverURL)
+                        .parallelismLevel(parallelismLevel)
+                        .cacheResults(cacheResults)
+                        // developer
+                        .hydraParams(developerOptions.getHydraParams())
+                        .presolve(developerOptions.isPresolve())
+                        .decompose(developerOptions.isDecompose())
+                        .underconstrained(developerOptions.isUnderconstrained())
+                        .dataManager(developerOptions.getDataManager())
+                        .build()
+                        );
     }
 
     /**
@@ -190,28 +210,8 @@ public class SATFCFacadeBuilder {
      * @param aSolverChoice
      * @return this {@code Builder} object
      */
-    public SATFCFacadeBuilder setSolverChoice(SATFCFacadeParameter.SolverChoice aSolverChoice) {
+    public SATFCFacadeBuilder setSolverChoice(SolverChoice aSolverChoice) {
         fSolverChoice = aSolverChoice;
-        return this;
-    }
-
-    public SATFCFacadeBuilder setPresolve(boolean presolve) {
-        this.fPresolve = presolve;
-        return this;
-    }
-
-    public SATFCFacadeBuilder setUnderconstrained(boolean underconstrained) {
-        this.fUnderconstrained = underconstrained;
-        return this;
-    }
-
-    public SATFCFacadeBuilder setDecompose(boolean decompose) {
-        this.fDecompose = decompose;
-        return this;
-    }
-
-    public SATFCFacadeBuilder setCNFSaver(@NonNull CNFSaverSolverDecorator.ICNFSaver CNFSaver) {
-        this.CNFSaver = CNFSaver;
         return this;
     }
 
@@ -228,6 +228,7 @@ public class SATFCFacadeBuilder {
 
     /**
      * Set the maximum number of solvers that SATFC will execute in parallel
+     * This will have little effect past {@link SATFCParallelSolverBundle#PORTFOLIO_SIZE}
      *
      * @param parallelismLevel
      * @return this {@code Builder} object
@@ -236,45 +237,96 @@ public class SATFCFacadeBuilder {
         this.parallelismLevel = parallelismLevel;
         return this;
     }
-    
+
+
     /**
-     * Set the log level for SATFC to use. Use in conjunction with {@link #setInitializeLogging(boolean)}
+     * Call this method to have SATFC configure logging (this would only have any effect if the calling application hasn't initialized logging)
      *
-     * @param logLevel
      * @return this {@code Builder} object
      */
-    public SATFCFacadeBuilder setLogLevel(LogLevel logLevel) {
-    	this.logLevel = logLevel;
+    public SATFCFacadeBuilder setInitializeLogging(String logFileName, @NonNull Level logLevel) {
+        this.initializeLogging = true;
+        this.logLevel = logLevel;
+        this.logFileName = logFileName;
+        return this;
+    }
+
+    /**
+     * Set whether or not to cache results
+     * @return this {@code Builder} object
+     */
+    public SATFCFacadeBuilder setCacheResults(boolean cacheResults) {
+        this.cacheResults = cacheResults;
+        return this;
+    }
+
+    // Developer methods
+    public SATFCFacadeBuilder setDeveloperOptions(DeveloperOptions developerOptions) {
+    	this.developerOptions = developerOptions;
     	return this;
     }
 
-    public static SATFCFacade buildFromParameters(@NonNull SATFCFacadeParameters parameters) {
 
+    public static SATFCFacade buildFromParameters(@NonNull SATFCFacadeParameters parameters) {
         final SATFCFacadeBuilder builder = new SATFCFacadeBuilder();
 
+        // regular parameters
         if (parameters.fClaspLibrary != null) {
             builder.setLibrary(parameters.fClaspLibrary);
         }
         builder.setParallelismLevel(parameters.numCores);
-        builder.setInitializeLogging(true);
         builder.setSolverChoice(parameters.fSolverChoice);
-        builder.setDecompose(parameters.fSolverOptions.decomposition);
-        builder.setUnderconstrained(parameters.fSolverOptions.underconstrained);
-        builder.setPresolve(parameters.fSolverOptions.presolve);
-        builder.setLogLevel(parameters.fLoggingOptions.logLevel);
-        if (parameters.fSolverOptions.cachingParams.serverURL != null) {
-            builder.setServerURL(parameters.fSolverOptions.cachingParams.serverURL);
+        builder.setInitializeLogging(parameters.logFileName, parameters.getLogLevel());
+        if (parameters.cachingParams.serverURL != null) {
+            builder.setServerURL(parameters.cachingParams.serverURL);
         }
+        builder.setCacheResults(parameters.cachingParams.cacheResults);
+
+        CNFSaverSolverDecorator.ICNFSaver CNFSaver = null;
         if (parameters.fSolverChoice.equals(SolverChoice.CNF)) {
             System.out.println("Saving CNFs to disk in " + parameters.fCNFDir);
-            CNFSaverSolverDecorator.ICNFSaver CNFSaver = new CNFSaverSolverDecorator.FileCNFSaver(parameters.fCNFDir);
+            CNFSaver = new CNFSaverSolverDecorator.FileCNFSaver(parameters.fCNFDir);
             if (parameters.fRedisParameters.areValid()) {
                 System.out.println("Saving CNF index to redis");
                 CNFSaver = new CNFSaverSolverDecorator.RedisIndexCNFSaver(CNFSaver, parameters.fRedisParameters.getJedis(), parameters.fRedisParameters.fRedisQueue);
             }
-            builder.setCNFSaver(CNFSaver);
         }
+        
+        // developer parameters
+        builder.setDeveloperOptions(
+        		DeveloperOptions
+        		.builder()
+        		.decompose(parameters.fSolverOptions.decomposition)
+        		.presolve(parameters.fSolverOptions.presolve)
+        		.underconstrained(parameters.fSolverOptions.underconstrained)
+        		.hydraParams(parameters.fHydraParams)
+        		.CNFSaver(CNFSaver)
+        		.build()
+        		);
         return builder.build();
+    }
+
+
+    private static final String LOGBACK_CONFIGURATION_FILE_PROPERTY = "logback.configurationFile";
+
+    public static void initializeLogging(Level logLevel, String logFileName) {
+        if (logInitialized) {
+            return;
+        }
+        if (System.getProperty(LOGBACK_CONFIGURATION_FILE_PROPERTY) != null) {
+            Logger log = LoggerFactory.getLogger(SATFCFacade.class);
+            log.debug("System property for logback.configurationFile has been found already set as {} , logging will follow this file.", System.getProperty(LOGBACK_CONFIGURATION_FILE_PROPERTY));
+        } else {
+            String logback = Resources.getResource("logback_satfc.groovy").toString();
+            System.setProperty("SATFC.root.log.level", logLevel.toString());
+            if (logFileName != null) {
+                System.setProperty("SATFC.log.filename", logFileName);
+            }
+            System.setProperty(LOGBACK_CONFIGURATION_FILE_PROPERTY, logback);
+            Logger log = LoggerFactory.getLogger(SATFCFacade.class);
+            log.debug("Logging initialized to use file: {}", logback);
+        }
+        logInitialized = true;
     }
 
 }

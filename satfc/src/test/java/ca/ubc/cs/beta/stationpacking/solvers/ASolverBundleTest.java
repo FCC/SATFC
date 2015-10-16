@@ -28,6 +28,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import lombok.extern.slf4j.Slf4j;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -44,7 +46,7 @@ import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.SATFCPara
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.SATFCSolverBundle;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
-import ca.ubc.cs.beta.stationpacking.solvers.termination.cputime.CPUTimeTerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.walltime.WalltimeTerminationCriterion;
 
 import com.google.common.base.Splitter;
 import com.google.common.io.Files;
@@ -53,6 +55,7 @@ import com.google.common.io.Resources;
 /**
  * Created by newmanne on 22/05/15.
  */
+@Slf4j
 public abstract class ASolverBundleTest {
 
     private final String INSTANCE_FILE = "data/ASolverBundleTestInstances.csv";
@@ -71,7 +74,7 @@ public abstract class ASolverBundleTest {
     public void testSimplestProblemPossible() {
         ISolverBundle bundle = getBundle();
         final StationPackingInstance instance = StationPackingTestUtils.getSimpleInstance();
-        final SolverResult solve = bundle.getSolver(instance).solve(instance, new CPUTimeTerminationCriterion(60.0), 1);
+        final SolverResult solve = bundle.getSolver(instance).solve(instance, new WalltimeTerminationCriterion(60), 1);
         Assert.assertEquals(StationPackingTestUtils.getSimpleInstanceAnswer(), solve.getAssignment()); // There is only one answer to this problem
     }
 
@@ -87,7 +90,8 @@ public abstract class ASolverBundleTest {
         for (Map.Entry<String, SATResult> entry : instanceFileToAnswers.entrySet()) {
             final Converter.StationPackingProblemSpecs stationPackingProblemSpecs = Converter.StationPackingProblemSpecs.fromStationRepackingInstance(Resources.getResource("data/srpks/" + entry.getKey()).getPath());
             final StationPackingInstance instance = StationPackingTestUtils.instanceFromSpecs(stationPackingProblemSpecs, stationManager);
-            final SolverResult solverResult = bundle.getSolver(instance).solve(instance, new CPUTimeTerminationCriterion(60.0), 1);
+            log.info("Solving instance " + entry.getKey());
+            final SolverResult solverResult = bundle.getSolver(instance).solve(instance, new WalltimeTerminationCriterion(60), 1);
             Assert.assertEquals(entry.getValue(), solverResult.getResult());
         }
     }
@@ -99,7 +103,7 @@ public abstract class ASolverBundleTest {
 
         @Override
         protected ISolverBundle getBundle() {
-            return new SATFCSolverBundle(SATFCFacadeBuilder.findSATFCLibrary(), stationManager, constraintManager, null, true, true, true, null);
+            return new SATFCSolverBundle(SATFCFacadeBuilder.findSATFCLibrary(), stationManager, constraintManager, null, true, true, true, null, false);
         }
 
     }
@@ -111,9 +115,20 @@ public abstract class ASolverBundleTest {
 
         @Override
         protected ISolverBundle getBundle() {
-            return new SATFCParallelSolverBundle(SATFCFacadeBuilder.findSATFCLibrary(), stationManager, constraintManager, null, true, true, true, null, Runtime.getRuntime().availableProcessors());
+            return new SATFCParallelSolverBundle(SATFCFacadeBuilder.findSATFCLibrary(), stationManager, constraintManager, null, true, true, true, null, Runtime.getRuntime().availableProcessors(), false);
         }
 
     }
+    
+//    public static class StatsSolverBundleTest extends ASolverBundleTest {
+//
+//		public StatsSolverBundleTest() throws FileNotFoundException {
+//		}
+//
+//		@Override
+//		protected ISolverBundle getBundle() {
+//			return new StatsSolverBundle(stationManager, constraintManager, SATFCFacadeBuilder.findSATFCLibrary());
+//		}
+//    }
 
 }

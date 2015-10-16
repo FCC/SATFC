@@ -25,7 +25,6 @@ import lombok.extern.slf4j.Slf4j;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheUNSATResult;
 import ca.ubc.cs.beta.stationpacking.metrics.SATFCMetrics;
-import ca.ubc.cs.beta.stationpacking.metrics.SATFCMetrics.SolvedByEvent;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
@@ -34,8 +33,8 @@ import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
 /**
-* Created by newmanne on 28/01/15.
-*/
+ * Created by newmanne on 28/01/15.
+ */
 @Slf4j
 public class SubsetCacheUNSATDecorator extends ASolverDecorator {
     private final ContainmentCacheProxy containmentCache;
@@ -54,14 +53,11 @@ public class SubsetCacheUNSATDecorator extends ASolverDecorator {
         SATFCMetrics.postEvent(new SATFCMetrics.TimingEvent(aInstance.getName(), SATFCMetrics.TimingEvent.FIND_SUBSET, watch.getElapsedTime()));
         if (proveUNSATBySubset.isValid()) {
             log.debug("Found a subset in the UNSAT cache - declaring problem UNSAT due to problem " + proveUNSATBySubset.getKey());
-            result = new SolverResult(SATResult.UNSAT, watch.getElapsedTime());
-            SATFCMetrics.postEvent(new SATFCMetrics.SolvedByEvent(aInstance.getName(), SolvedByEvent.SUBSET_CACHE, result.getResult()));
+            result = SolverResult.createNonSATResult(SATResult.UNSAT, watch.getElapsedTime(), SolverResult.SolvedBy.UNSAT_CACHE);
             SATFCMetrics.postEvent(new SATFCMetrics.JustifiedByCacheEvent(aInstance.getName(), proveUNSATBySubset.getKey()));
         } else {
             log.debug("UNSAT cache unsuccessful");
-            final double preTime = watch.getElapsedTime();
-            final SolverResult decoratorResult = super.solve(aInstance, aTerminationCriterion, aSeed);
-            result = SolverResult.addTime(decoratorResult, preTime);
+            result = SolverResult.relabelTime(fDecoratedSolver.solve(aInstance, aTerminationCriterion, aSeed), watch.getElapsedTime());
         }
         return result;
     }

@@ -32,7 +32,6 @@ import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.metrics.SATFCMetrics;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
@@ -72,19 +71,14 @@ public class GenericSATBasedSolver implements ISolver {
         CNF aCNF = aEncoding.getKey();
         ISATDecoder aDecoder = aEncoding.getValue();
         log.debug("CNF has {} clauses.", aCNF.size());
-        watch.stop();
-        
         if (aTerminationCriterion.hasToStop()) {
             log.debug("All time spent.");
-            return new SolverResult(SATResult.TIMEOUT, watch.getElapsedTime());
+            return SolverResult.createTimeoutResult(watch.getElapsedTime());
         }
         else
         {
-
             log.debug("Solving the subproblem CNF with " + aTerminationCriterion.getRemainingTime() + " s remaining.");
             SATSolverResult satSolverResult = fSATSolver.solve(aCNF, aTerminationCriterion, aSeed);
-            watch.start();
-    
             log.debug("Parsing result.");
             Map<Integer, Set<Station>> aStationAssignment = new HashMap<Integer, Set<Station>>();
             if (satSolverResult.getResult().equals(SATResult.SAT)) {
@@ -124,16 +118,11 @@ public class GenericSATBasedSolver implements ISolver {
             log.debug("...done.");
             log.debug("Cleaning up...");
     
-            SolverResult solverResult = new SolverResult(satSolverResult.getResult(), satSolverResult.getRuntime(), aStationAssignment);
-            
-            watch.stop();
-            double extraTime = watch.getElapsedTime();
-            solverResult = SolverResult.addTime(solverResult, extraTime);
+            final SolverResult solverResult = new SolverResult(satSolverResult.getResult(), watch.getElapsedTime(), aStationAssignment, SolverResult.SolvedBy.CLASP);
     
             log.debug("Result:");
             log.debug(solverResult.toParsableString());
 
-            SATFCMetrics.postEvent(new SATFCMetrics.SolvedByEvent(aInstance.getName(), SATFCMetrics.SolvedByEvent.CLASP, solverResult.getResult()));
             return solverResult;
         }
     }

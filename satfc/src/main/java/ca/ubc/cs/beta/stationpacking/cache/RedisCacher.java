@@ -37,6 +37,7 @@ import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
+import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.cache.ICacher.SATCacheEntry;
 import ca.ubc.cs.beta.stationpacking.cache.ICacher.UNSATCacheEntry;
@@ -48,6 +49,7 @@ import ca.ubc.cs.beta.stationpacking.utils.JSONUtils;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Sets;
 
@@ -114,12 +116,11 @@ public class RedisCacher {
 
     }
 
-    public ContainmentCacheInitData getContainmentCacheInitData() {
-        return getContainmentCacheInitData(Long.MAX_VALUE);
+    public ContainmentCacheInitData getContainmentCacheInitData(Map<CacheCoordinate, ImmutableBiMap<Station, Integer>> coordinateToPermutation) {
+        return getContainmentCacheInitData(Long.MAX_VALUE, coordinateToPermutation);
     }
 
-
-    public ContainmentCacheInitData getContainmentCacheInitData(long limit) {
+    public ContainmentCacheInitData getContainmentCacheInitData(long limit, Map<CacheCoordinate, ImmutableBiMap<Station, Integer>> coordinateToPermutation) {
         log.info("Pulling precache data from redis");
         long start = System.currentTimeMillis();
 
@@ -151,8 +152,13 @@ public class RedisCacher {
                 log.info("Processed " + progressIndex.get() + " SAT keys out of " + SATKeys.size());
             }
             final CacheCoordinate coordinate = CacheCoordinate.fromKey(key);
+            final ImmutableBiMap<Station, Integer> permutation = coordinateToPermutation.get(coordinate);
+            if (permutation == null) {
+                log.warn("Skipping cache entry from key " + key + ". Could not find a permutation known for coordinate " + coordinate + ". This probably means that the cache entry does not correspond to any known constraint folders (" + coordinateToPermutation.keySet() + ")");
+                return; // Skip
+            }
             final SATCacheEntry cacheEntry = getSATSolverResultByKey(key, false).get();
-            final ContainmentCacheSATEntry entry = new ContainmentCacheSATEntry(cacheEntry.getAssignment(), key);
+            final ContainmentCacheSATEntry entry = new ContainmentCacheSATEntry(cacheEntry.getAssignment(), key, permutation);
             SATResults.put(coordinate, entry);
             progressIndex.incrementAndGet();
         });
@@ -167,8 +173,13 @@ public class RedisCacher {
                 log.info("Processed " + progressIndex.get() + " UNSAT keys out of " + UNSATKeys.size());
             }
             final CacheCoordinate coordinate = CacheCoordinate.fromKey(key);
+            final ImmutableBiMap<Station, Integer> permutation = coordinateToPermutation.get(coordinate);
+            if (permutation == null) {
+                log.warn("Skipping cache entry from key " + key + ". Could not find a permutation known for coordinate " + coordinate + ". This probably means that the cache entry does not correspond to any known constraint folders (" + coordinateToPermutation.keySet() + ")");
+                return; // Skip
+            }
             final UNSATCacheEntry cacheEntry = getUNSATSolverResultByKey(key, false).get();
-            final ContainmentCacheUNSATEntry entry = new ContainmentCacheUNSATEntry(cacheEntry.getDomains(), key);
+            final ContainmentCacheUNSATEntry entry = new ContainmentCacheUNSATEntry(cacheEntry.getDomains(), key, permutation);
             UNSATResults.put(coordinate, entry);
             progressIndex.incrementAndGet();
         });

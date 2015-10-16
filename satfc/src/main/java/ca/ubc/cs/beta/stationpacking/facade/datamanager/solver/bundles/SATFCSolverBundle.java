@@ -21,8 +21,6 @@
  */
 package ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles;
 
-import java.util.Arrays;
-
 import lombok.extern.slf4j.Slf4j;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.cache.CacheCoordinate;
@@ -32,12 +30,14 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat.ClaspLibSATSolverParameters;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.factories.Clasp3ISolverFactory;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.factories.ClaspLibraryGenerator;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.certifiers.cgneighborhood.ConstraintGraphNeighborhoodPresolver;
 import ca.ubc.cs.beta.stationpacking.solvers.certifiers.cgneighborhood.StationSubsetSATCertifier;
+import ca.ubc.cs.beta.stationpacking.solvers.certifiers.cgneighborhood.strategies.AddNeighbourLayerStrategy;
+import ca.ubc.cs.beta.stationpacking.solvers.certifiers.cgneighborhood.strategies.IterativeDeepeningConfigurationStrategy;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.ConstraintGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
-import ca.ubc.cs.beta.stationpacking.solvers.composites.SequentialSolversComposite;
 import ca.ubc.cs.beta.stationpacking.solvers.decorators.AssignmentVerifierDecorator;
 import ca.ubc.cs.beta.stationpacking.solvers.decorators.ConnectedComponentGroupingDecorator;
 import ca.ubc.cs.beta.stationpacking.solvers.decorators.ResultSaverSolverDecorator;
@@ -47,7 +47,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.decorators.cache.ContainmentCachePr
 import ca.ubc.cs.beta.stationpacking.solvers.decorators.cache.SubsetCacheUNSATDecorator;
 import ca.ubc.cs.beta.stationpacking.solvers.decorators.cache.SupersetCacheSATDecorator;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
-import ca.ubc.cs.beta.stationpacking.solvers.termination.cputime.CPUTimeTerminationCriterionFactory;
+import ca.ubc.cs.beta.stationpacking.solvers.underconstrained.HeuristicUnderconstrainedStationFinder;
 import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
 
 /**
@@ -77,7 +77,8 @@ public class SATFCSolverBundle extends ASolverBundle {
             boolean presolve,
             boolean decompose,
             boolean underconstrained,
-            String serverURL
+            String serverURL,
+            boolean cacheResults
     ) {
         super(aStationManager, aConstraintManager);
         log.info("Initializing solver with the following solver options: presolve {}, decompose {}, underconstrained {}, serverURL {}", presolve, decompose, underconstrained, serverURL);
@@ -106,15 +107,17 @@ public class SATFCSolverBundle extends ASolverBundle {
         ICacher cacher = null;
         CacheCoordinate cacheCoordinate = null;
         if (useCache) {
-            cacheCoordinate = new CacheCoordinate(aStationManager.getHashCode(), aConstraintManager.getHashCode());
+            cacheCoordinate = new CacheCoordinate(aStationManager.getDomainHash(), aConstraintManager.getConstraintHash());
             cacher = new CacherProxy(serverURL, cacheCoordinate);
             containmentCache = new ContainmentCacheProxy(serverURL, cacheCoordinate);
         }
 
         if (useCache) {
             UHFsolver = new SupersetCacheSATDecorator(UHFsolver, containmentCache, cacheCoordinate); // note that there is no need to check cache for UNSAT again, the first one would have caught it
-            UHFsolver = new AssignmentVerifierDecorator(UHFsolver, getConstraintManager()); // let's be careful and verify the assignment before we cache it
-            UHFsolver = new CacheResultDecorator(UHFsolver, cacher, cacheCoordinate);
+            if (cacheResults) {
+                UHFsolver = new AssignmentVerifierDecorator(UHFsolver, getConstraintManager()); // let's be careful and verify the assignment before we cache it
+                UHFsolver = new CacheResultDecorator(UHFsolver, cacher, cacheCoordinate);
+            }
         }
 
         if (decompose)
@@ -130,32 +133,20 @@ public class SATFCSolverBundle extends ASolverBundle {
         {
             //Remove unconstrained stations.
             log.debug("Decorate solver to first remove underconstrained stations.");
-            UHFsolver = new UnderconstrainedStationRemoverSolverDecorator(UHFsolver, getConstraintManager());
-            VHFsolver = new UnderconstrainedStationRemoverSolverDecorator(VHFsolver, getConstraintManager());
+            UHFsolver = new UnderconstrainedStationRemoverSolverDecorator(UHFsolver, getConstraintManager(), new HeuristicUnderconstrainedStationFinder(getConstraintManager(), false), false);
+            VHFsolver = new UnderconstrainedStationRemoverSolverDecorator(VHFsolver, getConstraintManager(), new HeuristicUnderconstrainedStationFinder(getConstraintManager(), false), false);
         }
 
         if (presolve)
         {
             log.debug("Adding neighborhood presolvers.");
-            UHFsolver = new SequentialSolversComposite(
-                    Arrays.asList(
-                            new ConstraintGraphNeighborhoodPresolver(aConstraintManager,
-                                    Arrays.asList(
-                                            new StationSubsetSATCertifier(clasp3ISolverFactory.create(ClaspLibSATSolverParameters.UHF_CONFIG_04_15_h1), new CPUTimeTerminationCriterionFactory(SATcertifiercutoff))
-                                    ), 1),
-                            UHFsolver
-                    )
-            );
+            UHFsolver = new ConstraintGraphNeighborhoodPresolver(UHFsolver,
+                                new StationSubsetSATCertifier(clasp3ISolverFactory.create(ClaspLibSATSolverParameters.UHF_CONFIG_04_15_h1)),
+                                new IterativeDeepeningConfigurationStrategy(new AddNeighbourLayerStrategy(1), SATcertifiercutoff), getConstraintManager());
 
-            VHFsolver = new SequentialSolversComposite(
-                    Arrays.asList(
-                            new ConstraintGraphNeighborhoodPresolver(aConstraintManager,
-                                    Arrays.asList(
-                                            new StationSubsetSATCertifier(clasp3ISolverFactory.create(ClaspLibSATSolverParameters.HVHF_CONFIG_09_13_MODIFIED), new CPUTimeTerminationCriterionFactory(SATcertifiercutoff))
-                                    ), 1),
-                            VHFsolver
-                    )
-            );
+            VHFsolver = new ConstraintGraphNeighborhoodPresolver(VHFsolver,
+                                    new StationSubsetSATCertifier(clasp3ISolverFactory.create(ClaspLibSATSolverParameters.HVHF_CONFIG_09_13_MODIFIED)),
+                                    new IterativeDeepeningConfigurationStrategy(new AddNeighbourLayerStrategy(1), SATcertifiercutoff), getConstraintManager());
         }
 
         if (useCache) {
@@ -178,7 +169,7 @@ public class SATFCSolverBundle extends ASolverBundle {
         VHFsolver = new AssignmentVerifierDecorator(VHFsolver, getConstraintManager());
 
         // Cache entire instance. Placed below assignment verifier because we wouldn't want to cache something incorrect
-        if (useCache) {
+        if (useCache && cacheResults) {
             UHFsolver = new CacheResultDecorator(UHFsolver, cacher, cacheCoordinate);
         }
 

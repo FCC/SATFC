@@ -24,10 +24,8 @@ package ca.ubc.cs.beta.stationpacking.base;
 
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,12 +38,12 @@ import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import ca.ubc.cs.beta.stationpacking.utils.GuavaCollectors;
+
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
+import com.google.common.collect.ImmutableSet;
 
 /**
  * Immutable container class representing a station packing instance.
@@ -71,7 +69,7 @@ public class StationPackingInstance {
 	}
 
     public StationPackingInstance(Map<Station,Set<Integer>> aDomains, Map<Station,Integer> aPreviousAssignment) {
-        this(aDomains, aPreviousAssignment, new HashMap<>());
+        this(aDomains, aPreviousAssignment, ImmutableMap.of());
     }
 	
 	/**
@@ -81,15 +79,12 @@ public class StationPackingInstance {
 	 */
 	public StationPackingInstance(Map<Station,Set<Integer>> aDomains, Map<Station,Integer> aPreviousAssignment, @NonNull Map<String, Object> metadata){
 		this.metadata = new ConcurrentHashMap<>(metadata);
+		// Remove any previous assignment info for stations that aren't present
+		previousAssignment = aPreviousAssignment.entrySet().stream().filter(entry -> aDomains.keySet().contains(entry.getKey())).collect(GuavaCollectors.toImmutableMap(Map.Entry::getKey, Map.Entry::getValue));
+		
 		//Validate assignment domain.
 		for(Station station : aDomains.keySet())
 		{
-			Integer previousChannel = aPreviousAssignment.get(station);
-			if(previousChannel != null && !aDomains.get(station).contains(previousChannel))
-			{
-				throw new IllegalArgumentException("Provided previous assignment assigned channel "+previousChannel+" to station "+station+" which is not in its problem domain "+aDomains.get(station)+".");
-			}
-			
 			if(aDomains.get(station).isEmpty())
 			{
 				throw new IllegalArgumentException("Domain for station "+station+" is empty.");
@@ -97,38 +92,17 @@ public class StationPackingInstance {
 		}
 
         // sort everything
-		Map<Station, Set<Integer>> tempDomains = Maps.newLinkedHashMap();
-		aDomains.keySet().stream().sorted().forEach(station -> {
-			List<Integer> channels = Lists.newArrayList(aDomains.get(station));
-			Collections.sort(channels);
-			tempDomains.put(station, Sets.newLinkedHashSet(channels));
-		});
+		final Map<Station, Set<Integer>> tempDomains = new LinkedHashMap<>();
+		aDomains.keySet().stream().sorted().forEach(station -> tempDomains.put(station, ImmutableSet.copyOf(aDomains.get(station).stream().sorted().iterator())));
 		this.domains = ImmutableMap.copyOf(tempDomains);
-		previousAssignment = ImmutableMap.copyOf(aPreviousAssignment);
 	}
-	
-	/**
-	 * @param aStations - set of stations to pack.
-	 * @param aChannels - set of channels to pack into.
-	 * @param aPreviousAssignment - valid previous assignment for the stations on the channels.
-	 * @return a station packing instance consisting of packing all the given stations in the given channels.
-	 */
-	public static StationPackingInstance constructUniformDomainInstance(Set<Station> aStations, Set<Integer> aChannels, Map<Station,Integer> aPreviousAssignment)
-	{
-		Map<Station,Set<Integer>> domains = new HashMap<Station,Set<Integer>>();
-		for(Station station : aStations)
-		{
-			domains.put(station, aChannels);
-		}
-		return new StationPackingInstance(domains,aPreviousAssignment);
-	}
-	
-	/**
+
+    /**
 	 * @return - all the channels present in the domains.
 	 */
 	public Set<Integer> getAllChannels()
     {
-		Set<Integer> allChannels = new HashSet<Integer>();
+		Set<Integer> allChannels = new HashSet<>();
 		for(Set<Integer> channels : domains.values())
 		{
 			allChannels.addAll(channels);
@@ -184,7 +158,7 @@ public class StationPackingInstance {
 	 * An instance's stations is an unmodifiable set backed up by a hash set.
 	 * @return - get the problem instance's stations.
 	 */
-	public Set<Station> getStations(){
+	public ImmutableSet<Station> getStations(){
 		return domains.keySet();
 	}
 	
@@ -221,8 +195,7 @@ public class StationPackingInstance {
 		MessageDigest aDigest = DigestUtils.getSha1Digest();
 		try {
 			byte[] aResult = aDigest.digest(aString.getBytes("UTF-8"));
-		    String aResultString = new String(Hex.encodeHex(aResult));	
-		    return aResultString;
+            return new String(Hex.encodeHex(aResult));
 		}
 		catch (UnsupportedEncodingException e) {
 		    throw new IllegalStateException("Could not encode filename", e);

@@ -38,7 +38,7 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
  */
 @Slf4j
 public class DataManager {
-    
+
 	/**
      * File path suffix for a (station config / interference) domain file.
      */
@@ -47,17 +47,17 @@ public class DataManager {
 	 * File path suffix for a (station config / interference) interference constraints file.
 	 */
 	public static String INTERFERENCES_FILE = "Interference_Paired.csv";
-	
+
 	private HashMap<String, ManagerBundle> fData;
-	
+
 	/**
 	 * Create a new (empty) data manager.
 	 */
 	public DataManager()
 	{
-		fData = new HashMap<String, ManagerBundle>();
+		fData = new HashMap<>();
 	}
-	
+
 	/**
 	 * Adds the data contained in the path to the data manager.  True if the data was added, false
 	 * if it was already contained.
@@ -67,7 +67,7 @@ public class DataManager {
 	 */
 	public boolean addData(String path) throws FileNotFoundException
 	{
-		
+
 		ManagerBundle bundle = fData.get(path);
 		if (bundle != null)
 		{
@@ -78,8 +78,8 @@ public class DataManager {
 			final IStationManager stationManager = new DomainStationManager(path + File.separator + DOMAIN_FILE);
 
 			final IConstraintManager constraintManager;
-			
-			
+
+
 			//Try parsing unabridged.
 			Exception uaE = null;
 			IConstraintManager unabridgedConstraintManager = null;
@@ -91,7 +91,7 @@ public class DataManager {
 			{
 				uaE = e;
 			}
-			
+
 
 			//Try parsing channel specific.
 			Exception csE = null;
@@ -104,15 +104,15 @@ public class DataManager {
 			{
 				csE = e;
 			}
-			
-			
+
+
 			if(uaE != null && csE != null)
 			{
 				log.error("Could not parse interference data both in unabridged and channel specific formats.");
-				
+
 				log.error("Unabridged format exception:",uaE);
 				log.error("Channel specific format exception:",csE);
-				
+
 				throw new IllegalArgumentException("Unrecognized interference constraint format.");
 			}
 			else if(uaE == null && csE == null)
@@ -141,7 +141,7 @@ public class DataManager {
 			{
 				throw new IllegalStateException("Could not parse interference constraints with any recognized format.");
 			}
-			
+
 			fData.put(path, new ManagerBundle(stationManager, constraintManager));
 			return true;
 		}

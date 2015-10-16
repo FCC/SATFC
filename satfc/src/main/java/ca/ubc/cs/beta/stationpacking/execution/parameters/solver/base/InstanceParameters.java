@@ -42,7 +42,7 @@ import com.beust.jcommander.Parameter;
  */
 @UsageTextField(title="FCC Station Packing Packing Problem Instance Options",description="Parameters defining a single station packing problem.")
 public class InstanceParameters extends AbstractOptions {
-	
+
 	@Parameter(names = "-PACKING-CHANNELS", description = "List of channels to pack into.")
 	private List<String> fPackingChannels = null;
 	/**
@@ -52,9 +52,9 @@ public class InstanceParameters extends AbstractOptions {
 	{
 		Logger log = LoggerFactory.getLogger(InstanceParameters.class);
 		log.debug("Getting packing channels...");
-		
+
 		HashSet<Integer> aPackingChannels = new HashSet<Integer>();
-		
+
 		if(fPackingChannels != null)
 		{
 			for(String aChannel : fPackingChannels)
@@ -71,7 +71,7 @@ public class InstanceParameters extends AbstractOptions {
 		}
 		return aPackingChannels;
 	}
-	
+
 	@Parameter(names = "-PACKING-STATIONS", description = "List of stations to pack.")
 	private List<String> fPackingStations = null;
 	/**
@@ -79,12 +79,12 @@ public class InstanceParameters extends AbstractOptions {
 	 */
 	public HashSet<Integer> getPackingStationIDs()
 	{
-		
+
 		Logger log = LoggerFactory.getLogger(InstanceParameters.class);
 		log.debug("Getting packing stations...");
-		
+
 		HashSet<Integer> aPackingStations = new HashSet<Integer>();
-		
+
 		if(fPackingStations != null)
 		{
 			for(String aStationID : fPackingStations)
@@ -96,10 +96,10 @@ public class InstanceParameters extends AbstractOptions {
 		{
 			aPackingStations.addAll(fDomains.keySet());
 		}
-		
+
 		return aPackingStations;
 	}
-	
+
 	@Parameter(names = "-DOMAINS", description = "Map taking station IDs to reduced domain set (e.g. 1:14,15,16;2:14,15)", converter=StationDomainsConverter.class)
 	private HashMap<Integer,Set<Integer>> fDomains;
 	/**
@@ -128,7 +128,7 @@ public class InstanceParameters extends AbstractOptions {
 	}
 
 	/**
-     * The instance's cutoff time (s).
+     * The instance's cutoff time (s). This is walltime.
      */
 	@Parameter(names = "-CUTOFF", description = "Time allowed to the feasibility checker (in seconds).")
 	public double Cutoff = 60.0;

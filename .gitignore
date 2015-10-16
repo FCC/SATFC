@@ -25,3 +25,4 @@ cplex.jar
 *.iml
 .idea/*
 manual/_minted-SATFC-manual/*
+satfc/test-output

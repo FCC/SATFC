@@ -41,8 +41,8 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 /**
-* Created by newmanne on 28/01/15.
-*/
+ * Created by newmanne on 28/01/15.
+ */
 @Slf4j
 public class SupersetCacheSATDecorator extends ASolverDecorator {
 
@@ -74,14 +74,11 @@ public class SupersetCacheSATDecorator extends ASolverDecorator {
                     reducedAssignment.get(channel).add(station);
                 });
             }
-            result = new SolverResult(SATResult.SAT, watch.getElapsedTime(), reducedAssignment);
-            SATFCMetrics.postEvent(new SATFCMetrics.SolvedByEvent(aInstance.getName(), SATFCMetrics.SolvedByEvent.SUPERSET_CACHE, result.getResult()));
+            result = new SolverResult(SATResult.SAT, watch.getElapsedTime(), reducedAssignment, SolverResult.SolvedBy.SAT_CACHE);
             SATFCMetrics.postEvent(new SATFCMetrics.JustifiedByCacheEvent(aInstance.getName(), containmentCacheSATResult.getKey()));
         } else {
             log.debug("Cache query unsuccessful");
-            final double preTime = watch.getElapsedTime();
-            final SolverResult decoratedResult = fDecoratedSolver.solve(aInstance, aTerminationCriterion, aSeed);
-            result = SolverResult.addTime(decoratedResult, preTime);
+            result = SolverResult.relabelTime(fDecoratedSolver.solve(aInstance, aTerminationCriterion, aSeed), watch.getElapsedTime());
         }
         return result;
     }

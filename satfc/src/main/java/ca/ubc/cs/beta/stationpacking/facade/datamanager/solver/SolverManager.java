@@ -24,10 +24,9 @@ package ca.ubc.cs.beta.stationpacking.facade.datamanager.solver;
 import java.io.FileNotFoundException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import lombok.extern.slf4j.Slf4j;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.data.DataManager;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.data.ManagerBundle;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBundle;
@@ -36,9 +35,9 @@ import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBu
 /**
  * Manages the solvers & data corresponding to different directories to make sure it is only read once.
  */
-public class SolverManager implements AutoCloseable{
-	private static Logger log = LoggerFactory.getLogger(SolverManager.class);
-	
+@Slf4j
+public class SolverManager implements AutoCloseable {
+
 	private HashMap<String, ISolverBundle> fSolverData;
 	private ISolverBundleFactory fSolverBundleFactory;
 	private DataManager fDataManager;
@@ -47,23 +46,13 @@ public class SolverManager implements AutoCloseable{
 	 * Creates a solver manager that will use the given factory to create the solvers when needed.
 	 * @param aSolverBundleFactory a solver bundle factory to create solver bundles.
 	 */
-	public SolverManager(ISolverBundleFactory aSolverBundleFactory)
-	{
-		fSolverBundleFactory = aSolverBundleFactory;
-		fSolverData = new HashMap<String, ISolverBundle>();
-		fDataManager = new DataManager();
-	}
-	
-	/**
-	 * @param path - a data path.
-	 * @return true if and only if the solver manager contains solving data for the provided path.
-	 */
-	public boolean hasData(String path)
-	{
-		return fSolverData.containsKey(path);
-	}
-	
-	/**
+    public SolverManager(ISolverBundleFactory aSolverBundleFactory, DataManager aDataManager) {
+        fDataManager = aDataManager;
+        fSolverBundleFactory = aSolverBundleFactory;
+        fSolverData = new HashMap<>();
+    }
+
+    /**
 	 * Adds the data (domain, interferences) contained in the path and a corresponding new solver to the manager. 
 	 * @param path path to add the data from.
 	 * @return true if the data was added and solver created, false if it was already contained.
@@ -110,7 +99,7 @@ public class SolverManager implements AutoCloseable{
 	@Override
 	public void close() throws Exception
 	{
-		HashSet<String> keys = new HashSet<String>(fSolverData.keySet());
+		Set<String> keys = new HashSet<String>(fSolverData.keySet());
 		for (String path : keys)
 		{
 			ISolverBundle bundle = fSolverData.get(path);

@@ -21,17 +21,16 @@
  */
 package ca.ubc.cs.beta.stationpacking.execution.parameters.solver;
 
+import ca.ubc.cs.beta.aeatk.misc.options.OptionLevel;
 import ca.ubc.cs.beta.aeatk.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aeatk.options.AbstractOptions;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.SATFCCachingParameters;
 
 import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
 
 /**
  * Created by newmanne on 13/01/15.
  */
-@UsageTextField(title="Solver customization options",description="Parameters describing which optimizations to apply")
+@UsageTextField(title="Solver customization options",description="Parameters describing which optimizations to apply", level = OptionLevel.DEVELOPER)
 public class SolverCustomizationOptionsParameters extends AbstractOptions {
 
 
@@ -41,8 +40,5 @@ public class SolverCustomizationOptionsParameters extends AbstractOptions {
         public boolean underconstrained = true;
         @Parameter(names = "--decomposition", description = "connected component decomposition", arity = 1)
         public boolean decomposition = true;
-
-        @ParametersDelegate
-        public SATFCCachingParameters cachingParams = new SATFCCachingParameters();
 
 }

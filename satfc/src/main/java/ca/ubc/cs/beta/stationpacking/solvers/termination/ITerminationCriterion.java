@@ -36,7 +36,7 @@ public interface ITerminationCriterion {
 	
 	/**
 	 * <p>
-	 * Return how much time (s) is remaining before the termination criterion is met.
+	 * Return how much time (s) is remaining before the termination criterion is met. Return 0 if the termination criterion is met.
 	 * </p>
 	 * <p>
 	 * This is used to allocate time to blocking (synchronous) processes. <br>

@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
@@ -142,24 +141,8 @@ public class DomainStationManager implements IStationManager{
 		}
 		return domain;
 	}
-	
-	/**
-	 * @param stationIDs - all stationIDs
-	 * @return a mapping between stationIDs and domains 
-	 */
-	public Map<Integer, Set<Integer>> getDomainsFromIDs(Set<Integer> stationIDs) {
-		Map<Integer, Set<Integer>> domainsFromID = new HashMap<Integer, Set<Integer>>();
-		Iterator<Integer> stationIterator = stationIDs.iterator();
-		while(stationIterator.hasNext())
-		{
-			int stationID = stationIterator.next();
-			Set<Integer> domain = this.getDomain(getStationfromID(stationID));
-			domainsFromID.put(stationID, domain);
-		}
-		return domainsFromID;
-	}
 
-    public String getHashCode() {
+    public String getDomainHash() {
         return fHash;
     }
 

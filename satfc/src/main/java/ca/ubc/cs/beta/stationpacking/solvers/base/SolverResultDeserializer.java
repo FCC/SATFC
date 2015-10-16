@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 
 import lombok.Data;
 import ca.ubc.cs.beta.stationpacking.base.Station;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult.SolvedBy;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -52,7 +53,7 @@ public class SolverResultDeserializer extends JsonDeserializer<SolverResult> {
                         Map.Entry::getKey,
                         entry -> entry.getValue().stream().map(Station::new).collect(Collectors.toSet())
                 ));
-        return new SolverResult(solverResultJson.getResult(), solverResultJson.getRuntime(), assignment);
+        return new SolverResult(solverResultJson.getResult(), solverResultJson.getRuntime(), assignment, SolvedBy.UNKNOWN);
     }
 
     @Data

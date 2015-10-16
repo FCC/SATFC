@@ -21,8 +21,6 @@
  */
 package ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles;
 
-import java.util.Arrays;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,15 +28,11 @@ import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
-import ca.ubc.cs.beta.stationpacking.solvers.certifiers.cgneighborhood.ConstraintGraphNeighborhoodPresolver;
-import ca.ubc.cs.beta.stationpacking.solvers.certifiers.cgneighborhood.StationSubsetSATCertifier;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.ConstraintGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
-import ca.ubc.cs.beta.stationpacking.solvers.composites.SequentialSolversComposite;
 import ca.ubc.cs.beta.stationpacking.solvers.decorators.AssignmentVerifierDecorator;
 import ca.ubc.cs.beta.stationpacking.solvers.decorators.ConnectedComponentGroupingDecorator;
 import ca.ubc.cs.beta.stationpacking.solvers.mip.MIPBasedSolver;
-import ca.ubc.cs.beta.stationpacking.solvers.termination.cputime.CPUTimeTerminationCriterionFactory;
 
 /**
  * SATFC solver bundle that lines up pre-solving and main solver.
@@ -78,24 +72,6 @@ public class MIPFCSolverBundle extends ASolverBundle {
         log.debug("Initializing base MIP solvers.");
         ISolver solver = new MIPBasedSolver(getConstraintManager());
 
-        if (presolve) 
-        {
-            //Chain pre-solving and main solver.
-            final double SATcertifiercutoff = 5;
-
-            log.debug("Adding neighborhood presolvers.");
-            solver = new SequentialSolversComposite(
-                    Arrays.asList(
-                            new ConstraintGraphNeighborhoodPresolver(aConstraintManager,
-                                    Arrays.asList(
-                                            new StationSubsetSATCertifier(solver, new CPUTimeTerminationCriterionFactory(SATcertifiercutoff))
-                                    )),
-                            solver
-                    )
-            );
-
-        }
-        
 
         /**
          * Decorate solvers - remember that the decorator that you put first is applied last

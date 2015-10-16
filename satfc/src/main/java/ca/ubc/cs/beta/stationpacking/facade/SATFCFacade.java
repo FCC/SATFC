@@ -23,43 +23,44 @@ package ca.ubc.cs.beta.stationpacking.facade;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import ca.ubc.cs.beta.aeatk.logging.LogLevel;
+import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat.ClaspLibSATSolverParameters;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.data.DataManager;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.SolverManager;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.CNFSolverBundle;
-import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.CacheEverythingBundle;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.CacheOnlySolverBundle;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBundle;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBundleFactory;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.MIPFCSolverBundle;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.SATFCHydraBundle;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.SATFCParallelSolverBundle;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.SATFCSolverBundle;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.StatsSolverBundle;
+import ca.ubc.cs.beta.stationpacking.metrics.SATFCMetrics;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental.Clasp3SATSolver;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
-import ca.ubc.cs.beta.stationpacking.solvers.termination.composite.DisjunctiveCompositeTerminationCriterion;
-import ca.ubc.cs.beta.stationpacking.solvers.termination.cputime.CPUTimeTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.walltime.WalltimeTerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.utils.TimeLimitedCodeBlock;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.google.common.io.Resources;
 
 /**
  * A facade for solving station packing problems with SATFC.
@@ -68,73 +69,47 @@ import com.google.common.io.Resources;
  *
  * @author afrechet
  */
+@Slf4j
 public class SATFCFacade implements AutoCloseable {
 
-    private final Logger log;
-
-    private volatile static boolean logInitialized = false;
     private final SolverManager fSolverManager;
 
-
     /**
-     * Construct a SATFC solver facade, with the option of initializing logging if its not already done.
+     * Construct a SATFC solver facade
      *
      * @param aSATFCParameters parameters needed by the facade.
      */
     SATFCFacade(final SATFCFacadeParameter aSATFCParameters) {
-        //Initialize logging.
-        if (!logInitialized && aSATFCParameters.isInitializeLogging()) {
-            initializeLogging(aSATFCParameters.getLogLevel());
-            log = LoggerFactory.getLogger(getClass());
-            log.warn("Logging initialized by default to INFO.");
-
-        } else {
-            log = LoggerFactory.getLogger(getClass());
-        }
-
         //Check provided library.
-        if (aSATFCParameters.getClaspLibrary() == null) {
-            throw new IllegalArgumentException("Cannot provide null library.");
-        }
-
+        Preconditions.checkNotNull(aSATFCParameters.getClaspLibrary(), "Cannot provide null library.");
         final File libraryFile = new File(aSATFCParameters.getClaspLibrary());
-        if (!libraryFile.exists()) {
-            throw new IllegalArgumentException("Provided clasp library " + libraryFile.getAbsolutePath() + " does not exist.");
-        }
-        if (libraryFile.isDirectory()) {
-            throw new IllegalArgumentException("Provided clasp library is a directory.");
-        }
-
+        Preconditions.checkArgument(libraryFile.exists(), "Provided clasp library " + libraryFile.getAbsolutePath() + " does not exist.");
+        Preconditions.checkArgument(!libraryFile.isDirectory(), "Provided clasp library is a directory.");
         try {
             new Clasp3SATSolver(aSATFCParameters.getClaspLibrary(), ClaspLibSATSolverParameters.UHF_CONFIG_04_15_h1);
         } catch (UnsatisfiedLinkError e) {
-
             log.error("\n--------------------------------------------------------\n" +
                             "Could not load clasp from library : {}. \n" +
                             "Possible Solutions:\n" +
                             "1) Try rebuilding the library, on Linux this can be done by going to the clasp folder and running \"bash compile.sh\"\n" +
                             "2) Check that all library dependancies are met, e.g., run \"ldd {}\".\n" +
-                            "3) Manually set the library to use with the \"-CLASP-LIBRARY\" options. On MacOS it should be a .dylib file, on linux a .so file.\n" +
+                            "3) Manually set the library to use with the \"-CLASP-LIBRARY\" options.\n" +
                             "--------------------------------------------------------", aSATFCParameters.getClaspLibrary(), aSATFCParameters.getClaspLibrary()
             );
-
-            log.debug("Exception occured while loading library:\n", e);
-
-            throw new IllegalArgumentException("Could not load JNA library.");
+            throw new IllegalArgumentException("Could not load JNA library", e);
         }
 
-        log.info("Using library {}.", aSATFCParameters.getClaspLibrary());
+        log.info("Using library {}", aSATFCParameters.getClaspLibrary());
         log.info("Using bundle {}", aSATFCParameters.getSolverChoice());
         fSolverManager = new SolverManager(
                 new ISolverBundleFactory() {
 
                     @Override
-                    public ISolverBundle getBundle(IStationManager aStationManager,
-                                                   IConstraintManager aConstraintManager) {
+                    public ISolverBundle getBundle(IStationManager aStationManager, IConstraintManager aConstraintManager) {
 
 						/*
 						 * SOLVER BUNDLE.
-						 * 
+						 *
 						 * Set what bundle we're using here.
 						 */
                         switch (aSATFCParameters.getSolverChoice()) {
@@ -147,7 +122,8 @@ public class SATFCFacade implements AutoCloseable {
                                         aSATFCParameters.isPresolve(),
                                         aSATFCParameters.isDecompose(),
                                         aSATFCParameters.isUnderconstrained(),
-                                        aSATFCParameters.getServerURL()
+                                        aSATFCParameters.getServerURL(),
+                                        aSATFCParameters.isCacheResults()
                                 		);
                             case SATFC_PARALLEL:
                                 return new SATFCParallelSolverBundle(
@@ -159,7 +135,8 @@ public class SATFCFacade implements AutoCloseable {
                                     aSATFCParameters.isDecompose(),
                                     aSATFCParameters.isUnderconstrained(),
                                     aSATFCParameters.getServerURL(),
-                                    aSATFCParameters.getNumCores()
+                                    aSATFCParameters.getParallelismLevel(),
+                                    aSATFCParameters.isCacheResults()
                                 );
                             case MIPFC:
                                 return new MIPFCSolverBundle(aStationManager, aConstraintManager, aSATFCParameters.isPresolve(), aSATFCParameters.isDecompose());
@@ -168,19 +145,18 @@ public class SATFCFacade implements AutoCloseable {
                             case CACHING_SOLVER_FULL_INSTANCES:
                             case CACHING_SOLVER_COMPONENTS:
                                 return new CacheOnlySolverBundle(aStationManager, aConstraintManager, aSATFCParameters.getServerURL(), aSATFCParameters.getSolverChoice() == SATFCFacadeParameter.SolverChoice.CACHING_SOLVER_COMPONENTS);
-                            case CACHE_EVERYTHING:
-                                return new CacheEverythingBundle(aSATFCParameters.getClaspLibrary(), aStationManager, aConstraintManager, aSATFCParameters.getServerURL());
+                            case HYDRA:
+                                return new SATFCHydraBundle(aStationManager, aConstraintManager, aSATFCParameters.getHydraParams(), aSATFCParameters.getClaspLibrary());
+                            case STATS:
+                                return new StatsSolverBundle(aStationManager, aConstraintManager, aSATFCParameters.getClaspLibrary());
                             default:
                                 throw new IllegalArgumentException("Unrecognized solver choice " + aSATFCParameters.getSolverChoice());
                         }
-
-
                     }
-                }
-
+                },
+                aSATFCParameters.getDataManager() == null ? new DataManager() : aSATFCParameters.getDataManager()
         );
     }
-
 
     /**
      * Solve a station packing problem.
@@ -193,61 +169,55 @@ public class SATFCFacade implements AutoCloseable {
      * @return a result about the packability of the provided problem, with the time it took to solve, and corresponding valid witness assignment of station IDs to channels.
      */
     public SATFCResult solve(
-            Map<Integer, Set<Integer>> aDomains,
-            Map<Integer, Integer> aPreviousAssignment,
+            @NonNull Map<Integer, Set<Integer>> aDomains,
+            @NonNull Map<Integer, Integer> aPreviousAssignment,
             double aCutoff,
             long aSeed,
-            String aStationConfigFolder,
+            @NonNull String aStationConfigFolder,
             String instanceName) {
-        if (aDomains == null || aPreviousAssignment == null || aStationConfigFolder == null) {
-            throw new IllegalArgumentException("Cannot provide null arguments.");
-        }
-
         if (aDomains.isEmpty()) {
             log.warn("Provided an empty domains map.");
-            return new SATFCResult(SATResult.SAT, 0.0, new HashMap<Integer, Integer>());
+            return new SATFCResult(SATResult.SAT, 0.0, ImmutableMap.of());
         }
-        if (aCutoff <= 0) {
-            throw new IllegalArgumentException("Cutoff must be strictly positive.");
-        }
+        Preconditions.checkArgument(aCutoff > 0, "Cutoff must be strictly positive");
 
         log.debug("Getting data managers...");
         //Get the data managers and solvers corresponding to the provided station config data.
-        ISolverBundle bundle;
+        final ISolverBundle bundle;
         try {
             bundle = fSolverManager.getData(aStationConfigFolder);
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
             log.error("Did not find the necessary data files in provided station config data folder {}.", aStationConfigFolder);
-            throw new IllegalArgumentException("Station config files not found.");
+            throw new IllegalArgumentException("Station config files not found.", e);
         }
 
-        IStationManager stationManager = bundle.getStationManager();
+        final IStationManager stationManager = bundle.getStationManager();
 
         log.debug("Translating arguments to SATFC objects...");
         //Translate arguments.
         final Map<Station, Set<Integer>> domains = new HashMap<>();
 
-        for (Integer stationID : aDomains.keySet()) {
-            Station station = stationManager.getStationfromID(stationID);
+        for (Entry<Integer, Set<Integer>> entry : aDomains.entrySet()) {
+            final Station station = stationManager.getStationfromID(entry.getKey());
 
-            Set<Integer> domain = aDomains.get(stationID);
-            Set<Integer> stationDomain = stationManager.getDomain(station);
+            final Set<Integer> domain = entry.getValue();
+            final Set<Integer> completeStationDomain = stationManager.getDomain(station);
 
-            Set<Integer> truedomain = Sets.intersection(domain, stationDomain);
+            final Set<Integer> trueDomain = Sets.intersection(domain, completeStationDomain);
 
-            if (truedomain.isEmpty()) {
+            if (trueDomain.isEmpty()) {
                 log.warn("Station {} has an empty domain, cannot pack.", station);
-                return new SATFCResult(SATResult.UNSAT, 0.0, new HashMap<Integer, Integer>());
+                return new SATFCResult(SATResult.UNSAT, 0.0, ImmutableMap.of());
             }
 
-            domains.put(station, truedomain);
+            domains.put(station, trueDomain);
         }
 
         final Map<Station, Integer> previousAssignment = new HashMap<>();
         for (Station station : domains.keySet()) {
-            Integer previousChannel = aPreviousAssignment.get(station.getID());
+            final Integer previousChannel = aPreviousAssignment.get(station.getID());
             if (previousChannel != null && previousChannel > 0) {
+                Preconditions.checkState(domains.get(station).contains(previousChannel), "Provided previous assignment assigned channel " + previousChannel + " to station "+station+" which is not in its problem domain "+ domains.get(station)+".");
                 previousAssignment.put(station, previousChannel);
             }
         }
@@ -259,10 +229,11 @@ public class SATFCFacade implements AutoCloseable {
             metadata.put(StationPackingInstance.NAME_KEY, instanceName);
         }
         StationPackingInstance instance = new StationPackingInstance(domains, previousAssignment, metadata);
+        SATFCMetrics.postEvent(new SATFCMetrics.NewStationPackingInstanceEvent(instance, bundle.getConstraintManager()));
 
         log.debug("Getting solver...");
         //Get solver
-        ISolver solver = bundle.getSolver(instance);
+        final ISolver solver = bundle.getSolver(instance);
 		
 		/*
 		 * Logging problem info
@@ -277,17 +248,27 @@ public class SATFCFacade implements AutoCloseable {
 
         log.debug("Setting termination criterion...");
         //Set termination criterion.
-        ITerminationCriterion CPUtermination = new CPUTimeTerminationCriterion(aCutoff);
-        ITerminationCriterion WALLtermination = new WalltimeTerminationCriterion(aCutoff);
-        ITerminationCriterion termination = new DisjunctiveCompositeTerminationCriterion(Arrays.asList(CPUtermination, WALLtermination));
+        final ITerminationCriterion termination = new WalltimeTerminationCriterion(aCutoff);
 
-        SolverResult result;
+        // Make sure that SATFC doesn't get hung. We give a VERY generous timeout window before throwing an exception
+        final int SUICIDE_GRACE_IN_SECONDS = 5 * 60;
+        final long totalTimeInMillis = (long) (aCutoff + SUICIDE_GRACE_IN_SECONDS) * 1000;
+
         //Solve instance.
-        result = solver.solve(instance, termination, aSeed);
+        SolverResult result = null;
+        try {
+            result = TimeLimitedCodeBlock.runWithTimeout(() -> solver.solve(instance, termination, aSeed), totalTimeInMillis, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            throw new RuntimeException("SATFC waited " + totalTimeInMillis + " ms for a result, but no result came back! The given timeout was " + aCutoff + " s, so SATFC appears to be hung. This is probably NOT a recoverable error");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        SATFCMetrics.postEvent(new SATFCMetrics.InstanceSolvedEvent(instanceName, result));
 
         log.debug("Transforming result into SATFC output...");
         //Transform back solver result to output result.
-        Map<Integer, Integer> witness = new HashMap<Integer, Integer>();
+        final Map<Integer, Integer> witness = new HashMap<>();
         for (Entry<Integer, Set<Station>> entry : result.getAssignment().entrySet()) {
             Integer channel = entry.getKey();
             for (Station station : entry.getValue()) {
@@ -295,7 +276,7 @@ public class SATFCFacade implements AutoCloseable {
             }
         }
 
-        SATFCResult outputResult = new SATFCResult(result.getResult(), result.getRuntime(), witness);
+        final SATFCResult outputResult = new SATFCResult(result.getResult(), result.getRuntime(), witness);
 
         log.debug("Result: {}.", outputResult);
 
@@ -337,58 +318,27 @@ public class SATFCFacade implements AutoCloseable {
      * @param aStationConfigFolder - a folder in which to find station config data (<i>i.e.</i> interferences and domains files).
      * @return a result about the packability of the provided problem, with the time it took to solve, and corresponding valid witness assignment of station IDs to channels.
      */
-    public SATFCResult solve(Set<Integer> aStations,
-                             Set<Integer> aChannels,
-                             Map<Integer, Set<Integer>> aReducedDomains,
-                             Map<Integer, Integer> aPreviousAssignment,
+    public SATFCResult solve(@NonNull Set<Integer> aStations,
+                             @NonNull Set<Integer> aChannels,
+                             @NonNull Map<Integer, Set<Integer>> aReducedDomains,
+                             @NonNull Map<Integer, Integer> aPreviousAssignment,
                              double aCutoff,
                              long aSeed,
                              String aStationConfigFolder,
                              String instanceName
     ) {
-        //Check input.
-        if (aStations == null || aChannels == null || aPreviousAssignment == null || aStationConfigFolder == null || aReducedDomains == null) {
-            throw new IllegalArgumentException("Cannot provide null arguments.");
-        }
-
-        if (aStations.isEmpty()) {
-            log.warn("Provided an empty set of stations.");
-            return new SATFCResult(SATResult.SAT, 0.0, ImmutableMap.of());
-        }
-        if (aCutoff <= 0) {
-            throw new IllegalArgumentException("Cutoff must be strictly positive.");
-        }
-
-
         log.debug("Transforming instance to a domains only instance.");
-        //Get the data managers and solvers corresponding to the provided station config data.
-        ISolverBundle bundle;
-        try {
-            bundle = fSolverManager.getData(aStationConfigFolder);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            log.error("Did not find the necessary data files in provided station config data folder {}.", aStationConfigFolder);
-            throw new IllegalArgumentException("Station config files not found.");
-        }
 
-        IStationManager stationManager = bundle.getStationManager();
-
-        //TODO Change facade to only be given a simple domains map.
         //Construct the domains map.
-        Map<Integer, Set<Integer>> aDomains = Maps.newLinkedHashMap();
-
+        final Map<Integer, Set<Integer>> aDomains = new HashMap<>();
         for (Integer station : aStations) {
-            Set<Integer> originalDomain = stationManager.getDomain(stationManager.getStationfromID(station));
-            Set<Integer> domain = Sets.intersection(originalDomain, aChannels);
-
+            Set<Integer> domain = new HashSet<>(aChannels);
             Set<Integer> reducedDomain = aReducedDomains.get(station);
             if (reducedDomain != null && !reducedDomain.isEmpty()) {
                 domain = Sets.intersection(domain, reducedDomain);
             }
-
             aDomains.put(station, domain);
         }
-
         return solve(aDomains, aPreviousAssignment, aCutoff, aSeed, aStationConfigFolder, instanceName);
     }
 
@@ -398,37 +348,5 @@ public class SATFCFacade implements AutoCloseable {
         fSolverManager.close();
         log.info("Goodbye!");
     }
-
-
-    private static final String LOGBACK_CONFIGURATION_FILE_PROPERTY = "logback.configurationFile";
-
-    /**
-     * Initialize logging.
-     *
-     * @param logLevel - logging level to use.
-     */
-    public static synchronized void initializeLogging(LogLevel logLevel) {
-        if (logInitialized) return;
-
-        System.setProperty("LOGLEVEL", logLevel.name());
-        if (System.getProperty(LOGBACK_CONFIGURATION_FILE_PROPERTY) != null) {
-            Logger log = LoggerFactory.getLogger(SATFCFacade.class);
-            log.debug("System property for logback.configurationFile has been found already set as {} , logging will follow this file.", System.getProperty(LOGBACK_CONFIGURATION_FILE_PROPERTY));
-        } else {
-
-            String logback = Resources.getResource("logback.xml").toString();
-            System.setProperty(LOGBACK_CONFIGURATION_FILE_PROPERTY, logback);
-
-            Logger log = LoggerFactory.getLogger(SATFCFacade.class);
-            if (log.isDebugEnabled()) {
-                log.debug("Logging initialized to use file:" + logback);
-            } else {
-                log.debug("Logging initialized");
-            }
-
-        }
-        logInitialized = true;
-    }
-
 
 }

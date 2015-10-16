@@ -28,31 +28,29 @@ import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
 /**
  * Abstract {@link ISolver} decorator that passes the basic methods to the decorated solver.
+ *
  * @author afrechet
  */
-public abstract class ASolverDecorator implements ISolver{
-	
-	protected final ISolver fDecoratedSolver;
-	
-	/**
-	 * @param aSolver - decorated ISolver.
-	 */
-	public ASolverDecorator(ISolver aSolver)
-	{
-		fDecoratedSolver = aSolver;
-	}
-	
-	@Override
-	public SolverResult solve(StationPackingInstance aInstance, ITerminationCriterion aTerminationCriterion, long aSeed)
-	{
-		return aTerminationCriterion.hasToStop() ? SolverResult.createTimeoutResult(0.0) : fDecoratedSolver.solve(aInstance, aTerminationCriterion, aSeed);
-	}
-	
-	@Override
-	public void notifyShutdown()
-	{
-		fDecoratedSolver.notifyShutdown();
-	}
+public abstract class ASolverDecorator implements ISolver {
+
+    protected final ISolver fDecoratedSolver;
+
+    /**
+     * @param aSolver - decorated ISolver.
+     */
+    public ASolverDecorator(ISolver aSolver) {
+        fDecoratedSolver = aSolver;
+    }
+
+    @Override
+    public SolverResult solve(StationPackingInstance aInstance, ITerminationCriterion aTerminationCriterion, long aSeed) {
+        return aTerminationCriterion.hasToStop() ? SolverResult.createTimeoutResult(0.0) : fDecoratedSolver.solve(aInstance, aTerminationCriterion, aSeed);
+    }
+
+    @Override
+    public void notifyShutdown() {
+        fDecoratedSolver.notifyShutdown();
+    }
 
     @Override
     public void interrupt() {

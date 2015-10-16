@@ -23,12 +23,9 @@ package ca.ubc.cs.beta.stationpacking.cache;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import lombok.extern.slf4j.Slf4j;
@@ -40,15 +37,14 @@ import org.springframework.context.event.ContextRefreshedEvent;
 
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.cache.RedisCacher.ContainmentCacheInitData;
-import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheSATEntry;
-import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheUNSATEntry;
 import ca.ubc.cs.beta.stationpacking.cache.containment.containmentcache.ISatisfiabilityCache;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.data.DataManager;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.data.ManagerBundle;
 
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
+import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableSet;
+
+import containmentcache.util.PermutationUtils;
 
 /**
  * Created by newmanne on 25/03/15.
@@ -82,7 +78,8 @@ public class CacheLocator implements ICacheLocator, ApplicationListener<ContextR
         final RedisCacher cacher = context.getBean(RedisCacher.class);
         final DataManager dataManager = context.getBean(DataManager.class);
 
-        final BiMap<CacheCoordinate, ManagerBundle> coordinateToBundle = HashBiMap.create();
+        final Map<CacheCoordinate, ManagerBundle> coordinateToBundle = new HashMap<>();
+        final Map<CacheCoordinate, ImmutableBiMap<Station, Integer>> coordinateToPermutation = new HashMap<>();
 
         // Set up the data manager
         final String constraintFolder = context.getEnvironment().getRequiredProperty("constraint.folder");
@@ -98,28 +95,25 @@ public class CacheLocator implements ICacheLocator, ApplicationListener<ContextR
                 final ManagerBundle bundle = dataManager.getData(folder.getAbsolutePath());
                 log.info("Folder " + folder.getAbsolutePath() + " corresponds to coordinate " + bundle.getCacheCoordinate());
                 coordinateToBundle.put(bundle.getCacheCoordinate(), bundle);
+                
+                final ImmutableBiMap<Station, Integer> permutation = PermutationUtils.makePermutation(bundle.getStationManager().getStations());
+                coordinateToPermutation.put(bundle.getCacheCoordinate(), permutation);
+
             } catch (FileNotFoundException e) {
                 throw new IllegalStateException(folder.getAbsolutePath() + " is not a valid station configuration folder (missing Domain or Interference files?)", e);
             }
         });
 
         log.info("Beginning to init caches");
-        final ContainmentCacheInitData containmentCacheInitData = cacher.getContainmentCacheInitData();
+        final ContainmentCacheInitData containmentCacheInitData = cacher.getContainmentCacheInitData(coordinateToPermutation);
         coordinateToBundle.keySet().forEach(cacheCoordinate -> {
-            final List<ContainmentCacheSATEntry> SATEntries;
-            final List<ContainmentCacheUNSATEntry> UNSATEntries;
-            if (containmentCacheInitData.getCaches().contains(cacheCoordinate)) {
-                SATEntries = containmentCacheInitData.getSATResults().get(cacheCoordinate);
-                UNSATEntries = containmentCacheInitData.getUNSATResults().get(cacheCoordinate);
-            } else {
-                // empty cache
-                SATEntries = new ArrayList<>();
-                UNSATEntries = new ArrayList<>();
-            }
-            final Set<Station> universe = coordinateToBundle.get(cacheCoordinate).getStationManager().getStations();
-            ISatisfiabilityCache cache = cacheFactory.create(SATEntries, UNSATEntries, universe);
+            final ISatisfiabilityCache cache = cacheFactory.create(coordinateToPermutation.get(cacheCoordinate));
             log.info("Cache created for coordinate " + cacheCoordinate);
             caches.put(cacheCoordinate, cache);
+            if (containmentCacheInitData.getCaches().contains(cacheCoordinate)) {
+                cache.addAllSAT(containmentCacheInitData.getSATResults().get(cacheCoordinate));
+                cache.addAllUNSAT(containmentCacheInitData.getUNSATResults().get(cacheCoordinate));
+            }
         });
     }
 

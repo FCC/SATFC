@@ -28,13 +28,11 @@ import com.google.common.base.Joiner;
  */
 public class RedisUtils {
 
-    public static final String TIMEOUTS_QUEUE = "_TIMEOUTS";
-    public static final String PROCESSING_QUEUE = "_PROCESSING";
+    public static final String TIMEOUTS_QUEUE = "TIMEOUTS";
+    public static final String PROCESSING_QUEUE = "PROCESSING";
     public static final String JOB_QUEUE = "_JOB";
     public static final String JSON_HASH = "_JSON";
-    public static final String CNF_QUEUE = "CNF";
     public static final String CNF_INDEX_QUEUE = "CNFIndex";
-    public static final String CNF_ASSIGNMENT_QUEUE = "CNFAssignment";
 
     public static String makeKey(String... args) {
         return Joiner.on(':').join(args);

@@ -25,6 +25,7 @@ import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.cache.CacheCoordinate;
 import ca.ubc.cs.beta.stationpacking.cache.ICacher;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.decorators.ASolverDecorator;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
@@ -49,23 +50,40 @@ public class CacheResultDecorator extends ASolverDecorator {
     }
 
     public CacheResultDecorator(ISolver aSolver, ICacher aCacher, CacheCoordinate cacheCoordinate) {
-        this(aSolver, aCacher, cacheCoordinate, new CachingStrategy() {});
+        this(aSolver, aCacher, cacheCoordinate, new CacheConclusiveStrategy());
     }
 
     @Override
     public SolverResult solve(StationPackingInstance aInstance, ITerminationCriterion aTerminationCriterion, long aSeed) {
         final SolverResult result = fDecoratedSolver.solve(aInstance, aTerminationCriterion, aSeed);
         if (cachingStrategy.shouldCache(result)) {
-                cacher.cacheResult(cacheCoordinate, aInstance, result);
+            cacher.cacheResult(cacheCoordinate, aInstance, result);
         }
         return result;
     }
 
     public interface CachingStrategy {
 
-        default boolean shouldCache(SolverResult result) {
+        boolean shouldCache(SolverResult result);
+
+    }
+
+    public static class CacheConclusiveStrategy implements CachingStrategy {
+
+        @Override
+        public boolean shouldCache(SolverResult result) {
             return result.getResult().isConclusive();
         }
+
+    }
+
+    public static class CacheUNSATOnlyStrategy implements CachingStrategy {
+
+        @Override
+        public boolean shouldCache(SolverResult result) {
+            return result.getResult().equals(SATResult.UNSAT);
+        }
+
     }
 
 }

@@ -100,16 +100,14 @@ public class CNFSaverSolverDecorator extends ASolverDecorator {
     public interface ICNFSaver {
 
         /**
-         *
          * @param instanceName Name of the instance
-         * @param CNFName Name of the CNF
-         * @param CNFContents CNF contents as a string
+         * @param CNFName      Name of the CNF
+         * @param CNFContents  CNF contents as a string
          */
         void saveCNF(String instanceName, String CNFName, String CNFContents);
 
         /**
-         *
-         * @param CNFName Name of the CNF
+         * @param CNFName            Name of the CNF
          * @param assignmentContents Assignment contents as string
          */
         void saveAssignment(String CNFName, String assignmentContents);
@@ -126,10 +124,10 @@ public class CNFSaverSolverDecorator extends ASolverDecorator {
         @NonNull
         private final ICNFSaver saver;
 
-    	@NonNull
-    	private final Jedis jedis;
-    	@NonNull
-    	private final String queueName;
+        @NonNull
+        private final Jedis jedis;
+        @NonNull
+        private final String queueName;
 
         @Override
         public void saveCNF(String instanceName, String CNFName, String CNFContents) {
@@ -163,7 +161,7 @@ public class CNFSaverSolverDecorator extends ASolverDecorator {
         @Override
         public void saveCNF(String instanceName, String CNFName, String CNFContents) {
             try {
-                FileUtils.writeStringToFile(new File(fCNFDirectory+File.separator+CNFName + ".cnf"), CNFContents);
+                FileUtils.writeStringToFile(new File(fCNFDirectory + File.separator + CNFName + ".cnf"), CNFContents);
             } catch (IOException e) {
                 throw new IllegalStateException("Could not write CNF to file", e);
             }
@@ -172,7 +170,7 @@ public class CNFSaverSolverDecorator extends ASolverDecorator {
         @Override
         public void saveAssignment(String CNFName, String assignmentContents) {
             try {
-                FileUtils.writeStringToFile(new File(fCNFDirectory+File.separator+CNFName + "_assignment.txt"), assignmentContents);
+                FileUtils.writeStringToFile(new File(fCNFDirectory + File.separator + CNFName + "_assignment.txt"), assignmentContents);
             } catch (IOException e) {
                 throw new IllegalStateException("Could not write CNF to file", e);
             }

@@ -22,10 +22,6 @@
 package ca.ubc.cs.beta.stationpacking.base;
 
 import java.io.Serializable;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedList;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
@@ -67,11 +63,7 @@ public class Station implements Comparable<Station>, Serializable{
 	public String toString(){
 		return Integer.toString(fID);
 	}
-	
-	/**
-	 * ID hashing.
-	 */
-	
+
 	/* (non-Javadoc)
 	 * @see java.lang.Object#hashCode()
 	 */
@@ -100,35 +92,7 @@ public class Station implements Comparable<Station>, Serializable{
 		return true;
 	}
 
-	/**
-	 * ID & domain hashing
-	 */
-	
-	/**
-	 * Returns a unique, non-optimized string representing the given station set.
-	 * Specifically, returns the "-"-separated list of sorted station IDs. 
-	 * @param aStations - a station set to hash.
-	 * @return - a string hash for the station set.
-	 */
-	public static String hashStationSet(Collection<Station> aStations)
-	{
-		LinkedList<Station> aStationsList = new LinkedList<Station>(aStations);
-		Collections.sort(aStationsList);
-		
-		StringBuilder builder = new StringBuilder();
-		Iterator<Station> aStationIterator = aStationsList.iterator();
-		while(aStationIterator.hasNext()){
-			Station aStation = aStationIterator.next();
-			builder.append(aStation.toString());
-			if(aStationIterator.hasNext())
-			{
-				builder.append("-");
-			}
-		}
-		return builder.toString();	
-	}
-
-	@Override
+    @Override
 	public int compareTo(Station o) {
 		return Integer.compare(fID,o.fID);
 	}

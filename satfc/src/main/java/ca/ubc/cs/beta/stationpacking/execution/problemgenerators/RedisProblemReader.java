@@ -50,9 +50,6 @@ public class RedisProblemReader extends AProblemReader {
     public RedisProblemReader(Jedis jedis, String queueName, String interferencesFolder) {
         this.interferencesFolder = interferencesFolder;
         this.jedis = jedis;
-        if (!jedis.exists(RedisUtils.makeKey(queueName))) {
-            throw new IllegalArgumentException("Queue " + queueName + " does not exist");
-        }
         this.queueName = queueName;
         log.info("Reading instances from queue {}", RedisUtils.makeKey(queueName));
     }

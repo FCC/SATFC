@@ -22,9 +22,9 @@
 package ca.ubc.cs.beta.stationpacking.solvers.underconstrained;
 
 import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.IntStream;
@@ -32,35 +32,44 @@ import java.util.stream.IntStream;
 import org.junit.Test;
 
 import ca.ubc.cs.beta.stationpacking.base.Station;
+import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.ConstraintKey;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
-import ca.ubc.cs.beta.stationpacking.utils.GuavaCollectors;
+import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.TestConstraint;
+import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.TestConstraintManager;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.infinite.NeverEndingTerminationCriterion;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
 public class UnderconstrainedStationFinderTest {
 
-    @Test
-    public void testGetUnderconstrainedStations() {
-        IConstraintManager constraintManager = mock(IConstraintManager.class);
-        UnderconstrainedStationFinder finder = new UnderconstrainedStationFinder(constraintManager);
+    final Station s1 = new Station(1);
+    final Station s2 = new Station(2);
+    final Station s3 = new Station(3);
+    final Set<Station> stations = Sets.newHashSet(s1, s2, s3);
 
-        final ImmutableList<Station> stations = IntStream.rangeClosed(1, 3).mapToObj(Station::new).collect(GuavaCollectors.toImmutableList());
-        final Map<Station, Set<Integer>> domains = ImmutableMap.<Station, Set<Integer>>builder()
-                .put(stations.get(0), ImmutableSet.of(1, 2, 3))
-                .put(stations.get(1), ImmutableSet.of(1, 2))
-                .put(stations.get(2), ImmutableSet.of(1, 2))
-                .build();
-        stations.forEach(station -> {
+    @Test
+    public void testGetUnderconstrainedStations() throws Exception {
+    	List<TestConstraint> testConstraints = new ArrayList<>();
+    	stations.stream().forEach(station -> {
             // Everyone co-interferes with everyone on the first two channels, no adj constraints
             IntStream.rangeClosed(1, 2).forEach(channel -> {
-                when(constraintManager.getCOInterferingStations(station, channel)).thenReturn(Sets.difference(ImmutableSet.copyOf(stations), ImmutableSet.of(station)));
-            });
-        });
-        final Set<Station> underconstrainedStations = finder.getUnderconstrainedStations(domains);
+            	testConstraints.add(new TestConstraint(ConstraintKey.CO, channel, station, Sets.difference(stations, Sets.newHashSet(station))));
+         });
+    	});
+        IConstraintManager constraintManager = new TestConstraintManager(testConstraints);
+        IUnderconstrainedStationFinder finder = new HeuristicUnderconstrainedStationFinder(constraintManager, true);
+
+        final Map<Station, Set<Integer>> domains = ImmutableMap.<Station, Set<Integer>>builder()
+                .put(s1, ImmutableSet.of(1, 2, 3))
+                .put(s2, ImmutableSet.of(1, 2))
+                .put(s3, ImmutableSet.of(1, 2))
+                .build();
+
+        final Set<Station> underconstrainedStations = finder.getUnderconstrainedStations(domains, new NeverEndingTerminationCriterion());
         // Regardless of how stations 2 and 3 rearrange themselves, station 1 always has a good channel
-        assertEquals(ImmutableSet.of(stations.get(0)), underconstrainedStations);
+        assertEquals(ImmutableSet.of(s1), underconstrainedStations);
     }
+
 }

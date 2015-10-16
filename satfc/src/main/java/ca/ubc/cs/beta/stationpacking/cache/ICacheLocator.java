@@ -21,7 +21,6 @@
  */
 package ca.ubc.cs.beta.stationpacking.cache;
 
-import java.util.Optional;
 import java.util.Set;
 
 import net.jcip.annotations.ThreadSafe;

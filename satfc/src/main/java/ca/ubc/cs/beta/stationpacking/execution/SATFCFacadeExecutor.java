@@ -22,7 +22,6 @@
 package ca.ubc.cs.beta.stationpacking.execution;
 
 import java.io.IOException;
-import java.util.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,16 +62,13 @@ public class SATFCFacadeExecutor {
         try {
             log.info("Initializing facade.");
             try(final SATFCFacade satfc = SATFCFacadeBuilder.buildFromParameters(parameters)) {
-                IProblemReader problemGenerator = ProblemGeneratorFactory.createFromParameters(parameters);
+                IProblemReader problemReader = ProblemGeneratorFactory.createFromParameters(parameters);
                 IMetricWriter metricWriter = MetricWriterFactory.createFromParameters(parameters);
                 SATFCFacadeProblem problem;
-                while ((problem = problemGenerator.getNextProblem()) != null) {
-                    SATFCMetrics.postEvent(new SATFCMetrics.NewStationPackingInstanceEvent(problem.getStationsToPack(), problem.getInstanceName()));
+                while ((problem = problemReader.getNextProblem()) != null) {
                     log.info("Beginning problem {}", problem.getInstanceName());
                     log.info("Solving ...");
                     SATFCResult result = satfc.solve(
-                            problem.getStationsToPack(),
-                            problem.getChannelsToPackOn(),
                             problem.getDomains(),
                             problem.getPreviousAssignment(),
                             parameters.fInstanceParameters.Cutoff,
@@ -84,28 +80,27 @@ public class SATFCFacadeExecutor {
                     System.out.println(result.getResult());
                     System.out.println(result.getRuntime());
                     System.out.println(result.getWitnessAssignment());
-                    SATFCMetrics.postEvent(new SATFCMetrics.InstanceSolvedEvent(problem.getInstanceName(), result.getResult(), result.getRuntime()));
-                    problemGenerator.onPostProblem(problem, result);
+                    problemReader.onPostProblem(problem, result);
                     metricWriter.writeMetrics();
                     SATFCMetrics.clear();
                 }
                 log.info("Finished all of the problems!");
-                problemGenerator.onFinishedAllProblems();
+                problemReader.onFinishedAllProblems();
                 metricWriter.onFinished();
             }
         } catch (ParameterException e) {
-            log.error("Invalid parameter argument detected ({}).", e.getMessage());
+            log.error("Invalid parameter argument detected.", e);
             e.printStackTrace();
             System.exit(AEATKReturnValues.PARAMETER_EXCEPTION);
         } catch (RuntimeException e) {
-            log.error("Runtime exception encountered ({})", e.getMessage());
+            log.error("Runtime exception encountered ", e);
             e.printStackTrace();
             System.exit(AEATKReturnValues.UNCAUGHT_EXCEPTION);
         } catch (UnsatisfiedLinkError e) {
             log.error("Couldn't initialize facade, see previous log messages and/or try logging with DEBUG.", e);
             System.exit(AEATKReturnValues.UNCAUGHT_EXCEPTION);
         } catch (Throwable t) {
-            log.error("Throwable encountered ({})", t.getMessage());
+            log.error("Throwable encountered ", t);
             t.printStackTrace();
             System.exit(AEATKReturnValues.UNCAUGHT_EXCEPTION);
         }
@@ -117,7 +112,7 @@ public class SATFCFacadeExecutor {
         try {
             //Check for help
             JCommanderHelper.parseCheckingForHelpAndVersion(args, parameters, TargetAlgorithmEvaluatorLoader.getAvailableTargetAlgorithmEvaluators());
-            SATFCFacade.initializeLogging(parameters.fLoggingOptions.logLevel);
+            SATFCFacadeBuilder.initializeLogging(parameters.getLogLevel(), parameters.logFileName);
             JCommanderHelper.logCallString(args, SATFCFacadeExecutor.class);
         } finally {
             log = LoggerFactory.getLogger(SATFCFacadeExecutor.class);

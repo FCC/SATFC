@@ -43,8 +43,9 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATDecoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
-import ca.ubc.cs.beta.stationpacking.solvers.termination.InterruptibleTerminationCriterion;
-import ca.ubc.cs.beta.stationpacking.solvers.termination.cputime.CPUTimeTerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.infinite.NeverEndingTerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.interrupt.InterruptibleTerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.walltime.WalltimeTerminationCriterion;
 
 import com.google.common.io.Resources;
 
@@ -78,14 +79,14 @@ public class Clasp3SATSolverTest {
     @Test(timeout = 3000)
     public void testTimeout() {
         final Clasp3SATSolver clasp3SATSolver = new Clasp3SATSolver(libraryPath, parameters);
-        final ITerminationCriterion terminationCriterion = new CPUTimeTerminationCriterion(1.0);
+        final ITerminationCriterion terminationCriterion = new WalltimeTerminationCriterion(1.0);
         clasp3SATSolver.solve(hardCNF, terminationCriterion, 1);
     }
 
     @Test(timeout = 3000)
     public void testInterrupt() {
         final Clasp3SATSolver clasp3SATSolver = new Clasp3SATSolver(libraryPath, parameters);
-        final ITerminationCriterion.IInterruptibleTerminationCriterion terminationCriterion = new InterruptibleTerminationCriterion(new CPUTimeTerminationCriterion(60.0));
+        final ITerminationCriterion.IInterruptibleTerminationCriterion terminationCriterion = new InterruptibleTerminationCriterion(new NeverEndingTerminationCriterion());
         new Thread(() -> {
             try {
                 Thread.sleep(2000);

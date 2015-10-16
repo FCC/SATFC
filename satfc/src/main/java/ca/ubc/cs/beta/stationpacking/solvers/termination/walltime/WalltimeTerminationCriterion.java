@@ -21,6 +21,8 @@
  */
 package ca.ubc.cs.beta.stationpacking.solvers.termination.walltime;
 
+import org.apache.commons.math.util.FastMath;
+
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
 public class WalltimeTerminationCriterion implements ITerminationCriterion {
@@ -54,8 +56,9 @@ public class WalltimeTerminationCriterion implements ITerminationCriterion {
 	public double getRemainingTime() {
 	    final long currentTime = System.currentTimeMillis();
 	    final double remainingTime = (fEndTimeMilli-currentTime)/1000.0; 
-		return remainingTime;
+		return FastMath.max(remainingTime, 0);
 	}
+
 	@Override
 	public void notifyEvent(double aTime) {
 		//Do not need to account for any additional (parallel) time with walltime.

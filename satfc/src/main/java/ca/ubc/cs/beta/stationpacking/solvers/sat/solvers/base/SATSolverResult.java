@@ -27,6 +27,7 @@ import java.util.Set;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 
 public class SATSolverResult implements Serializable {
@@ -37,6 +38,7 @@ public class SATSolverResult implements Serializable {
 	
 	public SATSolverResult(SATResult aResult, double aRuntime, Set<Literal> aAssignment)
 	{
+        Preconditions.checkArgument(aRuntime >= 0, "Cannot create a " + getClass().getSimpleName() + " with negative runtime: " + aRuntime);
 		fResult = aResult;
 		fRuntime = aRuntime;
 		fAssignment = ImmutableSet.copyOf(aAssignment);

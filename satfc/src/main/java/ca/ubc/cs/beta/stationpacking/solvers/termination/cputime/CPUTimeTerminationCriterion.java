@@ -34,7 +34,7 @@ public class CPUTimeTerminationCriterion implements ITerminationCriterion
 	private final double fStartingCPUTime;
 	private AtomicDouble fExternalEllapsedCPUTime;
 	private final double fCPUTimeLimit;
-	
+    // Note that this will only measure time for JVM threads. Threads in native code DO NOT COUNT TOWARDS CPU TIME.
 	private final CPUTime fTimer;
 	
 	/**

@@ -59,6 +59,9 @@ public interface IStationManager {
 	 */
 	public Set<Station> getStationsfromID(Collection<Integer> aIDs);
 
-    String getHashCode();
+	/**
+	 * @return a hash of the domain
+	 */
+    String getDomainHash();
 	
 }

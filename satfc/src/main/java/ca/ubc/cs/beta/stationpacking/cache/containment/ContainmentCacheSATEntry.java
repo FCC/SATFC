@@ -28,13 +28,18 @@ import java.util.Set;
 import java.util.stream.StreamSupport;
 
 import lombok.Data;
+import lombok.NonNull;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.utils.CacheUtils;
 import ca.ubc.cs.beta.stationpacking.utils.GuavaCollectors;
+import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
 
+import com.google.common.collect.BiMap;
 import com.google.common.collect.HashMultimap;
+import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Multimaps;
 
 import containmentcache.ICacheEntry;
 
@@ -43,24 +48,26 @@ import containmentcache.ICacheEntry;
 */
 @Data
 public class ContainmentCacheSATEntry implements ICacheEntry<Station> {
-    byte[] channels;
-    BitSet bitSet;
-    String key;
+    
+	private final byte[] channels;
+    private final BitSet bitSet;
+    private final ImmutableBiMap<Station, Integer> permutation;
+    private final String key;
 
-    // fake constructor
-    public ContainmentCacheSATEntry(BitSet bitSet) {
-        this.bitSet = bitSet;
-    }
-
-    public ContainmentCacheSATEntry(Map<Integer, Set<Station>> answer, String key) {
-        this.bitSet = CacheUtils.toBitSet(answer);
-        final Map<Station, Integer> stationToChannel = CacheUtils.stationToChannelFromChannelToStation(answer);
-        this.key = key;
+    public ContainmentCacheSATEntry(
+    		@NonNull Map<Integer, Set<Station>> answer, 
+    		@NonNull String key, 
+    		@NonNull BiMap<Station, Integer> permutation) {
+    	this.permutation = ImmutableBiMap.copyOf(permutation);
+    	this.key = key;
+        this.bitSet = CacheUtils.toBitSet(answer, permutation);
+        final Map<Station, Integer> stationToChannel = StationPackingUtils.stationToChannelFromChannelToStation(answer);
         final int numStations = this.bitSet.cardinality();
         channels = new byte[numStations];
         int j = 0;
-        for (int stationId = bitSet.nextSetBit(0); stationId >= 0; stationId = bitSet.nextSetBit(stationId+1)) {
-            channels[j] = stationToChannel.get(new Station(stationId)).byteValue();
+        final Map<Integer, Station> inversePermutation = permutation.inverse();
+        for (int bit = bitSet.nextSetBit(0); bit >= 0; bit = bitSet.nextSetBit(bit+1)) {
+            channels[j] = stationToChannel.get(inversePermutation.get(bit)).byteValue();
             j++;
         }
     }
@@ -69,26 +76,24 @@ public class ContainmentCacheSATEntry implements ICacheEntry<Station> {
     public boolean isSolutionTo(StationPackingInstance aInstance) {
         final ImmutableMap<Station, Set<Integer>> domains = aInstance.getDomains();
         final Map<Integer, Integer> stationToChannel = getAssignment();
-
         return domains.entrySet().stream().allMatch(entry -> entry.getValue().contains(stationToChannel.get(entry.getKey().getID())));
     }
 
-    @SuppressWarnings("unchecked")
     public Map<Integer, Set<Station>> getAssignmentChannelToStation() {
         final Map<Integer, Integer> stationToChannel = getAssignment();
         final HashMultimap<Integer, Station> channelAssignment = HashMultimap.create();
         stationToChannel.entrySet().forEach(entry -> {
             channelAssignment.get(entry.getValue()).add(new Station(entry.getKey()));
         });
-        // safe conversion because of SetMultimap
-        return (Map<Integer, Set<Station>>) (Map<?, ?>) channelAssignment.asMap();
+        return Multimaps.asMap(channelAssignment);
     }
 
     public Map<Integer,Integer> getAssignment() {
         final Map<Integer, Integer> stationToChannel = new HashMap<>();
         int j = 0;
-        for (int stationId = bitSet.nextSetBit(0); stationId >= 0; stationId = bitSet.nextSetBit(stationId+1)) {
-            stationToChannel.put(stationId, Byte.toUnsignedInt(channels[j]));
+        final Map<Integer, Station> inversePermutation = permutation.inverse();
+        for (int bit = bitSet.nextSetBit(0); bit >= 0; bit = bitSet.nextSetBit(bit+1)) {
+            stationToChannel.put(inversePermutation.get(bit).getID(), Byte.toUnsignedInt(channels[j]));
             j++;
         }
         return stationToChannel;
@@ -96,7 +101,8 @@ public class ContainmentCacheSATEntry implements ICacheEntry<Station> {
 
     @Override
     public Set<Station> getElements() {
-        return bitSet.stream().mapToObj(Station::new).collect(GuavaCollectors.toImmutableSet());
+        final Map<Integer, Station> inversePermutation = permutation.inverse();
+        return bitSet.stream().mapToObj(inversePermutation::get).collect(GuavaCollectors.toImmutableSet());
     }
 
     /*
@@ -108,8 +114,8 @@ public class ContainmentCacheSATEntry implements ICacheEntry<Station> {
     public boolean hasMoreSolvingPower(ContainmentCacheSATEntry cacheEntry) {
         // skip checking against itself
         if (!this.getKey().equals(cacheEntry.getKey())) {
-            Map<Integer, Set<Station>> subset = cacheEntry.getAssignmentChannelToStation();
-            Map<Integer, Set<Station>> superset = this.getAssignmentChannelToStation();
+            final Map<Integer, Set<Station>> subset = cacheEntry.getAssignmentChannelToStation();
+            final Map<Integer, Set<Station>> superset = getAssignmentChannelToStation();
             if (superset.keySet().containsAll(subset.keySet())) {
                 return StreamSupport.stream(subset.keySet().spliterator(), false)
                         .allMatch(channel -> superset.get(channel).containsAll(subset.get(channel)));
@@ -117,4 +123,5 @@ public class ContainmentCacheSATEntry implements ICacheEntry<Station> {
         }
         return false;
     }
+    
 }

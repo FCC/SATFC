@@ -27,8 +27,14 @@ import java.util.Set;
 import java.util.stream.StreamSupport;
 
 import lombok.Data;
+import lombok.NonNull;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.utils.GuavaCollectors;
+
+import com.google.common.collect.BiMap;
+import com.google.common.collect.ImmutableBiMap;
+import com.google.common.collect.ImmutableMap;
+
 import containmentcache.ICacheEntry;
 
 /**
@@ -36,25 +42,27 @@ import containmentcache.ICacheEntry;
 */
 @Data
 public class ContainmentCacheUNSATEntry implements ICacheEntry<Station> {
-    final BitSet bitSet;
-    Map<Station, Set<Integer>> domains;
-    String key;
+	
+    private final BitSet bitSet;
+    private final ImmutableMap<Station, Set<Integer>> domains;
+    private final String key;
+    private final ImmutableBiMap<Station, Integer> permutation;
 
-    // "fake" constructor used for comparator purposes only
-    public ContainmentCacheUNSATEntry(BitSet bitSet) {
-        this.bitSet = bitSet;
-    }
-
-    public ContainmentCacheUNSATEntry(final Map<Station, Set<Integer>> domains, final String key) {
+    public ContainmentCacheUNSATEntry(
+    		@NonNull Map<Station, Set<Integer>> domains, 
+    		@NonNull String key, 
+    		@NonNull BiMap<Station, Integer> permutation) {
         this.key = key;
-        this.domains = domains;
+        this.domains = ImmutableMap.copyOf(domains);
+        this.permutation = ImmutableBiMap.copyOf(permutation);
         this.bitSet = new BitSet(2174); // hardcoded number that represents the expected number of stations in the universe. This is just space pre-allocation, if the estimate is wrong, no harm is done.
-        domains.keySet().forEach(station -> bitSet.set(station.getID()));
+        domains.keySet().forEach(station -> bitSet.set(permutation.get(station)));
     }
 
     @Override
     public Set<Station> getElements() {
-        return bitSet.stream().mapToObj(Station::new).collect(GuavaCollectors.toImmutableSet());
+    	final Map<Integer, Station> inverse = permutation.inverse();
+        return bitSet.stream().mapToObj(inverse::get).collect(GuavaCollectors.toImmutableSet());
     }
 
     /*

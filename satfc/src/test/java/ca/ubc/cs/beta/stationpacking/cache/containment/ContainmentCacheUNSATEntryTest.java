@@ -32,11 +32,15 @@ import org.junit.Test;
 
 import ca.ubc.cs.beta.stationpacking.base.Station;
 
+import com.google.common.collect.ImmutableBiMap;
+
 /**
  * Created by emily404 on 5/12/15.
  */
 public class ContainmentCacheUNSATEntryTest {
 
+	final ImmutableBiMap<Station, Integer> permutation = ImmutableBiMap.of(new Station(1), 1, new Station(2), 2);
+	
     /**
      * the same entry is not considered less restrictive
      */
@@ -44,7 +48,7 @@ public class ContainmentCacheUNSATEntryTest {
     public void isLessRestrictiveSameEntriesTest(){
         Map<Station, Set<Integer>> domains = new HashMap<>();
         String key = "key";
-        ContainmentCacheUNSATEntry entry = new ContainmentCacheUNSATEntry(domains, key);
+        ContainmentCacheUNSATEntry entry = new ContainmentCacheUNSATEntry(domains, key, permutation);
 
         Assert.assertFalse(entry.isLessRestrictive(entry));
     }
@@ -57,13 +61,13 @@ public class ContainmentCacheUNSATEntryTest {
         Map<Station, Set<Integer>> lesResDomains = new HashMap<>();
         lesResDomains.put(new Station(1), new HashSet<>(Arrays.asList(5,6)));
         String lessResKey = "lessResKey";
-        ContainmentCacheUNSATEntry lessResEntry = new ContainmentCacheUNSATEntry(lesResDomains, lessResKey);
+        ContainmentCacheUNSATEntry lessResEntry = new ContainmentCacheUNSATEntry(lesResDomains, lessResKey, permutation);
 
         Map<Station, Set<Integer>> moreResDomains = new HashMap<>();
         moreResDomains.put(new Station(1), new HashSet<>(Arrays.asList(5)));
         moreResDomains.put(new Station(2), new HashSet<>(Arrays.asList(5)));
         String moreResKey = "moreResKey";
-        ContainmentCacheUNSATEntry moreResEntry = new ContainmentCacheUNSATEntry(moreResDomains, moreResKey);
+        ContainmentCacheUNSATEntry moreResEntry = new ContainmentCacheUNSATEntry(moreResDomains, moreResKey, permutation);
 
         Assert.assertTrue(lessResEntry.isLessRestrictive(moreResEntry));
     }
@@ -77,12 +81,12 @@ public class ContainmentCacheUNSATEntryTest {
         moreStationDomains.put(new Station(1), new HashSet<>(Arrays.asList(5, 6)));
         moreStationDomains.put(new Station(2), new HashSet<>(Arrays.asList(5, 6)));
         String lessResKey = "lessStationsKey";
-        ContainmentCacheUNSATEntry moreStationEntry = new ContainmentCacheUNSATEntry(moreStationDomains, lessResKey);
+        ContainmentCacheUNSATEntry moreStationEntry = new ContainmentCacheUNSATEntry(moreStationDomains, lessResKey, permutation);
 
         Map<Station, Set<Integer>> lessStationDomains = new HashMap<>();
         lessStationDomains.put(new Station(1), new HashSet<>(Arrays.asList(5, 6)));
         String moreResKey = "moreStationsKey";
-        ContainmentCacheUNSATEntry lessStationEntry = new ContainmentCacheUNSATEntry(lessStationDomains, moreResKey);
+        ContainmentCacheUNSATEntry lessStationEntry = new ContainmentCacheUNSATEntry(lessStationDomains, moreResKey, permutation);
 
         Assert.assertFalse(moreStationEntry.isLessRestrictive(lessStationEntry));
     }
@@ -95,12 +99,12 @@ public class ContainmentCacheUNSATEntryTest {
         Map<Station, Set<Integer>> lessChannelDomains = new HashMap<>();
         lessChannelDomains.put(new Station(1), new HashSet<>(Arrays.asList(5)));
         String lessChannelKey = "lessChannelKey";
-        ContainmentCacheUNSATEntry moreChannelEntry = new ContainmentCacheUNSATEntry(lessChannelDomains, lessChannelKey);
+        ContainmentCacheUNSATEntry moreChannelEntry = new ContainmentCacheUNSATEntry(lessChannelDomains, lessChannelKey, permutation);
 
         Map<Station, Set<Integer>> moreChannelDomains = new HashMap<>();
         moreChannelDomains.put(new Station(1), new HashSet<>(Arrays.asList(5, 6)));
         String moreChannelKey = "moreChannelKey";
-        ContainmentCacheUNSATEntry lessChannelEntry = new ContainmentCacheUNSATEntry(moreChannelDomains, moreChannelKey);
+        ContainmentCacheUNSATEntry lessChannelEntry = new ContainmentCacheUNSATEntry(moreChannelDomains, moreChannelKey, permutation);
 
         Assert.assertFalse(moreChannelEntry.isLessRestrictive(lessChannelEntry));
     }
@@ -113,12 +117,12 @@ public class ContainmentCacheUNSATEntryTest {
         Map<Station, Set<Integer>> emptyChannelDomains = new HashMap<>();
         emptyChannelDomains.put(new Station(1), new HashSet<>(Arrays.asList()));
         String emptyDomainsKey = "emptyDomainsKey";
-        ContainmentCacheUNSATEntry emptyDomainsEntry = new ContainmentCacheUNSATEntry(emptyChannelDomains, emptyDomainsKey);
+        ContainmentCacheUNSATEntry emptyDomainsEntry = new ContainmentCacheUNSATEntry(emptyChannelDomains, emptyDomainsKey, permutation);
 
         Map<Station, Set<Integer>> nonEmptyDomains = new HashMap<>();
         nonEmptyDomains.put(new Station(1), new HashSet<>(Arrays.asList(5, 6)));
         String nonEmptyDomainsKey = "nonEmptyDomainsKey";
-        ContainmentCacheUNSATEntry nonEmptyDomainsEntry = new ContainmentCacheUNSATEntry(nonEmptyDomains, nonEmptyDomainsKey);
+        ContainmentCacheUNSATEntry nonEmptyDomainsEntry = new ContainmentCacheUNSATEntry(nonEmptyDomains, nonEmptyDomainsKey, permutation);
 
         Assert.assertFalse(emptyDomainsEntry.isLessRestrictive(nonEmptyDomainsEntry));
     }
@@ -133,13 +137,13 @@ public class ContainmentCacheUNSATEntryTest {
         firstDomains.put(new Station(1), new HashSet<>(Arrays.asList(5,6)));
         firstDomains.put(new Station(2), new HashSet<>(Arrays.asList(7)));
         String key1 = "key1";
-        ContainmentCacheUNSATEntry firstEntry = new ContainmentCacheUNSATEntry(firstDomains, key1);
+        ContainmentCacheUNSATEntry firstEntry = new ContainmentCacheUNSATEntry(firstDomains, key1, permutation);
 
         Map<Station, Set<Integer>> secondDomains = new HashMap<>();
         secondDomains.put(new Station(1), new HashSet<>(Arrays.asList(5)));
         secondDomains.put(new Station(2), new HashSet<>(Arrays.asList(7, 8)));
         String key2 = "key2";
-        ContainmentCacheUNSATEntry secondEntry = new ContainmentCacheUNSATEntry(secondDomains, key2);
+        ContainmentCacheUNSATEntry secondEntry = new ContainmentCacheUNSATEntry(secondDomains, key2, permutation);
 
         Assert.assertFalse(firstEntry.isLessRestrictive(secondEntry));
     }

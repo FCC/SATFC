@@ -21,16 +21,6 @@
  */
 package ca.ubc.cs.beta.stationpacking.solvers.decorators;
 
-import static ca.ubc.cs.beta.stationpacking.utils.GuavaCollectors.toImmutableMap;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-
-import lombok.extern.slf4j.Slf4j;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
@@ -41,12 +31,15 @@ import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
-import ca.ubc.cs.beta.stationpacking.utils.GuavaCollectors;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
-
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static ca.ubc.cs.beta.stationpacking.utils.GuavaCollectors.toImmutableMap;
 
 /**
  * Created by newmanne on 28/11/14.
@@ -85,46 +78,41 @@ public class ConnectedComponentGroupingDecorator extends ASolverDecorator {
 
         // sort the components in ascending order of size. The idea is that this would decrease runtime if one of the small components was UNSAT
         final List<Set<Station>> sortedStationComponents = stationComponents.stream().sorted((o1, o2) -> Integer.compare(o1.size(), o2.size())).collect(Collectors.toList());
-        
+
         // convert components into station packing problems
-        final AtomicInteger componentIndex = new AtomicInteger();
-        final List<StationPackingInstance> componentInstances = sortedStationComponents.stream().map(stationComponent -> {
-        	componentIndex.incrementAndGet();
+        final List<StationPackingInstance> componentInstances = new ArrayList<>();
+        for (int i = 0; i < sortedStationComponents.size(); i++) {
+            final Set<Station> stationComponent = sortedStationComponents.get(i);
             final ImmutableMap<Station, Set<Integer>> subDomains = aInstance.getDomains().entrySet()
                     .stream()
                     .filter(entry -> stationComponent.contains(entry.getKey()))
                     .collect(toImmutableMap(Map.Entry::getKey, Map.Entry::getValue));
-            final Map<Station, Integer> previousAssignment = aInstance.getPreviousAssignment();
-            final String name = aInstance.getName() + "_component" + componentIndex;
+            final String name = aInstance.getName() + "_component" + i;
             // update name to include a component prefix
-            Map<String, Object> metadata = new HashMap<>(aInstance.getMetadata());
+            final Map<String, Object> metadata = new HashMap<>(aInstance.getMetadata());
             metadata.put(StationPackingInstance.NAME_KEY, name);
-            return new StationPackingInstance(subDomains, previousAssignment, metadata);
-        }).collect(GuavaCollectors.toImmutableList());
+            componentInstances.add(new StationPackingInstance(subDomains, aInstance.getPreviousAssignment(), metadata));
+        }
 
         SATFCMetrics.postEvent(new SATFCMetrics.SplitIntoConnectedComponentsEvent(aInstance.getName(), componentInstances));
 
-        final AtomicInteger idTracker = new AtomicInteger();
-        final Map<Integer, SolverResult> solverResults = Maps.newLinkedHashMap();
-        watch.stop();
-        componentInstances.stream()
-            // Note that anyMatch is a short-circuiting operation
+        final List<SolverResult> solverResults = new ArrayList<>();
+        for (int i = 0; i < componentInstances.size(); i++) {
+            final StationPackingInstance stationComponent = componentInstances.get(i);
+            log.debug("Solving component {}...", i);
+            log.debug("Component {} has {} stations.", i, stationComponent.getStations().size());
+            final SolverResult componentResult = fDecoratedSolver.solve(stationComponent, aTerminationCriterion, aSeed);
+            SATFCMetrics.postEvent(new SATFCMetrics.InstanceSolvedEvent(stationComponent.getName(), componentResult));
+            solverResults.add(componentResult);
             // If any component matches this clause (is not SAT), the whole instance cannot be SAT, might as well stop then
-            .anyMatch(stationComponent -> {
-                int id = idTracker.getAndIncrement();
-                log.debug("Solving component {}...", id);
-                log.debug("Component {} has {} stations.", id, stationComponent.getStations().size());
-                final SolverResult componentResult = fDecoratedSolver.solve(stationComponent, aTerminationCriterion, aSeed);
-                SATFCMetrics.postEvent(new SATFCMetrics.InstanceSolvedEvent(stationComponent.getName(), componentResult.getResult(), componentResult.getRuntime()));
-                solverResults.put(id, componentResult);
-                return !componentResult.getResult().equals(SATResult.SAT) && !fSolveEverything;
-            });
-        SolverResult result = SolverHelper.mergeComponentResults(solverResults.values());
-        result = SolverResult.addTime(result, watch.getElapsedTime());
-        SATFCMetrics.postEvent(new SATFCMetrics.SolvedByEvent(aInstance.getName(), SATFCMetrics.SolvedByEvent.CONNECTED_COMPONENTS, result.getResult()));
+            if (!componentResult.getResult().equals(SATResult.SAT) && !fSolveEverything) {
+                break;
+            }
+        }
+        final SolverResult mergedResult = SolverHelper.mergeComponentResults(solverResults);
+        final SolverResult result = SolverResult.relabelTimeAndSolvedBy(mergedResult, watch.getElapsedTime(), SolverResult.SolvedBy.CONNECTED_COMPONENTS);
 
-        if (result.getResult() == SATResult.SAT)
-        {
+        if (result.getResult().equals(SATResult.SAT)) {
             Preconditions.checkState(solverResults.size() == stationComponents.size(), "Determined result was SAT without looking at every component!");
         }
         log.debug("Result:" + System.lineSeparator() + result.toParsableString());

@@ -22,12 +22,15 @@
 package ca.ubc.cs.beta.stationpacking.solvers.base;
 
 import java.io.Serializable;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
+
+import org.python.google.common.base.Preconditions;
+
 import ca.ubc.cs.beta.stationpacking.base.Station;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -51,13 +54,31 @@ public class SolverResult implements Serializable {
 	private SATResult fResult;
 	private double fRuntime;
 	private ImmutableMap<Integer,Set<Station>> fAssignment;
+    @JsonIgnore
+    @Getter
+    private final SolvedBy solvedBy;
+
+    public enum SolvedBy {
+        CLASP,
+        MIP,
+        SAT_PRESOLVER,
+        UNSAT_PRESOLVER,
+        CONNECTED_COMPONENTS,
+        SAT_CACHE,
+        UNSAT_CACHE,
+        ARC_CONSISTENCY,
+        CHANNEL_KILLER,
+        UNKNOWN,
+        UNSOLVED, 
+        UNDERCONSTRAINED
+    }
 	
 	/**
 	 * @param aResult - solver result satisfiability.
 	 * @param aRuntime - solver result runtime.
 	 * @param aAssignment - solver result witness assignment.
 	 */
-	public SolverResult(SATResult aResult, double aRuntime, Map<Integer,Set<Station>> aAssignment)
+	public SolverResult(SATResult aResult, double aRuntime, Map<Integer,Set<Station>> aAssignment, SolvedBy aSolvedBy)
 	{
 		if(aRuntime<0 && Math.abs(aRuntime)!=0.0)
 		{
@@ -67,27 +88,17 @@ public class SolverResult implements Serializable {
 		fResult = aResult;
 		fRuntime = aRuntime;
 		fAssignment = ImmutableMap.copyOf(aAssignment);
+        solvedBy = aResult.isConclusive() ? aSolvedBy : SolvedBy.UNSOLVED;
 	}
 	
 	/**
 	 * @param aResult - solver result satisfiability.
 	 * @param aRuntime - solver result runtime.
 	 */
-	public SolverResult(SATResult aResult, double aRuntime)
+	public static SolverResult createNonSATResult(SATResult aResult, double aRuntime, SolvedBy aSolvedBy)
 	{
-		if(aResult.equals(SATResult.SAT))
-		{
-			throw new IllegalArgumentException("Must provide a station assignment when creating a SAT solver result.");
-		}
-		
-		if(aRuntime<0 && Math.abs(aRuntime)!=0.0)
-		{
-			throw new IllegalArgumentException("Cannot create a solver result with negative runtime (runtime = "+aRuntime+").");
-		}
-		
-		fResult = aResult;
-		fRuntime = aRuntime;
-		fAssignment = ImmutableMap.of();
+		Preconditions.checkArgument(!aResult.equals(SATResult.SAT), "Must provide a station assignment when creating a SAT solver result.");
+        return new SolverResult(aResult, aRuntime, ImmutableMap.of(), aSolvedBy);
 	}
 	
 	/**
@@ -97,17 +108,15 @@ public class SolverResult implements Serializable {
 	 */
 	public static SolverResult createTimeoutResult(double aRuntime)
 	{
-		return new SolverResult(SATResult.TIMEOUT,aRuntime,new HashMap<Integer,Set<Station>>());
+		return SolverResult.createNonSATResult(SATResult.TIMEOUT,aRuntime, SolvedBy.UNSOLVED);
 	}
 	
-    /**
-     * @param aResult - a solver result.
-     * @param aTime - some time in seconds.
-     * @return a new solver result with runtime increased by the given amount of time. 
-     */
-    public static SolverResult addTime(SolverResult aResult, double aTime)
-    {
-        return new SolverResult(aResult.getResult(), aResult.getRuntime()+aTime,aResult.getAssignment());
+	public static SolverResult relabelTime(SolverResult aResult, double aTime) {
+		return new SolverResult(aResult.getResult(), aTime, aResult.getAssignment(), aResult.getSolvedBy());
+	}
+
+    public static SolverResult relabelTimeAndSolvedBy(SolverResult aResult, double aTime, SolvedBy aSolvedBy) {
+        return new SolverResult(aResult.getResult(), aTime, aResult.getAssignment(), aSolvedBy);
     }
     
 	
@@ -119,7 +128,7 @@ public class SolverResult implements Serializable {
 	}
 	
 	/**
-	 * @return the runtime (s).
+	 * @return the runtime (s). This is walltime.
 	 */
 	public double getRuntime()
 	{

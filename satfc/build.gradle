@@ -23,7 +23,6 @@ apply plugin: 'maven-publish'
 // In this section you declare the dependencies for your production and test code
 dependencies {
     //All the product dependencies.
-    compile 'org.slf4j:slf4j-api:1.7.7'
     compile 'ca.ubc.cs.beta:aeatk:2.08.01-development-de3ee6617d5c'
     compile 'commons-codec:commons-codec:1.7'
     compile 'org.apache.commons:commons-lang3:3.3.1'
@@ -31,20 +30,29 @@ dependencies {
     compile 'au.com.bytecode:opencsv:2.4'
     compile 'com.google.guava:guava:18.0'
     compile 'org.projectlombok:lombok:1.14.8'
+    
+    // logging
+    compile 'org.slf4j:slf4j-api:1.7.7'
     compile 'org.slf4j:slf4j-parent:1.7.5'
     compile 'ch.qos.logback:logback-access:1.0.13'
     compile 'ch.qos.logback:logback-classic:1.0.13'
     compile 'ch.qos.logback:logback-core:1.0.13'
+    runtime "org.codehaus.groovy:groovy:1.8.6"
+    
+    // json
     compile "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
     compile "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
     compile "com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion"
     compile "com.fasterxml.jackson.datatype:jackson-datatype-guava:$jacksonVersion"
+    
     compile 'com.beust:jcommander:1.35-patched'
     compile 'commons-collections:commons-collections:3.2.1'
     compile 'net.java.dev.jna:jna:4.0.0'
     compile 'com.mangosdk:spi:0.2.4'
 	compile 'io.dropwizard.metrics:metrics-core:3.1.0'
 	compile 'io.dropwizard.metrics:metrics-jvm:3.1.0'
+    compile 'org.python:jython-standalone:2.7.0'
+
     // redis
     compile 'redis.clients:jedis:2.6.1'
     compile "org.springframework.data:spring-data-redis:1.5.0.RELEASE"
@@ -55,7 +63,7 @@ dependencies {
     compile 'org.apache.httpcomponents:httpasyncclient:4.1'
 
     // Containment cache
-    compile 'ca.ubc.cs.beta:ContainmentCache:0.91'
+    compile 'ca.ubc.cs.beta:ContainmentCache:0.9.2'
 
     // Test dependencies.
     testCompile 'junit:junit:4.11'

@@ -58,7 +58,7 @@ public class GraphBackedConstraintManagerTest {
 	public void testNoNeighborsHasNoInterferingStations () throws Exception {
 		GraphBackedConstraintManager cm = new GraphBackedConstraintManager(graphLoader.getNoNeighbors(), graphLoader.getNoNeighbors());
 		assertTrue(cm.getCOInterferingStations(new Station(0), ARBITRARY_CHANNEL).isEmpty());
-		assertTrue(cm.getADJplusInterferingStations(new Station(0), ARBITRARY_CHANNEL).isEmpty());
+		assertTrue(cm.getADJplusOneInterferingStations(new Station(0), ARBITRARY_CHANNEL).isEmpty());
 	}
 	
 	@Test
@@ -80,11 +80,11 @@ public class GraphBackedConstraintManagerTest {
 
 		// Ensure that output is what we expect for a toy example
 		Set<Station> neighbors = new HashSet<>(Arrays.asList(new Station(6), new Station(8), new Station(0)));
-		assertTrue(cm.getADJplusInterferingStations(new Station(2), ARBITRARY_CHANNEL).equals(neighbors));
+		assertTrue(cm.getADJplusOneInterferingStations(new Station(2), ARBITRARY_CHANNEL).equals(neighbors));
 		
 		// Ensure that the empty set is correctly returned 
 		//  for stations that are not in the interference graph being queried
-		assertTrue(cm.getADJplusInterferingStations(new Station(99), ARBITRARY_CHANNEL).isEmpty());
+		assertTrue(cm.getADJplusOneInterferingStations(new Station(99), ARBITRARY_CHANNEL).isEmpty());
 	}
 	
 	/**

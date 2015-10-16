@@ -30,10 +30,9 @@ import java.util.concurrent.ForkJoinPool;
 import lombok.extern.slf4j.Slf4j;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
-import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
-import ca.ubc.cs.beta.stationpacking.solvers.termination.InterruptibleTerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.interrupt.InterruptibleTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
 /**
@@ -71,8 +70,8 @@ public class ParallelSolverComposite implements ISolver {
                         })
                         .filter(result -> result.getResult().isConclusive())
                         .findAny();
-            }).get().orElse(new SolverResult(SATResult.TIMEOUT, watch.getElapsedTime()));
-            return new SolverResult(endResult.getResult(), watch.getElapsedTime(), endResult.getAssignment());
+            }).get().orElse(SolverResult.createTimeoutResult(watch.getElapsedTime()));
+            return SolverResult.relabelTime(endResult, watch.getElapsedTime());
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException("Error processing jobs in parallel!", e);
         }

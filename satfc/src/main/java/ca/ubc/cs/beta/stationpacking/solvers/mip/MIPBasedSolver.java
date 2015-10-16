@@ -41,10 +41,12 @@ import org.slf4j.LoggerFactory;
 
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.Constraint;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult.SolvedBy;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
@@ -164,46 +166,17 @@ public class MIPBasedSolver implements ISolver
 	 * @param aVariables - a map taking station to channel to variable for which base constraints are necessary.
 	 * @throws IloException
 	 */
-	private static void addInterferenceConstraints(IloCplex aMIP, Map<Station,Map<Integer,IloIntVar>> aVariables, IConstraintManager aConstraintManager) throws IloException
+	private static void addInterferenceConstraints(IloCplex aMIP, Map<Station,Map<Integer,IloIntVar>> aVariables, IConstraintManager aConstraintManager, Map<Station, Set<Integer>> domains) throws IloException
 	{
-		for(final Station sourceStation : aVariables.keySet())
-		{
-			final Map<Integer,IloIntVar> stationVariables = aVariables.get(sourceStation);
-			
-			for(final Entry<Integer,IloIntVar> entryStationVariables : stationVariables.entrySet())
-			{
-				 final Integer sourceChannel = entryStationVariables.getKey();
-				 final IloIntVar sourceVariable = entryStationVariables.getValue();
-				
-				//Add CO-constraints.
-				for(Station targetStation : aConstraintManager.getCOInterferingStations(sourceStation, sourceChannel))
-				{
-					if(aVariables.containsKey(targetStation) && aVariables.get(targetStation).containsKey(sourceChannel))
-					{
-						final IloIntVar targetVariable = aVariables.get(targetStation).get(sourceChannel);
-						// x_{s,c} + x_{s',c'} \leq 1
-						aMIP.addLe(aMIP.sum(sourceVariable,targetVariable), 1);
-					}
-				}
-				
-				//Add ADJ-constraints
-				final Integer targetChannel = sourceChannel+1;
-				for(Station targetStation : aConstraintManager.getADJplusInterferingStations(sourceStation, sourceChannel))
-				{
-					if(aVariables.containsKey(targetStation) && aVariables.get(targetStation).containsKey(targetChannel))
-					{
-						final IloIntVar targetVariable = aVariables.get(targetStation).get(targetChannel);
-						// x_{s,c} + x_{s',c'} \leq 1
-						aMIP.addLe(aMIP.sum(sourceVariable,targetVariable), 1);
-					}
-				}
-			}
-			
-		}
-		
+        for (Constraint constraint : aConstraintManager.getAllRelevantConstraints(domains)) {
+            final IloIntVar sourceVariable = aVariables.get(constraint.getSource()).get(constraint.getSourceChannel());
+            final IloIntVar targetVariable = aVariables.get(constraint.getTarget()).get(constraint.getTargetChannel());
+            // x_{s,c} + x_{s',c'} \leq 1
+            aMIP.addLe(aMIP.sum(sourceVariable, targetVariable), 1);
+        }
 	}
-	
-	
+
+
     public static Pair<IloCplex,Map<IloIntVar,Pair<Station,Integer>>> encodeMIP(StationPackingInstance aInstance, IConstraintManager aConstraintManager) throws IloException
     {
     	IloCplex mip = new IloCplex();
@@ -213,7 +186,7 @@ public class MIPBasedSolver implements ISolver
     	Map<Station,Map<Integer,IloIntVar>> variables = variablesMaps.getFirst();
     	Map<IloIntVar,Pair<Station,Integer>> decoder = variablesMaps.getSecond();
     	addBaseConstraints(mip,variables);
-    	addInterferenceConstraints(mip, variables, aConstraintManager);
+    	addInterferenceConstraints(mip, variables, aConstraintManager, aInstance.getDomains());
     	
     	//Add dummy objective function.
     	mip.addMaximize();
@@ -255,7 +228,7 @@ public class MIPBasedSolver implements ISolver
     	if(cutoff <= 0 )
     	{
     		log.debug("Already have spent all the allocated time.");
-    		return new SolverResult(SATResult.TIMEOUT, watch.getElapsedTime());
+    		return SolverResult.createTimeoutResult(watch.getElapsedTime());
     	}
     	
     	try {
@@ -334,11 +307,11 @@ public class MIPBasedSolver implements ISolver
     	
     	if(assignment == null)
     	{
-    		return new SolverResult(satisfiability, runtime);
+    		return SolverResult.createNonSATResult(satisfiability, runtime, SolvedBy.MIP);
     	}
     	else
     	{
-    		return new SolverResult(satisfiability, runtime, assignment);
+    		return new SolverResult(satisfiability, runtime, assignment, SolvedBy.MIP);
     	}
     }
     

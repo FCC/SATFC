@@ -22,11 +22,21 @@
 package ca.ubc.cs.beta.stationpacking.solvers.composites;
 
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
+import ca.ubc.cs.beta.stationpacking.solvers.VoidSolver;
 
 /**
 * Created by newmanne on 26/05/15.
 * A factory that creates an ISolver
 */
 public interface ISolverFactory {
-    ISolver create();
+    default ISolver create() {
+        return extend(new VoidSolver());
+    }
+
+    /**
+     * Decorate an existing solver
+     * @param aSolver
+     * @return
+     */
+    ISolver extend(ISolver aSolver);
 }

@@ -1,7 +1,10 @@
 package ca.ubc.cs.beta.stationpacking.execution.problemgenerators;
 
+import java.util.concurrent.TimeUnit;
+
 import lombok.extern.slf4j.Slf4j;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.Transaction;
 import ca.ubc.cs.beta.stationpacking.execution.AProblemReader;
 import ca.ubc.cs.beta.stationpacking.facade.SATFCResult;
 import ca.ubc.cs.beta.stationpacking.utils.JSONUtils;
@@ -16,10 +19,12 @@ public class ExtendedCacheProblemReader extends AProblemReader {
 
     private final Jedis jedis;
     private final String keyQueue;
+    private final String interferenceFolder;
 
-    public ExtendedCacheProblemReader(Jedis jedis, String keyQueue) {
+    public ExtendedCacheProblemReader(Jedis jedis, String keyQueue, String interferenceFolder) {
         this.jedis = jedis;
         this.keyQueue = keyQueue;
+        this.interferenceFolder = interferenceFolder;
         log.info("Reading instances from queue {}", RedisUtils.makeKey(keyQueue, RedisUtils.JOB_QUEUE));
     }
 
@@ -31,13 +36,15 @@ public class ExtendedCacheProblemReader extends AProblemReader {
         if(instanceName != null){
             String jsonProblem = jedis.hget(RedisUtils.makeKey(keyQueue, RedisUtils.JSON_HASH), instanceName);
             final SATFCFacadeProblem problem = JSONUtils.toObject(jsonProblem, SATFCFacadeProblem.class);
+            //reconstruct interference folder with local path
+            problem.setStationConfigFolder(interferenceFolder+problem.getStationConfigFolder());
             return problem;
         }
         return null;
     }
 
     @Override
-    public void onPostProblem(SATFCFacadeProblem problem, SATFCResult result){
+    public void onPostProblem(SATFCFacadeProblem problem, SATFCResult result) {
         super.onPostProblem(problem, result);
 
         // update redis queue - if the job timed out, move it to the timeout channel. Either way, delete it from the processing queue
@@ -46,11 +53,18 @@ public class ExtendedCacheProblemReader extends AProblemReader {
             jedis.rpush(RedisUtils.makeKey(keyQueue, RedisUtils.TIMEOUTS_QUEUE), problem.getInstanceName());
         }
 
-        final long numDeleted = jedis.lrem(RedisUtils.makeKey(keyQueue, RedisUtils.PROCESSING_QUEUE), 1, problem.getInstanceName());
-        if (numDeleted != 1) {
-            log.error("Couldn't delete problem " + problem.getInstanceName() + " from the processing queue!");
-        } else {
-            jedis.hdel(RedisUtils.makeKey(keyQueue, RedisUtils.JSON_HASH), problem.getInstanceName());
+        Transaction multi = jedis.multi();
+        multi.lrem(RedisUtils.makeKey(keyQueue, RedisUtils.PROCESSING_QUEUE), 1, problem.getInstanceName());
+        multi.hdel(RedisUtils.makeKey(keyQueue, RedisUtils.JSON_HASH), problem.getInstanceName());
+        multi.exec();
+
+        while (jedis.llen(RedisUtils.makeKey(keyQueue, RedisUtils.JOB_QUEUE)) == 0) {
+            try{
+                log.info("Job queue empty, solver thread sleeping...");
+                Thread.sleep(TimeUnit.SECONDS.toMillis(5));
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e.getMessage());
+            }
         }
     }
 

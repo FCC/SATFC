@@ -19,6 +19,15 @@ Please consult the manual [SATFC-manual](satfc/src/dist/SATFC-manual.pdf). The m
 
 Rough information about the evolution of **SATFC** through releases.
 
+### SATFC 1.8-BETA [19/08/2015]
+
+* ADJ+2 and ADJ-2 constraints 
+* Enforce arc consistency as a form of preprocessing
+* Expanding neighbourhood UNSAT presolver
+* Identify conditionally underconstrained stations
+* Improve underconstrained station finding heuristic 
+* Upgrade to clasp 3.1.3
+
 ### SATFC 1.7.1 [30/06/2015]
 
 * New required command line parameter for the server, _constraint.folder_, that tells the server where all of the data folders are so that it can properly size cache entries

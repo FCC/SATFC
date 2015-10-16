@@ -599,8 +599,8 @@ public:
 		;
 		// Program is unsat because b must be true and false at the same time.
 		CPPUNIT_ASSERT_EQUAL(true, builder.endProgram() && ctx.endInit());
-		CPPUNIT_ASSERT(builder.getAtom(2)->literal() == posLit(0));
-		CPPUNIT_ASSERT(builder.getAtom(3)->literal() == negLit(0));
+		CPPUNIT_ASSERT(builder.getLiteral(2) == posLit(0));
+		CPPUNIT_ASSERT(builder.getLiteral(3) == negLit(0));
 		CPPUNIT_ASSERT(ctx.numVars() == 0);
 	}
 
@@ -615,9 +615,9 @@ public:
 		;
 		// Program is unsat because b must be true and false at the same time.
 		CPPUNIT_ASSERT_EQUAL(true, builder.endProgram() && ctx.endInit());
-		CPPUNIT_ASSERT(builder.getAtom(2)->literal() == posLit(0));
-		CPPUNIT_ASSERT(builder.getAtom(3)->literal() == negLit(0));
-		CPPUNIT_ASSERT(builder.getAtom(4)->literal() == negLit(0));
+		CPPUNIT_ASSERT(builder.getLiteral(2) == posLit(0));
+		CPPUNIT_ASSERT(builder.getLiteral(3) == negLit(0));
+		CPPUNIT_ASSERT(builder.getLiteral(4) == negLit(0));
 		CPPUNIT_ASSERT(ctx.numVars() == 0);
 	}
 	void testFuzzBug() {
@@ -2487,6 +2487,9 @@ class PBBuilderTest : public CppUnit::TestFixture {
 	CPPUNIT_TEST(testProduct);
 	CPPUNIT_TEST(testProductTrue);
 	CPPUNIT_TEST(testProductFalse);
+	CPPUNIT_TEST(testInconsistent);
+	CPPUNIT_TEST(testInconsistentW);
+	CPPUNIT_TEST(testCoefficientReductionOnEq);
 	CPPUNIT_TEST_SUITE_END();
 public:
 	void setUp() {
@@ -2544,6 +2547,36 @@ public:
 		ctx.master()->force(negLit(2), 0);
 		Literal x = builder.addProduct(p1);
 		CPPUNIT_ASSERT(x == negLit(0));
+	}
+	void testInconsistent() {
+		builder.prepareProblem(1, 0, 0);
+		WeightLitVec con;
+		con.push_back(WeightLiteral(posLit(1), 1));
+		CPPUNIT_ASSERT_EQUAL(true, builder.addConstraint(con, 1));
+		con.assign(1, WeightLiteral(posLit(1), 1));
+		CPPUNIT_ASSERT_EQUAL(false, builder.addConstraint(con, 0, true));
+		CPPUNIT_ASSERT_EQUAL(false, builder.endProgram());
+	}
+	void testInconsistentW() {
+		builder.prepareProblem(2, 0, 0);
+		WeightLitVec con;
+		con.push_back(WeightLiteral(posLit(1), 1));
+		CPPUNIT_ASSERT_EQUAL(true, builder.addConstraint(con, 1));
+		con.assign(1, WeightLiteral(posLit(1), 3));
+		con.push_back(WeightLiteral(posLit(2), 2));
+		CPPUNIT_ASSERT_EQUAL(false, builder.addConstraint(con, 2, true));
+		CPPUNIT_ASSERT_EQUAL(false, builder.endProgram());
+	}
+	void testCoefficientReductionOnEq() {
+		builder.prepareProblem(4, 0, 0);
+		WeightLitVec con;
+		con.push_back(WeightLiteral(posLit(1), 3));
+		con.push_back(WeightLiteral(posLit(2), 2));
+		con.push_back(WeightLiteral(posLit(3), 1));
+		con.push_back(WeightLiteral(posLit(4), 1));
+		CPPUNIT_ASSERT_EQUAL(true, builder.addConstraint(con, 2, true));
+		CPPUNIT_ASSERT_EQUAL(true, builder.endProgram());
+		CPPUNIT_ASSERT(ctx.master()->isFalse(posLit(1)));
 	}
 private:
 	SharedContext ctx;

@@ -37,7 +37,7 @@ import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
-import ca.ubc.cs.beta.stationpacking.solvers.termination.InterruptibleTerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.interrupt.InterruptibleTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
 
 import com.google.common.collect.Queues;
@@ -113,8 +113,8 @@ public class ParallelNoWaitSolverComposite implements ISolver {
                         final SolverResult solverResult = solver.solve(aInstance, interruptibleCriterion, aSeed);
                         log.debug("End solve {}", solver.getClass().getSimpleName());
                         solversSolvingCurrentProblem.remove(solver);
-                        // Interrupt only if the result is conclusive. Only the first one will go through this block
-                        if (solverResult.isConclusive() && interruptibleCriterion.interrupt()) {
+                        // Interrupt if the result is conclusive OR if the timeout has expired. Only the first one will go through this block
+                        if ((solverResult.isConclusive() || interruptibleCriterion.hasToStop()) && interruptibleCriterion.interrupt()) {
                             log.debug("Found a conclusive result, interrupting other concurrent solvers");
                             synchronized (solversSolvingCurrentProblem) {
                                 solversSolvingCurrentProblem.forEach(ISolver::interrupt);
@@ -161,7 +161,7 @@ public class ParallelNoWaitSolverComposite implements ISolver {
             // Might as well cancel any jobs that haven't run yet. We don't interrupt them (via Thread interrupt) if they have already started, because we have our own interrupt system
             futures.forEach(future -> future.cancel(false));
             log.debug("Returning now");
-            return resultReference.get() == null ? SolverResult.createTimeoutResult(watch.getElapsedTime()) : new SolverResult(resultReference.get().getResult(), watch.getElapsedTime(), resultReference.get().getAssignment());
+            return resultReference.get() == null ? SolverResult.createTimeoutResult(watch.getElapsedTime()) : SolverResult.relabelTime(resultReference.get(), watch.getElapsedTime());
         } catch (InterruptedException e) {
             throw new RuntimeException("Interrupted while running parallel job", e);
         }
@@ -173,9 +173,10 @@ public class ParallelNoWaitSolverComposite implements ISolver {
      * So we set a variable when an error occurs, and check it here.
      */
     private void checkForErrors() {
-        if (error.get() != null) {
-            log.error("Error occured while executing a task", error.get());
-            throw new RuntimeException("Error occurred while executing a task", error.get());
+    	final Throwable e = error.getAndSet(null); // clear error for future uses
+        if (e != null) {
+            log.error("Error occured while executing a task", e);
+            throw new RuntimeException("Error occurred while executing a task", e);
         }
     }
 

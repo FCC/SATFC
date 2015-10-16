@@ -28,6 +28,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.HashMap;
 import java.util.Set;
 
 import org.junit.Test;
@@ -38,6 +39,7 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult.SolvedBy;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
@@ -64,7 +66,7 @@ public class ConnectedComponentGroupingDecoratorTest {
         final Set<Set<Station>> components = Sets.newHashSet(componentA, componentB, componentC);
 
         when(grouper.group(instance, constraintManager)).thenReturn(components);
-        when(solver.solve(any(StationPackingInstance.class), eq(terminationCriterion), eq(seed))).thenReturn(new SolverResult(SATResult.SAT, 0, Maps.newHashMap()));
+        when(solver.solve(any(StationPackingInstance.class), eq(terminationCriterion), eq(seed))).thenReturn(new SolverResult(SATResult.SAT, 0, new HashMap<>(), SolvedBy.UNKNOWN));
         connectedComponentGroupingDecorator.solve(instance, terminationCriterion, seed);
 
         verify(solver, times(components.size())).solve(any(StationPackingInstance.class), eq(terminationCriterion), eq(seed));
@@ -88,7 +90,7 @@ public class ConnectedComponentGroupingDecoratorTest {
         final Set<Set<Station>> components = Sets.newHashSet(componentA, componentB, componentC);
 
         when(grouper.group(instance, constraintManager)).thenReturn(components);
-        final SolverResult unsat = new SolverResult(SATResult.UNSAT, 0, Maps.newHashMap());
+        final SolverResult unsat = SolverResult.createNonSATResult(SATResult.UNSAT, 0, SolvedBy.UNKNOWN);
         when(solver.solve(any(StationPackingInstance.class), eq(terminationCriterion), eq(seed))).thenReturn(unsat);
         connectedComponentGroupingDecorator.solve(instance, terminationCriterion, seed);
 

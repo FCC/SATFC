@@ -21,22 +21,15 @@
  */
 package ca.ubc.cs.beta.stationpacking.datamanagers.constraints;
 
-import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
 import lombok.extern.slf4j.Slf4j;
 import ca.ubc.cs.beta.stationpacking.base.Station;
-import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
-
-import com.google.common.hash.Funnel;
-import com.google.common.hash.HashCode;
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hashing;
 
 /**
  * Created by newmanne on 06/03/15.
@@ -44,135 +37,76 @@ import com.google.common.hash.Hashing;
 @Slf4j
 public abstract class AConstraintManager implements IConstraintManager {
 
-    protected final Map<Station, Map<Integer, Set<Station>>> fCOConstraints;
-
-    /*
-     * Map taking subject station to map taking channel to interfering station that cannot be
-     * on channel+1 concurrently with subject station.
-     */
-    protected final Map<Station, Map<Integer, Set<Station>>> fADJp1Constraints;
-    protected String fHash;
-
-    protected AConstraintManager(IStationManager aStationManager, String aInterferenceConstraintsFilename) throws FileNotFoundException {
-        fCOConstraints = new HashMap<>();
-        fADJp1Constraints = new HashMap<>();
-    }
-
-    protected enum ConstraintKey {
-        //Co-channel constraints,
-        CO,
-        //ADJ+1 channel constraints,
-        ADJp1,
-        //ADJ-1 channel constraints (should not appear in new format),
-        ADJm1;
-    }
-
-    @Override
-    public Set<Station> getCOInterferingStations(
-            Station aStation, int aChannel) {
-        Map<Integer, Set<Station>> subjectStationConstraints = fCOConstraints.get(aStation);
-        //No constraint for this station.
-        if (subjectStationConstraints == null) {
-            return Collections.emptySet();
-        }
-
-        Set<Station> interferingStations = subjectStationConstraints.get(aChannel);
-        //No constraint for this station on this channel.
-        if (interferingStations == null) {
-            return Collections.emptySet();
-        }
-        return Collections.unmodifiableSet(interferingStations);
-    }
-
-    @Override
-    public Set<Station> getADJplusInterferingStations(
-            Station aStation,
-            int aChannel) {
-        Map<Integer, Set<Station>> subjectStationConstraints = fADJp1Constraints.get(aStation);
-        //No constraint for this station.
-        if (subjectStationConstraints == null) {
-            return Collections.emptySet();
-        }
-
-        Set<Station> interferingStations = subjectStationConstraints.get(aChannel);
-        //No constraint for this station on this channel.
-        if (interferingStations == null) {
-            return Collections.emptySet();
-        }
-        return Collections.unmodifiableSet(interferingStations);
-    }
-
     @Override
     public boolean isSatisfyingAssignment(Map<Integer, Set<Station>> aAssignment) {
+        final Set<Station> allStations = new HashSet<Station>();
+        for (Map.Entry<Integer, Set<Station>> entry : aAssignment.entrySet()) {
+            final int channel = entry.getKey();
+            final Set<Station> channelStations = aAssignment.get(channel);
 
-        Set<Station> allStations = new HashSet<Station>();
-
-        for(Integer channel : aAssignment.keySet())
-        {
-            Set<Station> channelStations = aAssignment.get(channel);
-
-            for(Station station1 : channelStations)
-            {
-                //Check if we have already seen station1
-                if(allStations.contains(station1))
-                {
-                    log.debug("Station {} is assigned to multiple channels.");
+            for (Station station1 : channelStations) {
+                //Check if we have already seen station1, and add it to the set of seen stations
+                if (!allStations.add(station1)) {
+                    log.error("Station {} is assigned to multiple channels", station1);
                     return false;
                 }
-
                 //Make sure current station does not CO interfere with other stations.
-                Collection<Station> coInterferingStations = getCOInterferingStations(station1, channel);
-                for(Station station2 : channelStations)
-                {
-                    if(coInterferingStations.contains(station2))
-                    {
-                        log.debug("Station {} and {} share channel {} on which they CO interfere.", station1, station2, channel);
+                final Set<Station> coInterferingStations = getCOInterferingStations(station1, channel);
+                for (Station station2 : channelStations) {
+                    if (coInterferingStations.contains(station2)) {
+                        log.trace("Station {} and {} share channel {} on which they CO interfere.", station1, station2, channel);
                         return false;
                     }
                 }
-
                 //Make sure current station does not ADJ+1 interfere with other stations.
-                Collection<Station> adjInterferingStations = getADJplusInterferingStations(station1, channel);
-                int channelp1 = channel+1;
-                Set<Station> channelp1Stations = aAssignment.get(channelp1);
-                if(channelp1Stations!=null)
-                {
-                    for(Station station2 : channelp1Stations)
-                    {
-                        if(adjInterferingStations.contains(station2))
-                        {
-                            log.debug("Station {} is on channel {}, and station {} is on channel {}, causing ADJ+1 interference.", station1, channel, station2, channelp1);
-                            return false;
-                        }
+                final Set<Station> adjInterferingStations = getADJplusOneInterferingStations(station1, channel);
+                int channelp1 = channel + 1;
+                final Set<Station> channelp1Stations = aAssignment.getOrDefault(channelp1, Collections.emptySet());
+                for (Station station2 : channelp1Stations) {
+                    if (adjInterferingStations.contains(station2)) {
+                        log.trace("Station {} is on channel {}, and station {} is on channel {}, causing ADJ+1 interference.", station1, channel, station2, channelp1);
+                        return false;
+                    }
+                }
+                //Make sure current station does not ADJ+2 interfere with other stations.
+                final Collection<Station> adjPlusTwoInterferingStations = getADJplusTwoInterferingStations(station1, channel);
+                int channelp2 = channel + 2;
+                final Set<Station> channelp2Stations = aAssignment.getOrDefault(channelp2, Collections.emptySet());
+                for (Station station2 : channelp2Stations) {
+                    if (adjPlusTwoInterferingStations.contains(station2)) {
+                        log.trace("Station {} is on channel {}, and station {} is on channel {}, causing ADJ+2 interference.", station1, channel, station2, channelp2);
+                        return false;
                     }
                 }
             }
-            allStations.addAll(channelStations);
         }
         return true;
     }
 
-    protected HashCode computeHash() {
-        final Funnel<Map<Station, Map<Integer, Set<Station>>>> funnel = (from, into) -> from.keySet().stream().sorted().forEach(s -> {
-            into.putInt(s.getID());
-            from.get(s).keySet().stream().sorted().forEach(c -> {
-                into.putInt(c);
-                from.get(s).get(c).stream().sorted().forEach(s2 -> {
-                    into.putInt(s2.getID());
-                });
-            });
-        });
-
-        HashFunction hf = Hashing.murmur3_32();
-        return hf.newHasher()
-                .putObject(fCOConstraints, funnel)
-                .putObject(fADJp1Constraints, funnel)
-                .hash();
-    }
-
     @Override
-    public String getHashCode() {
-        return fHash;
+    public Iterable<Constraint> getAllRelevantConstraints(Map<Station, Set<Integer>> domains) {
+        final Set<Station> stations = domains.keySet();
+        final Collection<Constraint> constraintCollection = new ArrayList<>();
+        for (Station sourceStation : stations) {
+            for (Integer sourceChannel : domains.get(sourceStation)) {
+                for (Station targetStation : getCOInterferingStations(sourceStation, sourceChannel)) {
+                    if (stations.contains(targetStation) && domains.get(targetStation).contains(sourceChannel)) {
+                        constraintCollection.add(new Constraint(sourceStation, targetStation, sourceChannel, sourceChannel));
+                    }
+                }
+                for (Station targetStation : getADJplusOneInterferingStations(sourceStation, sourceChannel)) {
+                    if (stations.contains(targetStation) && domains.get(targetStation).contains(sourceChannel + 1)) {
+                        constraintCollection.add(new Constraint(sourceStation, targetStation, sourceChannel, sourceChannel + 1));
+                    }
+                }
+                for (Station targetStation : getADJplusTwoInterferingStations(sourceStation, sourceChannel)) {
+                    if (stations.contains(targetStation) && domains.get(targetStation).contains(sourceChannel + 2)) {
+                        constraintCollection.add(new Constraint(sourceStation, targetStation, sourceChannel, sourceChannel + 2));
+                    }
+                }
+            }
+        }
+        return constraintCollection;
     }
 
 }

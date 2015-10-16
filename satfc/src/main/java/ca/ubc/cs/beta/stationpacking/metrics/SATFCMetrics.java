@@ -28,13 +28,22 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+
+import org.jgrapht.alg.NeighborIndex;
+import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.graph.SimpleGraph;
+
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
+import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.ConstraintGrouper;
 
 import com.codahale.metrics.Metric;
 import com.codahale.metrics.MetricRegistry;
@@ -87,15 +96,14 @@ public class SATFCMetrics {
 
     @Data
     public static class NewStationPackingInstanceEvent {
-        private final Set<Integer> stations;
-        private final String name;
+        private final StationPackingInstance instance;
+        private final IConstraintManager constraintManager;
     }
 
     @Data
     public static class InstanceSolvedEvent {
         private final String name;
-        private final SATResult result;
-        private final double runtime;
+        private final SolverResult solverResult;
     }
 
     @Data
@@ -120,19 +128,6 @@ public class SATFCMetrics {
         private final String name;
         private final String timedEvent;
         private final double time;
-    }
-
-    @Data
-    public static class SolvedByEvent {
-        public final static String PRESOLVER = "presolver";
-        public final static String SUBSET_CACHE = "subset_cache";
-        public final static String SUPERSET_CACHE = "superset_cache";
-        public final static String CLASP = "clasp";
-        public final static String CONNECTED_COMPONENTS = "connected_components";
-
-        private final String name;
-        private final String solvedBy;
-        private final SATResult result;
     }
 
     @Data
@@ -196,23 +191,30 @@ public class SATFCMetrics {
                 throw new IllegalStateException("Metrics already in progress!");
             }
             activeProblemMetrics = new InstanceInfo();
-            activeProblemMetrics.setName(event.getName());
-            activeProblemMetrics.setStations(event.getStations());
-            activeProblemMetrics.setNumStations(event.getStations().size());
+            final StationPackingInstance instance = event.getInstance();
+            activeProblemMetrics.setName(instance.getName());
+            activeProblemMetrics.setStations(instance.getStations());
+            activeProblemMetrics.setNumStations(instance.getStations().size());
+
+            // Calculate degrees. May be a bit expensive...
+            final SimpleGraph<Station, DefaultEdge> constraintGraph = ConstraintGrouper.getConstraintGraph(instance.getDomains(), event.getConstraintManager());
+            final NeighborIndex<Station, DefaultEdge> neighborIndex = new NeighborIndex<>(constraintGraph);
+            activeProblemMetrics.setStationToDegree(instance.getStations().stream().collect(Collectors.toMap(Function.identity(), s -> neighborIndex.neighborsOf(s).size())));
         }
 
         @Subscribe
         public void onInstanceSolvedEvent(InstanceSolvedEvent event) {
             safeMetricEdit(event.getName(), info -> {
-                info.setResult(event.getResult());
-                info.setRuntime(event.getRuntime());
+                info.setResult(event.getSolverResult().getResult());
+                info.setRuntime(event.getSolverResult().getRuntime());
+                info.setSolvedBy(event.getSolverResult().getSolvedBy());
             });
         }
 
         @Subscribe
         public void onUnderconstrainedStationsRemovedEvent(UnderconstrainedStationsRemovedEvent event) {
             safeMetricEdit(event.getName(), info -> {
-                info.setUnderconstrainedStations(event.getUnderconstrainedStations().stream().map(Station::getID).collect(Collectors.toSet()));
+                info.getUnderconstrainedStations().addAll(event.getUnderconstrainedStations().stream().map(Station::getID).collect(Collectors.toSet()));
             });
         }
 
@@ -224,17 +226,8 @@ public class SATFCMetrics {
                     outerInfo.getComponents().put(component.getName(), instanceInfo);
                     instanceInfo.setName(component.getName());
                     instanceInfo.setNumStations(component.getStations().size());
-                    instanceInfo.setStations(component.getStations().stream().map(Station::getID).collect(Collectors.toSet()));
+                    instanceInfo.setStations(component.getStations());
                 });
-            });
-        }
-
-        @Subscribe
-        public void onSolvedByEvent(SolvedByEvent event) {
-            safeMetricEdit(event.getName(), info -> {
-                if (event.getSolvedBy() != null && event.getResult().isConclusive()) {
-                    info.setSolvedBy(event.getSolvedBy());
-                }
             });
         }
 

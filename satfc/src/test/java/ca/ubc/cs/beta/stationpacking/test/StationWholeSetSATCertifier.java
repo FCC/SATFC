@@ -34,6 +34,7 @@ import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult.SolvedBy;
 import ca.ubc.cs.beta.stationpacking.solvers.certifiers.cgneighborhood.IStationSubsetCertifier;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
@@ -71,11 +72,12 @@ public class StationWholeSetSATCertifier implements IStationSubsetCertifier {
         		}
         	}
         }
-        if (allNeighborsIncluded)
-        	return new SolverResult(SATResult.SAT, 0, new HashMap<>());
+        if (allNeighborsIncluded) {
+        	return new SolverResult(SATResult.SAT, 0, new HashMap<>(), SolvedBy.UNKNOWN);
+        }
         
         // We return TIMEOUT rather than UNSAT in keeping with the behavior of {@link: StationSubsetSATCertifier}
-        return new SolverResult(SATResult.TIMEOUT, 0);
+        return SolverResult.createTimeoutResult(0);
     }
 
     public int getNumberOfTimesCalled() {
