@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -26,13 +26,10 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
 
-import lombok.extern.slf4j.Slf4j;
-
-import org.apache.commons.lang3.StringUtils;
-
 import au.com.bytecode.opencsv.CSVReader;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Unabridged format constraint manager for specific format that is released to the public by the FCC.
@@ -59,41 +56,35 @@ public class UnabridgedFormatConstraintManager extends AMapBasedConstraintManage
             try (CSVReader reader = new CSVReader(new FileReader(aInterferenceConstraintsFilename))) {
                 String[] line;
                 while ((line = reader.readNext()) != null) {
-                    try {
-                        final String key = line[0].trim();
-                        final ConstraintKey constraintKey = ConstraintKey.fromString(key);
-                        final int subjectChannel = Integer.valueOf(line[1].trim());
-                        final int targetChannel = Integer.valueOf(line[2].trim());
+                    final String key = line[0].trim();
+                    final ConstraintKey constraintKey = ConstraintKey.fromString(key);
+                    final int subjectChannel = Integer.valueOf(line[1].trim());
+                    final int targetChannel = Integer.valueOf(line[2].trim());
 
-                        if (constraintKey.equals(ConstraintKey.CO) && subjectChannel != targetChannel) {
-                            throw new IllegalArgumentException(Arrays.toString(line) + System.lineSeparator() + "Constraint key is " + constraintKey + " but subject channel (" + subjectChannel + ") is different than target channel (" + targetChannel + ").");
-                        } else if (constraintKey.equals(ConstraintKey.ADJp1) && subjectChannel != targetChannel - 1) {
-                            throw new IllegalArgumentException(Arrays.toString(line) + System.lineSeparator() + "Constraint key is " + constraintKey + " but subject channel (" + subjectChannel + ") is not one less than target channel (" + targetChannel + ").");
-                        } else if (constraintKey.equals(ConstraintKey.ADJm1) && subjectChannel != targetChannel + 1) {
-                            throw new IllegalArgumentException(Arrays.toString(line) + System.lineSeparator() + "Constraint key is " + constraintKey + " but subject channel (" + subjectChannel + ") is not one more than target channel (" + targetChannel + ").");
-                        } else if (constraintKey.equals(ConstraintKey.ADJp2) && subjectChannel != targetChannel - 2) {
-                            throw new IllegalArgumentException(Arrays.toString(line) + System.lineSeparator() + "Constraint key is " + constraintKey + " but subject channel (" + subjectChannel + ") is not two less than target channel (" + targetChannel + ").");
-                        } else if (constraintKey.equals(ConstraintKey.ADJm2) && subjectChannel != targetChannel + 2) {
-                            throw new IllegalArgumentException(Arrays.toString(line) + System.lineSeparator() + "Constraint key is " + constraintKey + " but subject channel (" + subjectChannel + ") is not two more than target channel (" + targetChannel + ").");
-                        }
-
-                        final int subjectStationID = Integer.valueOf(line[3].trim());
-                        final Station subjectStation = aStationManager.getStationfromID(subjectStationID);
-
-                        for (int i = 4; i < line.length; i++) {
-                            if (line[i].trim().isEmpty()) {
-                                break;
-                            }
-                            final int targetStationID = Integer.valueOf(line[i].trim());
-                            final Station targetStation = aStationManager.getStationfromID(targetStationID);
-
-                            addConstraint(subjectStation, targetStation, subjectChannel, constraintKey);
-                        }
-                    } catch (Exception e) {
-                        log.debug("Could not parse unabridged format constraint line:" + System.lineSeparator() + StringUtils.join(line, ","));
-                        throw e;
+                    if (constraintKey.equals(ConstraintKey.CO) && subjectChannel != targetChannel) {
+                        throw new IllegalArgumentException(Arrays.toString(line) + System.lineSeparator() + "Constraint key is " + constraintKey + " but subject channel (" + subjectChannel + ") is different than target channel (" + targetChannel + ").");
+                    } else if (constraintKey.equals(ConstraintKey.ADJp1) && subjectChannel != targetChannel - 1) {
+                        throw new IllegalArgumentException(Arrays.toString(line) + System.lineSeparator() + "Constraint key is " + constraintKey + " but subject channel (" + subjectChannel + ") is not one less than target channel (" + targetChannel + ").");
+                    } else if (constraintKey.equals(ConstraintKey.ADJm1) && subjectChannel != targetChannel + 1) {
+                        throw new IllegalArgumentException(Arrays.toString(line) + System.lineSeparator() + "Constraint key is " + constraintKey + " but subject channel (" + subjectChannel + ") is not one more than target channel (" + targetChannel + ").");
+                    } else if (constraintKey.equals(ConstraintKey.ADJp2) && subjectChannel != targetChannel - 2) {
+                        throw new IllegalArgumentException(Arrays.toString(line) + System.lineSeparator() + "Constraint key is " + constraintKey + " but subject channel (" + subjectChannel + ") is not two less than target channel (" + targetChannel + ").");
+                    } else if (constraintKey.equals(ConstraintKey.ADJm2) && subjectChannel != targetChannel + 2) {
+                        throw new IllegalArgumentException(Arrays.toString(line) + System.lineSeparator() + "Constraint key is " + constraintKey + " but subject channel (" + subjectChannel + ") is not two more than target channel (" + targetChannel + ").");
                     }
 
+                    final int subjectStationID = Integer.valueOf(line[3].trim());
+                    final Station subjectStation = aStationManager.getStationfromID(subjectStationID);
+
+                    for (int i = 4; i < line.length; i++) {
+                        if (line[i].trim().isEmpty()) {
+                            break;
+                        }
+                        final int targetStationID = Integer.valueOf(line[i].trim());
+                        final Station targetStation = aStationManager.getStationfromID(targetStationID);
+
+                        addConstraint(subjectStation, targetStation, subjectChannel, constraintKey);
+                    }
                 }
             }
         } catch (IOException e) {

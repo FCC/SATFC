@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -26,9 +26,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import ca.ubc.cs.beta.stationpacking.base.Station;
-
 import com.google.common.collect.Sets;
+
+import ca.ubc.cs.beta.stationpacking.base.Station;
 
 /**
  * Manages co- and adjacent- channel constraints.

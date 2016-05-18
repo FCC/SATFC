@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -23,14 +23,20 @@ package ca.ubc.cs.beta.stationpacking.facade.datamanager.data;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Map;
 
-import lombok.extern.slf4j.Slf4j;
+import com.google.common.base.Preconditions;
+
+import ca.ubc.cs.beta.stationpacking.cache.CacheCoordinate;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.ChannelSpecificConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.UnabridgedFormatConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.DomainStationManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Manages the data contained in different station config directories to make sure they are only read once.
@@ -49,6 +55,8 @@ public class DataManager {
 	public static String INTERFERENCES_FILE = "Interference_Paired.csv";
 
 	private HashMap<String, ManagerBundle> fData;
+	@Getter
+	private Map<CacheCoordinate, ManagerBundle> coordinateToBundle;
 
 	/**
 	 * Create a new (empty) data manager.
@@ -56,6 +64,25 @@ public class DataManager {
 	public DataManager()
 	{
 		fData = new HashMap<>();
+		coordinateToBundle = new HashMap<>();
+	}
+
+	public void loadMultipleConstraintSets(String constraintFolder) {
+		log.info("Looking in {} for station configuration folders", constraintFolder);
+		final File[] stationConfigurationFolders = new File(constraintFolder).listFiles(File::isDirectory);
+		log.info("Found {} station configuration folders", stationConfigurationFolders.length);
+		Arrays.stream(stationConfigurationFolders).forEach(folder -> {
+			try {
+				final String path = folder.getAbsolutePath();
+				log.info("Adding data for station configuration folder {}", path);
+				addData(folder.getAbsolutePath());
+				// add cache coordinate to map
+				final ManagerBundle bundle = getData(folder.getAbsolutePath());
+				log.info("Folder {} corresponds to coordinate {}", folder.getAbsolutePath(), bundle.getCacheCoordinate());
+			} catch (FileNotFoundException e) {
+				throw new IllegalStateException(folder.getAbsolutePath() + " is not a valid station configuration folder (missing Domain or Interference files?)", e);
+			}
+		});
 	}
 
 	/**
@@ -105,7 +132,6 @@ public class DataManager {
 				csE = e;
 			}
 
-
 			if(uaE != null && csE != null)
 			{
 				log.error("Could not parse interference data both in unabridged and channel specific formats.");
@@ -121,28 +147,17 @@ public class DataManager {
 			}
 			else if(uaE == null)
 			{
-				if(unabridgedConstraintManager == null)
-				{
-					throw new IllegalStateException("Parsing of unabridged formatted interference constraints had no exceptions, but corresponding manager is null.");
-				}
-				log.info("Unabridged format recognized for interference constraints.");
+                log.info("Unabridged format recognized for interference constraints.");
 				constraintManager = unabridgedConstraintManager;
 			}
-			else if(csE == null)
-			{
-				if(channelspecificConstraintManager == null)
-				{
-					throw new IllegalStateException("Parsing of channel specific formatted interference constraints had no exceptions, but corresponding manager is null.");
-				}
-				log.info("Channel specific format recognized for interference constraints.");
+			else {
+                log.info("Channel specific format recognized for interference constraints.");
 				constraintManager = channelspecificConstraintManager;
 			}
-			else
-			{
-				throw new IllegalStateException("Could not parse interference constraints with any recognized format.");
-			}
 
-			fData.put(path, new ManagerBundle(stationManager, constraintManager));
+			final ManagerBundle managerBundle = new ManagerBundle(stationManager, constraintManager, path);
+			fData.put(path, managerBundle);
+			coordinateToBundle.put(managerBundle.getCacheCoordinate(), managerBundle);
 			return true;
 		}
 	}
@@ -162,6 +177,12 @@ public class DataManager {
 			addData(path);
 			bundle = fData.get(path);
 		}
+		return bundle;
+	}
+
+	public ManagerBundle getData(CacheCoordinate coordinate) {
+		ManagerBundle bundle = coordinateToBundle.get(coordinate);
+		Preconditions.checkNotNull(bundle, "Unknown coordinate %s, known coordinates %s", coordinate, coordinateToBundle.keySet());
 		return bundle;
 	}
 

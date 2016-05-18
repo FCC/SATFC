@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -36,6 +36,8 @@ import org.jgrapht.graph.SimpleGraph;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.google.common.collect.Sets;
+
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.GraphBackedConstraintManager;
@@ -49,8 +51,6 @@ import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.infinite.NeverEndingTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.test.GraphLoader;
 import ca.ubc.cs.beta.stationpacking.test.StationWholeSetSATCertifier;
-
-import com.google.common.collect.Sets;
 
 /**
  * @author pcernek
@@ -239,7 +239,7 @@ public class ConstraintGraphNeighborhoodPresolverTest {
         StationWholeSetSATCertifier certifier = new StationWholeSetSATCertifier(Arrays.asList(coGraph, adjGraph), startingStations);
 
         ConstraintGraphNeighborhoodPresolver presolver =
-                new ConstraintGraphNeighborhoodPresolver(new VoidSolver(), certifier, new IterativeDeepeningConfigurationStrategy(new AddNeighbourLayerStrategy(maxLayersOfNeighbors), Double.MAX_VALUE), constraintManager);
+                new ConstraintGraphNeighborhoodPresolver(new VoidSolver(), certifier, new IterativeDeepeningConfigurationStrategy(new AddNeighbourLayerStrategy(maxLayersOfNeighbors), Double.MAX_VALUE), constraintManager, false);
         SolverResult result = presolver.solve(instance, mockTerminationCriterion, arbitrarySeed);
         assertEquals(expectedNumberOfLayers, certifier.getNumberOfTimesCalled());
         assertEquals(expectedResult, result.getResult());

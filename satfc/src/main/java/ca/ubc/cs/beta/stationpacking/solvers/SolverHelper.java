@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -21,17 +21,17 @@
  */
 package ca.ubc.cs.beta.stationpacking.solvers;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult.SolvedBy;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class SolverHelper {
 
 	private SolverHelper()
@@ -177,8 +177,7 @@ public class SolverHelper {
 				}
 			}
 		}
-		
-				
+
 		return new SolverResult(aSATResult,runtime,aAssignment, SolvedBy.UNKNOWN);
 	}
 	

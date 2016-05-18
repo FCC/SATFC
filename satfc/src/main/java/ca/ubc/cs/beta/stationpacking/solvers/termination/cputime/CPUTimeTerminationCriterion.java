@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -24,10 +24,10 @@ package ca.ubc.cs.beta.stationpacking.solvers.termination.cputime;
 
 import org.apache.commons.math3.util.FastMath;
 
+import com.google.common.util.concurrent.AtomicDouble;
+
 import ca.ubc.cs.beta.aeatk.misc.cputime.CPUTime;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
-
-import com.google.common.util.concurrent.AtomicDouble;
 
 public class CPUTimeTerminationCriterion implements ITerminationCriterion 
 {

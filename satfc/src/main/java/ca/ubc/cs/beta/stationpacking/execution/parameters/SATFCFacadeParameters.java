@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -21,18 +21,15 @@
  */
 package ca.ubc.cs.beta.stationpacking.execution.parameters;
 
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
 import ca.ubc.cs.beta.aeatk.misc.options.OptionLevel;
 import ca.ubc.cs.beta.aeatk.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aeatk.options.AbstractOptions;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.smac.SATFCHydraParams;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.SolverCustomizationOptionsParameters;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.base.InstanceParameters;
 import ca.ubc.cs.beta.stationpacking.facade.SATFCFacadeParameter.SolverChoice;
-import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.SATFCParallelSolverBundle;
 import ch.qos.logback.classic.Level;
-
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
 
 /**
  * SATFC facade parameters.
@@ -55,9 +52,6 @@ public class SATFCFacadeParameters extends AbstractOptions {
     public String fCNFDir;
 
     @ParametersDelegate
-	public SolverCustomizationOptionsParameters fSolverOptions = new SolverCustomizationOptionsParameters();
-
-    @ParametersDelegate
     public SATFCCachingParameters cachingParams = new SATFCCachingParameters();
 
     @ParametersDelegate
@@ -70,23 +64,32 @@ public class SATFCFacadeParameters extends AbstractOptions {
     @Parameter(names = "-INSTANCES-FILE", description = "file listing each instance file on a separate line")
     public String fFileOfInstanceFiles;
     @UsageTextField(level = OptionLevel.DEVELOPER)
+    @Parameter(names = "-CSV-ROOT", description = "Root of CSV auction directory")
+    public String fCsvRoot;
+    @UsageTextField(level = OptionLevel.DEVELOPER)
+    @Parameter(names = "-CHECK-FOR-SOLUTION", description = "Test for a solution in redis matching instancename, used to parse metrics files into cache")
+    public boolean checkForSolution = false;
+    @UsageTextField(level = OptionLevel.DEVELOPER)
     @Parameter(names = {"-METRICS-FILE", "-OUTPUT-FILE"}, description = "Causes the FileMetricWriter to be used, outputs a file with metrics (may cause performance loss)")
     public String fMetricsFile;
     @UsageTextField(level = OptionLevel.DEVELOPER)
     @Parameter(names = "-INTERFERENCES-FOLDER", description = "folder containing all the other interference folders")
     public String fInterferencesFolder;
+    @UsageTextField(level = OptionLevel.DEVELOPER)
+    @Parameter(names = "-CUTOFF-FILE", description = "file listing each instance and the corresponding cutoff")
+    public String fCutoffFile;
 
     /**
 	 * Clasp library to use (optional - can be automatically detected).
 	 */
 	@Parameter(names = "-CLASP-LIBRARY",description = "clasp library file")
 	public String fClaspLibrary;
-	
-	@Parameter(names = "-SOLVER-CHOICE", description = "Type of SATFC: Note that options other than SATFC_SEQUENTIAL and SATFC_PARALLEL are for developer purposes only")
-	public SolverChoice fSolverChoice = Runtime.getRuntime().availableProcessors() >= SATFCParallelSolverBundle.PORTFOLIO_SIZE ? SolverChoice.SATFC_PARALLEL : SolverChoice.SATFC_SEQUENTIAL;
 
-    @Parameter(names = "-PARALLELISM-LEVEL", description = "Maximum number of algorithms to execute in parallel. This defaults to all available processors. This has little effect past " + SATFCParallelSolverBundle.PORTFOLIO_SIZE)
-    public int numCores = Runtime.getRuntime().availableProcessors();
+	/**
+     * SATenstein library to use (optional - can be automatically detected).
+     */
+    @Parameter(names = "-SATENSTEIN-LIBRARY",description = "SATenstein library file")
+    public String fSATensteinLibrary;
 
 	/**
 	 * Logging options.
@@ -99,8 +102,11 @@ public class SATFCFacadeParameters extends AbstractOptions {
     public Level getLogLevel() {
         return Level.valueOf(logLevel);
     }
-	
-    @ParametersDelegate
-    public SATFCHydraParams fHydraParams = new SATFCHydraParams();
+
+    @Parameter(names = "-CONFIG-FILE")
+    public String configFile;
+    
+    @Parameter(names = "-SOLVER-CHOICE", hidden=true)
+    public SolverChoice solverChoice = SolverChoice.YAML;
 
 }

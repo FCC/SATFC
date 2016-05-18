@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -21,18 +21,15 @@
  */
 package ca.ubc.cs.beta.stationpacking.cache;
 
-import java.util.List;
+import com.google.common.base.Joiner;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 
+import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
+import ca.ubc.cs.beta.stationpacking.utils.CacheUtils;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
-
-import com.google.common.base.Joiner;
-import com.google.common.base.Preconditions;
-import com.google.common.base.Splitter;
-import com.google.common.collect.ImmutableList;
 
 /**
  * This class determines which cache is accessed
@@ -47,14 +44,14 @@ public class CacheCoordinate {
 
     // transform a redis key into a cache coordinate
     public static CacheCoordinate fromKey(String key) {
-        final List<String> strings = Splitter.on(":").splitToList(key);
-        return new CacheCoordinate(strings.get(2), strings.get(3));
+        final CacheUtils.ParsedKey parsedKey = CacheUtils.parseKey(key);
+        return new CacheCoordinate(parsedKey.getDomainHash(), parsedKey.getInterferenceHash());
     }
 
     // create a redis key from a coordinate, a result, and an instance
-    public String toKey(SATResult result, StationPackingInstance instance) {
+    public String toKey(SATResult result, long num) {
         Preconditions.checkArgument(result.equals(SATResult.SAT) || result.equals(SATResult.UNSAT));
-        return Joiner.on(":").join(ImmutableList.of("SATFC", result, domainHash, interferenceHash, StationPackingInstanceHasher.hash(instance)));
+        return Joiner.on(":").join(ImmutableList.of("SATFC", result, domainHash, interferenceHash, num));
     }
 
 }

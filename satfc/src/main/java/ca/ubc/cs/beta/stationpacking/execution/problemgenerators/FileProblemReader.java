@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -23,17 +23,14 @@ package ca.ubc.cs.beta.stationpacking.execution.problemgenerators;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-
-import lombok.extern.slf4j.Slf4j;
-import ca.ubc.cs.beta.stationpacking.execution.AProblemReader;
-import ca.ubc.cs.beta.stationpacking.execution.Converter;
 
 import com.google.common.base.Charsets;
-import com.google.common.collect.Sets;
 import com.google.common.io.Files;
+
+import ca.ubc.cs.beta.stationpacking.execution.AProblemReader;
+import ca.ubc.cs.beta.stationpacking.execution.problemgenerators.problemparsers.IProblemParser;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Created by newmanne on 12/05/15.
@@ -41,12 +38,12 @@ import com.google.common.io.Files;
 @Slf4j
 public class FileProblemReader extends AProblemReader {
 
-    private final String interferencesFolder;
+    private final IProblemParser nameToProblem;
     private final List<String> instanceFiles;
     private int listIndex = 0;
 
-    public FileProblemReader(String fileOfSrpkFiles, String interferencesFolder) {
-        this.interferencesFolder = interferencesFolder;
+    public FileProblemReader(String fileOfSrpkFiles, IProblemParser nameToProblem) {
+        this.nameToProblem = nameToProblem;
         log.info("Reading instances from file {}", fileOfSrpkFiles);
         try {
             instanceFiles = Files.readLines(new File(fileOfSrpkFiles), Charsets.UTF_8);
@@ -57,28 +54,19 @@ public class FileProblemReader extends AProblemReader {
 
     @Override
     public SATFCFacadeProblem getNextProblem() {
-        String instanceFile = null;
-        Converter.StationPackingProblemSpecs stationPackingProblemSpecs = null;
+        SATFCFacadeProblem problem = null;
         while (listIndex < instanceFiles.size()) {
-            instanceFile = instanceFiles.get(listIndex++);
+            String instanceFile = instanceFiles.get(listIndex++);
             try {
-                stationPackingProblemSpecs = Converter.StationPackingProblemSpecs.fromStationRepackingInstance(instanceFile);
+                problem = nameToProblem.problemFromName(instanceFile);
                 break;
             } catch (IOException e) {
-                log.warn("Error parsing file {}", instanceFile);
+                log.warn("Error parsing file " + instanceFile, e);
             }
         }
-        if (stationPackingProblemSpecs != null) {
+        if (problem != null) {
             log.info("This is problem {} out of {}", index, instanceFiles.size());
-            final Set<Integer> stations = stationPackingProblemSpecs.getDomains().keySet();
-            return new SATFCFacadeProblem(
-                    stations,
-                    stationPackingProblemSpecs.getDomains().values().stream().reduce(new HashSet<>(), Sets::union),
-                    stationPackingProblemSpecs.getDomains(),
-                    stationPackingProblemSpecs.getPreviousAssignment(),
-                    interferencesFolder + File.separator + stationPackingProblemSpecs.getDataFoldername(),
-                    new File(instanceFile).getName()
-            );
+            return problem;
         } else {
             return null;
         }

@@ -1,21 +1,41 @@
+/**
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ *
+ * This file is part of SATFC.
+ *
+ * SATFC is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * SATFC is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with SATFC.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * For questions, contact us at:
+ * afrechet@cs.ubc.ca
+ */
 package ca.ubc.cs.beta.stationpacking.solvers.underconstrained;
 
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import lombok.extern.slf4j.Slf4j;
-
 import org.jgrapht.alg.NeighborIndex;
 import org.jgrapht.graph.DefaultEdge;
+
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Sets;
 
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.ConstraintGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
-
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Sets;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Created by newmanne on 1/8/15.
@@ -115,7 +135,7 @@ public class HeuristicUnderconstrainedStationFinder implements IUnderconstrained
                         .sum();
 
                 if (interferingStationsMaxChannelSpread < domain.size()) {
-                    log.debug("Station {} is underconstrained as it has {} domain channels, but the neighbouring interfering stations can only spread to a max of {} of them", station, domain.size(), interferingStationsMaxChannelSpread);
+                    log.trace("Station {} is underconstrained as it has {} domain channels, but the neighbouring interfering stations can only spread to a max of {} of them", station, domain.size(), interferingStationsMaxChannelSpread);
                     underconstrainedStations.add(station);
                 }
             }

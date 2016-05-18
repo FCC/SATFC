@@ -17,9 +17,22 @@ Please consult the manual [SATFC-manual](satfc/src/dist/SATFC-manual.pdf). The m
 
 ## Release Notes
 
-Rough information about the evolution of **SATFC** through releases.
+Rough information about the evolution of **SATFC** through major releases.
 
-### SATFC 1.8-BETA [19/08/2015]
+### SATFC 2.3 [29/3/2016]
+
+* Switch the default portfolio to a newly configured eight core portfolio 
+
+### SATFC 2.2 [15/2/2016]
+
+* Improve the memory usage of SATFCServer
+* Various bugfixes
+
+### SATFC 2.0 [15/10/2015]
+
+* Introduce SATenstein, a local search based solver
+
+### SATFC 1.8 [19/08/2015]
 
 * ADJ+2 and ADJ-2 constraints 
 * Enforce arc consistency as a form of preprocessing
@@ -27,6 +40,7 @@ Rough information about the evolution of **SATFC** through releases.
 * Identify conditionally underconstrained stations
 * Improve underconstrained station finding heuristic 
 * Upgrade to clasp 3.1.3
+* Multi-permutation server cache to guard against cache query slowdowns
 
 ### SATFC 1.7.1 [30/06/2015]
 

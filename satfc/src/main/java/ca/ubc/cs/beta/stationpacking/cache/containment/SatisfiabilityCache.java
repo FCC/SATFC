@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -24,26 +24,28 @@ package ca.ubc.cs.beta.stationpacking.cache.containment;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-
-import lombok.extern.slf4j.Slf4j;
-import ca.ubc.cs.beta.stationpacking.base.Station;
-import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.cache.containment.containmentcache.ISatisfiabilityCache;
-import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
-import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableMap;
 
+import ca.ubc.cs.beta.stationpacking.base.Station;
+import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.cache.containment.containmentcache.ISatisfiabilityCache;
+import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import containmentcache.ILockableContainmentCache;
 import containmentcache.SimpleCacheSet;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Created by newmanne on 19/04/15.
@@ -53,6 +55,7 @@ public class SatisfiabilityCache implements ISatisfiabilityCache {
 
     final ILockableContainmentCache<Station, ContainmentCacheSATEntry> SATCache;
     final ILockableContainmentCache<Station, ContainmentCacheUNSATEntry> UNSATCache;
+    @Getter
     final ImmutableBiMap<Station, Integer> permutation;
 
     public SatisfiabilityCache(
@@ -65,7 +68,7 @@ public class SatisfiabilityCache implements ISatisfiabilityCache {
     }
 
     @Override
-    public ContainmentCacheSATResult proveSATBySuperset(final StationPackingInstance aInstance) {
+    public ContainmentCacheSATResult proveSATBySuperset(final StationPackingInstance aInstance, final Predicate<ContainmentCacheSATEntry> ignorePredicate) {
         // try to narrow down the entries we have to search by only looking at supersets
         try {
             SATCache.getReadLock().lock();
@@ -76,6 +79,7 @@ public class SatisfiabilityCache implements ISatisfiabilityCache {
                      * The entry should also be a solution to the problem, which it will be as long as the solution can project onto the query's domains since they come from the set of interference constraints
                      */
                     .filter(entry -> entry.isSolutionTo(aInstance))
+                    .filter(ignorePredicate)
                     .map(entry -> new ContainmentCacheSATResult(entry.getAssignmentChannelToStation(), entry.getKey()))
                     .findAny()
                     .orElse(ContainmentCacheSATResult.failure());
@@ -101,17 +105,6 @@ public class SatisfiabilityCache implements ISatisfiabilityCache {
                     .orElse(ContainmentCacheUNSATResult.failure());
         } finally {
             UNSATCache.getReadLock().unlock();
-        }
-    }
-
-    @Override
-    public void add(StationPackingInstance aInstance, SolverResult result, String key) {
-        if (result.getResult().equals(SATResult.SAT)) {
-            add(new ContainmentCacheSATEntry(result.getAssignment(), key, permutation));
-        } else if (result.getResult().equals(SATResult.UNSAT)) {
-            add(new ContainmentCacheUNSATEntry(aInstance.getDomains(), key, permutation));
-        } else {
-            throw new IllegalStateException("Tried adding a result that was neither SAT or UNSAT");
         }
     }
 
@@ -147,24 +140,20 @@ public class SatisfiabilityCache implements ISatisfiabilityCache {
      * @return list of cache entries to be removed
      */
     @Override
-    public List<ContainmentCacheSATEntry> filterSAT() {
+    public List<ContainmentCacheSATEntry> filterSAT(IStationManager stationManager, boolean strong) {
         List<ContainmentCacheSATEntry> prunableEntries = Collections.synchronizedList(new ArrayList<>());
         Iterable<ContainmentCacheSATEntry> satEntries = SATCache.getSets();
 
+        final AtomicLong counter = new AtomicLong();
         SATCache.getReadLock().lock();
         try {
             StreamSupport.stream(satEntries.spliterator(), true)
                     .forEach(cacheEntry -> {
-                        Iterable<ContainmentCacheSATEntry> supersets = SATCache.getSupersets(cacheEntry);
-                        Optional<ContainmentCacheSATEntry> foundSuperset =
-                                StreamSupport.stream(supersets.spliterator(), false)
-                                        .filter(entry -> entry.hasMoreSolvingPower(cacheEntry))
-                                        .findAny();
-                        if (foundSuperset.isPresent()) {
+                        if (counter.getAndIncrement() % 1000 == 0) {
+                            log.info("Scanned {} / {} entries; Found {} prunables", counter.get(), SATCache.size(), prunableEntries.size());
+                        }
+                        if ((strong && shouldFilterStrong(cacheEntry, stationManager)) || (!strong && shouldFilterWeak(cacheEntry))) {
                             prunableEntries.add(cacheEntry);
-                            if (prunableEntries.size() % 2000 == 0) {
-                                log.info("Found " + prunableEntries.size() + " prunables");
-                            }
                         }
                     });
         } finally {
@@ -173,6 +162,23 @@ public class SatisfiabilityCache implements ISatisfiabilityCache {
 
         prunableEntries.forEach(SATCache::remove);
         return prunableEntries;
+    }
+
+    private boolean shouldFilterWeak(ContainmentCacheSATEntry cacheEntry) {
+        Iterable<ContainmentCacheSATEntry> supersets = SATCache.getSupersets(cacheEntry);
+        return StreamSupport.stream(supersets.spliterator(), false)
+                        .filter(entry -> entry.hasMoreSolvingPower(cacheEntry))
+                        .findAny().isPresent();
+    }
+
+    private boolean shouldFilterStrong(ContainmentCacheSATEntry cacheEntry, IStationManager stationManager) {
+        final Map<Station, Set<Integer>> domains = new HashMap<>();
+        for (Map.Entry<Integer, Integer> e : cacheEntry.getAssignmentStationToChannel().entrySet()) {
+            final Station station = stationManager.getStationfromID(e.getKey());
+            domains.put(station, stationManager.getRestrictedDomain(station, e.getValue(), false));
+        }
+        final StationPackingInstance i = new StationPackingInstance(domains);
+        return proveSATBySuperset(i, entry -> entry != cacheEntry).isValid();
     }
 
     /**
@@ -185,14 +191,19 @@ public class SatisfiabilityCache implements ISatisfiabilityCache {
         List<ContainmentCacheUNSATEntry> prunableEntries = new ArrayList<>();
         Iterable<ContainmentCacheUNSATEntry> unsatEntries = UNSATCache.getSets();
 
+
+        final AtomicLong counter = new AtomicLong();
         UNSATCache.getReadLock().lock();
         try {
             unsatEntries.forEach(cacheEntry -> {
+                if (counter.getAndIncrement() % 1000 == 0) {
+                    log.info("Scanned {} / {} entries; Found {} prunables", counter.get(), UNSATCache.size(), prunableEntries.size());
+                }
                 Iterable<ContainmentCacheUNSATEntry> subsets = UNSATCache.getSubsets(cacheEntry);
                 // For two UNSAT problems P and Q, if Q has less stations to pack,
                 // and each station has more candidate channels, then Q is less restrictive than P
                 Optional<ContainmentCacheUNSATEntry> lessRestrictiveUNSAT =
-                        StreamSupport.stream(subsets.spliterator(), false)
+                        StreamSupport.stream(subsets.spliterator(), true)
                                 .filter(entry -> entry.isLessRestrictive(cacheEntry))
                                 .findAny();
                 if (lessRestrictiveUNSAT.isPresent()) {
@@ -221,13 +232,13 @@ public class SatisfiabilityCache implements ISatisfiabilityCache {
                         bCopy.and(bitSet);
                         aCopy.stream().forEach(i -> {
                             Station station = permutation.inverse().get(i);
-                            if (!domains.get(station).contains(a.getAssignment().get(station.getID()))) {
+                            if (!domains.get(station).contains(a.getAssignmentStationToChannel().get(station.getID()))) {
                                 aCopy.clear(i);
                             }
                         });
                         bCopy.stream().forEach(i -> {
                             Station station = permutation.inverse().get(i);
-                            if (!domains.get(station).contains(b.getAssignment().get(station.getID()))) {
+                            if (!domains.get(station).contains(b.getAssignmentStationToChannel().get(station.getID()))) {
                                 bCopy.clear(i);
                             }
                         });

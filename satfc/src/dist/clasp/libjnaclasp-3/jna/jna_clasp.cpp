@@ -92,7 +92,7 @@ namespace JNA {
 		int i = 1;
 		for (Var v = 1; v < index.size(); ++v)
 		{
-			assignment_[i] = (s.value(v) == value_false ? -1:1)*v;
+			assignment_[i] = (m.value(v) == value_false ? -1:1)*v;
 			i++;
 		}
 		return true;

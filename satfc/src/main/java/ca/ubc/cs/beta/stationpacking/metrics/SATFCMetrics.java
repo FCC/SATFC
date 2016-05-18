@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -31,19 +31,9 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
-import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
-
 import org.jgrapht.alg.NeighborIndex;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
-
-import ca.ubc.cs.beta.stationpacking.base.Station;
-import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
-import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
-import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.ConstraintGrouper;
 
 import com.codahale.metrics.Metric;
 import com.codahale.metrics.MetricRegistry;
@@ -56,9 +46,21 @@ import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 
+import ca.ubc.cs.beta.stationpacking.base.Station;
+import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.cache.StationPackingInstanceHasher;
+import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.ConstraintGrouper;
+import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
+import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * Created by newmanne on 15/01/15.
- * TODO: if you solve the same problem twice in a row, metrics behaviour is undefined (because we use name to reference things. Oh well)
+ * Collects metrics on solving SATFC problems
+ * If your problems don't have  unique names, behaviour is undefined (because we use names to reference problems)
  */
 @Slf4j
 public class SATFCMetrics {
@@ -123,7 +125,9 @@ public class SATFCMetrics {
         public final static String FIND_SUPERSET = "find_superset";
         public final static String FIND_SUBSET = "find_subset";
         public final static String FIND_UNDERCONSTRAINED_STATIONS = "find_underconstrained_stations";
+        public final static String PUT_BACK_UNDERCONSTRAINED_STATIONS = "put_back_underconstrained_stations";
         public final static String CONNECTED_COMPONENTS = "split_connected_components";
+        public final static String ARC_CONSISTENCY = "arc_consistency";
 
         private final String name;
         private final String timedEvent;
@@ -149,7 +153,7 @@ public class SATFCMetrics {
             try {
                 metricsLock.lock();
                 // ensure that you only edit the "current problem" metrics.
-                if (activeProblemMetrics != null && activeProblemMetrics.getName().startsWith(name)) {
+                if (activeProblemMetrics != null && name.startsWith(activeProblemMetrics.getName())) {
                     final InstanceInfo info = getInfo(name);
                     if (info != null) {
                         callback.doWithLock(info);
@@ -195,6 +199,7 @@ public class SATFCMetrics {
             activeProblemMetrics.setName(instance.getName());
             activeProblemMetrics.setStations(instance.getStations());
             activeProblemMetrics.setNumStations(instance.getStations().size());
+            activeProblemMetrics.setHash(StationPackingInstanceHasher.hash(instance).toString());
 
             // Calculate degrees. May be a bit expensive...
             final SimpleGraph<Station, DefaultEdge> constraintGraph = ConstraintGrouper.getConstraintGraph(instance.getDomains(), event.getConstraintManager());
@@ -206,8 +211,12 @@ public class SATFCMetrics {
         public void onInstanceSolvedEvent(InstanceSolvedEvent event) {
             safeMetricEdit(event.getName(), info -> {
                 info.setResult(event.getSolverResult().getResult());
+                if (event.getSolverResult().getResult().equals(SATResult.SAT)) {
+                    info.setAssignment(StationPackingUtils.stationToChannelFromChannelToStation(event.getSolverResult().getAssignment()));
+                }
                 info.setRuntime(event.getSolverResult().getRuntime());
                 info.setSolvedBy(event.getSolverResult().getSolvedBy());
+                info.setNickname(event.getSolverResult().getNickname());
             });
         }
 

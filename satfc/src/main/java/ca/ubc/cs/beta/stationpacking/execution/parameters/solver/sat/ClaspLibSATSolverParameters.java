@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -23,8 +23,6 @@ package ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat;
 
 import ca.ubc.cs.beta.aeatk.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aeatk.options.AbstractOptions;
-
-import com.beust.jcommander.Parameter;
 
 /**
  * Clasp SAT solver library parameters.
@@ -53,17 +51,4 @@ public class ClaspLibSATSolverParameters extends AbstractOptions {
      */
     public final static String UHF_CONFIG_04_15_h2 =      "--sat-prepro=0 --init-watches=2 --rand-freq=0.0 --sign-def=2 --del-init=5.0,10,2500 --strengthen=local,2 --lookahead=hybrid,1 --otfs=2 --reverse-arcs=3 --save-progress=180 --del-glue=2,0 --del-cfl=L,2000 --restarts=F,1600 --local-restarts --update-lbd=1 --heuristic=Vsids,92 --deletion=ipSort,75,2 --contraction=166 --del-grow=0 --del-on-restart=50 --del-max=32767";
 
-    /**
-	 * Clasp library path.
-	 */
-	@Parameter(names = "--library", description = "path to the clasp library.", required=true)
-	public String Library;
-	
-	/**
-	 * Clasp configuration to use.
-	 */
-	@UsageTextField(defaultValues="-See code-")
-	@Parameter(names = "--configuration", description = "clasp configuration to use (may not be used).")
-	public String Configuration = UHF_CONFIG_04_15_h1;
-	
 }

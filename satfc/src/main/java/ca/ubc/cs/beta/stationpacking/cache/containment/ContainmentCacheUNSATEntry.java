@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -26,44 +26,98 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.StreamSupport;
 
+import com.google.common.base.Preconditions;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.ImmutableBiMap;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Multimaps;
+
+import ca.ubc.cs.beta.stationpacking.base.Station;
+import ca.ubc.cs.beta.stationpacking.cache.ISATFCCacheEntry;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
+import ca.ubc.cs.beta.stationpacking.utils.GuavaCollectors;
+import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
+import containmentcache.ICacheEntry;
 import lombok.Data;
 import lombok.NonNull;
-import ca.ubc.cs.beta.stationpacking.base.Station;
-import ca.ubc.cs.beta.stationpacking.utils.GuavaCollectors;
-
-import com.google.common.collect.BiMap;
-import com.google.common.collect.ImmutableBiMap;
-import com.google.common.collect.ImmutableMap;
-
-import containmentcache.ICacheEntry;
 
 /**
 * Created by newmanne on 25/03/15.
 */
 @Data
-public class ContainmentCacheUNSATEntry implements ICacheEntry<Station> {
-	
+public class ContainmentCacheUNSATEntry implements ICacheEntry<Station>, ISATFCCacheEntry {
+
+    public static final int BITS_PER_STATION = StationPackingUtils.UHFmax - StationPackingUtils.LVHFmin + 1;
+
     private final BitSet bitSet;
-    private final ImmutableMap<Station, Set<Integer>> domains;
-    private final String key;
+    private final BitSet domainsBitSet;
     private final ImmutableBiMap<Station, Integer> permutation;
+
+    private String key;
+    private String auction;
 
     public ContainmentCacheUNSATEntry(
     		@NonNull Map<Station, Set<Integer>> domains, 
-    		@NonNull String key, 
     		@NonNull BiMap<Station, Integer> permutation) {
-        this.key = key;
-        this.domains = ImmutableMap.copyOf(domains);
+        domainsBitSet = new BitSet(domains.size() * BITS_PER_STATION);
+        // Sort stations according to the permutation
+        final ImmutableList<Station> stations = domains.keySet().stream()
+                .sorted((a, b) -> permutation.get(a).compareTo(permutation.get(b)))
+                .collect(GuavaCollectors.toImmutableList());
+        int offset = 0;
+        for (Station s: stations) {
+            // Set a bit for each channel that is in the domain
+            for (Integer chan : domains.get(s)) {
+                int index = offset + chan - StationPackingUtils.UHFmin;
+                domainsBitSet.set(index);
+            }
+            offset += BITS_PER_STATION;
+        }
         this.permutation = ImmutableBiMap.copyOf(permutation);
-        this.bitSet = new BitSet(2174); // hardcoded number that represents the expected number of stations in the universe. This is just space pre-allocation, if the estimate is wrong, no harm is done.
+        this.bitSet = new BitSet(permutation.size());
         domains.keySet().forEach(station -> bitSet.set(permutation.get(station)));
     }
+
+    // construct from Redis cache entry
+    public ContainmentCacheUNSATEntry(
+            @NonNull BitSet bitSet,
+            @NonNull BitSet domains,
+            @NonNull String key,
+            @NonNull BiMap<Station, Integer> permutation,
+            String auction
+    ) {
+        this.permutation = ImmutableBiMap.copyOf(permutation);
+        this.key = key;
+        this.bitSet = bitSet;
+        this.domainsBitSet = domains;
+        this.auction = auction;
+    }
+
 
     @Override
     public Set<Station> getElements() {
     	final Map<Integer, Station> inverse = permutation.inverse();
         return bitSet.stream().mapToObj(inverse::get).collect(GuavaCollectors.toImmutableSet());
     }
+
+    public Map<Station, Set<Integer>> getDomains() {
+        final HashMultimap<Station, Integer> domains = HashMultimap.create();
+        final Map<Integer, Station> inversePermutation = permutation.inverse();
+        int offset = 0;
+        // Loop over all stations
+        for (int bit = bitSet.nextSetBit(0); bit >= 0; bit = bitSet.nextSetBit(bit+1)) {
+            final Station station = inversePermutation.get(bit);
+            // Reconstruct a station's domain
+            for (int chanBit = domainsBitSet.nextSetBit(offset); chanBit < offset + BITS_PER_STATION && chanBit >= 0; chanBit = domainsBitSet.nextSetBit(chanBit+1)) {
+                int chan = (chanBit % BITS_PER_STATION) + StationPackingUtils.UHFmin;
+                domains.put(station, chan);
+            }
+            offset += BITS_PER_STATION;
+        }
+        return Multimaps.asMap(domains);
+    }
+
 
     /*
      * returns true if this UNSAT entry is less restrictive than the cacheEntry
@@ -73,9 +127,9 @@ public class ContainmentCacheUNSATEntry implements ICacheEntry<Station> {
      */
     public boolean isLessRestrictive(ContainmentCacheUNSATEntry cacheEntry) {
         // skip checking against itself
-        if (!this.getKey().equals(cacheEntry.getKey())) {
-            Map<Station, Set<Integer>> moreRes = cacheEntry.domains;
-            Map<Station, Set<Integer>> lessRes = this.domains;
+        if (this != cacheEntry) {
+            Map<Station, Set<Integer>> moreRes = cacheEntry.getDomains();
+            Map<Station, Set<Integer>> lessRes = this.getDomains();
             // lessRes has less stations to pack
             if (moreRes.keySet().containsAll(lessRes.keySet())) {
                 // each station in lessRes has same or more candidate channels than the corresponding station in moreRes
@@ -86,4 +140,8 @@ public class ContainmentCacheUNSATEntry implements ICacheEntry<Station> {
         return false;
     }
 
+    @Override
+    public SATResult getResult() {
+        return SATResult.UNSAT;
+    }
 }

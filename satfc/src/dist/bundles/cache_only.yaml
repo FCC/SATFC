@@ -1,0 +1,13 @@
+---
+# This bundle is to evaluate the cache performance (without any additional solvers). It does not add anything to the cache.
+UHF:
+  - name: SAT_CACHE
+  - name: PREVIOUS_ASSIGNMENT
+  - name: CONNECTED_COMPONENTS
+  - name: UNDERCONSTRAINED
+  - name: ARC_CONSISTENCY
+  - name: UNSAT_CACHE
+  - name: PYTHON_VERIFIER
+  - name: VERIFIER
+VHF:
+  - name: VERIFIER

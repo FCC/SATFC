@@ -1,0 +1,59 @@
+---
+CONFIGS:
+  claspH1: &claspH1 --backprop --eq=0 --trans-ext=all --sat-prepro=0 --sign-def=0 --del-max=100000 --strengthen=local,1 --loops=common --init-watches=0 --heuristic=Vsids,96 --del-cfl=F,500 --restarts=D,100,0.8,100 --update-act --del-glue=4,0 --update-lbd=0 --reverse-arcs=3 --otfs=2 --del-on-restart=0 --contraction=500 --local-restarts --lookahead=no --save-progress=50
+  claspH2: &claspH2 --sat-prepro=0 --init-watches=2 --rand-freq=0.0 --sign-def=2 --del-init=5.0,10,2500 --strengthen=local,2 --lookahead=hybrid,1 --otfs=2 --reverse-arcs=3 --save-progress=180 --del-glue=2,0 --del-cfl=L,2000 --restarts=F,1600 --local-restarts --update-lbd=1 --heuristic=Vsids,92 --deletion=ipSort,75,2 --contraction=166 --del-grow=0 --del-on-restart=50 --del-max=32767
+  claspVHF: &claspVHF --backprop --eq=0 --trans-ext=all --sat-prepro=0 --sign-def=0 --del-max=100000 --strengthen=local,1 --loops=common --init-watches=0 --heuristic=Vsids,96 --del-cfl=F,500 --restarts=D,100,0.8,100 --update-act --del-glue=4,0 --update-lbd=0 --reverse-arcs=3 --otfs=2 --del-on-restart=0 --contraction=500 --local-restarts --lookahead=no --save-progress=50
+UHF:
+    - name: CLASP
+      args: 
+        config: *claspH2
+        encodingType: DIRECT
+    - name: SAT_CACHE
+    - name: VERIFIER
+    - name: CACHE
+    - name: CONNECTED_COMPONENTS
+    - name: UNDERCONSTRAINED
+    - name: SAT_PRESOLVER
+      args: 
+        solverConfig:
+          name: CLASP
+          args:
+            config: *claspH1
+        strategy: 
+          name: ITERATIVE_DEEPEN
+          args:
+            baseCutoff: 5
+            config: 
+              name: NEIGHBOURHOOD
+              args: 
+                numLayers: 1
+    - name: SAT_CACHE
+    - name: RESULT_SAVER
+    - name: VERIFIER
+    - name: CACHE
+VHF:
+    - name: CLASP
+      args: 
+        config: *claspVHF
+        encodingType: DIRECT
+    - name: CONNECTED_COMPONENTS
+    - name: UNDERCONSTRAINED
+      args: 
+        expensive: false
+        recursive: false
+    - name: SAT_PRESOLVER
+      args: 
+        solverConfig:
+          name: CLASP
+          args:
+            config: *claspVHF
+        strategy: 
+          name: ITERATIVE_DEEPEN
+          args:
+            baseCutoff: 5
+            config: 
+              name: NEIGHBOURHOOD
+              args: 
+                numLayers: 1
+    - name: RESULT_SAVER
+    - name: VERIFIER

@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -25,14 +25,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.stream.Collectors;
 
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
-
 import org.apache.commons.io.FileUtils;
 
-import redis.clients.jedis.Jedis;
+import com.google.common.base.Joiner;
+
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.yaml.EncodingType;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
@@ -40,8 +39,9 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATCompressor;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.SATEncoder;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.utils.RedisUtils;
-
-import com.google.common.base.Joiner;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
+import redis.clients.jedis.Jedis;
 
 /**
  * Solver decorator that saves CNFs on solve query.
@@ -52,14 +52,17 @@ public class CNFSaverSolverDecorator extends ASolverDecorator {
 
     private final IConstraintManager fConstraintManager;
     private final ICNFSaver fCNFSaver;
+    private EncodingType encodingType;
     private boolean saveAssignment;
 
     public CNFSaverSolverDecorator(@NonNull ISolver aSolver,
                                    @NonNull IConstraintManager aConstraintManager,
                                    @NonNull ICNFSaver aCNFSaver,
+                                   @NonNull EncodingType encodingType,
                                    boolean saveAssignment) {
         super(aSolver);
         this.fCNFSaver = aCNFSaver;
+        this.encodingType = encodingType;
         this.saveAssignment = saveAssignment;
         fConstraintManager = aConstraintManager;
     }
@@ -67,7 +70,7 @@ public class CNFSaverSolverDecorator extends ASolverDecorator {
     @Override
     public SolverResult solve(StationPackingInstance aInstance, ITerminationCriterion aTerminationCriterion, long aSeed) {
         //Encode instance.
-        final SATCompressor aSATEncoder = new SATCompressor(fConstraintManager);
+        final SATCompressor aSATEncoder = new SATCompressor(fConstraintManager, encodingType);
         final SATEncoder.CNFEncodedProblem aEncoding = aSATEncoder.encodeWithAssignment(aInstance);
         final CNF CNF = aEncoding.getCnf();
 
@@ -81,13 +84,13 @@ public class CNFSaverSolverDecorator extends ASolverDecorator {
         final String cnfFileContentString = CNF.toDIMACS(comments);
 
         //Save instance to redis
-        final String CNFName = aInstance.getHashString();
+        final String CNFName = aInstance.getName();
         fCNFSaver.saveCNF(aInstance.getName(), CNFName, cnfFileContentString);
 
         if (saveAssignment) {
             // Create assignment
             final String assignmentString = Joiner.on(System.lineSeparator()).join(aEncoding.getInitialAssignment().entrySet().stream()
-                    .map(entry -> entry.getKey() + " " + (entry.getValue() ? 1 : 0)).collect(Collectors.toList()));
+                    .map(entry -> entry.getValue() ? entry.getKey() : -entry.getKey()).collect(Collectors.toList()));
             fCNFSaver.saveAssignment(CNFName, assignmentString);
         }
 

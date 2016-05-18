@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -28,11 +28,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import lombok.extern.slf4j.Slf4j;
-
 import org.jgrapht.alg.NeighborIndex;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
+
+import com.google.common.collect.Sets;
 
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
@@ -45,7 +45,9 @@ import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult.SolvedBy;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.ConstraintGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.solvers.underconstrained.IUnderconstrainedStationFinder;
+import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Solver decorator that removes underconstrained stations from the instance, solve the sub-instance and then add back
@@ -72,10 +74,10 @@ public class UnderconstrainedStationRemoverSolverDecorator extends ASolverDecora
 
     @Override
     public SolverResult solve(StationPackingInstance aInstance, ITerminationCriterion aTerminationCriterion, long aSeed) {
-        return solve(aInstance, aTerminationCriterion, aSeed, aInstance.getStations());
+        return solve(aInstance, aTerminationCriterion, aSeed, aInstance.getStations(), Watch.constructAutoStartWatch());
     }
 
-    public SolverResult solve(StationPackingInstance aInstance, ITerminationCriterion aTerminationCriterion, long aSeed, Set<Station> stationsToCheck) {
+    public SolverResult solve(StationPackingInstance aInstance, ITerminationCriterion aTerminationCriterion, long aSeed, Set<Station> stationsToCheck, Watch overallWatch) {
         Watch watch = Watch.constructAutoStartWatch();
         final Map<Station, Set<Integer>> domains = aInstance.getDomains();
         if (aTerminationCriterion.hasToStop()) {
@@ -107,10 +109,11 @@ public class UnderconstrainedStationRemoverSolverDecorator extends ASolverDecora
                 final SimpleGraph<Station, DefaultEdge> constraintGraph = ConstraintGrouper.getConstraintGraph(domains, constraintManager);
                 final NeighborIndex<Station, DefaultEdge> neighborIndex = new NeighborIndex<>(constraintGraph);
                 final Set<Station> stationsToRecheck = underconstrainedStations.stream().map(neighborIndex::neighborsOf).flatMap(Collection::stream).filter(s -> !underconstrainedStations.contains(s)).collect(Collectors.toSet());
-                subResult = solve(alteredInstance, aTerminationCriterion, aSeed, stationsToRecheck);
+                subResult = solve(alteredInstance, aTerminationCriterion, aSeed, stationsToRecheck, overallWatch);
             } else { // we bottomed out
                 //Solve the reduced instance.
-                SATFCMetrics.postEvent(new SATFCMetrics.TimingEvent(aInstance.getName(), SATFCMetrics.TimingEvent.FIND_UNDERCONSTRAINED_STATIONS, watch.getElapsedTime()));
+                log.debug("Spent {} overall on finding underconstrained stations", overallWatch.getElapsedTime());
+                SATFCMetrics.postEvent(new SATFCMetrics.TimingEvent(aInstance.getName(), SATFCMetrics.TimingEvent.FIND_UNDERCONSTRAINED_STATIONS, overallWatch.getElapsedTime()));
                 log.debug("Solving the sub-instance...");
                 subResult = fDecoratedSolver.solve(alteredInstance, aTerminationCriterion, aSeed);
             }
@@ -122,10 +125,15 @@ public class UnderconstrainedStationRemoverSolverDecorator extends ASolverDecora
         }
 
         if (subResult.getResult().equals(SATResult.SAT)) {
+            final SimpleGraph<Station, DefaultEdge> constraintGraph = ConstraintGrouper.getConstraintGraph(domains, constraintManager);
+            final NeighborIndex<Station, DefaultEdge> neighborIndex = new NeighborIndex<>(constraintGraph);
+            final Watch findChannelsForUnderconstrainedStationsTimer = Watch.constructAutoStartWatch();
             log.debug("Sub-instance is packable, adding back the underconstrained stations...");
             //If satisfiable, find a channel for the under constrained nodes that were removed by brute force through their domain.
             final Map<Integer, Set<Station>> assignment = subResult.getAssignment();
             final Map<Integer, Set<Station>> alteredAssignment = new HashMap<Integer, Set<Station>>(assignment);
+            final Map<Station, Integer> stationToChannel = StationPackingUtils.stationToChannelFromChannelToStation(alteredAssignment);
+            final Set<Station> assignedStations = new HashSet<>(subResult.getAssignment().values().stream().flatMap(Collection::stream).collect(Collectors.toSet()));
 
             for (Station station : underconstrainedStations) {
 
@@ -135,30 +143,39 @@ public class UnderconstrainedStationRemoverSolverDecorator extends ASolverDecora
                 //Try to add the underconstrained station at one of its channel domain.
                 log.trace("Trying to add back underconstrained station {} on its domain {} ...", station, domain);
 
+                final Set<Station> assignedStationsInNeighbourhood = Sets.intersection(neighborIndex.neighborsOf(station), assignedStations);
+                final Map<Integer, Set<Station>> neighbourHoodAssignment = new HashMap<>();
+                for (Station s : assignedStationsInNeighbourhood) {
+                    int chan = stationToChannel.get(s);
+                    neighbourHoodAssignment.computeIfAbsent(chan, k -> new HashSet<>()).add(s);
+                }
+
                 for (Integer channel : domain) {
                     log.trace("Checking domain channel {} ...", channel);
-                    if (!alteredAssignment.containsKey(channel)) {
-                        alteredAssignment.put(channel, new HashSet<Station>());
-                    }
-
-                    alteredAssignment.get(channel).add(station);
-                    final boolean addedSAT = constraintManager.isSatisfyingAssignment(alteredAssignment);
+                    neighbourHoodAssignment.computeIfAbsent(channel, k -> new HashSet<>()).add(station);
+                    final boolean addedSAT = constraintManager.isSatisfyingAssignment(neighbourHoodAssignment);
 
                     if (addedSAT) {
                         log.trace("Added on channel {}.", channel);
+                        alteredAssignment.computeIfAbsent(channel, k -> new HashSet<>()).add(station);
+                        stationToChannel.put(station, channel);
                         stationAdded = true;
                         break;
                     } else {
-                        alteredAssignment.get(channel).remove(station);
-                        if (alteredAssignment.get(channel).isEmpty()) {
-                            alteredAssignment.remove(channel);
+                        neighbourHoodAssignment.get(channel).remove(station);
+                        if (neighbourHoodAssignment.get(channel).isEmpty()) {
+                            neighbourHoodAssignment.remove(channel);
                         }
                     }
                 }
+
                 if (!stationAdded) {
                     throw new IllegalStateException("Could not add unconstrained station " + station + " on any of its domain channels.");
                 }
+                assignedStations.add(station);
             }
+            SATFCMetrics.postEvent(new SATFCMetrics.TimingEvent(aInstance.getName(), SATFCMetrics.TimingEvent.PUT_BACK_UNDERCONSTRAINED_STATIONS, findChannelsForUnderconstrainedStationsTimer.getElapsedTime()));
+            log.trace("It took {} to find SAT channels for all of the underconstrained stations", findChannelsForUnderconstrainedStationsTimer.getElapsedTime());
             return new SolverResult(SATResult.SAT, watch.getElapsedTime(), alteredAssignment, subResult.getSolvedBy());
         } else {
             log.debug("Sub-instance was not satisfiable, no need to consider adding back underconstrained stations.");

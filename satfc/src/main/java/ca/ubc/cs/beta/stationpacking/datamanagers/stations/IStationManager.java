@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -21,10 +21,11 @@
  */
 package ca.ubc.cs.beta.stationpacking.datamanagers.stations;
 
-import java.util.Collection;
+import java.util.HashSet;
 import java.util.Set;
 
 import ca.ubc.cs.beta.stationpacking.base.Station;
+import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
 
 
 /**
@@ -36,7 +37,7 @@ public interface IStationManager {
 	/**
 	 * @return - all the stations represented by the station manager.
 	 */
-	public Set<Station> getStations();
+	Set<Station> getStations();
 	
 	/**
 	 * 
@@ -44,21 +45,20 @@ public interface IStationManager {
 	 * @return the station for the particular ID.
 	 * @throws IllegalArgumentException - if the provided ID cannot be found in the stations.
 	 */
-	public Station getStationfromID(Integer aID) throws IllegalArgumentException;
+	Station getStationfromID(Integer aID) throws IllegalArgumentException;
 	
 	/**
 	 * @param aStation - a station.
 	 * @return the channels on which this station can be packed.
 	 */
-	public Set<Integer> getDomain(Station aStation);
-	
-	/**
-	 * 
-	 * @param aIDs - a collection of station IDs.
-	 * @return the set of stations with provided IDs.
-	 */
-	public Set<Station> getStationsfromID(Collection<Integer> aIDs);
+	Set<Integer> getDomain(Station aStation);
 
+	default Set<Integer> getRestrictedDomain(Station station, int maxChannel, boolean UHFOnly) {
+		final Set<Integer> domain = new HashSet<>(getDomain(station));
+		domain.removeIf(chan -> chan > maxChannel || (UHFOnly && chan < StationPackingUtils.UHFmin));
+		return domain;
+	}
+	
 	/**
 	 * @return a hash of the domain
 	 */

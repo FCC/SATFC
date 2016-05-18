@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -27,9 +27,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import lombok.extern.slf4j.Slf4j;
-
 import org.junit.Test;
+
+import com.google.common.collect.ImmutableMap;
 
 import ca.ubc.cs.beta.stationpacking.StationPackingTestUtils;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
@@ -37,8 +37,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult.SolvedBy;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.infinite.NeverEndingTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
-
-import com.google.common.collect.ImmutableMap;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class ParallelNoWaitSolverCompositeTest {

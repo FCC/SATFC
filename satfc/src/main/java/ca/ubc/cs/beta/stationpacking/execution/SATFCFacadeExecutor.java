@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -26,12 +26,18 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.beust.jcommander.ParameterException;
+import com.google.common.base.Charsets;
+import com.google.common.io.Resources;
+
 import ca.ubc.cs.beta.aeatk.misc.jcommander.JCommanderHelper;
 import ca.ubc.cs.beta.aeatk.misc.returnvalues.AEATKReturnValues;
 import ca.ubc.cs.beta.aeatk.targetalgorithmevaluator.init.TargetAlgorithmEvaluatorLoader;
 import ca.ubc.cs.beta.stationpacking.execution.metricwriters.IMetricWriter;
 import ca.ubc.cs.beta.stationpacking.execution.metricwriters.MetricWriterFactory;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.SATFCFacadeParameters;
+import ca.ubc.cs.beta.stationpacking.execution.problemgenerators.CutoffChooserFactory;
+import ca.ubc.cs.beta.stationpacking.execution.problemgenerators.ICutoffChooser;
 import ca.ubc.cs.beta.stationpacking.execution.problemgenerators.IProblemReader;
 import ca.ubc.cs.beta.stationpacking.execution.problemgenerators.ProblemGeneratorFactory;
 import ca.ubc.cs.beta.stationpacking.execution.problemgenerators.SATFCFacadeProblem;
@@ -39,10 +45,6 @@ import ca.ubc.cs.beta.stationpacking.facade.SATFCFacade;
 import ca.ubc.cs.beta.stationpacking.facade.SATFCFacadeBuilder;
 import ca.ubc.cs.beta.stationpacking.facade.SATFCResult;
 import ca.ubc.cs.beta.stationpacking.metrics.SATFCMetrics;
-
-import com.beust.jcommander.ParameterException;
-import com.google.common.base.Charsets;
-import com.google.common.io.Resources;
 
 /**
  * Executes a SATFC facade built from parameters on an instance given in parameters.
@@ -61,25 +63,31 @@ public class SATFCFacadeExecutor {
         logVersionInfo(log);
         try {
             log.info("Initializing facade.");
-            try(final SATFCFacade satfc = SATFCFacadeBuilder.buildFromParameters(parameters)) {
+            try(final SATFCFacade satfc = SATFCFacadeBuilder.builderFromParameters(parameters).build()) {
                 IProblemReader problemReader = ProblemGeneratorFactory.createFromParameters(parameters);
+                ICutoffChooser cutoffChooser = CutoffChooserFactory.createFromParameters(parameters);
                 IMetricWriter metricWriter = MetricWriterFactory.createFromParameters(parameters);
                 SATFCFacadeProblem problem;
                 while ((problem = problemReader.getNextProblem()) != null) {
-                    log.info("Beginning problem {}", problem.getInstanceName());
+                    final double cutoff = cutoffChooser.getCutoff(problem);
+                    log.info("Beginning problem {} with cutoff {}", problem.getInstanceName(), cutoff);
                     log.info("Solving ...");
                     SATFCResult result = satfc.solve(
                             problem.getDomains(),
                             problem.getPreviousAssignment(),
-                            parameters.fInstanceParameters.Cutoff,
+                            cutoff,
                             parameters.fInstanceParameters.Seed,
                             problem.getStationConfigFolder(),
                             problem.getInstanceName()
                     );
                     log.info("..done!");
-                    System.out.println(result.getResult());
-                    System.out.println(result.getRuntime());
-                    System.out.println(result.getWitnessAssignment());
+                    if (!log.isInfoEnabled()) {
+                        System.out.println(result.getResult());
+                        System.out.println(result.getRuntime());
+                        System.out.println(result.getWitnessAssignment());
+                    } else {
+                        log.info("Result:" + System.lineSeparator() + result.getResult() + System.lineSeparator() + result.getRuntime() + System.lineSeparator() + result.getWitnessAssignment());
+                    }
                     problemReader.onPostProblem(problem, result);
                     metricWriter.writeMetrics();
                     SATFCMetrics.clear();
@@ -120,9 +128,10 @@ public class SATFCFacadeExecutor {
         return log;
     }
 
-    private static void logVersionInfo(Logger log) {
+    public static void logVersionInfo(Logger log) {
         try {
-            log.info("Version info: " + System.lineSeparator() + Resources.toString(Resources.getResource("version.properties"), Charsets.UTF_8));
+            final String versionProperties = Resources.toString(Resources.getResource("version.properties"), Charsets.UTF_8);
+            log.info("Version info: " + System.lineSeparator() + versionProperties);
         } catch (IllegalArgumentException | IOException e) {
             log.error("Could not log version info.");
         }

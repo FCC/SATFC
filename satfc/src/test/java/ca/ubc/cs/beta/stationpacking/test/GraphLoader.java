@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -29,9 +29,9 @@ import java.nio.file.Paths;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 
-import ca.ubc.cs.beta.stationpacking.base.Station;
-
 import com.google.common.io.Resources;
+
+import ca.ubc.cs.beta.stationpacking.base.Station;
 
 /**
  * A class that lazily loads graphs to make them accessible to any other class.

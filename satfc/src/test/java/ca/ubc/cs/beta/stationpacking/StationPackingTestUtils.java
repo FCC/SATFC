@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -25,14 +25,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
+
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.Converter;
-
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 
 /**
  * Created by newmanne on 21/04/15.
@@ -40,11 +40,11 @@ import com.google.common.collect.Sets;
 public class StationPackingTestUtils {
 
     public static StationPackingInstance getSimpleInstance() {
-        return new StationPackingInstance(ImmutableMap.of(new Station(1), ImmutableSet.of(1)));
+        return new StationPackingInstance(ImmutableMap.of(new Station(1), ImmutableSet.of(2)));
     }
 
     public static Map<Integer, Set<Station>> getSimpleInstanceAnswer() {
-        return ImmutableMap.of(1, ImmutableSet.of(new Station(1)));
+        return ImmutableMap.of(2, ImmutableSet.of(new Station(1)));
     }
 
     public static StationPackingInstance instanceFromSpecs(Converter.StationPackingProblemSpecs specs, IStationManager stationManager) {

@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -26,12 +26,12 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
-import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
-
-import com.fasterxml.jackson.annotation.JsonInclude;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
+import lombok.Data;
 
 /**
  * Created by newmanne on 21/01/15.
@@ -43,6 +43,7 @@ public class InstanceInfo {
     private int numStations;
     private Set<Station> stations;
     private String name;
+    private String interference;
     private Double runtime;
     private SATResult result;
     private Set<Integer> underconstrainedStations = new HashSet<>();
@@ -51,5 +52,8 @@ public class InstanceInfo {
     private Map<String, Double> timingInfo = new HashMap<>();
     private String cacheResultUsed;
     private Map<Station, Integer> stationToDegree = new HashMap<>();
+    private Map<Station, Integer> assignment;
+    private String nickname;
+    private String hash;
 
 }

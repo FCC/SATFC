@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -24,6 +24,7 @@ package ca.ubc.cs.beta.stationpacking.solvers.termination.interrupt;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.infinite.NeverEndingTerminationCriterion;
 
 /**`
  * Created by newmanne on 13/05/15.
@@ -37,10 +38,14 @@ public class InterruptibleTerminationCriterion implements ITerminationCriterion.
         this.decoratedCriterion = decoratedCriterion;
         this.interrupt = new AtomicBoolean(false);
     }
+    
+    public InterruptibleTerminationCriterion() {
+    	this(new NeverEndingTerminationCriterion());
+	}
 
     @Override
     public double getRemainingTime() {
-        return decoratedCriterion.getRemainingTime();
+        return interrupt.get() ? 0.0 : decoratedCriterion.getRemainingTime();
     }
 
     @Override

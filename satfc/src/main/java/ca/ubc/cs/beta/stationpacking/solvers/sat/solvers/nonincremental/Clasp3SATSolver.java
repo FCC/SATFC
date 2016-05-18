@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -27,8 +27,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import lombok.extern.slf4j.Slf4j;
+import com.google.common.base.Preconditions;
+import com.sun.jna.Native;
+import com.sun.jna.Pointer;
+import com.sun.jna.ptr.IntByReference;
+
+import ca.ubc.cs.beta.stationpacking.polling.IPollingService;
+import ca.ubc.cs.beta.stationpacking.polling.ProblemIncrementor;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult.SolvedBy;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.AbstractCompressedSATSolver;
@@ -37,11 +44,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.jnalibraries.Clasp3Libr
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.utils.NativeUtils;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
-
-import com.google.common.base.Preconditions;
-import com.sun.jna.Native;
-import com.sun.jna.Pointer;
-import com.sun.jna.ptr.IntByReference;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class Clasp3SATSolver extends AbstractCompressedSATSolver {
@@ -53,16 +56,20 @@ public class Clasp3SATSolver extends AbstractCompressedSATSolver {
     // boolean represents whether or not a solve is in progress, so that it is safe to do an interrupt
     private final AtomicBoolean isCurrentlySolving = new AtomicBoolean(false);
     private final int fSeedOffset;
+    private final ProblemIncrementor problemIncrementor;
+    private String nickname;
 
-    public Clasp3SATSolver(String libraryPath, String parameters) {
-        this((Clasp3Library) Native.loadLibrary(libraryPath, Clasp3Library.class, NativeUtils.NATIVE_OPTIONS), parameters);
+    public Clasp3SATSolver(String libraryPath, String parameters, IPollingService service) {
+        this((Clasp3Library) Native.loadLibrary(libraryPath, Clasp3Library.class, NativeUtils.NATIVE_OPTIONS), parameters, service);
     }
 
-    public Clasp3SATSolver(Clasp3Library library, String parameters) {
-        this(library, parameters, 0);
+    public Clasp3SATSolver(Clasp3Library library, String parameters, IPollingService service) {
+        this(library, parameters, 0, service, null);
     }
 
-    public Clasp3SATSolver(Clasp3Library library, String parameters, int seedOffset) {
+    public Clasp3SATSolver(Clasp3Library library, String parameters, int seedOffset, IPollingService pollingService, String nickname) {
+        this.nickname = nickname;
+        log.debug("Initializing clasp with params {}", parameters);
         fSeedOffset = seedOffset;
         fClaspLibrary = library;
         fParameters = parameters;
@@ -81,6 +88,7 @@ public class Clasp3SATSolver extends AbstractCompressedSATSolver {
         } finally {
             fClaspLibrary.destroyProblem(jnaProblem);
         }
+        problemIncrementor = new ProblemIncrementor(pollingService, this);
     }
 
     /*
@@ -100,6 +108,7 @@ public class Clasp3SATSolver extends AbstractCompressedSATSolver {
                 return SATSolverResult.timeout(watch.getElapsedTime());
             }
 
+            problemIncrementor.scheduleTermination(aTerminationCriterion);
             currentProblemPointer = fClaspLibrary.initConfig(params);
             fClaspLibrary.initProblem(currentProblemPointer, aCNF.toDIMACS(null));
 
@@ -118,10 +127,15 @@ public class Clasp3SATSolver extends AbstractCompressedSATSolver {
             }
 
             // Start solving
-            log.debug("Send problem to clasp cutting off after " + cutoff + "s");
+            log.debug("Send problem to clasp cutting off after {}s", cutoff);
             final Watch runtime = Watch.constructAutoStartWatch();
             fClaspLibrary.solveProblem(currentProblemPointer, cutoff);
-            log.debug("Came back from clasp after {}s.", runtime.getElapsedTime());
+            double runtimeDouble = runtime.getElapsedTime();
+            log.debug("Came back from clasp after {}s. (initial cutoff was {}s)", runtimeDouble, cutoff);
+            if (!(runtimeDouble < cutoff + 5)) {
+                log.warn("Runtime {} greatly exceeded cutoff {}!", runtimeDouble, cutoff);
+            }
+
             lock.lock();
             isCurrentlySolving.set(false);
             lock.unlock();
@@ -139,11 +153,12 @@ public class Clasp3SATSolver extends AbstractCompressedSATSolver {
                 log.error("Clasp SAT solver post solving time was greater than 1 minute, something wrong must have happened.");
             }
 
-            final SATSolverResult output = new SATSolverResult(claspResult.getSATResult(), watch.getElapsedTime(), assignment);
+            final SATSolverResult output = new SATSolverResult(claspResult.getSATResult(), watch.getElapsedTime(), assignment, SolvedBy.CLASP, nickname);
             log.debug("Returning result: {}, {}s.", output.getResult(), output.getRuntime());
             log.trace("Full result: {}", output);
             return output;
         } finally {
+            problemIncrementor.jobDone();
             // Cleanup in the finally block so it always executes: if we instantiated a problem, we make sure that we free it
             if (currentProblemPointer != null) {
                 log.trace("Destroying problem");
@@ -190,7 +205,6 @@ public class Clasp3SATSolver extends AbstractCompressedSATSolver {
     public static ClaspResult getSolverResult(Clasp3Library library,
                                               Pointer problem,
                                               double runtime) {
-
         final SATResult satResult;
         int[] assignment = {0};
         int state = library.getResultState(problem);

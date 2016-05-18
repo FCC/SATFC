@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -25,17 +25,16 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.Set;
 
-import lombok.extern.slf4j.Slf4j;
-
 import org.junit.Before;
 import org.junit.Test;
+
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Sets;
 
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult.SolvedBy;
 import ca.ubc.cs.beta.stationpacking.utils.JSONUtils;
-
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Sets;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class SolverResultTest {

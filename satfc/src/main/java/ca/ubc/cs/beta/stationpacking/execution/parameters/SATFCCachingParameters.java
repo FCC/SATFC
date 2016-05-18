@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -21,11 +21,10 @@
  */
 package ca.ubc.cs.beta.stationpacking.execution.parameters;
 
-import ca.ubc.cs.beta.aeatk.misc.options.OptionLevel;
+import com.beust.jcommander.Parameter;
+
 import ca.ubc.cs.beta.aeatk.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aeatk.options.AbstractOptions;
-
-import com.beust.jcommander.Parameter;
 
 /**
  * Created by newmanne on 04/12/14.
@@ -35,13 +34,5 @@ public class SATFCCachingParameters extends AbstractOptions {
 
     @Parameter(names = {"--serverURL", "-SERVER-URL"}, description = "base URL for the SATFC server", required = false)
     public String serverURL;
-
-    @UsageTextField(claimRequired = "-SERVER-URL")
-    @Parameter(names = {"-CACHE-RESULTS"}, description = "If true, problems solved are added to the cache", required = false)
-    public boolean cacheResults = true;
-
-    @UsageTextField(level = OptionLevel.DEVELOPER)
-    @Parameter(names = "--extendedCacheProblem", description = "solve extended cache problem in redis queue", required = false)
-    public boolean extendedCacheProblem = false;
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -21,48 +21,47 @@
  */
 package ca.ubc.cs.beta.stationpacking.facade.datamanager.data;
 
+import com.google.common.collect.ImmutableBiMap;
+
+import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.cache.CacheCoordinate;
+import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.ChannelSpecificConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
+import containmentcache.util.PermutationUtils;
+import lombok.Getter;
 
 /**
  * Bundle object containing a station and a constraint manager.
  */
 public class ManagerBundle {
 
-	private IStationManager fStationManager;
-	private IConstraintManager fConstraintManager;
-	
+	@Getter
+	private IStationManager stationManager;
+	@Getter
+	private IConstraintManager constraintManager;
+	@Getter
+	private final String interferenceFolder;
+	@Getter
+	private CacheCoordinate cacheCoordinate;
+	@Getter
+	private final ImmutableBiMap<Station, Integer> permutation;
+
 	/**
 	 * Creates a new bundle containing the given station and constraint manager.
 	 * @param stationManager station manager to be bundled.
 	 * @param constraintManager constraint manager to be bundled.
 	 */
-	public ManagerBundle(IStationManager stationManager, IConstraintManager constraintManager) {
-		fStationManager = stationManager;
-		fConstraintManager = constraintManager;
+	public ManagerBundle(IStationManager stationManager, IConstraintManager constraintManager, String interferenceFolder) {
+		this.stationManager = stationManager;
+		this.constraintManager = constraintManager;
+		this.interferenceFolder = interferenceFolder;
+		cacheCoordinate = new CacheCoordinate(stationManager.getDomainHash(), constraintManager.getConstraintHash());
+		permutation = PermutationUtils.makePermutation(getStationManager().getStations());
 	}
 
-	/**
-	 * Returns the bundled station manager.
-	 * @return the bundled station manager.
-	 */
-	public IStationManager getStationManager()
-	{
-		return fStationManager;
-	}
-	
-	/**
-	 * Returns the bundled constraint manager.
-	 * @return the bundled station manager.
-	 */
-	public IConstraintManager getConstraintManager()
-	{
-		return fConstraintManager;
-	}
-
-    public CacheCoordinate getCacheCoordinate() {
-        return new CacheCoordinate(fStationManager.getDomainHash(), fConstraintManager.getConstraintHash());
+    public boolean isCompactInterference() {
+        return getConstraintManager() instanceof ChannelSpecificConstraintManager;
     }
-	
+
 }

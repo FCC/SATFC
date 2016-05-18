@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -21,9 +21,9 @@
  */
 package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental;
 
-import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
-
 import com.google.common.base.Preconditions;
+
+import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 
 /**
  * Clasp library result.

@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -21,12 +21,12 @@
  */
 package ca.ubc.cs.beta.stationpacking.cache;
 
-import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-
 import com.google.common.base.Charsets;
 import com.google.common.hash.HashCode;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
+
+import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 
 /**
 * Created by newmanne on 25/03/15.
@@ -34,7 +34,7 @@ import com.google.common.hash.Hashing;
 public class StationPackingInstanceHasher {
 
     // hashing function
-    private static final HashFunction fHashFuction = Hashing.murmur3_32();
+    private static final HashFunction fHashFuction = Hashing.murmur3_128();
 
     public static HashCode hash(StationPackingInstance aInstance) {
         final HashCode hash = fHashFuction.newHasher()

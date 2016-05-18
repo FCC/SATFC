@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -31,19 +31,20 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import lombok.Getter;
-import lombok.NonNull;
-
+import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import ca.ubc.cs.beta.stationpacking.utils.GuavaCollectors;
-
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+
+import ca.ubc.cs.beta.stationpacking.utils.GuavaCollectors;
+import lombok.Getter;
+import lombok.NonNull;
 
 /**
  * Immutable container class representing a station packing instance.
@@ -55,6 +56,7 @@ public class StationPackingInstance {
 	
 	public static final String NAME_KEY = "NAME";
     public static final String CACHE_DATE_KEY = "CACHE_DATE";
+    public static final String UNTITLED = "UNTITLED";
     private final ImmutableMap<Station, Set<Integer>> domains;
 	private final ImmutableMap<Station, Integer> previousAssignment;
 	@Getter
@@ -183,7 +185,7 @@ public class StationPackingInstance {
 	 */
 	public String getInfo()
 	{
-		return domains.keySet().size()+" stations, "+getAllChannels().size()+" all channels.";
+		return domains.keySet().size()+" stations, "+getAllChannels().size()+" all channels";
 	}
 	
 	/**
@@ -203,7 +205,15 @@ public class StationPackingInstance {
 	}
 	
 	public String getName() {
-		return (String) metadata.getOrDefault(NAME_KEY, "UNTITLED");
+		return (String) metadata.getOrDefault(NAME_KEY, UNTITLED);
 	}
 
+    public boolean hasName() {
+        return !getName().equals(UNTITLED);
+    }
+
+    public String getAuction() {
+        final String name = (String) metadata.get(NAME_KEY);
+        return StationPackingUtils.parseAuctionFromName(name);
+    }
 }

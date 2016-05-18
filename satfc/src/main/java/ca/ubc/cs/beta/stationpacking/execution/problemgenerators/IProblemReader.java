@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -24,9 +24,9 @@ package ca.ubc.cs.beta.stationpacking.execution.problemgenerators;
 import ca.ubc.cs.beta.stationpacking.facade.SATFCResult;
 
 /**
-* Created by newmanne on 12/05/15.
-* Abstraction around how SATFC gets the next problem to solve
-*/
+ * Created by newmanne on 12/05/15.
+ * Abstraction around how SATFC gets the next problem to solve
+ */
 public interface IProblemReader {
 
     /**
@@ -44,5 +44,6 @@ public interface IProblemReader {
     /**
      * Call this when all problems have been exhausted
      */
-    default void onFinishedAllProblems() {};
+    default void onFinishedAllProblems() {}
+
 }

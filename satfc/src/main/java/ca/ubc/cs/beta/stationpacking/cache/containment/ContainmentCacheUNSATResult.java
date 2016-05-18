@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -21,27 +21,26 @@
  */
 package ca.ubc.cs.beta.stationpacking.cache.containment;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
 * Created by newmanne on 25/03/15.
 */
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class ContainmentCacheUNSATResult {
+
+    public ContainmentCacheUNSATResult() {
+        valid = false;
+    }
+
+    public ContainmentCacheUNSATResult(String key) {
+        this.key = key;
+        valid = true;
+    }
+
     // the redis key of the problem whose solution "solves" this problem
     private String key;
-
-    /** true if a solution was found */
-    @JsonIgnore
-    public boolean isValid() {
-        return key != null;
-    }
+    private boolean valid;
 
     // return an empty or failed result, that represents an error or that the problem was not solvable via the cache
     public static ContainmentCacheUNSATResult failure() {

@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -25,41 +25,45 @@ import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.StreamSupport;
 
-import lombok.Data;
-import lombok.NonNull;
-import ca.ubc.cs.beta.stationpacking.base.Station;
-import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.utils.CacheUtils;
-import ca.ubc.cs.beta.stationpacking.utils.GuavaCollectors;
-import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
-
+import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
-import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Multimaps;
+import com.google.common.collect.ImmutableSet;
 
+import ca.ubc.cs.beta.stationpacking.base.Station;
+import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.cache.ISATFCCacheEntry;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
+import ca.ubc.cs.beta.stationpacking.utils.CacheUtils;
+import ca.ubc.cs.beta.stationpacking.utils.StationPackingUtils;
 import containmentcache.ICacheEntry;
+import lombok.Data;
+import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 
 /**
 * Created by newmanne on 25/03/15.
 */
+@Slf4j
 @Data
-public class ContainmentCacheSATEntry implements ICacheEntry<Station> {
-    
+public class ContainmentCacheSATEntry implements ICacheEntry<Station>, ISATFCCacheEntry {
+
 	private final byte[] channels;
     private final BitSet bitSet;
     private final ImmutableBiMap<Station, Integer> permutation;
-    private final String key;
+    private String key;
+    private String auction;
 
+    // warning: watch out for type erasure on these constructors....
+
+    // Construct from a result
     public ContainmentCacheSATEntry(
-    		@NonNull Map<Integer, Set<Station>> answer, 
-    		@NonNull String key, 
-    		@NonNull BiMap<Station, Integer> permutation) {
-    	this.permutation = ImmutableBiMap.copyOf(permutation);
-    	this.key = key;
+            @NonNull Map<Integer, Set<Station>> answer,
+            @NonNull BiMap<Station, Integer> permutation
+    ) {
+        this.permutation = ImmutableBiMap.copyOf(permutation);
         this.bitSet = CacheUtils.toBitSet(answer, permutation);
         final Map<Station, Integer> stationToChannel = StationPackingUtils.stationToChannelFromChannelToStation(answer);
         final int numStations = this.bitSet.cardinality();
@@ -72,23 +76,35 @@ public class ContainmentCacheSATEntry implements ICacheEntry<Station> {
         }
     }
 
+    // construct from Redis cache entry
+    public ContainmentCacheSATEntry(
+            @NonNull BitSet bitSet,
+            @NonNull byte[] channels,
+            @NonNull String key,
+            @NonNull BiMap<Station, Integer> permutation,
+                     String auction
+    ) {
+        this.permutation = ImmutableBiMap.copyOf(permutation);
+        this.key = key;
+        this.bitSet = bitSet;
+        this.channels = channels;
+        Preconditions.checkArgument(bitSet.cardinality() == channels.length, "Number of stations in bitset %s and size of assignment %s do not align! (KEY=%s)", bitSet.cardinality(), channels.length, key);
+        this.auction = auction;
+    }
+
     // aInstance is already known to be a subset of this entry
     public boolean isSolutionTo(StationPackingInstance aInstance) {
         final ImmutableMap<Station, Set<Integer>> domains = aInstance.getDomains();
-        final Map<Integer, Integer> stationToChannel = getAssignment();
+        final Map<Integer, Integer> stationToChannel = getAssignmentStationToChannel();
         return domains.entrySet().stream().allMatch(entry -> entry.getValue().contains(stationToChannel.get(entry.getKey().getID())));
     }
 
     public Map<Integer, Set<Station>> getAssignmentChannelToStation() {
-        final Map<Integer, Integer> stationToChannel = getAssignment();
-        final HashMultimap<Integer, Station> channelAssignment = HashMultimap.create();
-        stationToChannel.entrySet().forEach(entry -> {
-            channelAssignment.get(entry.getValue()).add(new Station(entry.getKey()));
-        });
-        return Multimaps.asMap(channelAssignment);
+        final Map<Integer, Integer> stationToChannel = getAssignmentStationToChannel();
+        return StationPackingUtils.channelToStationFromStationToChannel(stationToChannel);
     }
 
-    public Map<Integer,Integer> getAssignment() {
+    public Map<Integer,Integer> getAssignmentStationToChannel() {
         final Map<Integer, Integer> stationToChannel = new HashMap<>();
         int j = 0;
         final Map<Integer, Station> inversePermutation = permutation.inverse();
@@ -102,7 +118,15 @@ public class ContainmentCacheSATEntry implements ICacheEntry<Station> {
     @Override
     public Set<Station> getElements() {
         final Map<Integer, Station> inversePermutation = permutation.inverse();
-        return bitSet.stream().mapToObj(inversePermutation::get).collect(GuavaCollectors.toImmutableSet());
+        final ImmutableSet.Builder<Station> builder = ImmutableSet.builder();
+        for (int bit = bitSet.nextSetBit(0); bit >= 0; bit = bitSet.nextSetBit(bit+1)) {
+            final Station station = inversePermutation.get(bit);
+            if (station == null) {
+                throw new IllegalStateException("Bit " + bit + " is set in key " + key + ", but inverse permutation does not contain it!\n" + inversePermutation);
+            }
+            builder.add(station);
+        }
+        return builder.build();
     }
 
     /*
@@ -112,16 +136,19 @@ public class ContainmentCacheSATEntry implements ICacheEntry<Station> {
      * SAT entry with same key is not considered as a superset
      */
     public boolean hasMoreSolvingPower(ContainmentCacheSATEntry cacheEntry) {
-        // skip checking against itself
-        if (!this.getKey().equals(cacheEntry.getKey())) {
+        if (this != cacheEntry) {
             final Map<Integer, Set<Station>> subset = cacheEntry.getAssignmentChannelToStation();
             final Map<Integer, Set<Station>> superset = getAssignmentChannelToStation();
             if (superset.keySet().containsAll(subset.keySet())) {
-                return StreamSupport.stream(subset.keySet().spliterator(), false)
+                return subset.keySet().stream()
                         .allMatch(channel -> superset.get(channel).containsAll(subset.get(channel)));
             }
         }
         return false;
     }
-    
+
+    @Override
+    public SATResult getResult() {
+        return SATResult.SAT;
+    }
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -24,11 +24,11 @@ package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.nonincremental;
 import java.io.IOException;
 import java.util.stream.Collectors;
 
-import lombok.extern.slf4j.Slf4j;
-
 import org.apache.commons.math3.util.Pair;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import com.google.common.io.Resources;
 
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.ChannelSpecificConstraintManager;
@@ -38,6 +38,9 @@ import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
 import ca.ubc.cs.beta.stationpacking.execution.Converter;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.solver.sat.ClaspLibSATSolverParameters;
 import ca.ubc.cs.beta.stationpacking.facade.SATFCFacadeBuilder;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.yaml.EncodingType;
+import ca.ubc.cs.beta.stationpacking.polling.IPollingService;
+import ca.ubc.cs.beta.stationpacking.polling.PollingService;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATDecoder;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.cnfencoder.ISATEncoder;
@@ -46,15 +49,15 @@ import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.infinite.NeverEndingTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.interrupt.InterruptibleTerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.walltime.WalltimeTerminationCriterion;
-
-import com.google.common.io.Resources;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class Clasp3SATSolverTest {
 
     private static CNF hardCNF;
-    final String libraryPath = SATFCFacadeBuilder.findSATFCLibrary();
+    final String libraryPath = SATFCFacadeBuilder.findSATFCLibrary(SATFCFacadeBuilder.SATFCLibLocation.CLASP);
     final String parameters = ClaspLibSATSolverParameters.UHF_CONFIG_04_15_h1;
+    final IPollingService pollingService = new PollingService();
 
     @BeforeClass
     public static void init() throws IOException {
@@ -62,30 +65,30 @@ public class Clasp3SATSolverTest {
         final IConstraintManager manager = new ChannelSpecificConstraintManager(stationManager, Resources.getResource("data/021814SC3M/Interference_Paired.csv").getFile());
         Converter.StationPackingProblemSpecs specs = Converter.StationPackingProblemSpecs.fromStationRepackingInstance(Resources.getResource("data/srpks/2469-2483_4310537143272356051_107.srpk").getFile());
         final StationPackingInstance instance = new StationPackingInstance(specs.getDomains().entrySet().stream().collect(Collectors.toMap(e -> stationManager.getStationfromID(e.getKey()), e -> e.getValue())), specs.getPreviousAssignment().entrySet().stream().collect(Collectors.toMap(e -> stationManager.getStationfromID(e.getKey()), e-> e.getValue())));
-        ISATEncoder aSATEncoder = new SATCompressor(manager);
+        ISATEncoder aSATEncoder = new SATCompressor(manager, EncodingType.DIRECT);
         Pair<CNF, ISATDecoder> aEncoding = aSATEncoder.encode(instance);
         hardCNF = aEncoding.getKey();
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testFailOnInvalidParameters() {
-        final String libraryPath = SATFCFacadeBuilder.findSATFCLibrary();
+        final String libraryPath = SATFCFacadeBuilder.findSATFCLibrary(SATFCFacadeBuilder.SATFCLibLocation.CLASP);
         final String parameters = "these are not valid parameters";
         log.info(libraryPath);
-        new Clasp3SATSolver(libraryPath, parameters);
+        new Clasp3SATSolver(libraryPath, parameters,pollingService);
     }
 
     // Verify that clasp respects the timeout we send it by sending it a hard CNF with a very low cutoff and making sure it doesn't stall
     @Test(timeout = 3000)
     public void testTimeout() {
-        final Clasp3SATSolver clasp3SATSolver = new Clasp3SATSolver(libraryPath, parameters);
+        final Clasp3SATSolver clasp3SATSolver = new Clasp3SATSolver(libraryPath, parameters, pollingService);
         final ITerminationCriterion terminationCriterion = new WalltimeTerminationCriterion(1.0);
         clasp3SATSolver.solve(hardCNF, terminationCriterion, 1);
     }
 
     @Test(timeout = 3000)
     public void testInterrupt() {
-        final Clasp3SATSolver clasp3SATSolver = new Clasp3SATSolver(libraryPath, parameters);
+        final Clasp3SATSolver clasp3SATSolver = new Clasp3SATSolver(libraryPath, parameters, pollingService);
         final ITerminationCriterion.IInterruptibleTerminationCriterion terminationCriterion = new InterruptibleTerminationCriterion(new NeverEndingTerminationCriterion());
         new Thread(() -> {
             try {

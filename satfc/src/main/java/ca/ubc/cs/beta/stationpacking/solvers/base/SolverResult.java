@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -26,16 +26,15 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-
 import org.python.google.common.base.Preconditions;
-
-import ca.ubc.cs.beta.stationpacking.base.Station;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.collect.ImmutableMap;
+
+import ca.ubc.cs.beta.stationpacking.base.Station;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 
 
 /**
@@ -57,6 +56,9 @@ public class SolverResult implements Serializable {
     @JsonIgnore
     @Getter
     private final SolvedBy solvedBy;
+	@JsonIgnore
+	@Getter
+	private final String nickname;
 
     public enum SolvedBy {
         CLASP,
@@ -70,21 +72,28 @@ public class SolverResult implements Serializable {
         CHANNEL_KILLER,
         UNKNOWN,
         UNSOLVED, 
-        UNDERCONSTRAINED
+        DCCA,
+        SATENSTEIN,
+        UNDERCONSTRAINED,
+		UNSAT_LABELLER, PREVIOUS_ASSIGNMENT
     }
+
+	public SolverResult(SATResult aResult, double aRuntime, Map<Integer,Set<Station>> aAssignment, SolvedBy aSolvedBy) {
+		this(aResult, aRuntime, aAssignment, aSolvedBy, null);
+	}
 	
 	/**
 	 * @param aResult - solver result satisfiability.
 	 * @param aRuntime - solver result runtime.
 	 * @param aAssignment - solver result witness assignment.
 	 */
-	public SolverResult(SATResult aResult, double aRuntime, Map<Integer,Set<Station>> aAssignment, SolvedBy aSolvedBy)
+	public SolverResult(SATResult aResult, double aRuntime, Map<Integer,Set<Station>> aAssignment, SolvedBy aSolvedBy, String nickname)
 	{
 		if(aRuntime<0 && Math.abs(aRuntime)!=0.0)
 		{
 			throw new IllegalArgumentException("Cannot create a solver result with negative runtime (runtime = "+aRuntime+").");
 		}
-		
+		this.nickname = nickname;
 		fResult = aResult;
 		fRuntime = aRuntime;
 		fAssignment = ImmutableMap.copyOf(aAssignment);

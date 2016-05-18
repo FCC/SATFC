@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -26,13 +26,10 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
 
-import lombok.extern.slf4j.Slf4j;
-
-import org.apache.commons.lang3.StringUtils;
-
 import au.com.bytecode.opencsv.CSVReader;
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Channel specific interference constraint data manager.
@@ -63,9 +60,9 @@ public class ChannelSpecificConstraintManager extends AMapBasedConstraintManager
      */
     @Override
     protected void addConstraint(Station aSubjectStation,
-                               Station aTargetStation,
-                               Integer aSubjectChannel,
-                               ConstraintKey aConstraintKey) {
+                                 Station aTargetStation,
+                                 Integer aSubjectChannel,
+                                 ConstraintKey aConstraintKey) {
         super.addConstraint(aSubjectStation, aTargetStation, aSubjectChannel, aConstraintKey);
         switch (aConstraintKey) {
             case CO:
@@ -96,36 +93,31 @@ public class ChannelSpecificConstraintManager extends AMapBasedConstraintManager
             try (CSVReader reader = new CSVReader(new FileReader(aInterferenceConstraintsFilename))) {
                 String[] line;
                 while ((line = reader.readNext()) != null) {
-                    try {
-                        final String key = line[0].trim();
-                        final ConstraintKey constraintKey = ConstraintKey.fromString(key);
-                        if (constraintKey.equals(ConstraintKey.ADJm1) || constraintKey.equals(ConstraintKey.ADJm2)) {
-                            throw new IllegalArgumentException("ADJ-1 and ADJ-2 constraints are not part of the compact format, but were seen in line:" + Arrays.toString(line));
-                        }
+                    final String key = line[0].trim();
+                    final ConstraintKey constraintKey = ConstraintKey.fromString(key);
+                    if (constraintKey.equals(ConstraintKey.ADJm1) || constraintKey.equals(ConstraintKey.ADJm2)) {
+                        throw new IllegalArgumentException("ADJ-1 and ADJ-2 constraints are not part of the compact format, but were seen in line:" + Arrays.toString(line));
+                    }
 
-                        final int lowChannel = Integer.valueOf(line[1].trim());
-                        final int highChannel = Integer.valueOf(line[2].trim());
-                        if (lowChannel > highChannel) {
-                            throw new IllegalStateException("Low channel greater than high channel on line " + Arrays.toString(line));
-                        }
+                    final int lowChannel = Integer.valueOf(line[1].trim());
+                    final int highChannel = Integer.valueOf(line[2].trim());
+                    if (lowChannel > highChannel) {
+                        throw new IllegalStateException("Low channel greater than high channel on line " + Arrays.toString(line));
+                    }
 
-                        final int subjectStationID = Integer.valueOf(line[3].trim());
-                        final Station subjectStation = aStationManager.getStationfromID(subjectStationID);
+                    final int subjectStationID = Integer.valueOf(line[3].trim());
+                    final Station subjectStation = aStationManager.getStationfromID(subjectStationID);
 
-                        for (int subjectChannel = lowChannel; subjectChannel <= highChannel; subjectChannel++) {
-                            for (int i = 4; i < line.length; i++) {
-                                if (line[i].trim().isEmpty()) {
-                                    break;
-                                }
-                                final int targetStationID = Integer.valueOf(line[i].trim());
-                                final Station targetStation = aStationManager.getStationfromID(targetStationID);
-
-                                addConstraint(subjectStation, targetStation, subjectChannel, constraintKey);
+                    for (int subjectChannel = lowChannel; subjectChannel <= highChannel; subjectChannel++) {
+                        for (int i = 4; i < line.length; i++) {
+                            if (line[i].trim().isEmpty()) {
+                                break;
                             }
+                            final int targetStationID = Integer.valueOf(line[i].trim());
+                            final Station targetStation = aStationManager.getStationfromID(targetStationID);
+
+                            addConstraint(subjectStation, targetStation, subjectChannel, constraintKey);
                         }
-                    } catch (Exception e) {
-                        log.debug("Could not read constraint from line:\n{}", StringUtils.join(line, ','));
-                        throw e;
                     }
                 }
             }

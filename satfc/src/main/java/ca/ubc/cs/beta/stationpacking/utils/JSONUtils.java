@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -23,12 +23,11 @@ package ca.ubc.cs.beta.stationpacking.utils;
 
 import java.io.IOException;
 
-import lombok.Getter;
-import ca.ubc.cs.beta.stationpacking.base.StationDeserializer.StationJacksonModule;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.guava.GuavaModule;
+
+import lombok.Getter;
 
 /**
  * Created by newmanne on 02/12/14.
@@ -41,21 +40,25 @@ public class JSONUtils {
     static {
         mapper = new ObjectMapper();
         mapper.registerModule(new GuavaModule());
-        mapper.registerModule(new StationJacksonModule());
+        mapper.registerModule(new SATFCJacksonModule());
     }
 
     public static <T> T toObject(String jsonString, Class<T> klazz) {
         try {
-            return mapper.readValue(jsonString, klazz);
+            return toObjectWithException(jsonString, klazz);
         } catch (IOException e) {
             throw new RuntimeException("Couldn't deserialize string " + jsonString + " into type " + klazz, e);
         }
     }
 
+    public static <T> T toObjectWithException(String jsonString, Class<T> klazz) throws IOException {
+        return mapper.readValue(jsonString, klazz);
+    }
+
     public static String toString(Object object) {
     	return toString(object, false);
     }
-    
+
     public static String toString(Object object, boolean pretty) {
         try {
         	final String json;

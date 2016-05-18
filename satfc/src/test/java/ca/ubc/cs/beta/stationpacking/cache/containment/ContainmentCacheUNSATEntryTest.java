@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -30,9 +30,9 @@ import java.util.Set;
 import org.junit.Assert;
 import org.junit.Test;
 
-import ca.ubc.cs.beta.stationpacking.base.Station;
-
 import com.google.common.collect.ImmutableBiMap;
+
+import ca.ubc.cs.beta.stationpacking.base.Station;
 
 /**
  * Created by emily404 on 5/12/15.
@@ -47,8 +47,7 @@ public class ContainmentCacheUNSATEntryTest {
     @Test
     public void isLessRestrictiveSameEntriesTest(){
         Map<Station, Set<Integer>> domains = new HashMap<>();
-        String key = "key";
-        ContainmentCacheUNSATEntry entry = new ContainmentCacheUNSATEntry(domains, key, permutation);
+        ContainmentCacheUNSATEntry entry = new ContainmentCacheUNSATEntry(domains, permutation);
 
         Assert.assertFalse(entry.isLessRestrictive(entry));
     }
@@ -59,15 +58,13 @@ public class ContainmentCacheUNSATEntryTest {
     @Test
     public void lessStationsMoreChannelsTest(){
         Map<Station, Set<Integer>> lesResDomains = new HashMap<>();
-        lesResDomains.put(new Station(1), new HashSet<>(Arrays.asList(5,6)));
-        String lessResKey = "lessResKey";
-        ContainmentCacheUNSATEntry lessResEntry = new ContainmentCacheUNSATEntry(lesResDomains, lessResKey, permutation);
+        lesResDomains.put(new Station(1), new HashSet<>(Arrays.asList(19,20)));
+        ContainmentCacheUNSATEntry lessResEntry = new ContainmentCacheUNSATEntry(lesResDomains, permutation);
 
         Map<Station, Set<Integer>> moreResDomains = new HashMap<>();
-        moreResDomains.put(new Station(1), new HashSet<>(Arrays.asList(5)));
-        moreResDomains.put(new Station(2), new HashSet<>(Arrays.asList(5)));
-        String moreResKey = "moreResKey";
-        ContainmentCacheUNSATEntry moreResEntry = new ContainmentCacheUNSATEntry(moreResDomains, moreResKey, permutation);
+        moreResDomains.put(new Station(1), new HashSet<>(Arrays.asList(19)));
+        moreResDomains.put(new Station(2), new HashSet<>(Arrays.asList(19)));
+        ContainmentCacheUNSATEntry moreResEntry = new ContainmentCacheUNSATEntry(moreResDomains, permutation);
 
         Assert.assertTrue(lessResEntry.isLessRestrictive(moreResEntry));
     }
@@ -78,15 +75,13 @@ public class ContainmentCacheUNSATEntryTest {
     @Test
     public void moreStationTest(){
         Map<Station, Set<Integer>> moreStationDomains = new HashMap<>();
-        moreStationDomains.put(new Station(1), new HashSet<>(Arrays.asList(5, 6)));
-        moreStationDomains.put(new Station(2), new HashSet<>(Arrays.asList(5, 6)));
-        String lessResKey = "lessStationsKey";
-        ContainmentCacheUNSATEntry moreStationEntry = new ContainmentCacheUNSATEntry(moreStationDomains, lessResKey, permutation);
+        moreStationDomains.put(new Station(1), new HashSet<>(Arrays.asList(19,20)));
+        moreStationDomains.put(new Station(2), new HashSet<>(Arrays.asList(19, 20)));
+        ContainmentCacheUNSATEntry moreStationEntry = new ContainmentCacheUNSATEntry(moreStationDomains, permutation);
 
         Map<Station, Set<Integer>> lessStationDomains = new HashMap<>();
-        lessStationDomains.put(new Station(1), new HashSet<>(Arrays.asList(5, 6)));
-        String moreResKey = "moreStationsKey";
-        ContainmentCacheUNSATEntry lessStationEntry = new ContainmentCacheUNSATEntry(lessStationDomains, moreResKey, permutation);
+        lessStationDomains.put(new Station(1), new HashSet<>(Arrays.asList(19, 20)));
+        ContainmentCacheUNSATEntry lessStationEntry = new ContainmentCacheUNSATEntry(lessStationDomains, permutation);
 
         Assert.assertFalse(moreStationEntry.isLessRestrictive(lessStationEntry));
     }
@@ -97,34 +92,14 @@ public class ContainmentCacheUNSATEntryTest {
     @Test
     public void sameStationLessChannelTest(){
         Map<Station, Set<Integer>> lessChannelDomains = new HashMap<>();
-        lessChannelDomains.put(new Station(1), new HashSet<>(Arrays.asList(5)));
-        String lessChannelKey = "lessChannelKey";
-        ContainmentCacheUNSATEntry moreChannelEntry = new ContainmentCacheUNSATEntry(lessChannelDomains, lessChannelKey, permutation);
+        lessChannelDomains.put(new Station(1), new HashSet<>(Arrays.asList(19)));
+        ContainmentCacheUNSATEntry moreChannelEntry = new ContainmentCacheUNSATEntry(lessChannelDomains, permutation);
 
         Map<Station, Set<Integer>> moreChannelDomains = new HashMap<>();
-        moreChannelDomains.put(new Station(1), new HashSet<>(Arrays.asList(5, 6)));
-        String moreChannelKey = "moreChannelKey";
-        ContainmentCacheUNSATEntry lessChannelEntry = new ContainmentCacheUNSATEntry(moreChannelDomains, moreChannelKey, permutation);
+        moreChannelDomains.put(new Station(1), new HashSet<>(Arrays.asList(19, 20)));
+        ContainmentCacheUNSATEntry lessChannelEntry = new ContainmentCacheUNSATEntry(moreChannelDomains, permutation);
 
         Assert.assertFalse(moreChannelEntry.isLessRestrictive(lessChannelEntry));
-    }
-
-    /**
-     * empty channels indicates more restriction
-     */
-    @Test
-    public void emptyChannelTest(){
-        Map<Station, Set<Integer>> emptyChannelDomains = new HashMap<>();
-        emptyChannelDomains.put(new Station(1), new HashSet<>(Arrays.asList()));
-        String emptyDomainsKey = "emptyDomainsKey";
-        ContainmentCacheUNSATEntry emptyDomainsEntry = new ContainmentCacheUNSATEntry(emptyChannelDomains, emptyDomainsKey, permutation);
-
-        Map<Station, Set<Integer>> nonEmptyDomains = new HashMap<>();
-        nonEmptyDomains.put(new Station(1), new HashSet<>(Arrays.asList(5, 6)));
-        String nonEmptyDomainsKey = "nonEmptyDomainsKey";
-        ContainmentCacheUNSATEntry nonEmptyDomainsEntry = new ContainmentCacheUNSATEntry(nonEmptyDomains, nonEmptyDomainsKey, permutation);
-
-        Assert.assertFalse(emptyDomainsEntry.isLessRestrictive(nonEmptyDomainsEntry));
     }
 
     /**
@@ -134,16 +109,14 @@ public class ContainmentCacheUNSATEntryTest {
     @Test
     public void overlapDomainTest(){
         Map<Station, Set<Integer>> firstDomains = new HashMap<>();
-        firstDomains.put(new Station(1), new HashSet<>(Arrays.asList(5,6)));
-        firstDomains.put(new Station(2), new HashSet<>(Arrays.asList(7)));
-        String key1 = "key1";
-        ContainmentCacheUNSATEntry firstEntry = new ContainmentCacheUNSATEntry(firstDomains, key1, permutation);
+        firstDomains.put(new Station(1), new HashSet<>(Arrays.asList(19,20)));
+        firstDomains.put(new Station(2), new HashSet<>(Arrays.asList(21)));
+        ContainmentCacheUNSATEntry firstEntry = new ContainmentCacheUNSATEntry(firstDomains, permutation);
 
         Map<Station, Set<Integer>> secondDomains = new HashMap<>();
-        secondDomains.put(new Station(1), new HashSet<>(Arrays.asList(5)));
-        secondDomains.put(new Station(2), new HashSet<>(Arrays.asList(7, 8)));
-        String key2 = "key2";
-        ContainmentCacheUNSATEntry secondEntry = new ContainmentCacheUNSATEntry(secondDomains, key2, permutation);
+        secondDomains.put(new Station(1), new HashSet<>(Arrays.asList(19)));
+        secondDomains.put(new Station(2), new HashSet<>(Arrays.asList(21, 22)));
+        ContainmentCacheUNSATEntry secondEntry = new ContainmentCacheUNSATEntry(secondDomains, permutation);
 
         Assert.assertFalse(firstEntry.isLessRestrictive(secondEntry));
     }

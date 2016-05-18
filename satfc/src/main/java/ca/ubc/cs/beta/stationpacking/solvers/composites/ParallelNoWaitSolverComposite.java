@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -32,20 +32,21 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
 
-import lombok.extern.slf4j.Slf4j;
-import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
-import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
-import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
-import ca.ubc.cs.beta.stationpacking.solvers.termination.interrupt.InterruptibleTerminationCriterion;
-import ca.ubc.cs.beta.stationpacking.utils.Watch;
-
 import com.google.common.collect.Queues;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
+
+import ca.ubc.cs.beta.aeatk.concurrent.threadfactory.SequentiallyNamedThreadFactory;
+import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.solvers.termination.interrupt.InterruptibleTerminationCriterion;
+import ca.ubc.cs.beta.stationpacking.utils.Watch;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Created by newmanne on 26/05/15.
@@ -67,7 +68,7 @@ public class ParallelNoWaitSolverComposite implements ISolver {
      */
     public ParallelNoWaitSolverComposite(int threadPoolSize, List<ISolverFactory> solvers) {
         log.debug("Creating a fixed pool with {} threads", threadPoolSize);
-        executorService = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(threadPoolSize));
+        executorService = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(threadPoolSize, new SequentiallyNamedThreadFactory("SATFC Parallel Worker Thread")));
         listOfSolverQueues = new ArrayList<>(solvers.size());
         for (ISolverFactory solverFactory : solvers) {
             final LinkedBlockingQueue<ISolver> solverQueue = Queues.newLinkedBlockingQueue(threadPoolSize);
@@ -146,6 +147,7 @@ public class ParallelNoWaitSolverComposite implements ISolver {
                         if (t instanceof CancellationException) {
                             return;
                         }
+                        log.error("Error occured while executing a task", t);
                         // Only set the first error
                         error.compareAndSet(null, t);
                         // Wake up the main thread (if it's still sleeping)
@@ -175,20 +177,20 @@ public class ParallelNoWaitSolverComposite implements ISolver {
     private void checkForErrors() {
     	final Throwable e = error.getAndSet(null); // clear error for future uses
         if (e != null) {
-            log.error("Error occured while executing a task", e);
+            log.error("Found an error from a parallel task", e);
             throw new RuntimeException("Error occurred while executing a task", e);
         }
     }
 
     @Override
     public void notifyShutdown() {
-        executorService.shutdown();
         listOfSolverQueues.forEach(queue -> queue.forEach(ISolver::notifyShutdown));
+        executorService.shutdown();
     }
 
     @Override
     public void interrupt() {
-        throw new RuntimeException("Not yet implemented");
+        // Just wait for the individual solvers to terminate
     }
 
 }

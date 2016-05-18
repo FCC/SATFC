@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -29,12 +29,12 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.beust.jcommander.Parameter;
+
 import ca.ubc.cs.beta.aeatk.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aeatk.options.AbstractOptions;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.converters.PreviousAssignmentConverter;
 import ca.ubc.cs.beta.stationpacking.execution.parameters.converters.StationDomainsConverter;
-
-import com.beust.jcommander.Parameter;
 
 /**
  * Defines a station packing problem instance from basic values.

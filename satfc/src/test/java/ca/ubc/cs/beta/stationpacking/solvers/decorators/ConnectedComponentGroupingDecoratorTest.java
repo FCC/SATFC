@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -33,6 +33,9 @@ import java.util.Set;
 
 import org.junit.Test;
 
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
@@ -42,9 +45,6 @@ import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult.SolvedBy;
 import ca.ubc.cs.beta.stationpacking.solvers.componentgrouper.IComponentGrouper;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
-
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 public class ConnectedComponentGroupingDecoratorTest {
 

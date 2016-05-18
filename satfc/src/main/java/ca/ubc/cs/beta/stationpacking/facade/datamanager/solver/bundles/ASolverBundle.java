@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -23,38 +23,33 @@ package ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles;
 
 import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
 import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.data.ManagerBundle;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Abstract solver bundles that handles data management.
  * @author afrechet
  */
-public abstract class ASolverBundle implements ISolverBundle{
+@Slf4j
+public abstract class ASolverBundle implements ISolverBundle {
 
-	private final IStationManager fStationManager;
-	private final IConstraintManager fConstraintManager;
-	
-	/**
-	 * Create an abstract solver bundle with the given data management objects.
-	 * @param aStationManager - manages stations.
-	 * @param aConstraintManager - manages constraints.
-	 */
-	public ASolverBundle(IStationManager aStationManager, IConstraintManager aConstraintManager)
+	private final ManagerBundle managerBundle;
+
+	public ASolverBundle(ManagerBundle managerBundle)
 	{
-		fStationManager = aStationManager;
-		fConstraintManager = aConstraintManager;
+		this.managerBundle = managerBundle;
 	}
-	
+
 	@Override
 	public IStationManager getStationManager()
 	{
-		return fStationManager;
+		return managerBundle.getStationManager();
 	}
 	
 	@Override
 	public IConstraintManager getConstraintManager()
 	{
-		return fConstraintManager;
+		return managerBundle.getConstraintManager();
 	}
-	
 
 }

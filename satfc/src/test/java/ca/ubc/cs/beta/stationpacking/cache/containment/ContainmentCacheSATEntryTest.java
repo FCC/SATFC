@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -30,9 +30,9 @@ import java.util.Set;
 import org.junit.Assert;
 import org.junit.Test;
 
-import ca.ubc.cs.beta.stationpacking.base.Station;
-
 import com.google.common.collect.ImmutableBiMap;
+
+import ca.ubc.cs.beta.stationpacking.base.Station;
 
 /**
  * Created by emily404 on 5/12/15.
@@ -53,8 +53,7 @@ public class ContainmentCacheSATEntryTest {
     @Test
     public void isSupersetSameKeyTest(){
         Map<Integer, Set<Station>> asgmnt = new HashMap<>();
-        String key = "key";
-        ContainmentCacheSATEntry entry = new ContainmentCacheSATEntry(asgmnt, key, permutation);
+        ContainmentCacheSATEntry entry = new ContainmentCacheSATEntry(asgmnt, permutation);
 
         Assert.assertFalse(entry.hasMoreSolvingPower(entry));
     }
@@ -66,14 +65,12 @@ public class ContainmentCacheSATEntryTest {
     public void isSupersetTest(){
         Map<Integer, Set<Station>> asgmnt1 = new HashMap<>();
         asgmnt1.put(c1, new HashSet<>(Arrays.asList(s1)));
-        String k1 = "k1";
-        ContainmentCacheSATEntry subsetEntry = new ContainmentCacheSATEntry(asgmnt1, k1, permutation);
+        ContainmentCacheSATEntry subsetEntry = new ContainmentCacheSATEntry(asgmnt1, permutation);
 
         Map<Integer, Set<Station>> asgmnt2 = new HashMap<>();
         asgmnt2.put(c1, new HashSet<>(Arrays.asList(s1)));
         asgmnt2.put(c2, new HashSet<>(Arrays.asList(s2)));
-        String k2 = "k2";
-        ContainmentCacheSATEntry supersetEntry = new ContainmentCacheSATEntry(asgmnt2, k2, permutation);
+        ContainmentCacheSATEntry supersetEntry = new ContainmentCacheSATEntry(asgmnt2, permutation);
 
         Assert.assertTrue(supersetEntry.hasMoreSolvingPower(subsetEntry));
     }
@@ -85,13 +82,11 @@ public class ContainmentCacheSATEntryTest {
     public void isSupersetSameAssignmentTest(){
         Map<Integer, Set<Station>> asgmnt1 = new HashMap<>();
         asgmnt1.put(c1, new HashSet<>(Arrays.asList(s1)));
-        String k1 = "k1";
-        ContainmentCacheSATEntry e1 = new ContainmentCacheSATEntry(asgmnt1, k1, permutation);
+        ContainmentCacheSATEntry e1 = new ContainmentCacheSATEntry(asgmnt1, permutation);
 
         Map<Integer, Set<Station>> asgmnt2 = new HashMap<>();
         asgmnt2.put(c1, new HashSet<>(Arrays.asList(s1)));
-        String k2 = "k2";
-        ContainmentCacheSATEntry e2 = new ContainmentCacheSATEntry(asgmnt2, k2, permutation);
+        ContainmentCacheSATEntry e2 = new ContainmentCacheSATEntry(asgmnt2, permutation);
 
         Assert.assertTrue(e1.hasMoreSolvingPower(e2));
         Assert.assertTrue(e2.hasMoreSolvingPower(e1));
@@ -104,13 +99,11 @@ public class ContainmentCacheSATEntryTest {
     public void isNotSupersetTest(){
         Map<Integer, Set<Station>> asgmnt1 = new HashMap<>();
         asgmnt1.put(c1, new HashSet<>(Arrays.asList(s1)));
-        String k1 = "k1";
-        ContainmentCacheSATEntry e1 = new ContainmentCacheSATEntry(asgmnt1, k1, permutation);
+        ContainmentCacheSATEntry e1 = new ContainmentCacheSATEntry(asgmnt1, permutation);
 
         Map<Integer, Set<Station>> asgmnt2 = new HashMap<>();
         asgmnt2.put(c1, new HashSet<>(Arrays.asList(s2)));
-        String k2 = "k2";
-        ContainmentCacheSATEntry e2 = new ContainmentCacheSATEntry(asgmnt2, k2, permutation);
+        ContainmentCacheSATEntry e2 = new ContainmentCacheSATEntry(asgmnt2, permutation);
 
         Assert.assertFalse(e1.hasMoreSolvingPower(e2));
         Assert.assertFalse(e2.hasMoreSolvingPower(e1));
@@ -124,14 +117,12 @@ public class ContainmentCacheSATEntryTest {
         Map<Integer, Set<Station>> asgmnt1 = new HashMap<>();
         asgmnt1.put(c1, new HashSet<>(Arrays.asList(s1)));
         asgmnt1.put(c2, new HashSet<>(Arrays.asList(s2)));
-        String k1 = "k1";
-        ContainmentCacheSATEntry e1 = new ContainmentCacheSATEntry(asgmnt1, k1, permutation);
+        ContainmentCacheSATEntry e1 = new ContainmentCacheSATEntry(asgmnt1, permutation);
 
         Map<Integer, Set<Station>> asgmnt2 = new HashMap<>();
         asgmnt2.put(c1, new HashSet<>(Arrays.asList(s1)));
         asgmnt2.put(c3, new HashSet<>(Arrays.asList(s2)));
-        String k2 = "k2";
-        ContainmentCacheSATEntry e2 = new ContainmentCacheSATEntry(asgmnt2, k2, permutation);
+        ContainmentCacheSATEntry e2 = new ContainmentCacheSATEntry(asgmnt2, permutation);
 
         Assert.assertFalse(e1.hasMoreSolvingPower(e2));
         Assert.assertFalse(e2.hasMoreSolvingPower(e1));

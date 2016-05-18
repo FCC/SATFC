@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -22,45 +22,53 @@
 package ca.ubc.cs.beta.stationpacking.utils;
 
 import java.util.BitSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
-import org.springframework.web.client.RestTemplate;
+import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
+import org.apache.http.impl.nio.client.HttpAsyncClients;
+
+import com.google.common.base.Preconditions;
+import com.google.common.base.Splitter;
 
 import ca.ubc.cs.beta.stationpacking.base.Station;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
 /**
  * Created by newmanne on 19/03/15.
  */
 public class CacheUtils {
 
-    private static RestTemplate restTemplate;
-
     public static BitSet toBitSet(Map<Integer, Set<Station>> answer, Map<Station, Integer> permutation) {
         final BitSet bitSet = new BitSet();
         answer.values().stream().forEach(stations -> stations.forEach(station -> bitSet.set(permutation.get(station))));
         return bitSet;
     }
+    
+    public static CloseableHttpAsyncClient createHttpClient() {
+        final CloseableHttpAsyncClient client = HttpAsyncClients.createDefault();
+        client.start();
+        return client;
+    }
 
-    public static RestTemplate getRestTemplate() {
-        if (restTemplate == null) {
-            restTemplate = new RestTemplate();
-            final MappingJackson2HttpMessageConverter mappingJacksonHttpMessageConverter = new MappingJackson2HttpMessageConverter();
-            final ObjectMapper mapper = JSONUtils.getMapper();
-            mappingJacksonHttpMessageConverter.setObjectMapper(mapper);
-            // swap out the default message converter
-            for (int i = 0; i < restTemplate.getMessageConverters().size(); i++) {
-                if (restTemplate.getMessageConverters().get(i) instanceof MappingJackson2HttpMessageConverter) {
-                    restTemplate.getMessageConverters().remove(i);
-                    restTemplate.getMessageConverters().add(i, mappingJacksonHttpMessageConverter);
-                    break;
-                }
-            }
-        }
-        return restTemplate;
+    public static ParsedKey parseKey(String key) {
+        final List<String> strings = Splitter.on(":").splitToList(key);
+        Preconditions.checkState(strings.size() == 5, "Key %s not of expected cache key format SATFC:SAT:*:*:* or SATFC:UNSAT:*:*:*", key);
+        return new ParsedKey(Long.parseLong(strings.get(4)), SATResult.valueOf(strings.get(1)), strings.get(2), strings.get(3));
+    }
+
+
+    @Data
+    @AllArgsConstructor
+    public static class ParsedKey {
+
+        private final long num;
+        private final SATResult result;
+        private final String domainHash;
+        private final String interferenceHash;
     }
 
 }

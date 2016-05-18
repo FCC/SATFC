@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -24,10 +24,11 @@ package ca.ubc.cs.beta.stationpacking.solvers.decorators.cache;
 import java.util.Map;
 import java.util.Set;
 
-import lombok.extern.slf4j.Slf4j;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.cache.CacheCoordinate;
 import ca.ubc.cs.beta.stationpacking.cache.containment.ContainmentCacheSATResult;
 import ca.ubc.cs.beta.stationpacking.metrics.SATFCMetrics;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
@@ -36,19 +37,18 @@ import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.decorators.ASolverDecorator;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
-
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Created by newmanne on 28/01/15.
+ * Query the SATFCServer to see if it contains a SAT superset entry for the problem
  */
 @Slf4j
 public class SupersetCacheSATDecorator extends ASolverDecorator {
 
     private final ContainmentCacheProxy proxy;
 
-    public SupersetCacheSATDecorator(ISolver aSolver, ContainmentCacheProxy proxy, CacheCoordinate coordinate) {
+    public SupersetCacheSATDecorator(ISolver aSolver, ContainmentCacheProxy proxy) {
         super(aSolver);
         this.proxy = proxy;
     }
@@ -89,8 +89,4 @@ public class SupersetCacheSATDecorator extends ASolverDecorator {
         super.interrupt();
     }
 
-    @Override
-    public void notifyShutdown() {
-        proxy.notifyShutdown();
-    }
 }

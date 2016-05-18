@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -26,11 +26,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
-import lombok.extern.slf4j.Slf4j;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.data.DataManager;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.data.ManagerBundle;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBundle;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.ISolverBundleFactory;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Manages the solvers & data corresponding to different directories to make sure it is only read once.
@@ -70,7 +70,7 @@ public class SolverManager implements AutoCloseable {
 		else
 		{
 			ManagerBundle dataBundle = fDataManager.getData(path);
-			ISolverBundle solverbundle = fSolverBundleFactory.getBundle(dataBundle.getStationManager(), dataBundle.getConstraintManager());
+			ISolverBundle solverbundle = fSolverBundleFactory.getBundle(dataBundle);
 			
 			fSolverData.put(path, solverbundle);
 			return true;
@@ -86,7 +86,7 @@ public class SolverManager implements AutoCloseable {
 	 */
 	public ISolverBundle getData(String path) throws FileNotFoundException
 	{
-		ISolverBundle bundle = fSolverData.get(path);
+        ISolverBundle bundle = fSolverData.get(path);
 		if (bundle == null)
 		{
 			log.warn("Requested data from {} not available, will try to add it.",path);

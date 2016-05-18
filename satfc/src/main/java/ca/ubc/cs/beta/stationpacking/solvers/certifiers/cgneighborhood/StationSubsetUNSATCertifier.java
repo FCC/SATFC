@@ -1,20 +1,20 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
- * This file is part of satfc.
+ * This file is part of SATFC.
  *
- * satfc is free software: you can redistribute it and/or modify
+ * SATFC is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * satfc is distributed in the hope that it will be useful,
+ * SATFC is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with satfc.  If not, see <http://www.gnu.org/licenses/>.
+ * along with SATFC.  If not, see <http://www.gnu.org/licenses/>.
  *
  * For questions, contact us at:
  * afrechet@cs.ubc.ca
@@ -26,7 +26,8 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import lombok.extern.slf4j.Slf4j;
+import com.google.common.collect.ImmutableMap;
+
 import ca.ubc.cs.beta.stationpacking.base.Station;
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
@@ -35,8 +36,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult.SolvedBy;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 import ca.ubc.cs.beta.stationpacking.utils.Watch;
-
-import com.google.common.collect.ImmutableMap;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * UNSAT certifier. Checks if a given neighborhood of instances cannot be packed together.

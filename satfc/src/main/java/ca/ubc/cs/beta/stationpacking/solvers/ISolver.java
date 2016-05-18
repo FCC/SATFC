@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -23,6 +23,7 @@ package ca.ubc.cs.beta.stationpacking.solvers;
 
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.decorators.ISATFCInterruptible;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
 /**
@@ -34,7 +35,7 @@ import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
  * </p>
  * @author afrechet
  */
-public interface ISolver {
+public interface ISolver extends ISATFCInterruptible {
 	
 	/**
 	 * Solve a station packing instance under the provided CPU time cutoff and given seed.

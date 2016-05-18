@@ -1,3 +1,24 @@
+/**
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ *
+ * This file is part of SATFC.
+ *
+ * SATFC is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * SATFC is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with SATFC.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * For questions, contact us at:
+ * afrechet@cs.ubc.ca
+ */
 package ca.ubc.cs.beta.stationpacking.utils;
 
 import java.util.concurrent.Callable;
@@ -7,6 +28,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import ca.ubc.cs.beta.aeatk.concurrent.threadfactory.SequentiallyNamedThreadFactory;
 
 /**
  * See http://stackoverflow.com/questions/5715235/java-set-timeout-on-a-certain-block-of-code
@@ -22,7 +45,7 @@ public class TimeLimitedCodeBlock {
     }
 
     public static <T> T runWithTimeout(Callable<T> callable, long timeout, TimeUnit timeUnit) throws Exception {
-        final ExecutorService executor = Executors.newSingleThreadExecutor();
+        final ExecutorService executor = Executors.newSingleThreadExecutor(new SequentiallyNamedThreadFactory("SATFC Main Worker Thread"));
         final Future<T> future = executor.submit(callable);
         executor.shutdown(); // This does not cancel the already-scheduled task.
         try {

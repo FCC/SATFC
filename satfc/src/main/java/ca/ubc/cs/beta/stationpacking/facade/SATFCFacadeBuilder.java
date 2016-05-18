@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -21,26 +21,25 @@
  */
 package ca.ubc.cs.beta.stationpacking.facade;
 
-import static ca.ubc.cs.beta.stationpacking.facade.SATFCFacadeParameter.SolverChoice.SATFC_PARALLEL;
-import static ca.ubc.cs.beta.stationpacking.facade.SATFCFacadeParameter.SolverChoice.SATFC_SEQUENTIAL;
-
 import java.io.File;
 import java.net.URISyntaxException;
 import java.net.URL;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Preconditions;
 import com.google.common.io.Resources;
+
+import ca.ubc.cs.beta.stationpacking.execution.parameters.SATFCFacadeParameters;
+import ca.ubc.cs.beta.stationpacking.facade.SATFCFacadeParameter.SolverChoice;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.data.DataManager;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.yaml.ConfigFile;
+import ca.ubc.cs.beta.stationpacking.solvers.decorators.CNFSaverSolverDecorator;
+import ch.qos.logback.classic.Level;
 import lombok.Data;
 import lombok.NonNull;
 import lombok.experimental.Builder;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.SATFCFacadeParameters;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.smac.SATFCHydraParams;
-import ca.ubc.cs.beta.stationpacking.facade.SATFCFacadeParameter.SolverChoice;
-import ca.ubc.cs.beta.stationpacking.facade.datamanager.data.DataManager;
-import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.SATFCParallelSolverBundle;
-import ca.ubc.cs.beta.stationpacking.solvers.decorators.CNFSaverSolverDecorator;
-import ch.qos.logback.classic.Level;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Builder in charge of creating a SATFC facade, feeding it the necessary options.
@@ -50,31 +49,72 @@ import org.slf4j.LoggerFactory;
  */
 public class SATFCFacadeBuilder {
 
-    public static final String SATFC_CLASP_LIBRARY_ENV_VAR = "SATFC_CLASP_LIBRARY";
     private volatile static boolean logInitialized = false;
 
     // public params
     private boolean initializeLogging;
-    private String fLibrary;
+    private String fClaspLibrary;
+    private String fSATensteinLibrary;
     private String fResultFile;
-    private SolverChoice fSolverChoice;
     private String serverURL;
-    private int parallelismLevel;
     private Level logLevel;
     private String logFileName;
-    private boolean cacheResults;
+    private int numServerAttempts;
+    private boolean noErrorOnServerUnavailable;
+    private ConfigFile configFile;
     private DeveloperOptions developerOptions;
+    private AutoAugmentOptions autoAugmentOptions;
+
+    /**
+     * Set the YAML file used to build up the SATFC solver bundle
+     * @param configFile path to a config file
+     */
+    public SATFCFacadeBuilder setConfigFile(String configFile) {
+        this.configFile = new ConfigFile(configFile, false);
+        return this;
+    }
+
+    /**
+     * Set the YAML file used to build up the SATFC solver bundle
+     * @param configFile
+     */
+    public SATFCFacadeBuilder setConfigFile(InternalSATFCConfigFile configFile) {
+        this.configFile = new ConfigFile(configFile.getFilename(), true);
+        return this;
+    }
 
     // developer params
     @Builder
     @Data
     public static class DeveloperOptions {
-    	private CNFSaverSolverDecorator.ICNFSaver CNFSaver = null;
-        private boolean presolve = true;
-        private boolean underconstrained = true;
-        private boolean decompose = true;
-        private SATFCHydraParams hydraParams = null;
+    	private CNFSaverSolverDecorator.ICNFSaver CNFSaver;
         private DataManager dataManager;
+        private SolverChoice solverChoice;
+    }
+
+    /**
+     * Keeps track of the locations of the different shared libraries used by SATFC.
+     * Adding pathing for a new library is as simple as one line of code.
+     * @author pcernek
+     */
+    public enum SATFCLibLocation {
+        CLASP ("SATFC_CLASP_LIBRARY", "clasp" + File.separator + "jna" + File.separator + "libjnaclasp.so"),
+        SATENSTEIN ("SATFC_SATENSTEIN_LIBRARY", "satenstein" + File.separator + "jna" + File.separator + "libjnasatenstein.so");
+
+        /**
+         * The name of the environment variable that the user may set to specify the library location.
+         */
+        public final String SATFC_ENV_VAR;
+
+        /**
+         * The relative path to the .so file. This location is determined by the library's compile.sh script.
+         */
+        public final String relativePath;
+
+        SATFCLibLocation(String aENV_VAR, String aRelativePath) {
+            this.SATFC_ENV_VAR = aENV_VAR;
+            this.relativePath = aRelativePath;
+        }
     }
 
     /**
@@ -82,31 +122,38 @@ public class SATFCFacadeBuilder {
      */
     public SATFCFacadeBuilder() {
         // public params
-        fLibrary = findSATFCLibrary();
+        fClaspLibrary = findSATFCLibrary(SATFCLibLocation.CLASP);
+        fSATensteinLibrary = findSATFCLibrary(SATFCLibLocation.SATENSTEIN);
         fResultFile = null;
-        parallelismLevel = Math.min(SATFCParallelSolverBundle.PORTFOLIO_SIZE, Runtime.getRuntime().availableProcessors());
-        fSolverChoice = parallelismLevel >= SATFCParallelSolverBundle.PORTFOLIO_SIZE ? SolverChoice.SATFC_PARALLEL : SolverChoice.SATFC_SEQUENTIAL;
         serverURL = null;
         logLevel = Level.INFO;
         logFileName = "SATFC.log";
-        cacheResults = true;
-        developerOptions = DeveloperOptions.builder().build();
+        configFile = autoDetectBundle();
+        numServerAttempts = 3;
+        noErrorOnServerUnavailable = false;
+        autoAugmentOptions = AutoAugmentOptions.builder().build();
+        developerOptions = DeveloperOptions.builder().solverChoice(SolverChoice.YAML).build();
+    }
+
+    public static ConfigFile autoDetectBundle() {
+        return new ConfigFile(Runtime.getRuntime().availableProcessors() >= 4 ? InternalSATFCConfigFile.SATFC_PARALLEL.getFilename() : InternalSATFCConfigFile.SATFC_SEQUENTIAL.getFilename(), true);
     }
 
     /**
-     * Some autodetection magic to find clasp library.
+     * Some autodetection magic to find libraries used by SATFC.
      *
-     * @return the path to the detected clasp library, null if none found.
+     * @return the path detected for the given library, null if none found.
+     * @param lib
      */
-    public static String findSATFCLibrary() {
-        final String envPath = System.getenv(SATFC_CLASP_LIBRARY_ENV_VAR);
+    public static String findSATFCLibrary(SATFCLibLocation lib) {
+        final String envPath = System.getenv(lib.SATFC_ENV_VAR);
         if (envPath != null) {
-            System.out.println("Using path set from env variable " + SATFC_CLASP_LIBRARY_ENV_VAR + ", " + envPath);
+            System.out.println("Using path set from env variable " + lib.SATFC_ENV_VAR + ", " + envPath);
             return envPath;
         }
 
         //Relative path pointing to the clasp .so
-        final String relativeLibPath = "clasp" + File.separator + "jna" + File.separator + "libjnaclasp.so";
+        final String relativeLibPath = lib.relativePath;
 
         //Find the root of the clasp relative path.
         final URL url = SATFCFacadeBuilder.class.getProtectionDomain().getCodeSource().getLocation();
@@ -150,46 +197,58 @@ public class SATFCFacadeBuilder {
      * @return a SATFC facade configured according to the builder's options.
      */
     public SATFCFacade build() {
-        if (fLibrary == null) {
+        if (fClaspLibrary == null || fSATensteinLibrary == null) {
             throw new IllegalArgumentException("Facade builder did not auto-detect default library, and no other library was provided.");
         }
-        if (fSolverChoice.equals(SATFC_PARALLEL)) {
-            if (parallelismLevel < 4) {
-                throw new IllegalArgumentException("Trying to initialize the parallel solver with too few cores! Use the " + SATFC_SEQUENTIAL + " solver instead. We recommend the " + SATFC_PARALLEL + " solver with >= than 4 threads");
-            }
+        if (developerOptions.getSolverChoice().equals(SolverChoice.YAML)) {
+            Preconditions.checkNotNull(configFile, "No YAML config file was given to initialize the solver bundle with!");
         }
         if (initializeLogging) {
             initializeLogging(logLevel, logFileName);
         }
         return new SATFCFacade(
                 SATFCFacadeParameter.builder()
-                        .claspLibrary(fLibrary)
+                        .claspLibrary(fClaspLibrary)
+                        .satensteinLibrary(fSATensteinLibrary)
                         .resultFile(fResultFile)
-                        .solverChoice(fSolverChoice)
                         .serverURL(serverURL)
-                        .parallelismLevel(parallelismLevel)
-                        .cacheResults(cacheResults)
+                        .configFile(configFile)
+                        .numServerAttempts(numServerAttempts)
+                        .noErrorOnServerUnavailable(noErrorOnServerUnavailable)
+                        .autoAugmentOptions(autoAugmentOptions)
                         // developer
-                        .hydraParams(developerOptions.getHydraParams())
-                        .presolve(developerOptions.isPresolve())
-                        .decompose(developerOptions.isDecompose())
-                        .underconstrained(developerOptions.isUnderconstrained())
                         .dataManager(developerOptions.getDataManager())
+                        .CNFSaver(developerOptions.getCNFSaver())
+                        .solverChoice(developerOptions.getSolverChoice())
                         .build()
                         );
     }
 
     /**
-     * Set the (clasp) library SATFC should use.
+     * Set the clasp library SATFC should use.
      *
      * @param aLibrary
      * @return this {@code Builder} object
      */
-    public SATFCFacadeBuilder setLibrary(String aLibrary) {
+    public SATFCFacadeBuilder setClaspLibrary(String aLibrary) {
         if (aLibrary == null) {
-            throw new IllegalArgumentException("Cannot provide a null library.");
+            throw new IllegalArgumentException("Cannot provide a null clasp library.");
         }
-        fLibrary = aLibrary;
+        fClaspLibrary = aLibrary;
+        return this;
+    }
+
+    /**
+     * Set the SATenstein library SATFC should use.
+     *
+     * @param aLibrary
+     * @return this {@code Builder} object
+     */
+    public SATFCFacadeBuilder setSATensteinLibrary(String aLibrary) {
+        if (aLibrary == null) {
+            throw new IllegalArgumentException("Cannot provide a null SATenstein library.");
+        }
+        fSATensteinLibrary = aLibrary;
         return this;
     }
 
@@ -199,19 +258,8 @@ public class SATFCFacadeBuilder {
      * @param aResultFile
      * @return this {@code Builder} object
      */
-    public SATFCFacadeBuilder setResultFile(String aResultFile) {
+    public SATFCFacadeBuilder setResultFile(@NonNull String aResultFile) {
         fResultFile = aResultFile;
-        return this;
-    }
-
-    /**
-     * Set the type of solver choice to use in SATFC.
-     *
-     * @param aSolverChoice
-     * @return this {@code Builder} object
-     */
-    public SATFCFacadeBuilder setSolverChoice(SolverChoice aSolverChoice) {
-        fSolverChoice = aSolverChoice;
         return this;
     }
 
@@ -227,24 +275,24 @@ public class SATFCFacadeBuilder {
     }
 
     /**
-     * Set the maximum number of solvers that SATFC will execute in parallel
-     * This will have little effect past {@link SATFCParallelSolverBundle#PORTFOLIO_SIZE}
-     *
-     * @param parallelismLevel
+     * Set the number of attempts to retry a connection to the SATFCServer per query before giving up and continuing without the server's help (or throwing an error)
+     * @param numServerAttempts number of times to attempt the server for a given query
+     * @param noErrorOnServerUnavailable if true, just continue solving the problem without the server's help. if false, throw an error after numServerAttempts is exceeded
      * @return this {@code Builder} object
      */
-    public SATFCFacadeBuilder setParallelismLevel(int parallelismLevel) {
-        this.parallelismLevel = parallelismLevel;
+    public SATFCFacadeBuilder setServerAttempts(int numServerAttempts, boolean noErrorOnServerUnavailable) {
+        Preconditions.checkState(numServerAttempts > 0, "number of server attempts must be positive");
+        this.numServerAttempts = numServerAttempts;
+        this.noErrorOnServerUnavailable = noErrorOnServerUnavailable;
         return this;
     }
-
 
     /**
      * Call this method to have SATFC configure logging (this would only have any effect if the calling application hasn't initialized logging)
      *
      * @return this {@code Builder} object
      */
-    public SATFCFacadeBuilder setInitializeLogging(String logFileName, @NonNull Level logLevel) {
+    public SATFCFacadeBuilder initializeLogging(String logFileName, @NonNull Level logLevel) {
         this.initializeLogging = true;
         this.logLevel = logLevel;
         this.logFileName = logFileName;
@@ -252,38 +300,47 @@ public class SATFCFacadeBuilder {
     }
 
     /**
-     * Set whether or not to cache results
+     * Call this method to have SATFC configure logging (this would only have any effect if the calling application hasn't initialized logging)
+     *
      * @return this {@code Builder} object
      */
-    public SATFCFacadeBuilder setCacheResults(boolean cacheResults) {
-        this.cacheResults = cacheResults;
+    public SATFCFacadeBuilder initializeLogging(@NonNull Level logLevel) {
+        return initializeLogging(null, logLevel);
+    }
+
+    /**
+     */
+    public SATFCFacadeBuilder setAutoAugmentOptions(@NonNull AutoAugmentOptions autoAugmentOptions) {
+        this.autoAugmentOptions = autoAugmentOptions;
         return this;
     }
 
     // Developer methods
-    public SATFCFacadeBuilder setDeveloperOptions(DeveloperOptions developerOptions) {
+    public SATFCFacadeBuilder setDeveloperOptions(@NonNull DeveloperOptions developerOptions) {
     	this.developerOptions = developerOptions;
     	return this;
     }
 
 
-    public static SATFCFacade buildFromParameters(@NonNull SATFCFacadeParameters parameters) {
+    public static SATFCFacadeBuilder builderFromParameters(@NonNull SATFCFacadeParameters parameters) {
         final SATFCFacadeBuilder builder = new SATFCFacadeBuilder();
-
         // regular parameters
         if (parameters.fClaspLibrary != null) {
-            builder.setLibrary(parameters.fClaspLibrary);
+            builder.setClaspLibrary(parameters.fClaspLibrary);
         }
-        builder.setParallelismLevel(parameters.numCores);
-        builder.setSolverChoice(parameters.fSolverChoice);
-        builder.setInitializeLogging(parameters.logFileName, parameters.getLogLevel());
+        if (parameters.fSATensteinLibrary != null) {
+            builder.setSATensteinLibrary(parameters.fSATensteinLibrary);
+        }
+        if (parameters.configFile != null) {
+            builder.setConfigFile(parameters.configFile);
+        }
+        builder.initializeLogging(parameters.logFileName, parameters.getLogLevel());
         if (parameters.cachingParams.serverURL != null) {
             builder.setServerURL(parameters.cachingParams.serverURL);
         }
-        builder.setCacheResults(parameters.cachingParams.cacheResults);
 
         CNFSaverSolverDecorator.ICNFSaver CNFSaver = null;
-        if (parameters.fSolverChoice.equals(SolverChoice.CNF)) {
+        if (parameters.fCNFDir != null) {
             System.out.println("Saving CNFs to disk in " + parameters.fCNFDir);
             CNFSaver = new CNFSaverSolverDecorator.FileCNFSaver(parameters.fCNFDir);
             if (parameters.fRedisParameters.areValid()) {
@@ -296,16 +353,12 @@ public class SATFCFacadeBuilder {
         builder.setDeveloperOptions(
         		DeveloperOptions
         		.builder()
-        		.decompose(parameters.fSolverOptions.decomposition)
-        		.presolve(parameters.fSolverOptions.presolve)
-        		.underconstrained(parameters.fSolverOptions.underconstrained)
-        		.hydraParams(parameters.fHydraParams)
         		.CNFSaver(CNFSaver)
+        		.solverChoice(parameters.solverChoice)
         		.build()
         		);
-        return builder.build();
+        return builder;
     }
-
 
     private static final String LOGBACK_CONFIGURATION_FILE_PROPERTY = "logback.configurationFile";
 

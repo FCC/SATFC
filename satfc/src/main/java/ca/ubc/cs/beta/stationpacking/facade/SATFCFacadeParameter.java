@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -21,16 +21,12 @@
  */
 package ca.ubc.cs.beta.stationpacking.facade;
 
-import com.google.common.collect.Lists;
-import lombok.Getter;
-import lombok.Value;
-import lombok.experimental.Builder;
-import ca.ubc.cs.beta.stationpacking.execution.parameters.smac.SATFCHydraParams;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.data.DataManager;
+import ca.ubc.cs.beta.stationpacking.facade.datamanager.solver.bundles.yaml.ConfigFile;
 import ca.ubc.cs.beta.stationpacking.solvers.decorators.CNFSaverSolverDecorator;
 import ch.qos.logback.classic.Level;
-
-import java.util.List;
+import lombok.Value;
+import lombok.experimental.Builder;
 
 @Value
 @Builder
@@ -38,33 +34,27 @@ public class SATFCFacadeParameter {
 
     // public options
 	private final String claspLibrary;
+	private final String satensteinLibrary;
+	private final ConfigFile configFile;
+	private final String serverURL;
+	
 	private final String resultFile;
-	private final SolverChoice solverChoice;
-    private final String serverURL;
-    private final int parallelismLevel;
-    private final boolean cacheResults;
     private Level logLevel;
 
+    private int numServerAttempts;
+    private boolean noErrorOnServerUnavailable;
+
+    private AutoAugmentOptions autoAugmentOptions;
+
     // developer options
-    private final boolean presolve;
-    private final boolean underconstrained;
-    private final boolean decompose;
     private final CNFSaverSolverDecorator.ICNFSaver CNFSaver;
-    private final SATFCHydraParams hydraParams;
+    // It's possible to specify a datamanager here so that facade's can be quickly rebuilt without reloading constraints
     private final DataManager dataManager;
+    private final SolverChoice solverChoice;
 
 	public enum SolverChoice
 	{
-		// Public:
-		SATFC_SEQUENTIAL,
-        SATFC_PARALLEL,
-        // Developer:
-		MIPFC,
-        CNF,
-        CACHING_SOLVER_FULL_INSTANCES,
-        CACHING_SOLVER_COMPONENTS,
-        STATS,
-        HYDRA;
+        YAML;
     }
 
 }

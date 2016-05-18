@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -27,8 +27,16 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import ca.ubc.cs.beta.stationpacking.base.Station;
+import com.google.common.base.Splitter;
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimaps;
 
+import ca.ubc.cs.beta.stationpacking.base.Station;
+import ca.ubc.cs.beta.stationpacking.datamanagers.constraints.IConstraintManager;
+import ca.ubc.cs.beta.stationpacking.datamanagers.stations.IStationManager;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class StationPackingUtils {
 
     private StationPackingUtils()
@@ -50,4 +58,27 @@ public class StationPackingUtils {
         });
         return stationToChannel;
     }
+
+    public static String parseAuctionFromName(String name) {
+        if (name != null) {
+            try {
+                return Splitter.on('_').splitToList(name).get(0);
+            } catch (Exception ignored) {
+            }
+        }
+        return null;
+    }
+
+    public static Map<Integer, Set<Station>> channelToStationFromStationToChannel(Map<Integer, Integer> stationToChannel) {
+        final HashMultimap<Integer, Station> channelAssignment = HashMultimap.create();
+        stationToChannel.entrySet().forEach(entry -> {
+            channelAssignment.get(entry.getValue()).add(new Station(entry.getKey()));
+        });
+        return Multimaps.asMap(channelAssignment);
+    }
+
+    public static boolean weakVerify(IStationManager stationManager, IConstraintManager constraintManager, Map<Integer, Integer> solution) {
+        return solution.keySet().stream().allMatch(s -> stationManager.getStations().contains(new Station(s))) && solution.entrySet().stream().allMatch(e -> stationManager.getDomain(stationManager.getStationfromID(e.getKey())).contains(e.getValue())) && constraintManager.isSatisfyingAssignment(channelToStationFromStationToChannel(solution));
+    }
+
 }

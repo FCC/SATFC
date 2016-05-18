@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -22,42 +22,39 @@
 package ca.ubc.cs.beta.stationpacking.solvers.decorators.cache;
 
 import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
-import ca.ubc.cs.beta.stationpacking.cache.CacheCoordinate;
 import ca.ubc.cs.beta.stationpacking.cache.ICacher;
 import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
-import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
 import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.decorators.ASolverDecorator;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
 
 /**
  * Created by newmanne on 1/25/15.
+ * Cache result in the SATFCServer
  */
 public class CacheResultDecorator extends ASolverDecorator {
 
     private final ICacher cacher;
-    private final CacheCoordinate cacheCoordinate;
     private final CachingStrategy cachingStrategy;
 
     /**
      * @param aSolver - decorated ISolver.
      */
-    public CacheResultDecorator(ISolver aSolver, ICacher aCacher, CacheCoordinate cacheCoordinate, CachingStrategy cachingStrategy) {
+    public CacheResultDecorator(ISolver aSolver, ICacher aCacher, CachingStrategy cachingStrategy) {
         super(aSolver);
         cacher = aCacher;
-        this.cacheCoordinate = cacheCoordinate;
         this.cachingStrategy = cachingStrategy;
     }
 
-    public CacheResultDecorator(ISolver aSolver, ICacher aCacher, CacheCoordinate cacheCoordinate) {
-        this(aSolver, aCacher, cacheCoordinate, new CacheConclusiveStrategy());
+    public CacheResultDecorator(ISolver aSolver, ICacher aCacher) {
+        this(aSolver, aCacher, new CacheConclusiveNewInfoStrategy());
     }
 
     @Override
     public SolverResult solve(StationPackingInstance aInstance, ITerminationCriterion aTerminationCriterion, long aSeed) {
         final SolverResult result = fDecoratedSolver.solve(aInstance, aTerminationCriterion, aSeed);
         if (cachingStrategy.shouldCache(result)) {
-            cacher.cacheResult(cacheCoordinate, aInstance, result);
+            cacher.cacheResult(aInstance, result, aTerminationCriterion);
         }
         return result;
     }
@@ -68,20 +65,14 @@ public class CacheResultDecorator extends ASolverDecorator {
 
     }
 
-    public static class CacheConclusiveStrategy implements CachingStrategy {
+    /**
+     * Don't bother caching a result if we solved the problem using the cache, because it can't possibly have any added value
+     */
+    public static class CacheConclusiveNewInfoStrategy implements CachingStrategy {
 
         @Override
         public boolean shouldCache(SolverResult result) {
-            return result.getResult().isConclusive();
-        }
-
-    }
-
-    public static class CacheUNSATOnlyStrategy implements CachingStrategy {
-
-        @Override
-        public boolean shouldCache(SolverResult result) {
-            return result.getResult().equals(SATResult.UNSAT);
+            return result.getResult().isConclusive() && !result.getSolvedBy().equals(SolverResult.SolvedBy.SAT_CACHE) && !result.getSolvedBy().equals(SolverResult.SolvedBy.UNSAT_CACHE);
         }
 
     }

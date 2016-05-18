@@ -21,42 +21,54 @@
  */
 package ca.ubc.cs.beta.stationpacking.webapp;
 
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import com.beust.jcommander.JCommander;
-import com.beust.jcommander.Parameter;
-import lombok.extern.slf4j.Slf4j;
+import javax.servlet.Filter;
 
+import ca.ubc.cs.beta.stationpacking.base.StationPackingInstance;
+import ca.ubc.cs.beta.stationpacking.cache.containment.transformer.ICacheEntryTransformer;
+import ca.ubc.cs.beta.stationpacking.cache.containment.transformer.UHFRestrictionTransformer;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
+import lombok.Data;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.embedded.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
-
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.util.ReflectionUtils;
-import redis.clients.jedis.JedisShardInfo;
+
+import com.beust.jcommander.Parameter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.servlets.MetricsServlet;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.Lists;
+
 import ca.ubc.cs.beta.aeatk.misc.jcommander.JCommanderHelper;
-import ca.ubc.cs.beta.stationpacking.cache.CacheLocator;
+import ca.ubc.cs.beta.stationpacking.cache.ICacheEntryFilter;
 import ca.ubc.cs.beta.stationpacking.cache.ICacheLocator;
 import ca.ubc.cs.beta.stationpacking.cache.ISatisfiabilityCacheFactory;
+import ca.ubc.cs.beta.stationpacking.cache.NewInfoEntryFilter;
 import ca.ubc.cs.beta.stationpacking.cache.RedisCacher;
 import ca.ubc.cs.beta.stationpacking.cache.SatisfiabilityCacheFactory;
 import ca.ubc.cs.beta.stationpacking.facade.datamanager.data.DataManager;
 import ca.ubc.cs.beta.stationpacking.utils.JSONUtils;
+import ca.ubc.cs.beta.stationpacking.webapp.filters.GzipRequestFilter;
 import ca.ubc.cs.beta.stationpacking.webapp.parameters.SATFCServerParameters;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
+import redis.clients.jedis.BinaryJedis;
+import redis.clients.jedis.JedisShardInfo;
 
 /**
  * Created by newmanne on 23/03/15.
  */
 @Slf4j
+@EnableScheduling
 @SpringBootApplication
 public class SATFCServerApplication {
 
@@ -65,8 +77,13 @@ public class SATFCServerApplication {
     public static void main(String[] args) {
         // Jcommander will throw an exception if it sees parameters it does not know about, but these are possibly spring boot commands
         final List<String> jcommanderArgs = new ArrayList<>();
-        final List<String> jcommanderFields = new ArrayList<>();
-        ReflectionUtils.doWithFields(SATFCServerParameters.class, field -> Collections.addAll(jcommanderFields, field.getAnnotation(Parameter.class).names()));
+        final List<String> jcommanderFields = Lists.newArrayList("--help");
+        ReflectionUtils.doWithFields(SATFCServerParameters.class, field -> {
+            final Parameter annotation = field.getAnnotation(Parameter.class);
+            if (annotation != null) {
+                Collections.addAll(jcommanderFields, annotation.names());
+            }
+        });
         for (String arg : args) {
             for (String jcommanderField : jcommanderFields) {
                 final String[] split = arg.split("=");
@@ -83,6 +100,9 @@ public class SATFCServerApplication {
         SpringApplication.run(SATFCServerApplication.class, args);
     }
 
+    @Autowired
+    MetricRegistry registry;
+
     @Bean
     MappingJackson2HttpMessageConverter mappingJackson2HttpMessageConverter() {
         final MappingJackson2HttpMessageConverter mappingJacksonHttpMessageConverter = new MappingJackson2HttpMessageConverter();
@@ -93,14 +113,23 @@ public class SATFCServerApplication {
 
     @Bean
     RedisConnectionFactory redisConnectionFactory() {
+        return new JedisConnectionFactory(getShardInfo());
+    }
+
+    private JedisShardInfo getShardInfo() {
         final SATFCServerParameters satfcServerParameters = satfcServerParameters();
         final int timeout = (int) TimeUnit.SECONDS.toMillis(60);
-        return new JedisConnectionFactory(new JedisShardInfo(satfcServerParameters.getRedisURL(), satfcServerParameters.getRedisPort(), timeout));
+        return new JedisShardInfo(satfcServerParameters.getRedisURL(), satfcServerParameters.getRedisPort(), timeout);
+    }
+
+    @Bean
+    BinaryJedis binaryJedis() {
+        return new BinaryJedis(getShardInfo());
     }
 
     @Bean
     RedisCacher cacher() {
-        return new RedisCacher(redisTemplate());
+        return new RedisCacher(dataManager(), redisTemplate(), binaryJedis());
     }
 
     @Bean
@@ -109,8 +138,8 @@ public class SATFCServerApplication {
     }
 
     @Bean
-    ICacheLocator containmentCache() {
-        return new CacheLocator(satisfiabilityCacheFactory());
+    ICacheLocator containmentCacheLocator() {
+        return new CacheLocator(satisfiabilityCacheFactory(), parameters);
     }
 
     @Bean
@@ -124,8 +153,46 @@ public class SATFCServerApplication {
         return new DataManager();
     }
 
-    @Bean SATFCServerParameters satfcServerParameters() {
+    @Bean
+    SATFCServerParameters satfcServerParameters() {
         return parameters;
+    }
+
+    @Bean
+    public ServletRegistrationBean servletRegistrationBean() {
+        return new ServletRegistrationBean(new MetricsServlet(registry), "/metrics/extra/*");
+    }
+
+    @Bean
+    public Filter gzipFilter() {
+        // Apply a filter to decompress incoming compressed requests
+        return new GzipRequestFilter();
+    }
+
+    @Bean
+    public ICacheEntryFilter cacheScreener() {
+        final ICacheEntryFilter screener;
+        final SATFCServerParameters parameters = satfcServerParameters();
+        switch (parameters.getCacheScreenerChoice()) {
+            case NEW_INFO:
+                screener = new NewInfoEntryFilter(containmentCacheLocator());
+                break;
+            case ADD_EVERYTHING:
+                screener = (coordinate, instance, result) -> true;
+                break;
+            case ADD_NOTHING:
+                screener = (coordinate, instance, result) -> false;
+                break;
+            default:
+                throw new IllegalStateException("Unrecognized value for " + parameters.getCacheScreenerChoice());
+        }
+        return screener;
+    }
+
+    @Bean
+    public ICacheEntryTransformer cacheEntryTransformer() {
+        final SATFCServerParameters parameters = satfcServerParameters();
+        return parameters.isCacheUHFOnly() ? new UHFRestrictionTransformer() : x -> x;
     }
 
 }

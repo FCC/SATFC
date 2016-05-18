@@ -1,0 +1,86 @@
+---
+CONFIGS:
+  claspS1: &claspS1 --backprop --eq-dfs --eq=6 --trans-ext=card --sat-prepro=0 --sign-def=2 --reset-restarts=1 --del-max=1537606602 --opt-heuristic=3 --strengthen=local,2 --dom-mod=3,1 --score-res=2 --loops=common --init-watches=2 --heuristic=Domain,97 --score-other=2 --del-cfl=+,37379,3,214 --restarts=F,628 --partial-check=40 --deletion=basic,85,2 --counter-restarts=1 --del-grow=4.7859,15.8141,L,1253 --del-glue=2,0 --update-lbd=2 --reverse-arcs=2 --del-estimate=3 --opt-strategy=usc,2 --otfs=1 --init-moms --del-on-restart=50 --contraction=518 --rand-freq=0.01 --del-init=13.6918,192,16415 --local-restarts --lookahead=body,1863992766 --save-progress=152 --counter-bump=2606
+  claspH2: &claspH2 --sat-prepro=0 --init-watches=2 --rand-freq=0.0 --sign-def=2 --del-init=5.0,10,2500 --strengthen=local,2 --lookahead=hybrid,1 --otfs=2 --reverse-arcs=3 --save-progress=180 --del-glue=2,0 --del-cfl=L,2000 --restarts=F,1600 --local-restarts --update-lbd=1 --heuristic=Vsids,92 --deletion=ipSort,75,2 --contraction=166 --del-grow=0 --del-on-restart=50 --del-max=32767
+  claspVHF: &claspVHF --backprop --eq=0 --trans-ext=all --sat-prepro=0 --sign-def=0 --del-max=100000 --strengthen=local,1 --loops=common --init-watches=0 --heuristic=Vsids,96 --del-cfl=F,500 --restarts=D,100,0.8,100 --update-act --del-glue=4,0 --update-lbd=0 --reverse-arcs=3 --otfs=2 --del-on-restart=0 --contraction=500 --local-restarts --lookahead=no --save-progress=50
+  satensteinS1: &satenstein -alg satenstein -cutoff max -heuristic 20 -decreasingvariable 12 -adaptiveprom 1 -avgweightthreshold 330 -singleclause 1 -updateschemepromlist 1 -clausepen 0 -promisinglist 1 -tabusearch 1 -alpha 1.3 -ignoreStartingAssignmentPercentage 0.4047971829522954 -selectclause 1 -adaptive 0 -randomwalk 1 -randomVarInitPercentage 0.3007051676878647 -tabu 5 -DCCAp 0.3 -DCCAq 0 -scoringmeasure 1 -maxinc 10 -sapsthresh -0.1 -performrandomwalk 1 -rho 0.8 -pflat 0.15 -rwp 0.15 -varinfalse 1 -adaptpromwalkprob 0
+UHF:
+    - name: PARALLEL
+      args:
+        configs:
+          -
+            - name: UNSAT_CACHE
+            - name: SAT_CACHE
+            - name: DELAY
+              args:
+                time: 1.0
+                noise: 1.0
+          -
+            - name: CLASP
+              args:
+                config: *claspS1
+            - name: SAT_PRESOLVER
+              args:
+                solverConfig:
+                  name: CLASP
+                  args:
+                    config: *claspS1
+                strategy:
+                  name: ITERATIVE_DEEPEN
+                  args:
+                    baseCutoff: 10
+                    config:
+                      name: NEIGHBOURHOOD
+          -
+            - name: SATENSTEIN
+              args:
+                config: *satenstein
+                encodingType: DIRECT
+          -
+            - name: SATENSTEIN
+              args:
+                config: -alg satenstein -cutoff max -DCCAp 0.3 -DCCAq 0 -adaptivenoisescheme 1 -adaptiveprom 0 -adaptpromwalkprob 0 -adaptwalkprob 0 -avgweightthreshold 300 -decreasingvariable 3 -dp 0.05 -heuristic 2 -novnoise 0.5 -performalternatenovelty 1 -phi 5 -promdp 0.05 -promisinglist 0 -promnovnoise 0.5 -promphi 5 -promtheta 6 -promwp 0.01 -scoringmeasure 1 -selectclause 1 -sparrowc1 2.15 -sparrowc2 4 -sparrowc3 75000 -theta 6 -tiebreaking 1 -updateschemepromlist 3 -wpwalk 0.5 -adaptive 1 -clausepen 0 -ignoreStartingAssignmentPercentage 0.006387520070951114 -performrandomwalk 1 -randomwalk 1 -rwp 0.15 -singleclause 0 -tabu 5 -tabusearch 1 -varinfalse 1
+                encodingType: MULTIVALUED
+            - name: PREVIOUS_ASSIGNMENT
+            - name: CONNECTED_COMPONENTS
+            - name: UNDERCONSTRAINED
+            - name: ARC_CONSISTENCY
+          -
+            - name: CLASP
+              args:
+                config:  --eq-dfs --eq=5 --backprop --trans-ext=choice --sat-prepro=0 --sign-def=1 --reset-restarts=2 --del-max=1537606602 --strengthen=local,2 --dom-mod=3,1 --score-res=2 --loops=distinct --init-watches=2 --heuristic=Domain,92 --score-other=2 --reverse-arcs=3 --del-cfl=+,37379,3,214 --restarts=x,628,1.5 --partial-check=10 --deletion=basic,85,2 --counter-restarts=1 --del-grow=0 --del-glue=2,0 --update-lbd=0 --opt-heuristic=1 --del-estimate=3 --opt-strategy=usc,2 --otfs=2 --init-moms --del-on-restart=50 --contraction=518 --rand-freq=0.05 --del-init=13.6918,192,16415 --local-restarts --lookahead=no --save-progress=179 --counter-bump=2606
+                encodingType: DIRECT
+            - name: PREVIOUS_ASSIGNMENT
+            - name: CONNECTED_COMPONENTS
+            - name: UNDERCONSTRAINED
+            - name: ARC_CONSISTENCY
+    - name: RESULT_SAVER
+    - name: PYTHON_VERIFIER
+    - name: VERIFIER
+    - name: CACHE
+VHF:
+    - name: CLASP
+      args:
+        config: *claspVHF
+    - name: CONNECTED_COMPONENTS
+    - name: UNDERCONSTRAINED
+      args:
+        expensive: false
+        recursive: false
+    - name: SAT_PRESOLVER
+      args:
+        solverConfig:
+          name: CLASP
+          args:
+            config: *claspVHF
+        strategy:
+          name: ITERATIVE_DEEPEN
+          args:
+            baseCutoff: 5
+            config:
+              name: NEIGHBOURHOOD
+              args:
+                numLayers: 1
+    - name: RESULT_SAVER
+    - name: PYTHON_VERIFIER
+    - name: VERIFIER

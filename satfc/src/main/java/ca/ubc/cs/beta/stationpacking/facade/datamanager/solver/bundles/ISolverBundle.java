@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -29,25 +29,32 @@ import ca.ubc.cs.beta.stationpacking.solvers.ISolver;
 /**
  * A solver bundle that holds solvers for a specific problem domain.
  * Also performs solver selection when queried with a problem instance.
+ *
  * @author afrechet
  */
 public interface ISolverBundle extends AutoCloseable {
-	
-	/**
-	 * @param aInstance - the instance for which a solver is needed. 
-	 * @return the solver contained in the bundle for the given instance.
-	 */
-	public ISolver getSolver(StationPackingInstance aInstance);
-	
-	/**
-	 * @return the station manager contained in the bundle.
-	 */
-	public IStationManager getStationManager();
-	
-	/**
-	 * Returns the constraint manager contained in the bundle.
-	 * @return the constraint manager contained in the bundle.
-	 */
-	public IConstraintManager getConstraintManager();
-	
+
+    /**
+     * @param aInstance - the instance for which a solver is needed.
+     * @return the solver contained in the bundle for the given instance.
+     */
+    ISolver getSolver(StationPackingInstance aInstance);
+
+    /**
+     * @return the station manager contained in the bundle.
+     */
+    IStationManager getStationManager();
+
+    /**
+     * @return the constraint manager contained in the bundle.
+     */
+    IConstraintManager getConstraintManager();
+
+    /**
+     * Get enabled checkers
+     */
+    default String getCheckers() {
+        return "";
+    }
+
 }

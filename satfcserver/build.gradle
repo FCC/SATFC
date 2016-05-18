@@ -20,6 +20,8 @@ dependencies {
     compile "com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion"
     compile "com.fasterxml.jackson.datatype:jackson-datatype-guava:$jacksonVersion"
 
+    compile "io.dropwizard.metrics:metrics-servlets:$dropwizardMetricVersion"
+
     // logging
     compile 'org.slf4j:slf4j-api:1.7.7'
     compile 'org.slf4j:jcl-over-slf4j:1.7.7'
@@ -38,8 +40,29 @@ dependencies {
     testCompile "org.mockito:mockito-all:1.10.8"
 }
 
+// Creates scripts for entry points
+// Subproject must apply application plugin to be able to call this method.
+def createScript(project, mainClass, name, jvmArgs) {
+    project.tasks.create(name: name, type: CreateStartScripts) {
+        outputDir = new File(project.buildDir, 'scripts')
+        mainClassName = mainClass
+        applicationName = name
+        classpath = project.tasks[JavaPlugin.JAR_TASK_NAME].outputs.files + project.configurations.runtime
+        applicationDefaultJvmArgs = jvmArgs
+    }
+    project.tasks[name].dependsOn(project.jar)
+    project.applicationDistribution.with {
+        into("bin") {
+            from(project.tasks[name])
+            fileMode = 0755
+        }
+    }
+}
+createScript(project, 'ca.ubc.cs.beta.stationpacking.cache.scripts.ConstrainCache', 'CACHE_CONSTRAINER', ['-Xmx16g'])
+
 //Project properties.
 applicationName = 'SATFCServer'
+mainClassName = 'ca.ubc.cs.beta.stationpacking.webapp.SATFCServerApplication'
 version = "$SATFCVersion-"+getGitName()
 
 jar {

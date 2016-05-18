@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -24,24 +24,37 @@ package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.base;
 import java.io.Serializable;
 import java.util.Set;
 
-import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
-import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
-
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
+
+import ca.ubc.cs.beta.stationpacking.solvers.base.SATResult;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult;
+import ca.ubc.cs.beta.stationpacking.solvers.base.SolverResult.SolvedBy;
+import ca.ubc.cs.beta.stationpacking.solvers.sat.base.Literal;
+import lombok.Getter;
 
 public class SATSolverResult implements Serializable {
 
 	private final SATResult fResult;
 	private final double fRuntime;
 	private final ImmutableSet<Literal> fAssignment;
-	
-	public SATSolverResult(SATResult aResult, double aRuntime, Set<Literal> aAssignment)
+    @Getter
+    private final SolverResult.SolvedBy solvedBy;
+	@Getter
+	private final String nickname;
+
+	public SATSolverResult(SATResult aResult, double aRuntime, Set<Literal> aAssignment, SolverResult.SolvedBy solvedBy) {
+		this(aResult, aRuntime, aAssignment, solvedBy, null);
+	}
+
+    public SATSolverResult(SATResult aResult, double aRuntime, Set<Literal> aAssignment, SolverResult.SolvedBy solvedBy, String nickname)
 	{
         Preconditions.checkArgument(aRuntime >= 0, "Cannot create a " + getClass().getSimpleName() + " with negative runtime: " + aRuntime);
+		this.nickname = nickname;
 		fResult = aResult;
 		fRuntime = aRuntime;
 		fAssignment = ImmutableSet.copyOf(aAssignment);
+        this.solvedBy = aResult.isConclusive() ? solvedBy : SolvedBy.UNSOLVED;
 	}
 	
 	public SATResult getResult(){
@@ -64,7 +77,7 @@ public class SATSolverResult implements Serializable {
 	}
 
     public static SATSolverResult timeout(double time) {
-        return new SATSolverResult(SATResult.TIMEOUT, time, ImmutableSet.of());
+        return new SATSolverResult(SATResult.TIMEOUT, time, ImmutableSet.of(), SolverResult.SolvedBy.UNSOLVED);
     }
 
 }

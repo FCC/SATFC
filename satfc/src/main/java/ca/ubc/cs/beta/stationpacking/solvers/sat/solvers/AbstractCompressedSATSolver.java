@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -24,6 +24,6 @@ package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers;
 /**
  * Marker class to show that the SAT solver required a compressed CNF.
  */
-public abstract class AbstractCompressedSATSolver implements ISATSolver{
+public abstract class AbstractCompressedSATSolver implements ISATSolver {
 
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -25,13 +25,17 @@ import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
-import redis.clients.jedis.Jedis;
+import com.beust.jcommander.Parameter;
+
 import ca.ubc.cs.beta.aeatk.misc.options.OptionLevel;
 import ca.ubc.cs.beta.aeatk.misc.options.UsageTextField;
 import ca.ubc.cs.beta.aeatk.options.AbstractOptions;
-
-import com.beust.jcommander.Parameter;
+import redis.clients.jedis.BinaryJedis;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisShardInfo;
 
 /**
  * Created by newmanne on 12/05/15.
@@ -42,9 +46,9 @@ public class RedisParameters extends AbstractOptions {
     @Parameter(names = "-REDIS-QUEUE", description = "The queue to take redis jobs from")
     public String fRedisQueue;
     @Parameter(names = "-REDIS-PORT", description = "Redis port (for problem queue)")
-    public Integer fRedisPort;
+    public Integer fRedisPort = 6379;
     @Parameter(names = "-REDIS-HOST", description = "Redis host (for problem queue)")
-    public String fRedisHost;
+    public String fRedisHost = "localhost";
 
     private static Jedis jedis;
 
@@ -52,9 +56,21 @@ public class RedisParameters extends AbstractOptions {
         Logger log = LoggerFactory.getLogger(RedisParameters.class);
         if (jedis == null) {
             log.info("Making a redis connection to {}:{}", fRedisHost, fRedisPort);
-            jedis = new Jedis(fRedisHost, fRedisPort, (int) TimeUnit.SECONDS.toMillis(60));
+            jedis = new Jedis(getShardInfo());
         }
         return jedis;
+    }
+
+    private JedisShardInfo getShardInfo() {
+        final int timeout = (int) TimeUnit.SECONDS.toMillis(60);
+        return new JedisShardInfo(fRedisHost, fRedisPort, timeout);
+    }
+
+    public BinaryJedis getBinaryJedis() {
+        return new BinaryJedis(getShardInfo());
+    }
+    public StringRedisTemplate getStringRedisTemplate() {
+        return new StringRedisTemplate(new JedisConnectionFactory(getShardInfo()));
     }
 
     public boolean areValid() {

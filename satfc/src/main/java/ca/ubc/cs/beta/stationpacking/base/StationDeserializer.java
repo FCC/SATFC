@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -27,7 +27,6 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.KeyDeserializer;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 
 /**
  * Created by newmanne on 06/03/15.
@@ -35,24 +34,15 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 public class StationDeserializer extends JsonDeserializer<Station> {
 
     @Override
-    public Station deserialize(JsonParser p, DeserializationContext ctxt)
-            throws IOException {
+    public Station deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
         return new Station(p.readValueAs(Integer.class));
-    }
-
-    public static class StationJacksonModule extends SimpleModule {
-        public StationJacksonModule() {
-            addKeyDeserializer(Station.class, new StationClassKeyDeserializer());
-        }
     }
 
     public static class StationClassKeyDeserializer extends KeyDeserializer {
         @Override
-        public Object deserializeKey(final String key,
-                                     final DeserializationContext ctxt) throws IOException {
+        public Object deserializeKey(final String key, final DeserializationContext ctxt) throws IOException {
             return new Station(Integer.parseInt(key));
         }
     }
-
 
 }

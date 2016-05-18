@@ -1,5 +1,5 @@
 /**
- * Copyright 2015, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
+ * Copyright 2016, Auctionomics, Alexandre Fréchette, Neil Newman, Kevin Leyton-Brown.
  *
  * This file is part of SATFC.
  *
@@ -21,6 +21,9 @@
  */
 package ca.ubc.cs.beta.stationpacking.solvers.sat.solvers;
 
+import java.util.Map;
+
+import ca.ubc.cs.beta.stationpacking.solvers.decorators.ISATFCInterruptible;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.base.CNF;
 import ca.ubc.cs.beta.stationpacking.solvers.sat.solvers.base.SATSolverResult;
 import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
@@ -29,16 +32,20 @@ import ca.ubc.cs.beta.stationpacking.solvers.termination.ITerminationCriterion;
  * Interface for a SAT solver.
  * @author afrechet
  */
-public interface ISATSolver {
+public interface ISATSolver extends ISATFCInterruptible {
 
 	/**
 	 * @param aCNF - a CNF to solve.
 	 * @param aTerminationCriterion - the criterion dictating when to stop execution of solver.
 	 * @param aSeed - the seed for the execution.
 	 */
-	public SATSolverResult solve(CNF aCNF, ITerminationCriterion aTerminationCriterion, long aSeed);
+	SATSolverResult solve(CNF aCNF, ITerminationCriterion aTerminationCriterion, long aSeed);
 
-	public void notifyShutdown();
+	default SATSolverResult solve(CNF aCNF, Map<Long, Boolean> aPreviousAssignment, ITerminationCriterion aTerminationCriterion, long aSeed) {
+		return solve(aCNF, aTerminationCriterion, aSeed);
+	}
+
+	void notifyShutdown();
 	
 	default void interrupt() {};
 
