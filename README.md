@@ -1,11 +1,15 @@
+
 # Feasibility Checker
 
 ## Introduction
 
 **SATFC** (_SAT-based Feasibility Checker_) solves radio-spectrum repacking feasibility problems arising in the reverse auction of the FCC's upcoming broadcast incentive auction. It combines a formulation of feasibility checking based on propositional satisfiability with a heuristic pre-solver and a SAT solver tuned for the types of instances observed in auction simulations.
-authors & collaborators SATFC is the product of the ideas and hard work of Auctionomics, notably Alexandre Fréchette, Neil Newman, Paul Cernek, Emily Chenn, Guillaume Saulnier-Comte, Nick Arnosti, and Kevin Leyton-Brown.
 
 Questions, bug reports and feature suggestions should be directed to Neil Newman - newmanne at cs dot ubc dot ca
+
+## Authors & Collaborators 
+SATFC is the product of the ideas and hard work of [Auctionomics](http://www.auctionomics.com/), notably Alexandre Fréchette, Neil Newman, Paul Cernek, Emily Chenn, Guillaume Saulnier-Comte, Nick Arnosti, and Kevin Leyton-Brown.
+<img src="https://github.com/FCC/SATFC/blob/release/manual/images/auctionomics_logo.jpg?raw=true" width="280" height="72">
 
 ## Installation
 
